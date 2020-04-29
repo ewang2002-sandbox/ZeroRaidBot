@@ -1,4 +1,4 @@
-import { Client, Message, MessageReaction, User, PartialUser, GuildMember, PartialGuildMember, Guild, TextChannel } from "discord.js";
+import { Client, Message, MessageReaction, User, PartialUser, GuildMember, PartialGuildMember, Guild, TextChannel, ClientUser } from "discord.js";
 import { MongoDbHelper } from "./Helpers/MongoDbHelper";
 import { CommandManager } from "./Classes/CommandManager";
 import axios, { AxiosInstance } from "axios";
@@ -30,8 +30,6 @@ export class Zero {
 	 */
 	public static readonly AxiosClient: AxiosInstance = axios.create();
 
-	public static errorLogChannel: TextChannel;
-
 	/**
 	 * The contructor for this method.
 	 * 
@@ -62,8 +60,7 @@ export class Zero {
 			const mdm: MongoDbHelper.MongoDbHelper = new MongoDbHelper.MongoDbHelper();
 			await mdm.connect();
 			await Zero.RaidClient.login(this._token);
-
-			Zero.errorLogChannel = Zero.RaidClient.channels.cache.get("704955466060660786") as TextChannel;
+			(Zero.RaidClient.user as ClientUser).setActivity("Being programmed to death.", { type: "CUSTOM_STATUS" });
 		}
 		catch (e) {
 			throw new ReferenceError(e);

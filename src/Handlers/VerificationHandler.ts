@@ -12,6 +12,7 @@ import { TiffitRealmEyeAPI } from "../Constants/ConstantVars";
 import { StringBuilder } from "../Classes/String/StringBuilder";
 import { AxiosResponse } from "axios";
 import { FilterQuery, UpdateQuery } from "mongodb";
+import { ArrayUtil } from "../Utility/ArrayUtil";
 
 export module VerificationHandler {
 
@@ -256,13 +257,14 @@ export module VerificationHandler {
 					inGameName = nameToUse;
 				}
 
+				const code: string = getRandomizedString(8);
 				if (typeof verificationAttemptsChannel !== "undefined") {
-					verificationAttemptsChannel.send(`⌛ **\`[${section.nameOfSection}]\`** ${member} will be trying to verify under the in-game name \`${inGameName}\`.`)
+					verificationAttemptsChannel.send(`⌛ **\`[${section.nameOfSection}]\`** ${member} will be trying to verify under the in-game name \`${inGameName}\` using the code \`${code}\`.`)
 						.catch(() => { });
 				}
 
 				// verification embed
-				const verifEmbed: MessageEmbed = getVerificationEmbed(guild, inGameName, reqs, isOldProfile, member);
+				const verifEmbed: MessageEmbed = getVerificationEmbed(guild, inGameName, reqs, isOldProfile, code);
 				const verifMessage: Message = await botMsg.edit(verifEmbed);
 				await verifMessage.react("✅").catch(() => { });
 				await verifMessage.react("❌").catch(() => { });
@@ -332,9 +334,9 @@ export module VerificationHandler {
 
 					if (!codeFound) {
 						if (typeof verificationAttemptsChannel !== "undefined") {
-							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the verification code, \`${member.id}\`, could not be found in his/her RealmEye profile.`).catch(() => { });
+							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the verification code, \`${code}\`, could not be found in his/her RealmEye profile.`).catch(() => { });
 						}
-						await member.send("Your verification code wasn't found in your RealmEye description! Make sure the code is on your description and then try again.");
+						await member.send(`Your verification code, \`${code}\` wasn't found in your RealmEye description! Make sure the code is on your description and then try again.`);
 						canReact = true;
 						return;
 					}
@@ -525,7 +527,7 @@ export module VerificationHandler {
 	 * @param {boolean} isOldProfile Whether the profile was pre-existing or not. 
 	 * @param {GuildMember} member The guild member. 
 	 */
-	function getVerificationEmbed(guild: Guild, inGameName: string, reqs: StringBuilder, isOldProfile: boolean, member: GuildMember) {
+	function getVerificationEmbed(guild: Guild, inGameName: string, reqs: StringBuilder, isOldProfile: boolean, code: string) {
 		const verifEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
 			.setTitle(`Verification For: **${guild.name}**`)
@@ -537,7 +539,7 @@ export module VerificationHandler {
 			verifEmbed.addField("2. Get Your Verification Code", "Normally, I would require a verification code for your RealmEye profile; however, because I recognize you from a different server, you can skip this process completely.");
 		}
 		else {
-			verifEmbed.addField("2. Get Your Verification Code", `Your verification code is: ${StringUtil.applyCodeBlocks(member.id)}\n\nPlease put this verification code in one of your three lines of your RealmEye profile's description.`);
+			verifEmbed.addField("2. Get Your Verification Code", `Your verification code is: ${StringUtil.applyCodeBlocks(code)}Please put this verification code in one of your three lines of your RealmEye profile's description.`);
 		}
 		verifEmbed.addField("3. Check Profile Settings", `Ensure __anyone__ can view your general profile (stars, alive fame), characters, fame history, and name history. You can access your profile settings [here](https://www.realmeye.com/settings-of/${inGameName}). If you don't have your RealmEye account password, you can learn to get one [here](https://www.realmeye.com/mreyeball#password).`)
 			.addField("4. Wait", "Before you react with the check, make sure you wait. RealmEye may sometimes take up to 30 seconds to fully register your changes!")
@@ -752,5 +754,18 @@ export module VerificationHandler {
 		}
 
 		return nameHistory;
+	}
+
+	/**
+	 * Generates a random code.
+	 * @param {number} [maxLength = 8] the max length the code should be. 
+	 */
+	export function getRandomizedString(maxLength: number = 8): string {
+		const possibleChars: string[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()".split(" ");
+		let code: string = "";
+		for (let i = 0; i < maxLength; i++) {
+			code += ArrayUtil.getRandomElement<string>(possibleChars);
+		}
+		return code;
 	}
 }

@@ -1,4 +1,6 @@
 # Zero
+⚠️ Yes, I deleted the bot's original repository -- the one with 100+ commits -- because I might have accidently uploaded some sensitive information. Sorry about that.
+
 A [Realm of the Mad God](https://www.realmofthemadgod.com/) Discord Bot designed for verification, moderation, and raid management.
 
 Looking through the internet, I was unable to find many open source RotMG Discord bots related to raid management; however, there are numerous raid management bots out there -- most of them, superior to mine -- that are not open source. 
@@ -52,4 +54,4 @@ Please remember that this bot was created in mind for a particular server; howev
 Eventually, if the demand arises, I'll make a support server for this bot. 
 
 ## Other Stuff
-This [repository](https://github.com/ewang20027/Zero) represents the OFFICIAL repository of Zero. All code written and published in this repository were written by me unless otherwise said. 
+This [repository](https://github.com/ewang20027/ZeroRaidBot) represents the OFFICIAL repository of Zero. All code written and published in this repository were written by me unless otherwise said. 

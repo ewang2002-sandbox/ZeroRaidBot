@@ -1,0 +1,756 @@
+import { Message, MessageCollector, MessageEmbed, GuildMember, Guild, MessageReaction, User, ReactionCollector, TextChannel, EmbedFieldData, Collection, DMChannel, Role, GuildChannel } from "discord.js";
+import { IRaidGuild } from "../Templates/IRaidGuild";
+import { IRaidUser } from "../Templates/IRaidUser";
+import { MessageAutoTick } from "../Classes/Message/MessageAutoTick";
+import { StringUtil } from "../Utility/StringUtil";
+import { ISection } from "../Definitions/ISection";
+import { MongoDbHelper } from "../Helpers/MongoDbHelper";
+import { MessageUtil } from "../Utility/MessageUtil";
+import { ITiffitRealmEyeProfile, ITiffitNoUser } from "../Definitions/ITiffitRealmEye";
+import { Zero } from "../Zero";
+import { TiffitRealmEyeAPI } from "../Constants/ConstantVars";
+import { StringBuilder } from "../Classes/String/StringBuilder";
+import { AxiosResponse } from "axios";
+import { FilterQuery, UpdateQuery } from "mongodb";
+
+export module VerificationHandler {
+
+	export interface INameHistory {
+		name: string;
+		from: string;
+		to: string;
+	}
+
+	export interface IAPIError {
+		errorMessage: string;
+		specification: string;
+	}
+
+	interface IPreliminaryCheckError {
+		fields: EmbedFieldData[] | EmbedFieldData[][];
+		errorMsg: string;
+		errorMsgForLogging: string;
+		errorCode: "FAME_TOO_LOW" | "RANK_TOO_LOW" | "CHARACTERS_HIDDEN" | "CHARACTER_STATS_TOO_LOW";
+	}
+
+	interface IPreliminaryCheckPass {
+		rank: number;
+		aliveFame: number;
+		stats: [number, number, number, number, number, number, number, number, number];
+	}
+
+	type PreliminaryCheck = IPreliminaryCheckPass | IPreliminaryCheckError;
+
+	/**
+	 * Verifies a user.
+	 * @param {GuildMember} member The member to verify. 
+	 * @param {Guild} guild The guild. 
+	 * @param {IRaidGuild} guildDb The guild doc. 
+	 * @param {ISection} section The section to verify the member in. Contains channel information.
+	 */
+	export async function verifyUser(
+		member: GuildMember,
+		guild: Guild,
+		guildDb: IRaidGuild,
+		section: ISection
+	): Promise<void> {
+		try {
+			// already verified or no role
+			if (!guild.roles.cache.has(section.verifiedRole) || member.roles.cache.has(section.verifiedRole)) {
+				return;
+			}
+
+			const verifiedRole: Role = guild.roles.cache.get(section.verifiedRole) as Role;
+			const dmChannel: DMChannel = await member.user.createDM();
+
+			// channel declaration
+			// yes, we know these can be textchannels b/c that's the input in configsections
+			let verificationAttemptsChannel: TextChannel | undefined = guild.channels.cache
+				.get(section.channels.logging.verificationAttemptsChannel) as TextChannel | undefined;
+			let verificationSuccessChannel: TextChannel | undefined = guild.channels.cache
+				.get(section.channels.logging.verificationSuccessChannel) as TextChannel | undefined;
+
+			const verificationChannel: GuildChannel | undefined = guild.channels.cache.get(section.channels.verificationChannel);
+			if (typeof verificationChannel === "undefined" || !(verificationChannel instanceof TextChannel)) {
+				return;
+			}
+
+			//#region requirement text
+			let reqs: StringBuilder = new StringBuilder()
+				.append("• Public Profile.")
+				.appendLine()
+				.append("• Private \"Last Seen\" Location.")
+				.appendLine()
+				.append("• Public Name History.")
+				.appendLine();
+
+			if (section.verification.aliveFame.required) {
+				reqs.append(`• ${section.verification.aliveFame.minimum} Alive Fame.`)
+					.appendLine();
+			}
+
+			if (section.verification.stars.required) {
+				reqs.append(`• ${section.verification.stars.minimum} Stars.`)
+					.appendLine();
+			}
+
+			if (section.verification.maxedStats.required) {
+				for (let i = 0; i < section.verification.maxedStats.statsReq.length; i++) {
+					if (section.verification.maxedStats.statsReq[i] !== 0) {
+						reqs.append(`• ${section.verification.maxedStats.statsReq[i]} ${i}/8 Character(s).`)
+							.appendLine();
+					}
+				}
+			}
+
+			//#endregion
+
+			const userDb: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.getUserDbByDiscordId(member.id);
+			let inGameName: string = "";
+
+			// within the server we will be checking for other major reqs.
+			if (section.isMain) {
+				let isOldProfile: boolean = false;
+				let botMsg: Message = await member.send(new MessageEmbed());
+
+				if (typeof verificationAttemptsChannel !== "undefined") {
+					verificationAttemptsChannel.send(`▶️ **\`[${section.nameOfSection}]\`** ${member} has started the verification process.`).catch(() => { });
+				}
+
+				if (userDb !== null) {
+					const hasNameEmbed: MessageEmbed = new MessageEmbed()
+						.setAuthor(member.user.tag, member.user.displayAvatarURL())
+						.setTitle(`Verification For: **${guild.name}**`)
+						.setDescription(`It appears that the name, **\`${userDb.rotmgDisplayName}\`**, is linked to this Discord account. Do you want to verify using this in-game name? Type \`yes\` or \`no\`.`)
+						.setFooter("⏳ Time Remaining: 2 Minutes and 0 Seconds.")
+						.setColor("RANDOM");
+
+					const choice: boolean | "CANCEL" | "TIME" = await new Promise(async (resolve) => {
+						botMsg = await botMsg.edit(hasNameEmbed);
+						const mc1: MessageAutoTick = new MessageAutoTick(
+							botMsg,
+							hasNameEmbed,
+							2 * 60 * 1000,
+							null,
+							"⏳ Time Remaining: {m} Minutes and {s} Seconds."
+						);
+
+						const msgCollector: MessageCollector = new MessageCollector(dmChannel, m => m.author.id === member.id, {
+							time: 2 * 60 * 1000
+						});
+
+						msgCollector.on("end", (collected: Collection<string, Message>, reason: string) => {
+							mc1.disableAutoTick();
+							if (reason === "time") {
+								return resolve("TIME");
+							}
+						});
+
+						msgCollector.on("collect", async (respMsg: Message) => {
+							if (respMsg.content.toLowerCase() === "cancel") {
+								msgCollector.stop();
+								return resolve("CANCEL");
+							}
+
+							if (["yes", "ye", "y"].includes(respMsg.content.toLowerCase())) {
+								msgCollector.stop();
+								return resolve(true);
+							}
+
+							if (["no", "n"].includes(respMsg.content.toLowerCase())) {
+								msgCollector.stop();
+								return resolve(false);
+							}
+						});
+					});
+
+					if (choice === "TIME" || choice === "CANCEL") {
+						await botMsg.delete().catch(() => { });
+						return;
+					}
+
+					if (choice) {
+						inGameName = userDb.rotmgDisplayName;
+						isOldProfile = true;
+					}
+				}
+
+				if (inGameName === "") { // TODO implement
+					const nameToUse: string | "CANCEL_" | "TIME_" = await new Promise(async (resolve) => {
+						const nameEmbed: MessageEmbed = new MessageEmbed()
+							.setAuthor(member.user.tag, member.user.displayAvatarURL())
+							.setTitle(`Verification For: **${guild.name}**`)
+							.setDescription("Please type your in-game name now. Your in-game name should be spelled exactly as seen in-game; however, capitalization does NOT matter.\n\nTo cancel this process, simply react with ❌.")
+							.setColor("RANDOM")
+							.setFooter("⏳ Time Remaining: 2 Minutes and 0 Seconds.");
+						botMsg = await botMsg.edit(nameEmbed);
+						for await (const [, reaction] of botMsg.reactions.cache) {
+							for await (const [, user] of reaction.users.cache) {
+								if (user.bot) {
+									await reaction.remove();
+									break;
+								}
+							}
+						}
+						await botMsg.react("❌");
+
+						const mcd: MessageAutoTick = new MessageAutoTick(botMsg, nameEmbed, 2 * 60 * 1000, null, "⏳ Time Remaining: {m} Minutes and {s} Seconds.");
+						const msgCollector: MessageCollector = new MessageCollector(dmChannel, m => m.author.id === member.user.id, {
+							time: 2 * 60 * 1000
+						});
+
+						//#region reaction collector
+						const reactFilter: ((r: MessageReaction, u: User) => boolean) = (reaction: MessageReaction, user: User) => {
+							return reaction.emoji.name === "❌" && user.id === member.user.id;
+						}
+
+						const reactCollector: ReactionCollector = botMsg.createReactionCollector(reactFilter, {
+							time: 2 * 60 * 1000,
+							max: 1
+						});
+
+						reactCollector.on("collect", async () => {
+							msgCollector.stop();
+							await botMsg.delete().catch(() => { });
+							return resolve("CANCEL_");
+						});
+
+						//#endregion
+
+						msgCollector.on("collect", async (msg: Message) => {
+							if (!/^[a-zA-Z]+$/.test(msg.content)) {
+								await MessageUtil.send({ content: "Please type a __valid__ in-game name." }, member.user);
+								return;
+							}
+
+							if (msg.content.length > 10) {
+								await MessageUtil.send({ content: "Your in-game name should not exceed 10 characters. Please try again." }, member.user);
+								return;
+							}
+
+							if (msg.content.length === 0) {
+								await MessageUtil.send({ content: "Please type in a valid in-game name." }, member.user);
+								return;
+							}
+
+							msgCollector.stop();
+							reactCollector.stop();
+							return resolve(msg.content);
+						});
+
+						msgCollector.on("end", (collected: Collection<string, Message>, reason: string) => {
+							mcd.disableAutoTick();
+							if (reason === "time") {
+								return resolve("TIME_");
+							}
+						});
+					});
+
+					if (nameToUse === "CANCEL_" || nameToUse === "TIME_") {
+						if (typeof verificationAttemptsChannel !== "undefined") {
+							verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member}'s verification process has been canceled.\n\t⇒ Reason: ${nameToUse.substring(0, nameToUse.length - 1)}`).catch(() => { });
+						}
+						return;
+					}
+
+					inGameName = nameToUse;
+				}
+
+				if (typeof verificationAttemptsChannel !== "undefined") {
+					verificationAttemptsChannel.send(`⌛ **\`[${section.nameOfSection}]\`** ${member} will be trying to verify under the in-game name \`${inGameName}\`.`)
+						.catch(() => { });
+				}
+
+				// verification embed
+				const verifEmbed: MessageEmbed = getVerificationEmbed(guild, inGameName, reqs, isOldProfile, member);
+				const verifMessage: Message = await botMsg.edit(verifEmbed);
+				await verifMessage.react("✅").catch(() => { });
+				await verifMessage.react("❌").catch(() => { });
+
+				const mcd: MessageAutoTick = new MessageAutoTick(verifMessage, verifEmbed, 15 * 60 * 1000, null, "⏳ Time Remaining: {m} Minutes and {s} Seconds.");
+				// collector function 
+				const collFilter: (r: MessageReaction, u: User) => boolean = (reaction: MessageReaction, user: User) => {
+					return ["✅", "❌"].includes(reaction.emoji.name) && user.id === member.id;
+				}
+
+				// prepare collector
+				const reactCollector: ReactionCollector = verifMessage.createReactionCollector(collFilter, {
+					time: 15 * 60 * 1000
+				});
+
+				// end collector
+				reactCollector.on("end", (collected: Collection<string, MessageReaction>, reason: string) => {
+					mcd.disableAutoTick();
+					if (reason === "time" && typeof verificationAttemptsChannel !== "undefined") {
+						verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member}'s verification process has been canceled.\n\t⇒ Reason: TIME`).catch(() => { });
+					}
+				});
+
+				let canReact: boolean = true;
+
+				reactCollector.on("collect", async (r: MessageReaction) => {
+					if (!canReact) {
+						return;
+					}
+
+					if (r.emoji.name === "❌") {
+						reactCollector.stop();
+						if (typeof verificationAttemptsChannel !== "undefined") {
+							verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member} has canceled the verification process.`).catch(() => { });
+						}
+						const embed: MessageEmbed = new MessageEmbed()
+							.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+							.setTitle(`Verification For: **${guild.name}**`)
+							.setColor("RED")
+							.setDescription("You have stopped the verification process manually.")
+							.setFooter(guild.name)
+							.setTimestamp();
+						await botMsg.edit(embed);
+						return;
+					}
+
+					canReact = false;
+					// begin verification time
+
+					const requestData: AxiosResponse<ITiffitNoUser | ITiffitRealmEyeProfile> = await Zero.AxiosClient
+						.get<ITiffitNoUser | ITiffitRealmEyeProfile>(TiffitRealmEyeAPI + inGameName);
+					if ("error" in requestData.data) {
+						if (typeof verificationAttemptsChannel !== "undefined") {
+							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the name could not be found on RealmEye.`).catch(() => { });
+						}
+						await member.send("I could not find your RealmEye profile; you probably made your profile private. Ensure your profile's visibility is set to public and try again.");
+						canReact = true;
+						return;
+					}
+
+					let codeFound: boolean = false;
+					for (let i = 0; i < requestData.data.description.length; i++) {
+						if (requestData.data.description[i].includes(member.id)) {
+							codeFound = true;
+						}
+					}
+
+					if (!codeFound) {
+						if (typeof verificationAttemptsChannel !== "undefined") {
+							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the verification code, \`${member.id}\`, could not be found in his/her RealmEye profile.`).catch(() => { });
+						}
+						await member.send("Your verification code wasn't found in your RealmEye description! Make sure the code is on your description and then try again.");
+						canReact = true;
+						return;
+					}
+
+					if (requestData.data.last_seen !== "hidden") {
+						if (typeof verificationAttemptsChannel !== "undefined") {
+							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her last-seen location is not hidden.`).catch(() => { });
+						}
+						await member.send("Your last-seen location is not hidden. Please make sure __no one__ can see your last-seen location.");
+						canReact = true;
+						return;
+					}
+
+					const prelimCheck: PreliminaryCheck = preliminaryCheck(section, requestData.data);
+					if ("fields" in prelimCheck) {
+						if (prelimCheck.errorCode === "CHARACTERS_HIDDEN") {
+							if (typeof verificationAttemptsChannel !== "undefined") {
+								verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her characters are hidden and needs to be available to the public.`).catch(() => { });
+							}
+							await member.send("Your characters are currently hidden. Please make sure everyone can see your characters.");
+							canReact = true;
+							return;
+						}
+
+						reactCollector.stop();
+						if (typeof verificationAttemptsChannel !== "undefined") {
+							verificationAttemptsChannel.send(`⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her RotMG profile has failed to meet one or more requirement(s). The verification process has been stopped.\n\t⇒ Error Code: ${prelimCheck.errorCode}\n\t⇒ Error Message: ${prelimCheck.errorMsgForLogging}`);
+						}
+						const failedEmbed: MessageEmbed = new MessageEmbed()
+							.setTitle(`Verification For: **${guild.name}**`)
+							.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+							.setDescription("You have failed to meet the requirements for the server. Please review the below requirements you have failed to meet and make changes.")
+							.setColor("RANDOM")
+							.addFields(...prelimCheck.fields)
+							.setFooter("Verification Process: Stopped.");
+						await botMsg.edit(failedEmbed).catch(() => { });
+						return;
+					}
+
+					const nameHistory: INameHistory[] | IAPIError = await getRealmEyeNameHistory(requestData.data.name);
+					if ("errorMessage" in nameHistory) {
+						if (typeof verificationAttemptsChannel !== "undefined") {
+							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his or her name history is not available to the public.`).catch(() => { });
+						}
+						await member.send("Your Name History is not public! Set your name history to public first and then try again.");
+						canReact = true;
+						return;
+					}
+
+					// TODO: check for name history
+					for (const blacklistEntry of guildDb.moderation.blacklistedUsers) {
+						for (const nameEntry of nameHistory.map(x => x.name)) {
+							if (blacklistEntry.inGameName.toLowerCase() === nameEntry.toLowerCase()) {
+								reactCollector.stop();
+								if (typeof verificationAttemptsChannel !== "undefined") {
+									verificationAttemptsChannel.send(`⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the in-game name, \`${nameEntry}\`${nameEntry.toLowerCase() === inGameName.toLowerCase() ? "" : " (found in Name History)"}, has been blacklisted due to the following reason: ${blacklistEntry.reason}`).catch(() => { });
+								}
+								const failedEmbed: MessageEmbed = new MessageEmbed()
+									.setTitle(`Verification For: **${guild.name}**`)
+									.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+									.setDescription("You have been blacklisted from the server.")
+									.setColor("RANDOM")
+									.addField("Reason", blacklistEntry.reason)
+									.setFooter("Verification Process: Stopped.");
+								await botMsg.edit(failedEmbed).catch(() => { });
+								return;
+							}
+						}
+					}
+
+					// success!
+					await member.roles.add(verifiedRole);
+					await member.setNickname(member.user.username === requestData.data.name ? `${requestData.data.name}.` : requestData.data.name).catch(() => { });
+
+					reactCollector.stop();
+					const successEmbed: MessageEmbed = new MessageEmbed()
+						.setTitle(`Successful Verification: **${guild.name}**`)
+						.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+						.setDescription(guildDb.properties.successfulVerificationMessage.length === 0 ? "You have been successfully verified. Please make sure you read the rules posted in the server, if any, and any other regulations/guidelines. Good luck and have fun!" : guildDb.properties.successfulVerificationMessage)
+						.setColor("GREEN")
+						.setFooter("Verification Process: Stopped.");
+					await botMsg.edit(successEmbed);
+
+					if (!isOldProfile) {
+						const userDocObj: MongoDbHelper.MongoDbUserManager = new MongoDbHelper.MongoDbUserManager(requestData.data.name);
+						const d: IRaidUser[] = await userDocObj.getUserDB();
+						if (d.length === 0) {
+							await userDocObj.createNewUserDB(member.id);
+							return;
+						}
+
+						const firstProfile: IRaidUser = d[0];
+						let wasMainName: boolean = false;
+						if (firstProfile.rotmgLowercaseName === requestData.data.name.toLowerCase()) {
+							wasMainName = true;
+						}
+						// otherwise, should be an alt
+
+						const filterQuery: FilterQuery<IRaidUser> = {
+							$or: [
+								{
+									rotmgLowercaseName: requestData.data.name.toLowerCase()
+								},
+								{
+									"otherAccountNames.lowercase": requestData.data.name.toLowerCase()
+								}
+							]
+						};
+
+						if (!wasMainName) {
+							filterQuery["otherAccountNames.lowercase"] = requestData.data.name.toLowerCase();
+						}
+
+						const updateQuery: UpdateQuery<IRaidGuild> = wasMainName
+							? { $set: { rotmgDisplayName: requestData.data.name, rotmgLowercaseName: requestData.data.name.toLowerCase(), discordUserId: member.id } }
+							: { $set: { "otherAccountNames.$.displayName": requestData.data.name, "otherAccountNames.$.lowercase": requestData.data.name, discordUserId: member.id } };
+
+						await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne(filterQuery, updateQuery);
+					}
+
+					if (typeof verificationSuccessChannel !== "undefined") {
+						verificationSuccessChannel.send(`📥 **\`[${section.nameOfSection}]\`** ${member} has successfully been verified as \`${inGameName}\`.`).catch(() => { });
+					}
+				});
+			}
+			else {
+				const name: string = member.displayName.split("|").map(x => x.trim())[0];
+				if (typeof verificationAttemptsChannel !== "undefined") {
+					verificationAttemptsChannel.send(`▶️ **\`[${section.nameOfSection}]\`** ${member} has started the verification process.`).catch(() => { });
+				}
+				if (!section.verification.aliveFame.required
+					&& !section.verification.maxedStats.required
+					&& !section.verification.stars.required) {
+
+					if (typeof verificationSuccessChannel !== "undefined") {
+						verificationSuccessChannel.send(`📥 **\`[${section.nameOfSection}]\`** ${member} has received the section member role.`).catch(() => { });
+					}
+					await member.roles.add(verifiedRole);
+					await member.send(`**\`[${guild.name}]\`**: You have successfully been verified in the **\`${section.nameOfSection}\`** section!`).catch(() => { });
+					return;
+				}
+
+				const requestData: AxiosResponse<ITiffitNoUser | ITiffitRealmEyeProfile> = await Zero.AxiosClient
+					.get<ITiffitNoUser | ITiffitRealmEyeProfile>(TiffitRealmEyeAPI + name);
+				if ("error" in requestData.data) {
+					if (typeof verificationAttemptsChannel !== "undefined") {
+						verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the name could not be found on RealmEye.`).catch(() => { });
+					}
+					await member.send(`I could not find your profile for **\`${name}\`** on RealmEye. Make sure your profile is public first!`);
+					return;
+				}
+
+				const prelimCheck: PreliminaryCheck = preliminaryCheck(section, requestData.data);
+				if ("fields" in prelimCheck) {
+					if (typeof verificationAttemptsChannel !== "undefined") {
+						verificationAttemptsChannel.send(`⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her RotMG profile has failed to meet one or more requirement(s). The verification process has been stopped.\n\t⇒ Error Code: ${prelimCheck.errorCode}\n\t⇒ Error Message: ${prelimCheck.errorMsgForLogging}`);
+					}
+					const failedEmbed: MessageEmbed = new MessageEmbed()
+						.setTitle(`Verification For: **${guild.name}** ⇒ **${section.nameOfSection}**`)
+						.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+						.setDescription("You have failed to meet the requirements for the section. Please review the below requirements you have failed to meet and make changes.")
+						.setColor("RANDOM")
+						.addFields(...prelimCheck.fields)
+						.setFooter("Section Verification Failed.");
+					await member.send(failedEmbed).catch(() => { });
+					return;
+				}
+
+				if (typeof verificationSuccessChannel !== "undefined") {
+					verificationSuccessChannel.send(`📥 **\`[${section.nameOfSection}]\`** ${member} has received the section member role.`).catch(() => { });
+				}
+				await member.roles.add(verifiedRole).catch(() => { });
+				await member.send(`**\`[${guild.name}]\`**: You have successfully been verified in the **\`${section.nameOfSection}\`** section!`).catch(() => { });
+				return;
+			}
+		}
+		catch (e) {
+			console.log(e);
+			// TODO: find better way to make this apparant 
+			return;
+		}
+	}
+
+	/**
+	 * @param {Guild} guild The guild. 
+	 * @param {string} inGameName The in-game name. 
+	 * @param {StringBuilder} reqs A StringBuilder containing all of the requirements. 
+	 * @param {boolean} isOldProfile Whether the profile was pre-existing or not. 
+	 * @param {GuildMember} member The guild member. 
+	 */
+	function getVerificationEmbed(guild: Guild, inGameName: string, reqs: StringBuilder, isOldProfile: boolean, member: GuildMember) {
+		const verifEmbed: MessageEmbed = new MessageEmbed()
+			.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+			.setTitle(`Verification For: **${guild.name}**`)
+			.setDescription(`You have selected the in-game name: **\`${inGameName}\`**. To access your RealmEye profile, click [here](https://www.realmeye.com/player/${inGameName}).\n\nYou are almost done verifying; however, you need to do a few more things.\n\nTo stop the verification process, react with ❌.`)
+			.setColor("RANDOM")
+			.addField("1. Meet the Requirements", `Ensure you meet the requirements posted. For your convenience, the requirements for the server are listed below.${StringUtil.applyCodeBlocks(reqs.toString())}`)
+			.setFooter("⏳ Time Remaining: 15 Minutes and 0 Seconds.");
+		if (isOldProfile) {
+			verifEmbed.addField("2. Get Your Verification Code", "Normally, I would require a verification code for your RealmEye profile; however, because I recognize you from a different server, you can skip this process completely.");
+		}
+		else {
+			verifEmbed.addField("2. Get Your Verification Code", `Your verification code is: ${StringUtil.applyCodeBlocks(member.id)}\n\nPlease put this verification code in one of your three lines of your RealmEye profile's description.`);
+		}
+		verifEmbed.addField("3. Check Profile Settings", `Ensure __anyone__ can view your general profile (stars, alive fame), characters, fame history, and name history. You can access your profile settings [here](https://www.realmeye.com/settings-of/${inGameName}). If you don't have your RealmEye account password, you can learn to get one [here](https://www.realmeye.com/mreyeball#password).`)
+			.addField("4. Wait", "Before you react with the check, make sure you wait. RealmEye may sometimes take up to 30 seconds to fully register your changes!")
+			.addField("5. Confirm", "React with ✅ to begin the verification check. If you have already reacted, un-react and react again.");
+		return verifEmbed;
+	}
+
+	function preliminaryCheck(
+		sec: ISection,
+		reapi: ITiffitRealmEyeProfile
+	): PreliminaryCheck {
+		// check rank
+		if (sec.verification.stars.required && reapi.rank < sec.verification.stars.minimum) {
+			return {
+				errorMsg: "Your rank is not high enough to pass the verification check.",
+				errorMsgForLogging: "The user's rank is not high enough to pass the verification check.",
+				errorCode: "RANK_TOO_LOW",
+				fields: [
+					{
+						name: "Minimum Rank",
+						value: StringUtil.applyCodeBlocks(sec.verification.stars.minimum.toString()),
+						inline: true
+					},
+					{
+						name: "Account Rank",
+						value: StringUtil.applyCodeBlocks(reapi.rank.toString()),
+						inline: true
+					}
+				]
+			};
+		}
+
+		// check alive fame
+		if (sec.verification.aliveFame.required && reapi.fame < sec.verification.aliveFame.minimum) {
+			return {
+				errorMsg: "Your total alive fame is not high enough to pass the verification check.",
+				errorMsgForLogging: "The user's total alive fame is not high enough to pass the verification check.",
+				errorCode: "RANK_TOO_LOW",
+				fields: [
+					{
+						name: "Minimum Fame",
+						value: StringUtil.applyCodeBlocks(sec.verification.aliveFame.minimum.toString()),
+						inline: true
+					},
+					{
+						name: "Account Fame",
+						value: StringUtil.applyCodeBlocks(reapi.fame.toString()),
+						inline: true
+					}
+				]
+			};
+		}
+
+		// char pts 
+		let zero: number = 0;
+		let one: number = 0;
+		let two: number = 0;
+		let three: number = 0;
+		let four: number = 0;
+		let five: number = 0;
+		let six: number = 0;
+		let seven: number = 0;
+		let eight: number = 0;
+
+		for (let character of reapi.characters) {
+			const maxedStat: number = Number.parseInt(character.stats_maxed.split("/")[0]);
+			switch (maxedStat) {
+				case (0): zero++; break;
+				case (1): one++; break;
+				case (2): two++; break;
+				case (3): three++; break;
+				case (4): four++; break;
+				case (5): five++; break;
+				case (6): six++; break;
+				case (7): seven++; break;
+				case (8): eight++; break;
+			}
+		}
+
+		if (sec.verification.maxedStats.required) {
+			if (reapi.characterCount === -1) {
+				return {
+					errorMsg: "Your characters are currently hidden.",
+					errorMsgForLogging: "The user's characters are currently hidden.",
+					errorCode: "CHARACTERS_HIDDEN",
+					fields: [
+						{
+							name: "Characters Hidden",
+							value: StringUtil.applyCodeBlocks("Profile characters are hidden. Make sure everyone can see your characters."),
+							inline: true
+						}
+					]
+				}
+			}
+
+			const currVsReq: [number, number][] = [
+				[zero, sec.verification.maxedStats.statsReq[0]],
+				[one, sec.verification.maxedStats.statsReq[1]],
+				[two, sec.verification.maxedStats.statsReq[2]],
+				[three, sec.verification.maxedStats.statsReq[3]],
+				[four, sec.verification.maxedStats.statsReq[4]],
+				[five, sec.verification.maxedStats.statsReq[5]],
+				[six, sec.verification.maxedStats.statsReq[6]],
+				[seven, sec.verification.maxedStats.statsReq[7]],
+				[eight, sec.verification.maxedStats.statsReq[8]]
+			];
+
+			let failsToMeetReq: boolean = false;
+			let extras: number = 0;
+
+			for (let i = currVsReq.length - 1; i >= 0; i--) {
+				if (currVsReq[i][0] < currVsReq[i][1]) {
+					let diff: number = currVsReq[i][1] - currVsReq[i][0];
+					extras -= diff;
+					if (extras < 0) {
+						failsToMeetReq = true;
+						break;
+					}
+				}
+				else {
+					extras += currVsReq[i][0] - currVsReq[i][1];
+				}
+			}
+
+			if (failsToMeetReq) {
+				const neededChar: StringBuilder = new StringBuilder();
+				if (sec.verification.maxedStats.required) {
+					for (let i = 0; i < sec.verification.maxedStats.statsReq.length; i++) {
+						if (sec.verification.maxedStats.statsReq[i] !== 0) {
+							neededChar.append(`• ${sec.verification.maxedStats.statsReq[i]} ${i}/8 Character(s).`)
+								.appendLine();
+						}
+					}
+				}
+
+				return {
+					errorMsg: "Your characters' maxed stats do not meet the minimum maxed stats required.",
+					errorMsgForLogging: "The characters' maxed stats are not sufficient enough to pass verification.",
+					errorCode: "CHARACTER_STATS_TOO_LOW",
+					fields: [
+						{
+							name: "Required Characters",
+							value: StringUtil.applyCodeBlocks(neededChar.toString()),
+							inline: true
+						}
+					]
+				}
+			}
+		}
+
+		return {
+			rank: reapi.rank,
+			aliveFame: reapi.account_fame,
+			stats: [zero, one, two, three, four, five, six, seven, eight]
+		};
+	}
+
+	/**
+	 * Returns the name history of a person.
+	 * @param {string} ign The in-game name. 
+	 */
+	export async function getRealmEyeNameHistory(ign: string): Promise<IAPIError | INameHistory[]> {
+		const resp: AxiosResponse<string> = await Zero.AxiosClient.get(
+			`https://www.realmeye.com/name-history-of-player/${ign}`,
+			{
+				headers: {
+					"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.103 Safari/537.36"
+				}
+			}
+		);
+
+		const dataBelowDesc: string = resp.data.split("</div></div></div></div><ul class")[1];
+
+		if (dataBelowDesc.includes("Name history is hidden")) {
+			return ({
+				errorMessage: "Name history is hidden.",
+				specification: "The player has hidden his or her name history.",
+			});
+		}
+
+		if (dataBelowDesc.includes("No name changes detected.")) {
+			return [];
+		}
+
+		const nameHistoryArray: string[] = dataBelowDesc
+			.split("<tr><td><span>");
+		nameHistoryArray.shift();
+
+		let nameHistory: INameHistory[] = [];
+
+		for (let i = 0; i < nameHistoryArray.length; i++) {
+			let name: string = nameHistoryArray[i].split("</span>")[0];
+			let from: string = nameHistoryArray[i]
+				.split("</span></td><td>")[1]
+				.split("</td><td>")[0];
+			let to: string;
+			if (nameHistoryArray[i]
+				.split("</td><td>")[2]
+				.includes("Z</td></tr>")) {
+				to = nameHistoryArray[i]
+					.split("</td><td>")[2]
+					.split("</td></tr>")[0]
+			} else {
+				to = "";
+			}
+
+			nameHistory.push({
+				name: name,
+				from: from,
+				to: to
+			});
+		}
+
+		return nameHistory;
+	}
+}

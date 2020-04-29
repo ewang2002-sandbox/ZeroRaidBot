@@ -1,0 +1,28 @@
+{
+	"name": "raidbot",
+	"version": "0.1.0",
+	"description": "Zero is a Discord bot written in TypeScript, designed for raid management, moderation, and fun.",
+	"main": "index.js",
+	"dependencies": {
+		"axios": "^0.19.2",
+		"discord.js": "^12.2.0",
+		"mongodb": "^3.5.6"
+	},
+	"devDependencies": {
+		"@types/axios": "^0.14.0",
+		"@types/mongodb": "^3.5.8",
+		"@types/node": "^12.12.36",
+		"@types/ws": "^6.0.4",
+		"typescript": "^3.8.3"
+	},
+	"scripts": {
+		"compile": "tsc -p .",
+		"start": "npm run compile && node out/index.js"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/ewang20027/Zero"
+	},
+	"author": "Edward Wang",
+	"license": "MIT"
+}

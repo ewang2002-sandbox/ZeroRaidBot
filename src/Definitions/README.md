@@ -1,0 +1,2 @@
+# Definitions
+This folder contains major "definitions." You can think of templates as a blueprint of major variable types. For example, the file, `ISection.ts`, contains the interface `ISection`, which is an interface (or you could think of it as a "type" in this case) that defines a section.

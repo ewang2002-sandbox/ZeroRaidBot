@@ -1,0 +1,1359 @@
+import { CategoryChannel, ChannelCreationOverwrites, ClientUser, Collection, Emoji, Guild, GuildMember, Message, MessageCollector, MessageEmbed, MessageReaction, ReactionCollector, TextChannel, User, VoiceChannel, GuildEmoji, EmojiResolvable, ColorResolvable, DMChannel } from "discord.js";
+import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollector";
+import { MessageSimpleTick } from "../Classes/Message/MessageSimpleTick";
+import { AFKDungeon } from "../Constants/AFKDungeon";
+import { AllEmoji } from "../Constants/EmojiData";
+import { IDungeonData } from "../Definitions/IDungeonData";
+import { IRaidInfo } from "../Definitions/IRaidInfo";
+import { ISection } from "../Definitions/ISection";
+import { RaidStatus } from "../Definitions/RaidStatus";
+import { RaidDbHelper } from "../Helpers/RaidDbHelper";
+import { Zero } from "../Zero";
+import { IRaidGuild } from "../Templates/IRaidGuild";
+import { ArrayUtil } from "../Utility/ArrayUtil";
+import { GuildUtil } from "../Utility/GuildUtil";
+import { MessageUtil } from "../Utility/MessageUtil";
+import { StringUtil } from "../Utility/StringUtil";
+import { IHeadCountInfo } from "../Definitions/IHeadCountInfo";
+import { TimeUnit } from "../Definitions/TimeUnit";
+import { MessageAutoTick } from "../Classes/Message/MessageAutoTick";
+import { NumberUtil } from "../Utility/NumberUtil";
+import { MongoDbHelper } from "../Helpers/MongoDbHelper";
+
+export module RaidHandler {
+	/**
+	 * The maximum time that an AFK check should last for. 
+	 */
+	const MAX_TIME_LEFT: number = 300000;
+
+	/**
+	 * An interface defining each pending AFK check. Each AFK check has its own ReactionCollector (for )
+	 */
+	interface IStoredRaidData {
+		reactCollector: ReactionCollector,
+		mst: MessageSimpleTick,
+		vcId: string;
+		keyReacts: GuildMember[];
+	}
+
+	/**
+	 * Information for stored headcounts. 
+	 */
+	interface IStoredHeadcountData {
+		mst: MessageSimpleTick,
+		msgId: string;
+	}
+
+	/**
+	 * Consists of all currently running AFK checks. This stores only the voice channel ID, the MessageSimpleTick, and the ReactionCollector associated with the pending AFK check, and should be cleared after the AFK check is over. 
+	 */
+	export const CURRENT_RAID_DATA: IStoredRaidData[] = [];
+
+	/**
+	 * Consists of all currently running headcounts. This stores only the message (of the headcount) ID, the MessageSimpleTick, and the ReactionCollector associated with the pending headcount, and should be cleared after the headcount is over. 
+	 */
+	export const CURRENT_HEADCOUNT_DATA: IStoredHeadcountData[] = [];
+
+    /**
+     * Starts an AFK check. This function should be called only from the `StartAfkCheckCommand` file.
+     * Precondition: The command must be run in a server.
+     */
+	export async function startAfkCheck(
+		msg: Message,
+		guildDb: IRaidGuild,
+		guild: Guild,
+		location: string
+	): Promise<void> {
+		const member: GuildMember = msg.member as GuildMember;
+		// ==================================
+		// begin getting afk check channel 
+		// ==================================
+		const sections: ISection[] = [GuildUtil.getDefaultSection(guildDb), ...guildDb.sections];
+		const RAID_REQUEST_CHANNEL: TextChannel | undefined = guild.channels.cache
+			.get(guildDb.generalChannels.raidRequestChannel) as TextChannel | undefined;
+
+		const AFK_CHECK_CHANNEL: TextChannel | "ERROR" | null = await getAfkCheckChannel(msg, guild, guildDb, sections);
+		// still null => get out
+		if (AFK_CHECK_CHANNEL === null) {
+			MessageUtil.send({ content: "An AFK check could not be started because there was an issue finding the channel." }, msg.channel as TextChannel);
+			return;
+		}
+
+		// either canceled or timed out
+		if (AFK_CHECK_CHANNEL === "ERROR") {
+			return;
+		}
+
+		// TODO make sure category exists
+		const SECTION_CATEGORY: CategoryChannel = AFK_CHECK_CHANNEL.parent as CategoryChannel;
+		// section
+		const SECTION: ISection | undefined = sections.find(x => x.channels.afkCheckChannel === AFK_CHECK_CHANNEL.id);
+
+		// ==================================
+		// determine dungeon for raid 
+		// ==================================
+
+		if (typeof SECTION === "undefined") {
+			MessageUtil.send({ content: "An AFK check could not be started because the selected channel has no category associated with it." }, msg.channel as TextChannel);
+			return;
+		}
+
+		const CONTROL_PANEL_CHANNEL: TextChannel | undefined = guild.channels.cache
+			.get(SECTION.channels.controlPanelChannel) as TextChannel | undefined;
+
+		if (typeof CONTROL_PANEL_CHANNEL === "undefined") {
+			MessageUtil.send({ content: "An AFK check could not be started because the control panel channel is not configured." }, msg.channel as TextChannel);
+			return;
+		}
+		const dungeons: IDungeonData[] = getDungeonsAllowedInSection(SECTION);
+
+		if (dungeons.length === 0) {
+			MessageUtil.send({ content: "An AFK check could not be started because there are no dungeons available for this section." }, msg.channel as TextChannel);
+			return;
+		}
+
+		let isLimited: boolean = dungeons.length !== AFKDungeon.length;
+
+		const configureAfkEmbed: MessageEmbed = new MessageEmbed()
+			.setTitle("⚙️ Configuring AFK Check: Dungeon Selection")
+			.setAuthor(`${guild.name} ⇒ ${SECTION.nameOfSection}`, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+			.setDescription("You are close to starting an AFK Check! However, you need to select a dungeon from the list of allowed dungeons below. To begin, please type the number corresponding to the dungeon you want to start an AFK Check for.")
+			.setColor("RANDOM")
+			.setFooter(`${guild.name} | ${isLimited ? "Limited Selection" : ""}`);
+		// number of fields 
+		let copyOfDungeons: IDungeonData[] = dungeons;
+		let i: number = 0;
+		let k: number = 0;
+		let l: number = 0;
+		while (copyOfDungeons.length > 0) {
+			i++;
+			let str: string = "";
+			for (let j = 0; j < copyOfDungeons.slice(0, 10).length; j++) {
+				k = j + l;
+				str += `\`[${k + 1}]\` ${Zero.RaidClient.emojis.cache.get(copyOfDungeons[j].portalEmojiID)} ${copyOfDungeons[j].dungeonName}\n`;
+			}
+			l += 10;
+			configureAfkEmbed.addField(`Dungeon Selection: Part ${i}`, str, true);
+			copyOfDungeons = copyOfDungeons.slice(10);
+			str = "";
+		}
+
+		const collector: GenericMessageCollector<number> = new GenericMessageCollector<number>(
+			msg,
+			{ embed: configureAfkEmbed },
+			1,
+			TimeUnit.MINUTE
+		);
+
+		const result: number | "CANCEL" | "TIME" = await collector.send(
+			async (collectedMsg: Message): Promise<number | void> => {
+				const num: number = Number.parseInt(collectedMsg.content);
+				if (Number.isNaN(num)) {
+					await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_NUMBER_INPUT", null), msg.channel as TextChannel);
+					return;
+				}
+
+				if (typeof dungeons[num - 1] === "undefined") {
+					await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_INDEX", null), msg.channel as TextChannel);
+					return;
+				}
+
+				return num;
+			}
+		);
+
+		if (result === "CANCEL" || result === "TIME") {
+			return;
+		}
+
+		const SELECTED_DUNGEON: IDungeonData = dungeons[result - 1];
+
+		// if trial raid leader
+		// we need to make sure 
+		// they have authorization
+		if (member.roles.cache.has(guildDb.roles.trialRaidLeader)
+			&& typeof RAID_REQUEST_CHANNEL !== "undefined") {
+			const responseRequesterEmbed: MessageEmbed = new MessageEmbed()
+				.addField("Dungeon", StringUtil.applyCodeBlocks(SELECTED_DUNGEON.dungeonName), true)
+				.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
+				.addField("Section", StringUtil.applyCodeBlocks(SECTION.nameOfSection), true)
+				.setColor("RANDOM")
+				.setFooter(guild.name);
+			const embed: MessageEmbed = new MessageEmbed()
+				.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
+				.setTitle("🔔 Raid Request Submitted")
+				.setDescription("You wanted to start an AFK check; however, because of your trial raid leader status, you will need approval from a Raid Leader or above. Details of your raid can be found below. You will receive a notification regarding your raid request status.")
+				.addField("Dungeon", StringUtil.applyCodeBlocks(SELECTED_DUNGEON.dungeonName), true)
+				.addField("Section", StringUtil.applyCodeBlocks(SECTION.nameOfSection), true)
+				.setColor("RANDOM")
+				.setFooter(guild.name);
+			const receiptEmbed: Message = await member.send(embed);
+			const isApproved: { r: boolean, m: GuildMember } | "TIME" = await new Promise(async (resolve) => {
+				const resultEmbed: MessageEmbed = new MessageEmbed() // to edit w/ 
+					.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
+					.addField("Selected Dungeon", StringUtil.applyCodeBlocks(SELECTED_DUNGEON.dungeonName), true)
+					.addField("Raid Section", StringUtil.applyCodeBlocks(SECTION.nameOfSection), true)
+					.setColor("RANDOM")
+					.setFooter("Request Answered");
+
+				const requestEmbed: MessageEmbed = new MessageEmbed()
+					.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
+					.setTitle("🔔 Raid Request")
+					.setDescription(`A Trial Leader needs approval from a Leader or above before he or she can start a raid. Review the following information and react accordingly.\nTrial Leader Mention: ${member}\nTrial Leader Name: ${member.displayName}`)
+					.addField("Selected Dungeon", StringUtil.applyCodeBlocks(SELECTED_DUNGEON.dungeonName), true)
+					.addField("Raid Section", StringUtil.applyCodeBlocks(SECTION.nameOfSection), true)
+					.setColor("RANDOM")
+					.setFooter("⌛ Request Expires In: 5 Minutes and 0 Seconds.");
+
+				const requestChanMessage: Message = await RAID_REQUEST_CHANNEL.send(requestEmbed);
+				const reactions: EmojiResolvable[] = ["✅", "❌"];
+				for await (const reaction of reactions) {
+					await requestChanMessage.react(reaction);
+				}
+
+				// collector function 
+				const collFilter: (r: MessageReaction, u: User) => boolean = (reaction: MessageReaction, user: User) => {
+					return reactions.includes(reaction.emoji.name) && !user.bot
+				}
+
+				// prepare collector
+				const reactCollector: ReactionCollector = requestChanMessage.createReactionCollector(collFilter, {
+					time: 5 * 60 * 1000
+				});
+
+				const mcd: MessageAutoTick = new MessageAutoTick(requestChanMessage, requestEmbed, 5 * 60 * 1000, null, "⌛ Request Expires In: {m} Minutes and {s} Seconds.");
+
+				// end collector
+				reactCollector.on("end", (collected: Collection<string, MessageReaction>, reason: string) => {
+					mcd.disableAutoTick();
+					if (reason === "time") {
+						resultEmbed
+							.setTimestamp()
+							.setTitle("⏰ Trial Leader Raid Request Expired")
+							.setDescription(`The raid request sent by ${member} (${member.displayName}) has expired.`);
+						requestChanMessage.edit(resultEmbed).catch(() => { });
+						return resolve("TIME");
+					}
+				});
+
+				reactCollector.on("collect", async (r: MessageReaction, u: User) => {
+					await r.users.remove().catch(() => { });
+					const memberThatAnswered: GuildMember | null = guild.member(u);
+					if (memberThatAnswered === null) {
+						return;
+					}
+
+					// make sure he or she has a leader/higher-up role
+					if (!(memberThatAnswered.roles.cache.has(guildDb.roles.headRaidLeader) || memberThatAnswered.roles.cache.has(guildDb.roles.raidLeader))) {
+						return;
+					}
+
+					reactCollector.stop();
+					await requestChanMessage.reactions.removeAll().catch(() => { });
+					if (r.emoji.name === "❌") {
+						resultEmbed
+							.setTimestamp()
+							.setTitle("❌ Trial Leader Raid Request Denied")
+							.setDescription(`${memberThatAnswered} (${memberThatAnswered.displayName}) has __denied__ the raid request sent by ${member} (${member.displayName}).`);
+						await requestChanMessage.edit(resultEmbed).catch(() => { });
+						return resolve({ r: false, m: memberThatAnswered });
+					}
+
+					resultEmbed
+						.setTimestamp()
+						.setTitle("✅ Trial Leader Raid Request Approved")
+						.setDescription(`${memberThatAnswered} (${memberThatAnswered.displayName}) has __accepted__ the raid request sent by ${member} (${member.displayName}).`);
+
+					await requestChanMessage.edit(resultEmbed).catch(() => { });
+					return resolve({ r: true, m: memberThatAnswered });
+				});
+			});
+
+			if (isApproved === "TIME") {
+				responseRequesterEmbed
+					.setTitle("⏰ Raid Request Expired")
+					.setDescription("Your raid request has expired. Try to see if a raid leader or head raid leader is willing to approve your next raid request first before you send one! Your raid request details are below.")
+					.setTimestamp();
+				await receiptEmbed.edit(responseRequesterEmbed).catch(() => { });
+				await member.send(`⏰ **\`[${SECTION.nameOfSection}]\`** Your raid request has __expired__. Try to see if a raid leader or head raid leader is willing to approve your next raid request first before you send one!`);
+				return;
+			}
+
+			if (!isApproved.r) {
+				responseRequesterEmbed
+					.setTitle("❌ Raid Request Denied")
+					.setDescription(`${isApproved.m} (${isApproved.m.displayName}) has __denied__ your raid request. Your raid request details are below.`);
+				await receiptEmbed.edit(responseRequesterEmbed).catch(() => { });
+				await member.send(`❌ **\`[${SECTION.nameOfSection}]\`** Your raid request has been __denied__. Your raid will not start.`);
+				return;
+			}
+
+			responseRequesterEmbed
+				.setTitle("✅ Raid Request Accepted")
+				.setDescription(`${isApproved.m} (${isApproved.m.displayName}) has __accepted__ your raid request. Your raid request details are below.`);
+			await receiptEmbed.edit(responseRequesterEmbed).catch(() => { });
+			await member.send(`✅ **\`[${SECTION.nameOfSection}]\`** Your raid request has been __approved__.`);
+		}
+
+		// ==================================
+		// time to initiate the afk check 
+		// ==================================
+
+		// first, let's determine the numbers that have been used
+		// by previous vcs
+		let allNums: number[] = SECTION_CATEGORY.children
+			.filter(x => x.type === "voice")
+			.filter(y => vcEndsWithNumber(y as VoiceChannel)
+				&& (y.name.startsWith("🚦")
+					|| y.name.startsWith("⌛")
+					|| y.name.startsWith("🔴"))
+			)
+			.array()
+			.map(z => Number.parseInt(z.name.split(" ")[z.name.split(" ").length - 1]))
+			.filter(a => !Number.isNaN(a))
+			.sort((a: number, b: number) => a - b);
+
+		// sort in order from least to greatest
+		console.log(allNums);
+		let newRaidNum: number;
+		if (allNums.length === 0) {
+			newRaidNum = 1;
+		}
+		else {
+			newRaidNum = NumberUtil.findFirstMissingNumber(allNums, 1, allNums[allNums.length - 1]);
+		}
+
+		if (newRaidNum === -1) {
+			newRaidNum = ++allNums[allNums.length - 1];
+		}
+
+		const permissions: ChannelCreationOverwrites[] = [
+			{
+				id: guild.roles.everyone.id, // TODO: need @everyone ID
+				deny: ["VIEW_CHANNEL", "SPEAK"]
+			},
+			{
+				id: SECTION.verifiedRole,
+				allow: ["VIEW_CHANNEL"]
+			},
+			{
+				id: guildDb.roles.support,
+				allow: ["VIEW_CHANNEL", "CONNECT", "MOVE_MEMBERS"]
+			},
+			{
+				id: guildDb.roles.trialRaidLeader,
+				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK"]
+			},
+			{
+				id: guildDb.roles.almostRaidLeader,
+				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK"]
+			},
+			{
+				id: guildDb.roles.raidLeader,
+				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MUTE_MEMBERS", "MOVE_MEMBERS"]
+			},
+			{
+				id: guildDb.roles.headRaidLeader,
+				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MUTE_MEMBERS", "MOVE_MEMBERS", "DEAFEN_MEMBERS"]
+			},
+			{
+				id: guildDb.roles.officer,
+				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MUTE_MEMBERS", "MOVE_MEMBERS", "DEAFEN_MEMBERS"]
+			},
+			{
+				id: guildDb.roles.moderator,
+				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MUTE_MEMBERS", "MOVE_MEMBERS", "DEAFEN_MEMBERS"]
+			}
+		];
+
+		const realPermissions: ChannelCreationOverwrites[] = [];
+		for (const permission of permissions) {
+			// make sure the role or user id exists
+			if (guild.roles.cache.has(permission.id as string) // we know this is a string type b/c it was defined above
+				|| guild.members.cache.has(permission.id as string)) { // same idea
+				realPermissions.push(permission);
+			}
+		}
+
+		for (const role of guildDb.roles.talkingRoles) {
+			if (guild.roles.cache.has(role)) {
+				realPermissions.push({
+					id: role,
+					allow: ["VIEW_CHANNEL", "SPEAK"]
+				});
+			}
+		}
+		const NEW_RAID_VC: VoiceChannel = await guild.channels.create(`🚦 Raiding ${newRaidNum}`, {
+			type: "voice",
+			permissionOverwrites: realPermissions,
+			parent: SECTION_CATEGORY,
+			userLimit: 99
+		});
+
+		const afkCheckEmbed: MessageEmbed = new MessageEmbed()
+			// TODO check if mobile can see the emoji.
+			.setAuthor(`${member.displayName} has initiated a ${SELECTED_DUNGEON.dungeonName} AFK Check.`, SELECTED_DUNGEON.portalLink)
+			.setDescription(`⇒ **Join** the **${NEW_RAID_VC.name}** voice channel to participate in this raid.\n⇒ **React** to the ${msg.client.emojis.cache.get(SELECTED_DUNGEON.portalEmojiID)} emoji to show that you are joining in on this raid.`)
+			.addField("Optional Reactions", `${SELECTED_DUNGEON.keyEmojIDs.length === 0 ? "" : `⇒ If you have ${SELECTED_DUNGEON.keyEmojIDs.length === 1 ? `a ${SELECTED_DUNGEON.keyEmojIDs[0].keyEmojiName}` : "one of the following keys"}, react accordingly with ${SELECTED_DUNGEON.keyEmojIDs.map(x => guild.client.emojis.cache.get(x.keyEmojID)).join(" ")}`}.\n⇒ React with the emoji(s) corresponding to your class and gear choices.`)
+			.setColor(ArrayUtil.getRandomElement(SELECTED_DUNGEON.colors))
+			.setImage(ArrayUtil.getRandomElement(SELECTED_DUNGEON.bossLink))
+			.setFooter(`${guild.name}: Raid AFK Check`);
+
+		/* maybe i'll include this... maybe...
+		let fieldNum: number = 1;
+		let reqStr: string = "";
+		if (SELECTED_DUNGEON.reactions.length !== 0) {
+			// loop through each reaction required by the selected dungeon
+			SELECTED_DUNGEON.reactions.forEach(req => {
+				// loop through each general emoji information
+				for (let i = 0; i < getEmojiData().length; i++) {
+					// and look for a match in IDs 
+					if (getEmojiData()[i][0] === req) {
+						// because an embed field can have 1024 characters max
+						if (reqStr.length + getEmojiData()[i][1].length > 1000) {
+							afkCheckEmbed.addFields({
+								name: `Optional Reactions ${fieldNum}`,
+								value: reqStr
+							});
+							reqStr = "";
+						}
+						reqStr += getEmojiData()[i][1] + "\n";
+						break;
+					}
+				}
+			});
+		}
+
+		if (afkCheckEmbed.fields.length === 0 && SELECTED_DUNGEON.reactions.length !== 0) {
+			afkCheckEmbed.addFields({
+				name: "Optional Reactions",
+				value: reqStr
+			});
+		}*/
+
+		const afkCheckMessage: Message = await AFK_CHECK_CHANNEL.send(`@here, a new ${SELECTED_DUNGEON.dungeonName} AFK check is currently ongoing. There are 5 minutes and 0 seconds remaining on this AFK check.`, { embed: afkCheckEmbed });
+
+		const mst: MessageSimpleTick = new MessageSimpleTick(afkCheckMessage, `@here, a new ${SELECTED_DUNGEON.dungeonName} AFK check is currently ongoing. There are {m} minutes and {s} seconds remaining on this AFK check.`, MAX_TIME_LEFT);
+
+		// timeout in case we reach the 5 min mark
+		// TODO find a way to stop timeout if rl ends afk check early.
+		setTimeout(async () => {
+			mst.disableAutoTick();
+			guildDb = await (new MongoDbHelper.MongoDbGuildManager(guild.id).findOrCreateGuildDb());
+			endAfkCheck(guildDb, guild, rs, NEW_RAID_VC, "AUTO");
+		}, MAX_TIME_LEFT);
+
+		// ==================================
+		// control panel stuff
+		// ==================================
+		const controlPanelDescription: string = `Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the AFK check.\nRaid Section: ${SECTION.nameOfSection}\nInitiator: ${member} (${member.displayName})\nDungeon: ${SELECTED_DUNGEON.dungeonName} ${Zero.RaidClient.emojis.cache.get(SELECTED_DUNGEON.portalEmojiID)}\nVoice Channel: Raiding ${newRaidNum}`;
+		const controlPanelEmbed: MessageEmbed = new MessageEmbed()
+			.setAuthor(`Control Panel: Raiding ${newRaidNum}`, SELECTED_DUNGEON.portalLink)
+			.setDescription(controlPanelDescription)
+			.setColor(ArrayUtil.getRandomElement<ColorResolvable>(SELECTED_DUNGEON.colors))
+			.addField("End AFK Check Normally", "React with ⏹️ to end the AFK check and start the post-AFK check.")
+			.addField("Abort AFK Check", "React with 🗑️ to abort the AFK check.")
+			.addField("Set Location", "React with ✏️ to set a new location. You will be DMed. The new location will be sent to anyone that has the location (people that reacted with key, Nitro boosters, raid leaders, etc.)")
+			.addField("Get Location", "React with 🗺️ to get the current raid location.")
+			.setTimestamp()
+			.setFooter(`Control Panel • AFK Check • R${newRaidNum}`);
+		const controlPanelMsg: Message = await CONTROL_PANEL_CHANNEL.send(controlPanelEmbed);
+		await controlPanelMsg.react("⏹️").catch(() => { });
+		await controlPanelMsg.react("🗑️").catch(() => { });
+		await controlPanelMsg.react("✏️").catch(() => { });
+		await controlPanelMsg.react("🗺️").catch(() => { });
+		// ==================================
+		// time to react to msg and prep db 
+		// ==================================
+
+		// get db stuff ready 
+		const rs: IRaidInfo = {
+			raidNum: newRaidNum,
+			section: SECTION,
+			vcID: NEW_RAID_VC.id,
+			location: location,
+			msgID: afkCheckMessage.id,
+			controlPanelMsgId: controlPanelMsg.id, // TODO fix 
+			dungeonInfo: SELECTED_DUNGEON,
+			startTime: new Date().getTime(),
+			startedBy: msg.author.id,
+			status: RaidStatus.AFKCheck,
+			keyReacts: []
+		};
+
+		// create collector for key filtering
+		const collFilter = (reaction: MessageReaction, user: User) => {
+			// TODO: make sure this works. 
+			return reaction.emoji.id !== null && SELECTED_DUNGEON.keyEmojIDs.some(x => x.keyEmojID === reaction.emoji.id) && user.id !== (Zero.RaidClient.user as User).id;
+		}
+
+		// prepare collector
+		const reactCollector: ReactionCollector = afkCheckMessage.createReactionCollector(collFilter, {
+			time: MAX_TIME_LEFT
+		});
+
+		CURRENT_RAID_DATA.push({
+			vcId: NEW_RAID_VC.id,
+			reactCollector: reactCollector,
+			mst: mst,
+			keyReacts: []
+		});
+
+		// pin & react
+		await afkCheckMessage.pin().catch(() => { });
+		await afkCheckMessage.react(SELECTED_DUNGEON.portalEmojiID).catch(() => { });
+		for await (const keyId of SELECTED_DUNGEON.keyEmojIDs) {
+			await afkCheckMessage.react(keyId.keyEmojID).catch(() => { });
+		}
+
+		for await (const reaction of SELECTED_DUNGEON.reactions) {
+			await afkCheckMessage.react(reaction).catch(() => { });
+		}
+
+		// add to db 
+		guildDb = await RaidDbHelper.addRaidChannel(guild, rs);
+
+		// collector events
+		let keysThatReacted: GuildMember[] = [];
+		reactCollector.on("collect", async (reaction: MessageReaction, user: User) => {
+			const member: GuildMember | null = guild.member(user);
+			if (reaction.emoji.id !== null
+				&& rs.dungeonInfo.keyEmojIDs.some(x => x.keyEmojID === reaction.emoji.id)
+				&& member !== null
+				&& !keysThatReacted.some(x => x.id === user.id)) {
+				if (keysThatReacted.length + 1 > 10) {
+					await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** Thank you for your interest in contributing a key to the raid. However, we have enough people for now! A leader will give instructions if keys are needed; please ensure you are paying attention to the leader.`).catch(() => { });
+					return;
+				}
+				// key react 
+				let hasAccepted: boolean = await keyReact(user, guild, NEW_RAID_VC, rs);
+				if (hasAccepted) {
+					keysThatReacted.push(member);
+					let cpDescWithKey: string = `${controlPanelDescription}\n\nKey Reactions: ${keysThatReacted.join(" ")}`;
+					controlPanelEmbed.setDescription(cpDescWithKey);
+					controlPanelMsg.edit(controlPanelEmbed).catch(() => { });
+
+					const currData: IStoredRaidData | undefined = CURRENT_RAID_DATA.find(x => x.vcId === rs.vcID);
+					if (typeof currData === "undefined") {
+						reactCollector.stop();
+						return;
+					}
+
+					(CURRENT_RAID_DATA.find(x => x.vcId === rs.vcID) as IStoredRaidData).keyReacts.push(member);
+
+					rs.keyReacts.push(member.id);
+					guildDb = await RaidDbHelper.addKeyReaction(guild, rs.vcID, member);
+				}
+			}
+		});
+	} // END OF FUNCTION
+
+	/**
+	 * Should be called when someone reacts to the key emoji.
+	 */
+	async function keyReact(user: User, guild: Guild, raidVc: VoiceChannel, rs: IRaidInfo): Promise<boolean> {
+		return new Promise(async (resolve) => {
+			const keyConfirmationMsg: Message | void = await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** You have indicated that you have a ${rs.dungeonInfo.dungeonName} key for ${raidVc.name}. To get the location, please type \`yes\`; otherwise, ignore this message.`).catch(() => { });
+
+			if (typeof keyConfirmationMsg === "undefined") {
+				return;
+			}
+
+			const dmedMessageCollector: MessageCollector = new MessageCollector(keyConfirmationMsg.channel as DMChannel, m => m.author.id === user.id, {
+				time: 20000
+			});
+
+			dmedMessageCollector.on("collect", async (m: Message) => {
+				if (m.content.toLowerCase() === "yes") {
+					dmedMessageCollector.stop();
+					user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** The location for this raid is ${StringUtil.applyCodeBlocks(rs.location)}Do not tell anyone this location.`);
+					return resolve(true);
+				}
+			});
+
+			dmedMessageCollector.on("end", async () => {
+				await keyConfirmationMsg.delete().catch(() => { });
+				return resolve(false);
+			});
+		});
+	}
+
+	/**
+	 * Gets an array of all permitted dungeons based on the section given.
+	 * @param {ISection} section The section.
+	 * @returns {IDungeonData[]} The list of dungeons.  
+	 */
+	export function getDungeonsAllowedInSection(section: ISection): IDungeonData[] {
+		const dungeonData: IDungeonData[] = [];
+		for (const dungeonId of section.properties.dungeons) {
+			const data: IDungeonData | void = AFKDungeon.find(x => x.id === dungeonId);
+			if (typeof data !== "undefined") {
+				dungeonData.push(data);
+			}
+		}
+		return dungeonData;
+	}
+
+	/**
+	 * Ends the AFK check.
+	 */
+	export async function endAfkCheck(
+		guildDb: IRaidGuild,
+		guild: Guild,
+		rs: IRaidInfo,
+		raidVC: VoiceChannel,
+		endedBy: GuildMember | "AUTO"
+	): Promise<void> {
+		let raidEntryExists: boolean = false;
+		for (const raidEntry of guildDb.activeRaidsAndHeadcounts.raidChannels) {
+			if (raidEntry.msgID === rs.msgID && raidEntry.vcID === raidVC.id) {
+				raidEntryExists = true;
+				break;
+			}
+		}
+
+		// the afk check/raid somehow ended before the timer ended
+		if (!raidEntryExists) {
+			return;
+		}
+
+		// TODO add fail safe in case channels get deleted.
+		const afkCheckChannel: TextChannel = guild.channels.cache.get(rs.section.channels.afkCheckChannel) as TextChannel;
+		const controlPanelChannel: TextChannel = guild.channels.cache.get(rs.section.channels.controlPanelChannel) as TextChannel;
+		let raidMsg: Message;
+		try {
+			raidMsg = await afkCheckChannel.messages.fetch(rs.msgID);
+		}
+		catch (e) {
+			return; // if the msg is deleted, it prob means the raid was over long before the afk check timer even ended
+		}
+
+		let cpMsg: Message = await controlPanelChannel.messages.fetch(rs.controlPanelMsgId);
+		await cpMsg.reactions.removeAll().catch(() => { });
+		const raidVc: VoiceChannel = guild.channels.cache.get(rs.vcID) as VoiceChannel;
+
+		// dungeon emoji 
+		const portalEmoji: Emoji = Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID) as Emoji;
+
+		// key reactions
+		let peopleThatReactedToKey: GuildMember[] | undefined;
+
+		// TODO: optimize code (two for loops that iterate through the activeRaidsAndHeadcount prop)
+		// update raid status so we're in raid mode
+		// and remove entry from array with react collector & 
+		// mst info
+		const curRaidDataArrElem: IStoredRaidData | undefined = RaidHandler.CURRENT_RAID_DATA.find(x => x.vcId === raidVC.id);
+
+		// if the timer ends but we already ended the afk check
+		// then return as to not start another one 
+		let foundInDb: boolean = false;
+		if (typeof curRaidDataArrElem === "undefined") {
+			// see if the afk check exists
+			// in the db (in case the bot
+			// restarted)
+			for (let i = 0; i < guildDb.activeRaidsAndHeadcounts.raidChannels.length; i++) {
+				if (guildDb.activeRaidsAndHeadcounts.raidChannels[i].vcID === raidVC.id) {
+					peopleThatReactedToKey = guildDb.activeRaidsAndHeadcounts.raidChannels[i].keyReacts
+						.map(x => guild.member(x)).filter(y => y !== null) as GuildMember[]; // TODO check if this works
+					foundInDb = true;
+					break;
+				}
+			}
+
+			if (!foundInDb) {
+				return;
+			}
+		}
+		else {
+			curRaidDataArrElem.reactCollector.stop();
+			curRaidDataArrElem.mst.disableAutoTick();
+			peopleThatReactedToKey = curRaidDataArrElem.keyReacts;
+		}
+
+		await RaidDbHelper.updateRaidStatus(guild, raidVC.id);
+		await raidVc.updateOverwrite(guild.roles.everyone, { CONNECT: false }).catch(() => { });
+
+		// remove 
+		CURRENT_RAID_DATA.splice(CURRENT_RAID_DATA.findIndex(x => x.vcId === raidVC.id), 1);
+
+		// get all reactions
+		let reactionSummary: { [emojiName: string]: Collection<string, User> } = {};
+		for (let [, reaction] of raidMsg.reactions.cache) {
+			reactionSummary[reaction.emoji.name] = reaction.users.cache.filter(x => x.id !== (Zero.RaidClient.user as ClientUser).id);
+		}
+
+		// get reactions for dungeon, key
+		const pplThatReactedToMain: Collection<string, User> = reactionSummary[portalEmoji.name];
+
+		// look for a lounge vc in the section
+		const loungeVC: VoiceChannel | undefined = guild.channels.cache
+			.filter(x => x.type === "voice")
+			.filter(x => x.parentID === raidVC.parentID)
+			.find(x => x.name.toLowerCase().includes("lounge") || x.name.toLowerCase().includes("queue")) as VoiceChannel | undefined;
+
+		// move people out if there is a lounge vc 
+		if (typeof loungeVC !== "undefined") {
+			for (let [id, member] of raidVC.members) {
+				let isFound: boolean = false;
+				for (let [idC] of pplThatReactedToMain) {
+					if (idC === id) {
+						isFound = true;
+						break;
+					}
+				}
+
+				// if they were not found in the list of reactions
+				// AND they are not a staff member 
+				if (!(isFound
+					|| member.roles.cache.some(x => [guildDb.roles.raidLeader, guildDb.roles.trialRaidLeader, guildDb.roles.headRaidLeader, guildDb.roles.moderator].includes(x.id)))) {
+					member.voice.setChannel(loungeVC).catch(() => { });
+				}
+			}
+		}
+
+		const postAfkControlPanelEmbed: MessageEmbed = new MessageEmbed()
+			.setAuthor(`Control Panel: Raiding ${rs.raidNum}`, rs.dungeonInfo.portalLink)
+			.setDescription("A post-AFK check is currently running.")
+			.addField("Key Reactions", (peopleThatReactedToKey as GuildMember[]).length === 0 ? "No Keys" : (peopleThatReactedToKey as GuildMember[]).join(" ")) // TODO check if this works. 
+			.setColor(ArrayUtil.getRandomElement<ColorResolvable>(rs.dungeonInfo.colors))
+			.setTimestamp()
+			.setFooter(`Control Panel • Post AFK • R${rs.raidNum}`);
+		await cpMsg.edit(postAfkControlPanelEmbed).catch(() => { });
+
+		const postAfkEmbed: MessageEmbed = new MessageEmbed()
+			.setAuthor(`The ${rs.dungeonInfo.dungeonName} post-AFK Check has been initiated.`, rs.dungeonInfo.portalLink)
+			.setDescription(`Instructions: Join any available voice channel and then **react** with ${Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID)}.`)
+			.setColor(ArrayUtil.getRandomElement(rs.dungeonInfo.colors))
+			.setImage(ArrayUtil.getRandomElement(rs.dungeonInfo.bossLink))
+			.setFooter(`${guild.name}: Post AFK Check`);
+		raidMsg = await raidMsg.edit("This post-AFK check has 20 seconds remaining.", postAfkEmbed);
+		const mst: MessageSimpleTick = new MessageSimpleTick(raidMsg, `This post-AFK check has {s} seconds remaining.`, 20000);
+		// begin post afk check 
+		const postAFKReaction = (reaction: MessageReaction, user: User) => {
+			return reaction.emoji.id === portalEmoji.id
+				&& (Zero.RaidClient.user as ClientUser).id !== user.id;
+		}
+
+		// begin collectors
+		const postAFKMoveIn: ReactionCollector = raidMsg.createReactionCollector(postAFKReaction, {
+			time: 20000
+		});
+		// unpin msg 
+		await raidMsg.unpin().catch(() => { });
+		await raidVC.edit({
+			name: `⌛ ${raidVC.name.replace("🚦", "").trim()}`
+		});
+
+		// events
+		postAFKMoveIn.on("collect", async (r) => {
+			for await (let [id] of r.users.cache) {
+				const member: GuildMember | null = guild.member(id);
+				// TODO fix post afk not working 
+				if (member !== null && member.voice.channel !== null) {
+					await member.voice.setChannel(raidVC).catch(console.error);
+				}
+			}
+		});
+
+		postAFKMoveIn.on("end", async () => {
+			mst.disableAutoTick();
+			// now we can end the afk fully
+			// do some calculations
+			const raidersPresent: number = raidVC.members.size;
+			const initiator: GuildMember | null = guild.member(rs.startedBy);
+
+			const startRunControlPanelEmbed: MessageEmbed = new MessageEmbed()
+				.setAuthor(`Control Panel: Raiding ${rs.raidNum}`, rs.dungeonInfo.portalLink)
+				.setDescription(`Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the raid.\nRaid Section: ${rs.section.nameOfSection}\nInitiator: ${initiator === null ? "Unknown" : initiator} (${initiator === null ? "Unknown" : initiator.displayName})\nDungeon: ${rs.dungeonInfo.dungeonName} ${Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID)}\nVoice Channel: Raiding ${rs.raidNum}\n\n${(peopleThatReactedToKey as GuildMember[]).length === 0 ? "No Keys" : (peopleThatReactedToKey as GuildMember[]).join(" ")}`)
+				.addField("End Raid", "React with ⏹️ to end the raid. This will move members into the lounge voice channel, if applicable, and delete the voice channel.")
+				.addField("Set Location", "React with ✏️ to set a new location. You will be DMed. The new location will be sent to anyone that has the location (people that reacted with key, Nitro boosters, raid leaders, etc.)")
+				.addField("Get Location", "React with 🗺️ to get the current raid location.")
+				.addField("Lock Raiding Voice Channel", "React with 🔒 to __lock__ the raiding voice channel. This will prevent members from joining freely.")
+				.addField("Unlock Raiding Voice Channel", "React with 🔓 to __unlock__ the raiding voice channel. This will allow members to join freely.")
+				.setColor(ArrayUtil.getRandomElement<ColorResolvable>(rs.dungeonInfo.colors))
+				.setTimestamp()
+				.setFooter(`Control Panel • In Raid • R${rs.raidNum}`);
+			await cpMsg.edit(startRunControlPanelEmbed).catch(() => { });
+			await cpMsg.react("⏹️").catch(() => { });
+			await cpMsg.react("✏️").catch(() => { });
+			await cpMsg.react("🗺️").catch(() => { });
+			await cpMsg.react("🔒").catch(() => { });
+			await cpMsg.react("🔓").catch(() => { });
+
+			// set embed
+			const embed: MessageEmbed = new MessageEmbed()
+				.setAuthor(endedBy === "AUTO" ? `The ${rs.dungeonInfo.dungeonName} AFK Check has ended automatically.` : `${endedBy.displayName} has ended the ${rs.dungeonInfo.dungeonName} AFK Check.`, rs.dungeonInfo.portalLink)
+				.setDescription(`The AFK check is now over.\nWe are currently running a raid with ${raidersPresent} members.`)
+				.setFooter(`${guild.name}: Raid`)
+				.setImage(ArrayUtil.getRandomElement(rs.dungeonInfo.bossLink))
+				.setColor(ArrayUtil.getRandomElement(rs.dungeonInfo.colors));
+			await raidMsg.edit("This AFK check is now over.", embed).catch(() => { });
+			await raidVC.edit({
+				name: `🔴 ${raidVC.name.replace("⌛", "").replace("🚦", "").trim()}`
+			});
+		});
+	} // end function
+
+	/**
+	 * Ends the raid.  
+	 * 
+	 * TODO remove `msg` param
+	 */
+	export async function endRun(
+		memberThatEnded: GuildMember,
+		guild: Guild,
+		rs: IRaidInfo
+	): Promise<void> {
+		const afkCheckChannel: TextChannel = guild.channels.cache.get(rs.section.channels.afkCheckChannel) as TextChannel;
+		let raidMsg: Message = await afkCheckChannel.messages.fetch(rs.msgID);
+		const controlPanelChannel: TextChannel = guild.channels.cache.get(rs.section.channels.controlPanelChannel) as TextChannel;
+		let cpMsg: Message = await controlPanelChannel.messages.fetch(rs.controlPanelMsgId);
+		const raidVC: VoiceChannel = guild.channels.cache.get(rs.vcID) as VoiceChannel;
+		const membersLeft: number = raidVC.members.size;
+
+		// if we're in post afk 
+		if (typeof raidMsg.embeds[0].description !== "undefined" && raidMsg.embeds[0].description.includes("Join any available voice channel and then")) {
+			return;
+		}
+
+		await RaidDbHelper.removeRaidChannel(guild, raidVC.id);
+
+		const endedRun: MessageEmbed = new MessageEmbed()
+			.setAuthor(`${memberThatEnded.displayName} has ended the ${rs.dungeonInfo.dungeonName} raid.`, rs.dungeonInfo.portalLink)
+			.setDescription(`The ${rs.dungeonInfo.dungeonName} raid is now finished.\n${membersLeft} members have stayed with us throughout the entire raid.`)
+			.setImage("https://static.drips.pw/rotmg/wiki/Enemies/Event%20Chest.png")
+			.setColor(ArrayUtil.getRandomElement(rs.dungeonInfo.colors))
+			.setFooter(guild.name);
+		await raidMsg.edit("The raid is now over. Thanks to everyone for attending!", endedRun);
+		await raidMsg.unpin().catch(() => { });
+		await cpMsg.delete().catch(() => { });
+		await movePeopleOutAndDeleteRaidVc(guild, raidVC);
+	}
+
+	/**
+	 * Move people out of the raid VC (if possible) and deletes the raiding voice channel. 
+	 */
+	async function movePeopleOutAndDeleteRaidVc(guild: Guild, raidVC: VoiceChannel) {
+		const loungeVC: VoiceChannel | undefined = guild.channels.cache
+			.filter(x => x.type === "voice")
+			.filter(x => x.parentID === raidVC.parentID)
+			.find(x => x.name.toLowerCase().includes("lounge") || x.name.toLowerCase().includes("queue")) as VoiceChannel | undefined;
+		// move people out if there is a lounge vc 
+		if (typeof loungeVC !== "undefined") {
+			const promises: Promise<void>[] = raidVC.members.map(async (x) => {
+				await x.voice.setChannel(loungeVC).catch(() => { });
+			});
+			Promise.all(promises).then(async () => {
+				await raidVC.delete().catch(() => { });
+			});
+		}
+		else {
+			await raidVC.delete().catch(() => { });
+		}
+	}
+
+	/**
+	 * Aborts the AFK check.  
+	 */
+	export async function abortAfk(
+		guild: Guild,
+		rs: IRaidInfo,
+		raidVC: VoiceChannel
+	): Promise<void> {
+		const afkCheckChannel: TextChannel = guild.channels.cache.get(rs.section.channels.afkCheckChannel) as TextChannel;
+		let raidMsg: Message = await afkCheckChannel.messages.fetch(rs.msgID);
+		const controlPanelChannel: TextChannel = guild.channels.cache.get(rs.section.channels.controlPanelChannel) as TextChannel;
+		let cpMsg: Message = await controlPanelChannel.messages.fetch(rs.controlPanelMsgId);
+
+		// and remove entry from array with react collector & 
+		// mst info
+		const curRaidDataArrElem: IStoredRaidData | void = RaidHandler.CURRENT_RAID_DATA.find(x => x.vcId === raidVC.id);
+		if (typeof curRaidDataArrElem !== "undefined") {
+			curRaidDataArrElem.reactCollector.stop();
+			curRaidDataArrElem.mst.disableAutoTick();
+		}
+		await RaidDbHelper.removeRaidChannel(guild, raidVC.id);
+
+		const abortAfk: MessageEmbed = new MessageEmbed()
+			.setAuthor(`The ${rs.dungeonInfo.dungeonName} AFK Check has been aborted.`, rs.dungeonInfo.portalLink)
+			.setDescription("This could either be due to a lack of keys or a lack of raiders, or both. Keep an eye out for future AFK checks.")
+			.setColor(ArrayUtil.getRandomElement(rs.dungeonInfo.colors))
+			.setFooter(guild.name);
+		await raidMsg.edit("Unfortunately, the AFK check has been aborted.", abortAfk);
+		await raidMsg.unpin().catch(() => { });
+		await cpMsg.delete().catch(console.error);
+		await movePeopleOutAndDeleteRaidVc(guild, raidVC);
+	}
+
+	/**
+	 * Starts a headcount. 
+	 */
+	export async function startHeadCountWizard(
+		msg: Message,
+		guildDb: IRaidGuild,
+		guild: Guild
+	): Promise<void> {
+		// ==================================
+		// begin getting afk check channel 
+		// ==================================
+		const sections: ISection[] = [GuildUtil.getDefaultSection(guildDb), ...guildDb.sections];
+
+		const HEADCOUNT_CHANNEL: TextChannel | "ERROR" | null = await getAfkCheckChannel(msg, guild, guildDb, sections);
+		// still null => get out
+		if (HEADCOUNT_CHANNEL === null) {
+			MessageUtil.send({ content: "A headcount could not be started because there was an issue finding the channel." }, msg.channel as TextChannel);
+			return;
+		}
+
+		// either canceled or timed out
+		if (HEADCOUNT_CHANNEL === "ERROR") {
+			return;
+		}
+
+		//const SECTION_CATEGORY: CategoryChannel = AFK_CHECK_CHANNEL.parent as CategoryChannel;
+		const SECTION: ISection | undefined = sections.find(x => x.channels.afkCheckChannel === HEADCOUNT_CHANNEL.id);
+
+		// ==================================
+		// determine dungeon for raid 
+		// ==================================
+
+		if (typeof SECTION === "undefined") {
+			// let's see if the db has it
+			// chances are, the bot may have reset
+			// and the items stored in memory could 
+			// have been reset
+			MessageUtil.send({ content: "A headcount could not be started because the selected channel has no category associated with it." }, msg.channel as TextChannel);
+			return;
+		}
+
+		const dungeons: IDungeonData[] = getDungeonsAllowedInSection(SECTION);
+		if (dungeons.length === 0) {
+			MessageUtil.send({ content: "A headcount could not be started because there are no dungeons available for this section." }, msg.channel as TextChannel);
+			return;
+		}
+
+		const foundHeadcounts: IHeadCountInfo[] = guildDb.activeRaidsAndHeadcounts.headcounts.filter(x => x.section.channels.afkCheckChannel);
+		if (foundHeadcounts.length > 0 && foundHeadcounts[0].section.channels.afkCheckChannel === HEADCOUNT_CHANNEL.id) {
+			MessageUtil.send({ content: "A headcount could not be started because there is already a pending headcount." }, msg.channel as TextChannel);
+			return;
+		}
+
+		let allDungeons: { data: IDungeonData, isIncluded: boolean }[] = [];
+		for (const dungeon of dungeons) {
+			if (dungeon.keyEmojIDs.length !== 0) {
+				allDungeons.push({ data: dungeon, isIncluded: false });
+			}
+		}
+
+		const sentHeadCountMessage: Message | void = await msg.channel.send(getHeadCountEmbed(msg, allDungeons))
+			.catch(() => { });
+
+		if (typeof sentHeadCountMessage === "undefined") {
+			return; // probably because no permission
+		}
+
+		const hcCollector: MessageCollector = new MessageCollector(msg.channel as TextChannel, m => m.author.id === msg.author.id, {
+			time: 300000
+		});
+
+		hcCollector.on("collect", async (m: Message) => {
+			await m.delete().catch(() => { });
+			if (m.content === "cancel") {
+				hcCollector.stop("CANCELED");
+				return;
+			}
+
+			if (m.content === "send") {
+				hcCollector.stop("SEND");
+				return;
+			}
+
+			const num: number = Number.parseInt(m.content);
+			if (Number.isNaN(num)) {
+				MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_NUMBER_INPUT", null), msg.channel as TextChannel);
+				return;
+			}
+
+			if (typeof allDungeons[num - 1] === "undefined") {
+				MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_INDEX", null), msg.channel as TextChannel);
+				return;
+			}
+
+			// if not included, let's make sure
+			// we can add it 
+			if (!allDungeons[num - 1].isIncluded) {
+				if (canAddAnother(allDungeons, allDungeons[num - 1].data.keyEmojIDs.length)) {
+					allDungeons[num - 1].isIncluded = true;
+				}
+			}
+			else {
+				allDungeons[num - 1].isIncluded = false;
+			}
+
+			sentHeadCountMessage.edit(getHeadCountEmbed(msg, allDungeons));
+		});
+
+		hcCollector.on("end", async (collected: Collection<string, Message>, reason: string) => {
+			await sentHeadCountMessage.delete().catch(() => { });
+
+			if (reason === "time" || reason === "CANCELED") {
+				return;
+			}
+
+			if (allDungeons.filter(x => x.isIncluded).length === 0) {
+				MessageUtil.send({ content: "A headcount cannot be started because you did not select any dungeons for the headcount." }, msg.channel as TextChannel);
+				return;
+			}
+
+			startHeadCount(msg, guildDb, guild, SECTION, HEADCOUNT_CHANNEL, allDungeons.filter(x => x.isIncluded).map(x => x.data));
+		});
+	}
+
+	async function startHeadCount(
+		msg: Message,
+		guildDb: IRaidGuild,
+		guild: Guild,
+		section: ISection,
+		afkCheckChannel: TextChannel,
+		dungeonsForHc: IDungeonData[]
+	): Promise<void> {
+		const member: GuildMember = msg.member as GuildMember;
+		const CONTROL_PANEL_CHANNEL: TextChannel | undefined = guild.channels.cache
+			.get(section.channels.controlPanelChannel) as TextChannel | undefined;
+
+		if (typeof CONTROL_PANEL_CHANNEL === "undefined") {
+			MessageUtil.send({ content: "A headcount could not be started because the control panel channel is not configured." }, msg.channel as TextChannel);
+			return;
+		}
+
+		const hcControlPanelEmbed: MessageEmbed = new MessageEmbed()
+			.setAuthor("Control Panel: Headcount", "https://i.imgur.com/g2wovmA.png")
+			.setDescription(`Initiator: ${member} (${member.displayName})`)
+			.addField("Stop Headcount", "React with ❌ to stop the headcount. You will receive the results of the headcount, if any.")
+			.setColor("RANDOM")
+			.setTimestamp()
+			.setFooter("Control Panel • Headcount Pending");
+		const controlPanelMsgEntry: Message = await CONTROL_PANEL_CHANNEL.send(hcControlPanelEmbed);
+		await controlPanelMsgEntry.react("❌").catch(() => { });
+
+		const hcEmbed: MessageEmbed = new MessageEmbed()
+			.setAuthor(`${member.displayName} has initiated a headcount.`, "https://i.imgur.com/g2wovmA.png")
+			.setColor("RANDOM")
+			.setTimestamp()
+			.setDescription(`⇒ **React** with ${Zero.RaidClient.emojis.cache.get(AllEmoji)} if you want to participate in a raid with us.\n⇒ If you have a key and are willing to use it, then react with the corresponding key(s).`);
+
+		const emojis: EmojiResolvable[] = [
+			Zero.RaidClient.emojis.cache.get(AllEmoji) as GuildEmoji
+		];
+		for (const dungeon of dungeonsForHc) {
+			for (const key of dungeon.keyEmojIDs) {
+				emojis.push(key.keyEmojID);
+			}
+		}
+
+		const hcMessage: Message = await afkCheckChannel.send(`@here, a headcount is currently in progress. There are 10 minutes and 0 seconds remaining on this headcount.`, { embed: hcEmbed });
+		const mst: MessageSimpleTick = new MessageSimpleTick(hcMessage, "@here, a headcount is currently in progress. There are {m} minutes and {s} seconds remaining on this headcount.", MAX_TIME_LEFT * 2); // 10 min
+		await hcMessage.pin().catch(() => { });
+
+		for await (const emoji of emojis) {
+			await hcMessage.react(emoji).catch(() => { });
+		}
+
+		const hcInfo: IHeadCountInfo = {
+			section: section,
+			msgID: hcMessage.id,
+			startTime: new Date().getTime(),
+			startedBy: member.id,
+			dungeonsForHc: dungeonsForHc.map(x => x.id),
+			controlPanelMsgId: controlPanelMsgEntry.id
+		};
+
+		await RaidDbHelper.addHeadcount(guild, hcInfo);
+
+		// TODO see if if there is a way to stop the timeout in case the headcount ends early.
+		setTimeout(async () => {
+			mst.disableAutoTick();
+			guildDb = await (new MongoDbHelper.MongoDbGuildManager(guild.id).findOrCreateGuildDb());
+			endHeadcount(guild, guildDb, dungeonsForHc, "AUTO", hcInfo);
+		}, MAX_TIME_LEFT * 2);
+
+		CURRENT_HEADCOUNT_DATA.push({
+			msgId: hcMessage.id,
+			mst: mst
+		});
+	}
+
+	export async function endHeadcount(
+		guild: Guild,
+		guildDb: IRaidGuild,
+		dungeonsForHc: IDungeonData[],
+		endedBy: GuildMember | "AUTO",
+		hcInfo: IHeadCountInfo
+	): Promise<void> {
+		let hcEntryFound: boolean = false;
+		for (const hcEntry of guildDb.activeRaidsAndHeadcounts.headcounts) {
+			if (hcEntry.msgID === hcInfo.msgID) {
+				hcEntryFound = true;
+				break;
+			}
+		}
+
+		if (!hcEntryFound) {
+			return;
+		}
+
+		// see if the headcount exists or not
+		// TODO: check db first in case bot restarts
+		const HEADCOUNT_CHANNEL: TextChannel = guild.channels.cache.get(hcInfo.section.channels.afkCheckChannel) as TextChannel;
+		const hcMsg: Message = await HEADCOUNT_CHANNEL.messages.fetch(hcInfo.msgID);
+
+		const headcountArrElemData: IStoredHeadcountData | undefined = RaidHandler.CURRENT_HEADCOUNT_DATA.find(x => x.msgId === hcInfo.msgID);
+
+		// get control panel
+		const CONTROL_PANEL_CHANNEL: TextChannel = guild.channels.cache
+			.get(hcInfo.section.channels.controlPanelChannel) as TextChannel;
+		const controlPanelMessage: Message = await CONTROL_PANEL_CHANNEL.messages.fetch(hcInfo.controlPanelMsgId);
+
+		// if the timer ends but we already ended the hc
+		// then return as to not "end" the hc twice
+		let dbIsFound: boolean = false;
+		if (typeof headcountArrElemData === "undefined") {
+			for (let i = 0; i < guildDb.activeRaidsAndHeadcounts.headcounts.length; i++) {
+				if (guildDb.activeRaidsAndHeadcounts.headcounts[i].msgID === hcMsg.id) {
+					dbIsFound = true;
+					break;
+				}
+			}
+
+			if (!dbIsFound) {
+				return;
+			}
+		}
+		else {
+			headcountArrElemData.mst.disableAutoTick();
+		}
+		// remove from db
+		await RaidDbHelper.removeHeadcount(guild, hcMsg.id);
+		await hcMsg.unpin().catch(() => { });
+
+		// remove from array
+		CURRENT_HEADCOUNT_DATA.splice(CURRENT_HEADCOUNT_DATA.findIndex(x => x.msgId === hcMsg.id), 1);
+
+		// let's now get the data, if any 
+		const reactionsFromHeadcount: Collection<string, MessageReaction> = hcMsg.reactions.cache;
+		const newEmbed: MessageEmbed = new MessageEmbed()
+			.setTitle(`🔕 The **Headcount** Has Been Ended ${endedBy === "AUTO" ? "Automatically" : `By: ${endedBy.displayName}`}`)
+			.setColor("RANDOM")
+			.setDescription(`There are currently ${(reactionsFromHeadcount.get(AllEmoji) as MessageReaction).users.cache.size - 1} raiders ready.`)
+			.setTimestamp();
+
+		const newControlPanelEmbed: MessageEmbed = new MessageEmbed()
+			.setAuthor("Control Panel: Headcount Results", "https://i.imgur.com/g2wovmA.png")
+			.setDescription(`Headcount Ended By: ${endedBy === "AUTO" ? "Timer" : `${endedBy} (${endedBy.displayName})`}\nRaiders Ready: ${(reactionsFromHeadcount.get(AllEmoji) as MessageReaction).users.cache.size - 1}`)
+			.addField("Delete Results", "React with 🗑️ to delete this message. This action will automatically be performed in 10 minutes.")
+			.setColor("RANDOM")
+			.setTimestamp()
+			.setFooter("Control Panel • Headcount Ended");
+
+		for (const [, reaction] of reactionsFromHeadcount) {
+			if (reaction.emoji.id !== null && reaction.emoji.id === AllEmoji) {
+				continue;
+			}
+
+			let userStr: string = "";
+			for (const [, user] of reaction.users.cache) {
+				if (user.id === ((Zero.RaidClient.user as ClientUser).id)) {
+					continue;
+				}
+				const member: GuildMember = guild.member(user) as GuildMember;
+				userStr += `${member.displayName}\n`;
+			}
+
+			let keyName: string = "";
+			// find emoji name
+			dungeonInfoLoop: for (const dungeon of dungeonsForHc) {
+				for (const key of dungeon.keyEmojIDs) {
+					if (key.keyEmojID === reaction.emoji.id) {
+						keyName = key.keyEmojiName;
+						break dungeonInfoLoop;
+					}
+				}
+			}
+
+			if (keyName === "" || userStr === "") {
+				continue;
+			}
+			newControlPanelEmbed.addField(keyName, StringUtil.applyCodeBlocks(userStr), true);
+		}
+
+		await hcMsg.edit(newEmbed).catch(() => { });
+		await hcMsg.unpin().catch(() => { });
+		await hcMsg.reactions.removeAll().catch(() => { });
+		await controlPanelMessage.edit(newControlPanelEmbed).catch(() => { });
+		await controlPanelMessage.react("🗑️").catch(() => { });
+		setTimeout(async () => {
+			try {
+				await controlPanelMessage.delete();
+			}
+			catch (e) {
+				// ignore
+			}
+		}, 10 * 60 * 1000); // TODO unknowm msg error from headcount
+	}
+
+	/**
+	 * Creates an embed with the specified headcount settings. 
+	 * Precondition: The dungeons in `ihcpi` must have at least one key. 
+	 */
+	function getHeadCountEmbed(msg: Message, ihcpi: { data: IDungeonData, isIncluded: boolean }[]): MessageEmbed {
+		const configureHeadCountEmbed: MessageEmbed = new MessageEmbed()
+			.setTitle("⚙️ Configuring Headcount: Dungeon Selection")
+			.setDescription("You are close to starting a headcount! However, you need to select dungeons from the below list. To begin, please type the number corresponding to the dungeon(s) you want to add to the headcount. To send this headcount, type `send`. To cancel, type `cancel`.\n\nA ☑️ next to the dungeon means the dungeon will be included in the headcount.\nA ❌ means the dungeon will not be part of the overall headcount.")
+			.setColor("RANDOM")
+			.setFooter(`${(msg.guild as Guild).name} | ${ihcpi.filter(x => x.isIncluded).length}/19 Remaining Slots`);
+		let i: number = 0;
+		let k: number = 0;
+		let l: number = 0;
+		while (ihcpi.length > 0) {
+			i++;
+			let str: string = "";
+			for (let j = 0; j < ihcpi.slice(0, 10).length; j++) {
+				k = j + l;
+				str += `\`[${k + 1}]\` ${ihcpi[j].isIncluded ? "☑️" : "❌"} ${ihcpi[j].data.keyEmojIDs.length === 0 ? "" : Zero.RaidClient.emojis.cache.get(ihcpi[j].data.keyEmojIDs[0].keyEmojID)} ${ihcpi[j].data.dungeonName}\n`;
+			}
+			l += 10;
+			configureHeadCountEmbed.addFields({
+				name: `Dungeon Selection: Part ${i}`,
+				value: str,
+				inline: true
+			});
+			ihcpi = ihcpi.slice(10);
+			str = "";
+		}
+
+		return configureHeadCountEmbed;
+	}
+
+	/**
+	 * Determines whether another dungeon can be added to the headcount or not. 
+	 */
+	function canAddAnother(ihcpi: { data: IDungeonData, isIncluded: boolean }[], amtToAdd: number, max: number = 19): boolean {
+		return ihcpi.filter(x => x.isIncluded).length + amtToAdd <= max;
+	}
+
+	/**
+	 * Returns the AFK check (and the section). 
+	 */
+	async function getAfkCheckChannel(
+		msg: Message,
+		guild: Guild,
+		guildDb: IRaidGuild,
+		sections: ISection[]
+	): Promise<TextChannel | null | "ERROR"> {
+		// first, let's see if they ran the command under a specific category 
+		const parentOfRecipientChannel: CategoryChannel | null = (msg.channel as TextChannel).parent;
+		if (parentOfRecipientChannel !== null) {
+			// let's now see if we can find an afk check channel associated with the category 
+			for (let section of sections) {
+				if (guild.channels.cache.has(section.channels.afkCheckChannel)
+					&& (guild.channels.cache.get(section.channels.afkCheckChannel) as TextChannel).parent !== null
+					&& (guild.channels.cache.get(section.channels.afkCheckChannel) as TextChannel).parentID === parentOfRecipientChannel.id) {
+					// we found the parent 
+					return guild.channels.cache.get(section.channels.afkCheckChannel) as TextChannel;
+				}
+			}
+		}
+
+
+		// we want the user to decide what section he/she wants to run, if any 
+		if (guildDb.sections.length > 0) {
+			let responseToSection: TextChannel | "TIME" | "CANCEL" = await new Promise(async (resolve) => {
+				let min: number = 1;
+				let max: number = min;
+
+				const embed: MessageEmbed = new MessageEmbed()
+					.setTitle("⚙️ Select a Raid Section")
+					.setDescription("Your server contains multiple raiding sections. Please select the appropriate section.")
+					.setFooter(guild.name)
+					.setColor("RANDOM");
+				for (const section of sections) {
+					if (guild.channels.cache.has(section.channels.afkCheckChannel)) {
+						const afkCheckChannel: TextChannel = guild.channels.cache.get(section.channels.afkCheckChannel) as TextChannel;
+						const sectionParent: CategoryChannel | null = afkCheckChannel.parent;
+						// we want a category associated with the afk check channel
+						if (sectionParent !== null) {
+							embed.addFields({
+								name: `${max}: ${sectionParent.name}`,
+								value: `AFK Check Channel: ${afkCheckChannel}`
+							});
+							max++;
+						}
+						else {
+							sections.splice(sections.indexOf(section), 1);
+						}
+					}
+					else {
+						sections.splice(sections.indexOf(section), 1);
+					}
+				}
+
+				const gmc: GenericMessageCollector<number> = new GenericMessageCollector<number>(
+					msg,
+					{ embed: embed },
+					1,
+					TimeUnit.MINUTE
+				);
+
+				const response: number | "CANCEL" | "TIME" = await gmc.send(
+					async (collectedMsg: Message): Promise<number | void> => {
+						const num: number = Number.parseInt(collectedMsg.content);
+						if (Number.isNaN(num)) {
+							await msg.channel.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_NUMBER_INPUT", null));
+							return;
+						}
+
+						// sloppy way to check, maybe be a little more formal about it
+						if (typeof sections[num - 1] === "undefined") {
+							await msg.channel.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_INDEX", null));
+							return;
+						}
+
+						return num - 1;
+					}
+				);
+
+				if (typeof response === "number") {
+					resolve(guild.channels.cache.get(sections[response].channels.afkCheckChannel) as TextChannel);
+					return;
+				}
+				resolve(response);
+			}); // end of promise 
+
+			if (responseToSection === "TIME" || responseToSection === "CANCEL") {
+				return "ERROR";
+			}
+
+			return responseToSection;
+		} // end of section check if 
+		else {
+			if (guild.channels.cache.has(guildDb.generalChannels.generalRaidAfkCheckChannel)
+				&& (guild.channels.cache.get(guildDb.generalChannels.generalRaidAfkCheckChannel) as TextChannel).parent !== null) {
+				return guild.channels.cache.get(guildDb.generalChannels.generalRaidAfkCheckChannel) as TextChannel;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Whether the voice channel ends with a number or not.
+	 * @param {VoiceChannel} vc The voice channel.  
+	 * @returns {boolean} Whether the VC ends with a number or not. 
+	 */
+	function vcEndsWithNumber(vc: VoiceChannel): boolean {
+		return !Number.isNaN(Number.parseInt(vc.name.split(" ")[vc.name.split(" ").length - 1]));
+	}
+}
+
+
+// TODO make headcount X emoji work in messageReactionAdd.ts

@@ -1,0 +1,389 @@
+
+	private async x(msg: Message, guildData: IRaidGuild): Promise<void> {
+		const resp: ISection | "CANCEL" | "TIME" = await this.getSection(msg, guildData, "MODIFY");
+		const guild: Guild = msg.guild as Guild;
+
+		if (resp === "CANCEL" || resp === "TIME") {
+			return;
+		}
+
+		//#region msg embed
+		const desc: string = `__Channels__
+AFK Check: ${guild.channels.cache.has(resp.channels.afkCheckChannel) ? guild.channels.cache.get(resp.channels.afkCheckChannel) : "N/A"}
+Verification: ${guild.channels.cache.has(resp.channels.verificationChannel) ? guild.channels.cache.get(resp.channels.verificationChannel) : "N/A"}
+
+__Role__
+Verified: ${guild.roles.cache.get(resp.verifiedRole)}
+
+__Verification__
+Stars: ${resp.verification.stars.minimum} (${resp.verification.stars.required ? "Enabled" : "Disabled"})
+Fame: ${resp.verification.aliveFame.minimum} (${resp.verification.aliveFame.required ? "Enabled" : "Disabled"})
+Character Stats: ${resp.verification.maxedStats.required ? "Enabled" : "Disabled"} 
+\t⇒ 0/8 Required: ${resp.verification.maxedStats.statsReq[0]}
+\t⇒ 1/8 Required: ${resp.verification.maxedStats.statsReq[1]}
+\t⇒ 2/8 Required: ${resp.verification.maxedStats.statsReq[2]}
+\t⇒ 3/8 Required: ${resp.verification.maxedStats.statsReq[3]}
+\t⇒ 4/8 Required: ${resp.verification.maxedStats.statsReq[4]}
+\t⇒ 5/8 Required: ${resp.verification.maxedStats.statsReq[5]}
+\t⇒ 6/8 Required: ${resp.verification.maxedStats.statsReq[6]}
+\t⇒ 7/8 Required: ${resp.verification.maxedStats.statsReq[7]}
+\t⇒ 8/8 Required: ${resp.verification.maxedStats.statsReq[8]}
+
+__Properties__
+Dungeons: ${AFKDungeon.filter(x => resp.properties.dungeons.includes(x.id)).map(x => msg.client.emojis.cache.get(x.portalEmojiID)).join(" ")}`;
+		const reactions: EmojiResolvable[] = [];
+		const managementEmbed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null)
+			.setTitle(`**Section Modification**: ${resp.nameOfSection}`)
+			.setDescription(desc);
+		if (!resp.isMain) {
+			managementEmbed.addField("Change Name of Section", "React to 📋 to change the name of the section.");
+			reactions.push("📋");
+		}
+
+		reactions.push("🚦", "☑️", "✏️", "✔️", "⏹️", "⭐", "📛", "⚔️", "🚪", "❌");
+		managementEmbed
+			.addField("Change AFK Check Channel", "React to 🚦 to change the AFK check channel.")
+			.addField("Change Verification Channel", "React to ☑️ to change the verification channel.")
+			.addField("Change Verification Attempts Channel", "React to ✏️ to change the verification attempts channel. Any verification attempts will be logged in this channel.")
+			.addField("Change Verification Success Channel", "React to ✔️ to change the verification success channel. Any successful verification attempts will be logged in this channel.")
+			.addField("Change Reaction Logging Channel", "React to ⏹️ to change the reaction logging channel. Any reactions will be logged.")
+			.addField("Change Verified Role", "React to 📙 to change the verified role.")
+			.addField("Change Verification Star Requirement", "React to ⭐ to either enable or disable the star/rank requirement or modify the minimum stars needed.")
+			.addField("Change Alive Fame Requirement", "React to 📛 to either enable or disable the minimum fame requirement or modify the minimum fame needed.")
+			.addField("Change Character Stats Requirement", "React to ⚔️ to either enable or disable the character stats requirement or modify the minimum stats needed.")
+			.addField("Change Permitted Dungeons", "React to 🚪 to change what dungeons can be run in this section.")
+			.addField("Cancel Process", "React to ❌ to cancel the process.")
+			.setTimestamp();
+
+		const m: Message | void = await msg.channel.send(managementEmbed).catch(() => { });
+		if (typeof m === "undefined") {
+			return;
+		}
+
+		//#endregion
+
+		for await (const reaction of reactions) {
+			await m.react(reaction).catch(e => { });
+		}
+		const collFilter: (r: MessageReaction, u: User) => boolean = (reaction: MessageReaction, user: User) => {
+			return reactions.includes(reaction.emoji.name) && user.id === msg.author.id;
+		}
+
+		// prepare collector
+		const reactCollector: ReactionCollector = m.createReactionCollector(collFilter, {
+			time: 900000,
+			max: 1
+		});
+
+		reactCollector.on("collect", async (react: MessageReaction, user: User) => {
+			await react.remove().catch(() => { });
+			const promptEmbed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null);
+
+			if (reactions.includes(react.emoji.name)) {
+				await m.delete().catch(e => { });
+				// TODO: check & see if the collector stops
+				// if the msg is deleted 
+				reactCollector.stop(); // don't need these anymore!
+			}
+
+			if (react.emoji.name === "📋") {
+				//#region name of section
+				promptEmbed.setTitle("**Change Name of Section**")
+					.setDescription(`The current name of the section is ${resp.nameOfSection}. Type the name of the new section, or type \`cancel\` to cancel the process.`);
+				const nameColl: GenericMessageCollector<string> = new GenericMessageCollector<string>(
+					msg,
+					{ embed: promptEmbed },
+					5,
+					TimeUnit.MINUTE
+				);
+
+				const result: string | "CANCEL" | "TIME" = await nameColl.send(GenericMessageCollector.getStringPrompt(msg));
+				if (result === "CANCEL" || result === "TIME") {
+					return;
+				}
+
+				await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id, "sections.verifiedRole": resp.verifiedRole }, {
+					$set: {
+						"sections.$.nameOfSection": result
+					}
+				});
+				return;
+				//#endregion
+			}
+			else if (react.emoji.name === "🚦") {
+				//#region afk check edit
+				promptEmbed.setTitle("**Change AFK Check Channel**")
+					.setDescription(`The current AFK check channel is ${guild.channels.cache.get(resp.channels.afkCheckChannel)}. Please mention, or type the ID, of the channel that you want to make the new AFK check channel.`);
+
+				const chanColl: GenericMessageCollector<TextChannel> = new GenericMessageCollector<TextChannel>(
+					msg,
+					{ embed: promptEmbed },
+					5,
+					TimeUnit.MINUTE
+				);
+				const result: TextChannel | "CANCEL" | "TIME" = await chanColl.send(GenericMessageCollector.getChannelPrompt(msg));
+				if (result === "CANCEL" || result === "TIME") {
+					return;
+				}
+
+				if (result.parentID !== (guild.channels.cache.get(resp.channels.verificationChannel) as TextChannel).parentID) {
+					MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "CATEGORY_MISMATCH", null), msg.channel as TextChannel);
+					return;
+				}
+
+				await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: (msg.guild as Guild).id, "sections.verifiedRole": resp.verifiedRole }, {
+					$set: {
+						"sections.$.channels.afkCheckChannel": result.id
+					}
+				});
+				//#endregion
+			}
+			else if (react.emoji.name === "☑️") {
+				//#region verification channel edit
+				promptEmbed.setTitle("**Change Verification Channel**")
+					.setDescription(`The current verification channel is ${guild.channels.cache.get(resp.channels.verificationChannel)}. Please mention, or type the ID, of the channel that you want to make the new verification channel.`);
+
+				const chanColl: GenericMessageCollector<TextChannel> = new GenericMessageCollector<TextChannel>(
+					msg,
+					{ embed: promptEmbed },
+					5,
+					TimeUnit.MINUTE
+				);
+				const result: TextChannel | "CANCEL" | "TIME" = await chanColl.send(GenericMessageCollector.getChannelPrompt(msg));
+				if (result === "CANCEL" || result === "TIME") {
+					return;
+				}
+
+				if (result.parentID !== (guild.channels.cache.get(resp.channels.afkCheckChannel) as TextChannel).parentID) {
+					MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "CATEGORY_MISMATCH", null), msg.channel as TextChannel);
+					return;
+				}
+
+				await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: (msg.guild as Guild).id, "sections.verifiedRole": resp.verifiedRole }, {
+					$set: {
+						"sections.$.channels.verificationChannel": result.id
+					}
+				});
+				//#endregion
+			}
+			else if (react.emoji.name === "📙") {
+				//#region role edit
+				promptEmbed.setTitle("**Change Verified Role**")
+					.setDescription(`The current verified role is ${guild.roles.cache.get(resp.verifiedRole)}. Please mention, or type the ID, of the role that you want to make the new verified role.`);
+
+				const chanColl: GenericMessageCollector<Role> = new GenericMessageCollector<Role>(
+					msg,
+					{ embed: promptEmbed },
+					5,
+					TimeUnit.MINUTE
+				);
+				const result: Role | "CANCEL" | "TIME" = await chanColl.send(GenericMessageCollector.getRolePrompt(msg));
+				if (result === "CANCEL" || result === "TIME") {
+					return;
+				}
+
+				for (let i = 0; i < guildData.sections.length; i++) {
+					if (guildData.sections[i].verifiedRole === result.id) {
+						await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "ROLE_IN_USE", null), msg.channel);
+						return;
+					}
+				}
+
+				await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: (msg.guild as Guild).id, "sections.verifiedRole": resp.verifiedRole }, {
+					$set: {
+						"sections.$.verifiedRole": result.id
+					}
+				});
+				//#endregion
+			}
+			else if (react.emoji.name === "⭐") {
+				//#region star verif count
+				const promptTypeEmbed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null)
+					.setTitle("Modify Verification: Stars")
+					.setDescription("Type `onoff` to enable or disable the verification type. Type `val` to change the minimum stars needed.");
+				const gmc: GenericMessageCollector<"ONOFF" | "VAL"> = new GenericMessageCollector<"ONOFF" | "VAL">(msg, {
+					embed: promptTypeEmbed
+				}, 1, TimeUnit.MINUTE);
+				const resu: "ONOFF" | "VAL" | "TIME" | "CANCEL" = await gmc.send(this.getVerifChoiceType(msg));
+				if (resu === "TIME" || resu === "CANCEL") {
+					return;
+				}
+
+				if (resu === "ONOFF") {
+					// on off
+					await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: (msg.guild as Guild).id, "sections.verifiedRole": resp.verifiedRole }, {
+						$set: {
+							"sections.$.verification.stars.required": !resp.verification.stars.required
+						}
+					});
+				}
+				else {
+					const gmc2: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, {
+						embed: promptEmbed.setTitle("**Edit Required Stars**").setDescription("Please type the number of stars a person needs to verify.")
+					}, 2, TimeUnit.MINUTE);
+					const n: number | "TIME" | "CANCEL" = await gmc2.send(GenericMessageCollector.getNumber(msg));
+					if (n === "TIME" || n === "CANCEL") {
+						return;
+					}
+					await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: (msg.guild as Guild).id, "sections.verifiedRole": resp.verifiedRole }, {
+						$set: {
+							"sections.$.verification.stars.minimum": n
+						}
+					});
+				}
+				//#endregion
+			}
+			else if (react.emoji.name === "📛") {
+				//#region fame verif count
+				const promptTypeEmbed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null)
+					.setTitle("Modify Verification: Fame")
+					.setDescription("Type `onoff` to enable or disable the verification type. Type `val` to change the minimum fame needed.");
+				const gmc: GenericMessageCollector<"ONOFF" | "VAL"> = new GenericMessageCollector<"ONOFF" | "VAL">(msg, {
+					embed: promptTypeEmbed
+				}, 1, TimeUnit.MINUTE);
+				const resu: "ONOFF" | "VAL" | "TIME" | "CANCEL" = await gmc.send(this.getVerifChoiceType(msg));
+				if (resu === "TIME" || resu === "CANCEL") {
+					return;
+				}
+
+				if (resu === "ONOFF") {
+					// on off
+					await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: (msg.guild as Guild).id, "sections.verifiedRole": resp.verifiedRole }, {
+						$set: {
+							"sections.$.verification.aliveFame.required": !resp.verification.aliveFame.required
+						}
+					});
+				}
+				else {
+					const gmc2: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, {
+						embed: promptEmbed.setTitle("**Edit Required Alive Fame**").setDescription("Please type the amount of alive fame a person needs to verify.")
+					}, 2, TimeUnit.MINUTE);
+					const n: number | "TIME" | "CANCEL" = await gmc2.send(GenericMessageCollector.getNumber(msg));
+					if (n === "TIME" || n === "CANCEL") {
+						return;
+					}
+					await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: (msg.guild as Guild).id, "sections.verifiedRole": resp.verifiedRole }, {
+						$set: {
+							"sections.$.verification.aliveFame.minimum": n
+						}
+					});
+				}
+				//#endregion
+			}
+			else if (react.emoji.name === "⚔️") {
+				//#region char pt count
+				const promptTypeEmbed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null)
+					.setTitle("Modify Verification: Character Stats")
+					.setDescription("Type `onoff` to enable or disable the verification type. Type `val` to change the minimum character points needed.");
+				const gmc: GenericMessageCollector<"ONOFF" | "VAL"> = new GenericMessageCollector<"ONOFF" | "VAL">(msg, {
+					embed: promptTypeEmbed
+				}, 2, TimeUnit.MINUTE);
+				const resu: "ONOFF" | "VAL" | "TIME" | "CANCEL" = await gmc.send(this.getVerifChoiceType(msg));
+				if (resu === "TIME" || resu === "CANCEL") {
+					return;
+				}
+
+				if (resu === "ONOFF") {
+					// on off
+					await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: (msg.guild as Guild).id, "sections.verifiedRole": resp.verifiedRole }, {
+						$set: {
+							"sections.$.verification.maxedStats.required": !resp.verification.maxedStats.required
+						}
+					});
+				}
+				else {
+					const gmc2: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, {
+						embed: promptEmbed.setTitle("**Edit Required Character Stats**").setDescription("Please type the stats type that you want to modify. For example, to modify the amount of `7/8`s needed to verify, type `7`.")
+					}, 2, TimeUnit.MINUTE);
+					const n: number | "TIME" | "CANCEL" = await gmc2.send(GenericMessageCollector.getNumber(msg, 0, 8));
+					if (n === "TIME" || n === "CANCEL") {
+						return;
+					}
+
+					const gmc3: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, {
+						embed: promptEmbed.setTitle("**Edit Required Character Stats**").setDescription(`You are currently modifying the required amount of ${n}/8 needed. Please type the amount of ${n}/8 characters needed.`)
+					}, 2, TimeUnit.MINUTE);
+
+					const m: number | "TIME" | "CANCEL" = await gmc3.send(GenericMessageCollector.getNumber(msg, 0, 15));
+					await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: (msg.guild as Guild).id, "sections.verifiedRole": resp.verifiedRole }, {
+						$set: {
+							[`sections.$.verification.maxedStats.minimum.${n}`]: m
+						}
+					});
+				}
+				//#endregion
+			}
+			else if (react.emoji.name === "🚪") {
+				//#region change permitted dungeons
+				const d: { data: IDungeonData, isIncluded: boolean }[] = [];
+				for (const dData of AFKDungeon) {
+					d.push({ data: dData, isIncluded: resp.properties.dungeons.includes(dData.id) });
+				}
+
+				const editorMessage: Message | void = await msg.channel.send(this.getAllowedDungeonEditorEmbed(msg, d)).catch(() => { });
+				if (typeof editorMessage === "undefined") {
+					return;
+				}
+
+				const collector: MessageCollector = new MessageCollector(msg.channel as TextChannel, ((m: Message) => m.author.id === msg.author.id));
+
+				collector.on("end", async (collected: Collection<string, Message>, reason: string) => {
+					await editorMessage.delete().catch(() => { });
+					if (reason === "SAVE") {
+						await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: (msg.guild as Guild).id, "sections.verifiedRole": resp.verifiedRole }, {
+							$set: {
+								"sections.$.properties.dungeons": d.filter(x => x.isIncluded).map(x => x.data.id)
+							}
+						});
+					}
+				});
+
+				collector.on("collect", async (m: Message) => {
+					console.log(m.content);
+					await m.delete().catch(e => { });
+
+					if (m.content === "cancel") {
+						collector.stop("PROCESS_CANCELED");
+						return;
+					}
+
+					if (m.content === "save") {
+						collector.stop("SAVE");
+						return;
+					}
+
+					if (m.content === "disableAll") {
+						for (let i = 0; i < d.length; i++) {
+							d[i].isIncluded = false;
+						}
+						await editorMessage.edit(this.getAllowedDungeonEditorEmbed(msg, d));
+						return;
+					}
+
+					if (m.content === "enableAll") {
+						for (let i = 0; i < d.length; i++) {
+							d[i].isIncluded = true;
+						}
+						await editorMessage.edit(this.getAllowedDungeonEditorEmbed(msg, d));
+						return;
+					}
+
+					const num: number = Number.parseInt(m.content);
+					if (Number.isNaN(num)) {
+						MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_NUMBER_INPUT", null), msg.channel as TextChannel);
+						return;
+					}
+
+					if (typeof d[num - 1] === "undefined") {
+						MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_INDEX", null), msg.channel as TextChannel);
+						return;
+					}
+
+					d[num - 1].isIncluded = !d[num - 1].isIncluded;
+					await editorMessage.edit(this.getAllowedDungeonEditorEmbed(msg, d));
+				});
+
+				//#endregion
+			}
+		});
+	}

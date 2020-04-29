@@ -1,0 +1,2 @@
+# Constants
+This folder houses any files that contain major "constants." Constants don't necessarily have to be variables only; they can be functions. The only requirement for a file to be here is if there is a lot of unchanged (or "constant") information that a lot of other files need to access. 

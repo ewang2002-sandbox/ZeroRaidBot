@@ -30,8 +30,8 @@ export class UserManagerCommand extends Command {
 			),
 			new CommandPermission(
 				[],
-				[],
-				false
+				["suspended"],
+				true
 			),
 			false, // guild-only command. 
 			false,
@@ -248,13 +248,15 @@ export class UserManagerCommand extends Command {
 			return;
 		}
 
+		const code: string = VerificationHandler.getRandomizedString(8);
+
 		const embed: MessageEmbed = new MessageEmbed()
 			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 			.setTitle("Verification For Profile")
 			.setDescription(`You have selected the in-game name: **\`${inGameName}\`**. To access your RealmEye profile, click [here](https://www.realmeye.com/player/${inGameName}).\n\nYou are almost done verifying; however, you need to do a few more things.\n\nTo stop the verification process, react with ❌.`)
 			.setColor("RANDOM")
 			.setFooter("⏳ Time Remaining: 15 Minutes and 0 Seconds.")
-			.addField("1. Get Your Verification Code", `Your verification code is: ${StringUtil.applyCodeBlocks(msg.author.id)}Please put this verification code in one of your three lines of your RealmEye profile's description.`)
+			.addField("1. Get Your Verification Code", `Your verification code is: ${StringUtil.applyCodeBlocks(code)}Please put this verification code in one of your three lines of your RealmEye profile's description.`)
 			.addField("2. Check Profile Settings", `Ensure __anyone__ can view your name history. You can access your profile settings [here](https://www.realmeye.com/settings-of/${inGameName}). If you don't have your RealmEye account password, you can learn to get one [here](https://www.realmeye.com/mreyeball#password).`)
 			.addField("3. Wait", "Before you react with the check, make sure you wait. RealmEye may sometimes take up to 30 seconds to fully register your changes!")
 			.addField("4. Confirm", "React with ✅ to begin the verification check. If you have already reacted, un-react and react again.");
@@ -311,13 +313,13 @@ export class UserManagerCommand extends Command {
 
 			let codeFound: boolean = false;
 			for (let i = 0; i < requestData.data.description.length; i++) {
-				if (requestData.data.description[i].includes(msg.author.id)) {
+				if (requestData.data.description[i].includes(code)) {
 					codeFound = true;
 				}
 			}
 
 			if (!codeFound) {
-				await msg.author.send("Your verification code wasn't found in your RealmEye description! Make sure the code is on your description and then try again.");
+				await msg.author.send(`Your verification code, \`${code}\`, wasn't found in your RealmEye description! Make sure the code is on your description and then try again.`);
 				canReact = true;
 				return;
 			}

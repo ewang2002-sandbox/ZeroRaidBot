@@ -70,6 +70,7 @@ export module VerificationHandler {
 				.get(section.channels.logging.verificationAttemptsChannel) as TextChannel | undefined;
 			let verificationSuccessChannel: TextChannel | undefined = guild.channels.cache
 				.get(section.channels.logging.verificationSuccessChannel) as TextChannel | undefined;
+			console.log(verificationAttemptsChannel);
 
 			const verificationChannel: GuildChannel | undefined = guild.channels.cache.get(section.channels.verificationChannel);
 			if (typeof verificationChannel === "undefined" || !(verificationChannel instanceof TextChannel)) {
@@ -259,7 +260,7 @@ export module VerificationHandler {
 
 				const code: string = getRandomizedString(8);
 				if (typeof verificationAttemptsChannel !== "undefined") {
-					verificationAttemptsChannel.send(`⌛ **\`[${section.nameOfSection}]\`** ${member} will be trying to verify under the in-game name \`${inGameName}\` using the code \`${code}\`.`)
+					verificationAttemptsChannel.send(`⌛ **\`[${section.nameOfSection}]\`** ${member} will be trying to verify under the in-game name \`${inGameName}\`.`)
 						.catch(() => { });
 				}
 
@@ -325,20 +326,23 @@ export module VerificationHandler {
 						return;
 					}
 
-					let codeFound: boolean = false;
-					for (let i = 0; i < requestData.data.description.length; i++) {
-						if (requestData.data.description[i].includes(member.id)) {
-							codeFound = true;
+					const nameFromProfile: string = requestData.data.name;
+					if (!isOldProfile) {
+						let codeFound: boolean = false;
+						for (let i = 0; i < requestData.data.description.length; i++) {
+							if (requestData.data.description[i].includes(code)) {
+								codeFound = true;
+							}
 						}
-					}
 
-					if (!codeFound) {
-						if (typeof verificationAttemptsChannel !== "undefined") {
-							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the verification code, \`${code}\`, could not be found in his/her RealmEye profile.`).catch(() => { });
+						if (!codeFound) {
+							if (typeof verificationAttemptsChannel !== "undefined") {
+								verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the verification code, \`${code}\`, could not be found in his/her RealmEye profile.`).catch(() => { });
+							}
+							await member.send(`Your verification code, \`${code}\`, wasn't found in your RealmEye description! Make sure the code is on your description and then try again.`);
+							canReact = true;
+							return;
 						}
-						await member.send(`Your verification code, \`${code}\` wasn't found in your RealmEye description! Make sure the code is on your description and then try again.`);
-						canReact = true;
-						return;
 					}
 
 					if (requestData.data.last_seen !== "hidden") {
@@ -420,45 +424,104 @@ export module VerificationHandler {
 						.setFooter("Verification Process: Stopped.");
 					await botMsg.edit(successEmbed);
 
-					if (!isOldProfile) {
-						const userDocObj: MongoDbHelper.MongoDbUserManager = new MongoDbHelper.MongoDbUserManager(requestData.data.name);
-						const d: IRaidUser[] = await userDocObj.getUserDB();
-						if (d.length === 0) {
-							await userDocObj.createNewUserDB(member.id);
-							return;
-						}
+					const resolvedUserDbDiscord: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient.findOne({
+						discordUserId: member.id
+					});
 
-						const firstProfile: IRaidUser = d[0];
-						let wasMainName: boolean = false;
-						if (firstProfile.rotmgLowercaseName === requestData.data.name.toLowerCase()) {
-							wasMainName = true;
-						}
-						// otherwise, should be an alt
+					const ignFilterQuery: FilterQuery<IRaidUser> = {
+						$or: [
+							{
+								rotmgLowercaseName: nameFromProfile.toLowerCase()
+							},
+							{
+								"otherAccountNames.lowercase": nameFromProfile.toLowerCase()
+							}
+						]
+					};
+					const resolvedUserDbIGN: IRaidUser | null = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOne(ignFilterQuery);
 
-						const filterQuery: FilterQuery<IRaidUser> = {
-							$or: [
-								{
-									rotmgLowercaseName: requestData.data.name.toLowerCase()
-								},
-								{
-									"otherAccountNames.lowercase": requestData.data.name.toLowerCase()
+					console.log(resolvedUserDbDiscord);
+					console.log(resolvedUserDbIGN);
+
+					// completely new profile
+					if (resolvedUserDbDiscord === null && resolvedUserDbIGN === null) {
+						const userMongo: MongoDbHelper.MongoDbUserManager = new MongoDbHelper.MongoDbUserManager(nameFromProfile);
+						await userMongo.createNewUserDB(member.id);
+					}
+					else {
+						// discord id found; ign NOT found in db
+						if (resolvedUserDbDiscord !== null && resolvedUserDbIGN === null) {
+							let names: string[] = [resolvedUserDbDiscord.rotmgLowercaseName, ...resolvedUserDbDiscord.otherAccountNames.map(x => x.lowercase)];
+
+							let isMainIGN: boolean = false;
+							let nameToReplace: string | undefined; 
+							nameHistory.shift(); // this will be the current name
+							if (nameHistory.length !== 0) {
+								for (let i = 0; i < names.length; i++) {
+									for (let j = 0; j < nameHistory.length; j++) {
+										if (names[i] === nameHistory[j].name.toLowerCase()) {
+											nameToReplace = nameHistory[j].name;
+											if (i === 0) {
+												isMainIGN = true;
+											}
+										}
+									}
 								}
-							]
-						};
 
-						if (!wasMainName) {
-							filterQuery["otherAccountNames.lowercase"] = requestData.data.name.toLowerCase();
+								if (typeof nameToReplace !== "undefined") {
+									if (isMainIGN) {
+										await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne({ discordUserId: member.id }, {
+											$set: {
+												rotmgDisplayName: nameFromProfile,
+												rotmgLowercaseName: nameFromProfile.toLowerCase()
+											}
+										});
+									}
+									else {
+										await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne({
+											discordUserId: member.id,
+											"otherAccountNames.lowercase": nameToReplace.toLowerCase()
+										}, {
+											$set: {
+												"otherAccountNames.$.lowercase": nameFromProfile.toLowerCase(),
+												"otherAccountNames.$.displayName": nameFromProfile
+											}
+										});
+									}
+								}
+							}
+							else {
+								// array length is 0
+								// meaning no name history at all
+								const oldMainName: string = resolvedUserDbDiscord.rotmgDisplayName;
+								await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne({
+									discordUserId: member.id
+								}, {
+									$set: {
+										rotmgDisplayName: nameFromProfile,
+										rotmgLowercaseName: nameFromProfile.toLowerCase()
+									},
+									$push: {
+										otherAccountNames: {
+											lowercase: oldMainName.toLowerCase(),
+											displayName: oldMainName.toLowerCase()
+										}
+									}
+								});
+							}
 						}
-
-						const updateQuery: UpdateQuery<IRaidGuild> = wasMainName
-							? { $set: { rotmgDisplayName: requestData.data.name, rotmgLowercaseName: requestData.data.name.toLowerCase(), discordUserId: member.id } }
-							: { $set: { "otherAccountNames.$.displayName": requestData.data.name, "otherAccountNames.$.lowercase": requestData.data.name, discordUserId: member.id } };
-
-						await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne(filterQuery, updateQuery);
+						// discord id found but ign was not found in db
+						else if (resolvedUserDbIGN !== null && resolvedUserDbDiscord === null) {
+							await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne(ignFilterQuery, {
+								$set: {
+									discordUserId: member.id
+								}
+							});
+						}
 					}
 
 					if (typeof verificationSuccessChannel !== "undefined") {
-						verificationSuccessChannel.send(`📥 **\`[${section.nameOfSection}]\`** ${member} has successfully been verified as \`${inGameName}\`.`).catch(() => { });
+						verificationSuccessChannel.send(`📥 **\`[${section.nameOfSection}]\`** ${member} has successfully been verified as \`${inGameName}\`.`).catch(console.error);
 					}
 				});
 			}
@@ -761,7 +824,7 @@ export module VerificationHandler {
 	 * @param {number} [maxLength = 8] the max length the code should be. 
 	 */
 	export function getRandomizedString(maxLength: number = 8): string {
-		const possibleChars: string[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()".split(" ");
+		const possibleChars: string[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()".split("");
 		let code: string = "";
 		for (let i = 0; i < maxLength; i++) {
 			code += ArrayUtil.getRandomElement<string>(possibleChars);

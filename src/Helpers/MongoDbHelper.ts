@@ -86,7 +86,7 @@ export module MongoDbHelper {
 
 
 		/**
-		 * Creates a new user DB and returns the resulting data. This will first check `CheckIfNameExist`. 
+		 * Creates a new user DB and returns the resulting data. This will first call `getUserDB`. 
 		 * @param {string} [userID] The Discord user ID associated with the in-game name. 
 		 * @returns {Promise<IRaidUser>} The resulting user data.
 		 */

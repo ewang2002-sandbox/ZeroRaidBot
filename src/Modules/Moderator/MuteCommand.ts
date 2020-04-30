@@ -121,7 +121,6 @@ export class MuteCommand extends Command {
 			return;
 		}
 
-		console.log(guildDb)
 		const moderationChannel: TextChannel | undefined = guild.channels.cache.get(guildDb.generalChannels.logging.moderationLogs) as TextChannel | undefined;
 
 		try {

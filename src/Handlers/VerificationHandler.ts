@@ -70,7 +70,6 @@ export module VerificationHandler {
 				.get(section.channels.logging.verificationAttemptsChannel) as TextChannel | undefined;
 			let verificationSuccessChannel: TextChannel | undefined = guild.channels.cache
 				.get(section.channels.logging.verificationSuccessChannel) as TextChannel | undefined;
-			console.log(verificationAttemptsChannel);
 
 			const verificationChannel: GuildChannel | undefined = guild.channels.cache.get(section.channels.verificationChannel);
 			if (typeof verificationChannel === "undefined" || !(verificationChannel instanceof TextChannel)) {

@@ -33,7 +33,5 @@ export class TestCommand extends Command {
 	 * @inheritdoc
 	 */
 	public async executeCommand(msg: Message, args: string[], guildData: IRaidGuild): Promise<void> {
-		let memberToSuspend: GuildMember | null = await UserHandler.resolveMember(msg, guildData);
-		console.log(memberToSuspend)
 	}
 }

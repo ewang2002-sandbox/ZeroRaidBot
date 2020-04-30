@@ -159,12 +159,10 @@ export class PollCommand extends Command {
 		guildDb: IRaidGuild
 	): Promise<void> {
 		// any choices
-		console.log(args);
 		args = args.join(" ").split(/;+/).map(x => x.trim()).filter(y => y.length !== 0);
 		if (args.length === 0) {
 			return; // do i really want to make an error msg? 
 		}
-		console.log("S");
 
 		const pollEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor((`${(msg.member as GuildMember).displayName} • ${msg.author.tag}`), msg.author.displayAvatarURL())

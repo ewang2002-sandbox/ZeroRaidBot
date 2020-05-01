@@ -271,10 +271,20 @@ export module VerificationHandler {
 				});
 
 				// end collector
-				reactCollector.on("end", (collected: Collection<string, MessageReaction>, reason: string) => {
+				reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
 					mcd.disableAutoTick();
-					if (reason === "time" && typeof verificationAttemptsChannel !== "undefined") {
-						verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member}'s verification process has been canceled.\n\t⇒ Reason: TIME`).catch(() => { });
+					if (reason === "time") {
+						if (typeof verificationAttemptsChannel !== "undefined") {
+							verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member}'s verification process has been canceled.\n\t⇒ Reason: TIME`).catch(() => { });
+						}
+						const embed: MessageEmbed = new MessageEmbed()
+							.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+							.setTitle(`Verification For: **${guild.name}**`)
+							.setColor("RED")
+							.setDescription("You have stopped the verification process manually.")
+							.setFooter(guild.name)
+							.setTimestamp();
+						await botMsg.edit(embed);
 					}
 				});
 
@@ -304,8 +314,27 @@ export module VerificationHandler {
 					canReact = false;
 					// begin verification time
 
-					const requestData: AxiosResponse<ITiffitNoUser | ITiffitRealmEyeProfile> = await Zero.AxiosClient
-						.get<ITiffitNoUser | ITiffitRealmEyeProfile>(TiffitRealmEyeAPI + inGameName);
+					let requestData: AxiosResponse<ITiffitNoUser | ITiffitRealmEyeProfile>;
+					try {
+						requestData = await Zero.AxiosClient
+							.get<ITiffitNoUser | ITiffitRealmEyeProfile>(TiffitRealmEyeAPI + inGameName);
+					}
+					catch (e) {
+						reactCollector.stop();
+						if (typeof verificationAttemptsChannel !== "undefined") {
+							verificationAttemptsChannel.send(`⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but an error has occurred when trying to access the player's profile. The process has been stopped automatically.\n\t⇒ Error: ${e}`);
+						}
+						const failedEmbed: MessageEmbed = new MessageEmbed()
+							.setTitle(`Verification For: **${guild.name}**`)
+							.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+							.setDescription("An error has occurred when trying to verify you. This is most likely because RealmEye is down or slow. Please review the error message below.")
+							.addField("Error Message", StringUtil.applyCodeBlocks(e))
+							.setColor("RED")
+							.setFooter("Verification Process: Stopped.");
+						await botMsg.edit(failedEmbed).catch(() => { });
+						return;
+					}
+
 					if ("error" in requestData.data) {
 						if (typeof verificationAttemptsChannel !== "undefined") {
 							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the name could not be found on RealmEye.`).catch(() => { });
@@ -369,7 +398,25 @@ export module VerificationHandler {
 						return;
 					}
 
-					let nameHistory: INameHistory[] | IAPIError = await getRealmEyeNameHistory(requestData.data.name);
+					let nameHistory: INameHistory[] | IAPIError;
+					try {
+						nameHistory = await getRealmEyeNameHistory(requestData.data.name);
+					} catch (e) {
+						reactCollector.stop();
+						if (typeof verificationAttemptsChannel !== "undefined") {
+							verificationAttemptsChannel.send(`⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but an error has occurred when trying to access the player's Name History. The process has been stopped automatically.\n\t⇒ Error: ${e}`);
+						}
+						const failedEmbed: MessageEmbed = new MessageEmbed()
+							.setTitle(`Verification For: **${guild.name}**`)
+							.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+							.setDescription("An error has occurred when trying to check your Name History. This is most likely because RealmEye is down or slow. Please review the error message below.")
+							.addField("Error Message", StringUtil.applyCodeBlocks(e))
+							.setColor("RED")
+							.setFooter("Verification Process: Stopped.");
+						await botMsg.edit(failedEmbed).catch(() => { });
+						return;
+					}
+
 					if ("errorMessage" in nameHistory) {
 						if (typeof verificationAttemptsChannel !== "undefined") {
 							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his or her name history is not available to the public.`).catch(() => { });
@@ -413,11 +460,10 @@ export module VerificationHandler {
 						.setFooter("Verification Process: Stopped.");
 					await botMsg.edit(successEmbed);
 
-					const resolvedUserDbDiscord: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient.findOne({
-						discordUserId: member.id
-					});
+					const resolvedUserDbDiscord: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient
+						.findOne({ discordUserId: member.id });
 
-					nameHistory = TestCasesNameHistory.withNoNameChanges();
+					nameHistory = TestCasesNameHistory.withDefaultName();
 
 					const ignFilterQuery: FilterQuery<IRaidUser> = {
 						$or: [
@@ -429,10 +475,8 @@ export module VerificationHandler {
 							}
 						]
 					};
-					const resolvedUserDbIGN: IRaidUser | null = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOne(ignFilterQuery);
-
-					console.log(resolvedUserDbDiscord);
-					console.log(resolvedUserDbIGN);
+					const resolvedUserDbIGN: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient
+						.findOne(ignFilterQuery);
 
 					// completely new profile
 					if (resolvedUserDbDiscord === null && resolvedUserDbIGN === null) {
@@ -442,11 +486,14 @@ export module VerificationHandler {
 					else {
 						// discord id found; ign NOT found in db
 						if (resolvedUserDbDiscord !== null && resolvedUserDbIGN === null) {
-							let names: string[] = [resolvedUserDbDiscord.rotmgLowercaseName, ...resolvedUserDbDiscord.otherAccountNames.map(x => x.lowercase)];
+							let names: string[] = [
+								resolvedUserDbDiscord.rotmgLowercaseName
+								, ...resolvedUserDbDiscord.otherAccountNames.map(x => x.lowercase)
+							];
 
 							let isMainIGN: boolean = false;
-							let nameToReplace: string | undefined; 
-							nameHistory.shift(); // this will be the current name
+							let nameToReplace: string | undefined;
+							nameHistory.shift();
 							if (nameHistory.length !== 0) {
 								for (let i = 0; i < names.length; i++) {
 									for (let j = 0; j < nameHistory.length; j++) {
@@ -495,7 +542,7 @@ export module VerificationHandler {
 									$push: {
 										otherAccountNames: {
 											lowercase: oldMainName.toLowerCase(),
-											displayName: oldMainName.toLowerCase()
+											displayName: oldMainName
 										}
 									}
 								});
@@ -568,7 +615,6 @@ export module VerificationHandler {
 			}
 		}
 		catch (e) {
-			console.log(e);
 			// TODO: find better way to make this apparant 
 			return;
 		}
@@ -595,7 +641,7 @@ export module VerificationHandler {
 		else {
 			verifEmbed.addField("2. Get Your Verification Code", `Your verification code is: ${StringUtil.applyCodeBlocks(code)}Please put this verification code in one of your three lines of your RealmEye profile's description.`);
 		}
-		verifEmbed.addField("3. Check Profile Settings", `Ensure __anyone__ can view your general profile (stars, alive fame), characters, fame history, and name history. You can access your profile settings [here](https://www.realmeye.com/settings-of/${inGameName}). If you don't have your RealmEye account password, you can learn to get one [here](https://www.realmeye.com/mreyeball#password).`)
+		verifEmbed.addField("3. Check Profile Settings", `Ensure __anyone__ can view your general profile (stars, alive fame), characters, fame history, and name history. You can access your profile settings [here](https://www.realmeye.com/settings-of/${inGameName}). If you don't have your RealmEye account password, you can learn how to get one [here](https://www.realmeye.com/mreyeball#password).`)
 			.addField("4. Wait", "Before you react with the check, make sure you wait. RealmEye may sometimes take up to 30 seconds to fully register your changes!")
 			.addField("5. Confirm", "React with ✅ to begin the verification check. If you have already reacted, un-react and react again.");
 		return verifEmbed;

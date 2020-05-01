@@ -258,7 +258,7 @@ export class UserManagerCommand extends Command {
 			.setColor("RANDOM")
 			.setFooter("⏳ Time Remaining: 15 Minutes and 0 Seconds.")
 			.addField("1. Get Your Verification Code", `Your verification code is: ${StringUtil.applyCodeBlocks(code)}Please put this verification code in one of your three lines of your RealmEye profile's description.`)
-			.addField("2. Check Profile Settings", `Ensure __anyone__ can view your name history. You can access your profile settings [here](https://www.realmeye.com/settings-of/${inGameName}). If you don't have your RealmEye account password, you can learn to get one [here](https://www.realmeye.com/mreyeball#password).`)
+			.addField("2. Check Profile Settings", `Ensure __anyone__ can view your name history. You can access your profile settings [here](https://www.realmeye.com/settings-of/${inGameName}). If you don't have your RealmEye account password, you can learn how to get one [here](https://www.realmeye.com/mreyeball#password).`)
 			.addField("3. Wait", "Before you react with the check, make sure you wait. RealmEye may sometimes take up to 30 seconds to fully register your changes!")
 			.addField("4. Confirm", "React with ✅ to begin the verification check. If you have already reacted, un-react and react again.");
 		const verifMessage: Message = await dmChannel.send(embed);

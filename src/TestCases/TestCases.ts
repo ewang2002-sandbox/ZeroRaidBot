@@ -30,12 +30,7 @@ export module TestCasesNameHistory {
                 name: "ConsoleMC",
                 from: "",
                 to: ""
-            },
-            {
-                name: "Irl",
-                from: "",
-                to: ""
-            }
+            } 
         ];
     }
 

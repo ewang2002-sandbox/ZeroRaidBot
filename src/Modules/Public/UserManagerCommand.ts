@@ -304,8 +304,17 @@ export class UserManagerCommand extends Command {
 			canReact = false;
 			// begin verification time
 
-			const requestData: AxiosResponse<ITiffitNoUser | ITiffitRealmEyeProfile> = await Zero.AxiosClient
-				.get<ITiffitNoUser | ITiffitRealmEyeProfile>(TiffitRealmEyeAPI + inGameName);
+			let requestData: AxiosResponse<ITiffitNoUser | ITiffitRealmEyeProfile>;
+			try {
+				requestData = await Zero.AxiosClient
+					.get<ITiffitNoUser | ITiffitRealmEyeProfile>(TiffitRealmEyeAPI + inGameName);
+			}
+			catch (e) {
+				reactCollector.stop();
+				await msg.author.send(`An error occurred when trying to connect to your RealmEye profile.\n\tError: ${e}`);
+				return;
+			}
+
 			if ("error" in requestData.data) {
 				await msg.author.send("I could not find your RealmEye profile; you probably made your profile private. Ensure your profile's visibility is set to public and try again.");
 				canReact = true;
@@ -331,8 +340,14 @@ export class UserManagerCommand extends Command {
 				return;
 			}
 
-			const nameHistory: INameHistory[] | IAPIError = await VerificationHandler
-				.getRealmEyeNameHistory(requestData.data.name);
+			let nameHistory: INameHistory[] | IAPIError;
+			try {
+				nameHistory = await VerificationHandler.getRealmEyeNameHistory(requestData.data.name);
+			} catch (e) {
+				reactCollector.stop();
+				await msg.author.send(`An error occurred when trying to connect to your RealmEye profile.\n\tError: ${e}`);
+				return;
+			}
 
 			if ("errorMessage" in nameHistory) {
 				await msg.author.send("Your Name History is not public! Set your name history to public first and then try again.");

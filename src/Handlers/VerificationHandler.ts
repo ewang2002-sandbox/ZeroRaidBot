@@ -463,8 +463,6 @@ export module VerificationHandler {
 					const resolvedUserDbDiscord: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient
 						.findOne({ discordUserId: member.id });
 
-					nameHistory = TestCasesNameHistory.withDefaultName();
-
 					const ignFilterQuery: FilterQuery<IRaidUser> = {
 						$or: [
 							{

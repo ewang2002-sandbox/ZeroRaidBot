@@ -8,6 +8,7 @@ import { onMessageReactionAdd } from "./Events/MessageReactionAddEvent";
 import { onMessageReactionRemove } from "./Events/MessageReactionRemoveEvent";
 import { onGuildMemberAdd } from "./Events/GuildMemberAddEvent";
 import { onGuildCreate } from "./Events/GuildCreateEvent";
+import { onGuildMemberUpdate } from "./Events/GuildMemberUpdate";
 
 export class Zero {
 	/** 
@@ -50,6 +51,7 @@ export class Zero {
 		Zero.RaidClient.on("messageReactionRemove", async (reaction: MessageReaction, user: User | PartialUser) => await onMessageReactionRemove(reaction, user));
 		Zero.RaidClient.on("guildMemberAdd", async (member: GuildMember | PartialGuildMember) => await onGuildMemberAdd(member));
 		Zero.RaidClient.on("guildCreate", async (guild: Guild) => await onGuildCreate(guild));
+		Zero.RaidClient.on("guildMemberUpdate", async (oldMember: GuildMember | PartialGuildMember, newMember: GuildMember | PartialGuildMember) => await onGuildMemberUpdate(oldMember, newMember));
 	}
 
 	/**

@@ -21,6 +21,7 @@ export class TestCommand extends Command {
 			new CommandPermission(
 				[],
 				[],
+				[],
 				false
 			),
 			false, // guild-only command. 

@@ -21,7 +21,8 @@ export class UnmuteCommand extends Command {
 				1
 			),
 			new CommandPermission(
-				[],
+                ["MUTE_MEMBERS"],
+				["MANAGE_ROLES", "EMBED_LINKS"],
 				["support", "headRaidLeader", "officer", "moderator"],
 				false
 			),

@@ -15,6 +15,7 @@ import { FilterQuery, UpdateQuery } from "mongodb";
 import { ArrayUtil } from "../Utility/ArrayUtil";
 import { INameHistory, IAPIError } from "../Definitions/ICustomREVerification";
 import { TestCasesNameHistory } from "../TestCases/TestCases";
+import { UserHandler } from "./UserHandler";
 
 export module VerificationHandler {
 	interface IPreliminaryCheckError {
@@ -547,6 +548,30 @@ export module VerificationHandler {
 
 					if (typeof verificationSuccessChannel !== "undefined") {
 						verificationSuccessChannel.send(`📥 **\`[${section.nameOfSection}]\`** ${member} has successfully been verified as \`${inGameName}\`.`).catch(console.error);
+					}
+
+					// now let's check to see if anyone else verified as the same name
+					// TODO perhaps also check old id? 
+					const newUserDb: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient.findOne({
+						discordUserId: member.id
+					});
+
+					if (newUserDb !== null) {
+						let names: string[] = [
+							newUserDb.rotmgLowercaseName
+							, ...newUserDb.otherAccountNames.map(x => x.lowercase)
+						];
+
+						for (const name of names) {
+							const res: GuildMember | GuildMember[] = UserHandler.findUserByInGameName(guild, name, guildDb);
+							if (Array.isArray(res) || res.id === member.id) {
+								continue;
+							}
+							
+							for (const [id, role] of res.roles.cache) {
+								await res.roles.remove(role).catch(e => { });
+							}
+						}
 					}
 				});
 			}

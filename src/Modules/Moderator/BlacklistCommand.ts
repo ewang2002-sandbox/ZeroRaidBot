@@ -25,7 +25,8 @@ export class BlacklistCommand extends Command {
 				2
 			),
 			new CommandPermission(
-				[],
+				["BAN_MEMBERS", "MANAGE_GUILD"],
+				["BAN_MEMBERS", "EMBED_LINKS"],
 				["officer", "moderator"],
 				false
 			),

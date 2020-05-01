@@ -6,6 +6,11 @@ export class CommandPermission {
 	 * Any general permissions that the user has to have in order to execute the command. This will take priority over `rolePermissions`. 
 	 */
 	private generalPermissions: PermissionResolvable[];
+
+	/**
+	 * All bot permissions needed to run the command.
+	 */
+	private botPermissions: PermissionResolvable[];
 	
 	/**
 	 * The list of roles that can use this command.
@@ -27,10 +32,12 @@ export class CommandPermission {
 	 */
 	public constructor(
 		generalPermissions: PermissionResolvable[],
+		botPermissions: PermissionResolvable[],
 		rolePermissions: RoleNames[],
 		roleInclusive: boolean
 	) {
 		this.generalPermissions = generalPermissions;
+		this.botPermissions = botPermissions;
 		this.rolePermissions = rolePermissions;
 		this.roleInclusive = roleInclusive;
 	}
@@ -57,5 +64,13 @@ export class CommandPermission {
 	 */
 	public isRoleInclusive(): boolean { 
 		return this.roleInclusive;
+	}
+
+	/**
+	 * Returns the permissions that the bot must have in order to execute the command. 
+	 * @returns {PermissionResolvable[]} The permissions that the bot must have in order to execute the command. 
+	 */
+	public getBotPermissions(): PermissionResolvable[] {
+		return this.botPermissions;
 	}
 }

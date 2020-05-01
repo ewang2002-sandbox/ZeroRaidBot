@@ -19,6 +19,7 @@ export class StartHeadcountCommand extends Command {
 			),
 			new CommandPermission(
 				[],
+				["ADD_REACTIONS", "EMBED_LINKS"],
 				["headRaidLeader", "raidLeader", "almostRaidLeader", "trialRaidLeader"],
 				false
 			),

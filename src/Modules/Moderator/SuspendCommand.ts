@@ -1,11 +1,10 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, GuildMember, Guild, MessageEmbed, Collection, Role, TextChannel } from "discord.js";
+import { Message, GuildMember, Guild, MessageEmbed, Role, TextChannel } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
-import { StringUtil } from "../../Utility/StringUtil";
 import { UserHandler } from "../../Handlers/UserHandler";
 
 export class SuspendCommand extends Command {
@@ -23,7 +22,8 @@ export class SuspendCommand extends Command {
 				1
 			),
 			new CommandPermission(
-				[],
+				["KICK_MEMBERS"],
+				["MANAGE_ROLES", "EMBED_LINKS"],
 				["raidLeader", "headRaidLeader", "officer", "moderator"],
 				false
 			),
@@ -124,7 +124,7 @@ export class SuspendCommand extends Command {
 				&& guild.me.roles.highest.comparePositionTo(memberToSuspend.roles.highest) <= 0) {
 				// bot is lower than the person to suspend
 				for (const role of memberToSuspend.roles.cache) {
-					await memberToSuspend.roles.remove(role).catch(e => { });
+					await memberToSuspend.roles.remove(role).catch(() => { });
 				}
 			}
 			else {
@@ -136,8 +136,8 @@ export class SuspendCommand extends Command {
 			await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null).setTitle("Discord API Error").setDescription(e), msg.channel);
 			return;
 		}
-		await MessageUtil.send({ content: `${memberToSuspend} has been suspended successfully.` }, msg.channel).catch(e => { });
-		await memberToSuspend.send(`**\`[${guild.name}]\`** You have been suspended from \`${guild.name}\`.\n\t⇒ Reason: ${reason}\n\tDuration: ${suspensionTime[0]}`).catch(e => { });
+		await MessageUtil.send({ content: `${memberToSuspend} has been suspended successfully.` }, msg.channel).catch(() => { });
+		await memberToSuspend.send(`**\`[${guild.name}]\`** You have been suspended from \`${guild.name}\`.\n\t⇒ Reason: ${reason}\n\tDuration: ${suspensionTime[0]}`).catch(() => { });
 
 		const embed: MessageEmbed = new MessageEmbed()
 			.setAuthor(memberToSuspend.user.tag, memberToSuspend.user.displayAvatarURL())
@@ -147,7 +147,7 @@ export class SuspendCommand extends Command {
 			.setTimestamp()
 			.setFooter("Suspension Command Executed At");
 		if (typeof suspensionChannel !== "undefined") {
-			await suspensionChannel.send(embed).catch(e => { });
+			await suspensionChannel.send(embed).catch(() => { });
 		}
 
 		await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
@@ -190,8 +190,8 @@ export class SuspendCommand extends Command {
 
 		const to: NodeJS.Timeout = setTimeout(async () => {
 			if (memberToSuspend.roles.cache.has(suspendedRole.id)) {
-				await memberToSuspend.roles.remove(suspendedRole).catch(e => { });
-				await memberToSuspend.roles.set(oldRoles).catch(e => { });
+				await memberToSuspend.roles.remove(suspendedRole).catch(() => { });
+				await memberToSuspend.roles.set(oldRoles).catch(() => { });
 
 				const embed: MessageEmbed = new MessageEmbed()
 					.setAuthor(memberToSuspend.user.tag, memberToSuspend.user.displayAvatarURL())
@@ -201,10 +201,10 @@ export class SuspendCommand extends Command {
 					.setTimestamp()
 					.setFooter("Unsuspended At");
 				if (typeof suspensionChannel !== "undefined") {
-					await suspensionChannel.send(embed).catch(e => { });
+					await suspensionChannel.send(embed).catch(() => { });
 				}
 
-				await memberToSuspend.send(`**\`[${guild.name}]\`** You have been unsuspended from \`${guild.name}\` for serving your suspension time. Thank you for your cooperation and please make sure you read the rules again.`).catch(e => { });
+				await memberToSuspend.send(`**\`[${guild.name}]\`** You have been unsuspended from \`${guild.name}\` for serving your suspension time. Thank you for your cooperation and please make sure you read the rules again.`).catch(() => { });
 			}
 
 			await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {

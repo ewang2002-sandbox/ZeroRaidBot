@@ -14,6 +14,7 @@ import { CheckBlacklistCommand } from "../Modules/Staff/CheckBlacklistCommand";
 import { BlacklistCommand } from "../Modules/Moderator/BlacklistCommand";
 import { UnblacklistCommand } from "../Modules/Moderator/UnblacklistCommand";
 import { PollCommand } from "../Modules/Staff/PollCommand";
+import { HelpCommand } from "../Modules/Public/HelpCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -22,7 +23,7 @@ export class CommandManager {
 	/**
 	 * The commands in the bot.
  	 */
-	private Commands: Collection<string, Command[]>;
+	private commands: Collection<string, Command[]>;
 
 	/**
 	 * Whether commands have been loaded or not for this particular object.
@@ -34,7 +35,7 @@ export class CommandManager {
 	 */
 	public constructor() {
 		// instantiate collection obj
-		this.Commands = new Collection<string, Command[]>();
+		this.commands = new Collection<string, Command[]>();
 	}
 
 	/**
@@ -45,22 +46,30 @@ export class CommandManager {
 			return;
 		}
 
-		this.Commands.set("Configuration", [
+		this.commands.set("Public", [
+			new HelpCommand()
+		]);
+
+		this.commands.set("Configuration", [
 			new ConfigureSectionCommand()
 		]);
-		this.Commands.set("Raid Leader", [
+
+		this.commands.set("Raid Leader", [
 			new StartAfkCheckCommand(), 
 			new StartHeadcountCommand()
 		]);
-		this.Commands.set("Developer", [
+
+		this.commands.set("Developer", [
 			new TestCommand()
 		]);
-		this.Commands.set("Staff", [
+
+		this.commands.set("Staff", [
 			new SendEmbedCommand(), 
 			new FindUserCommand(),
 			new PollCommand()
 		]);
-		this.Commands.set("Moderation", [
+		
+		this.commands.set("Moderation", [
 			new MuteCommand(), 
 			new UnmuteCommand(), 
 			new SuspendCommand(), 
@@ -73,20 +82,27 @@ export class CommandManager {
 	}
 
 	/**
+	 * Gets all commands loaded.
+	 */
+	public getCommands(): Collection<string, Command[]> {
+		return this.commands;
+	}
+
+	/**
 	 * Looks for a command and returns it.
 	 * @param {string} cmd The command name to look for.
 	 * @returns {Command | null} The command, if available. 
 	 */
 	public findCommand(cmd: string): Command | null {
-		for (let [, command] of this.Commands) {
+		for (let [, command] of this.commands) {
 			for (let i = 0; i < command.length; i++) {
-				if (command[i].getCommandDetails().getMainCommandName().toLowerCase() === cmd.toLowerCase()) {
+				if (command[i].getMainCommandName().toLowerCase() === cmd.toLowerCase()) {
 					return command[i];
 				}
 
-				if (command[i].getCommandDetails().getAliases().length > 0) {
-					for (let j = 0; j < command[i].getCommandDetails().getAliases().length; j++) {
-						if (command[i].getCommandDetails().getAliases()[j].toLowerCase() === cmd.toLowerCase()) {
+				if (command[i].getAliases().length > 0) {
+					for (let j = 0; j < command[i].getAliases().length; j++) {
+						if (command[i].getAliases()[j].toLowerCase() === cmd.toLowerCase()) {
 							return command[i];
 						}
 					}

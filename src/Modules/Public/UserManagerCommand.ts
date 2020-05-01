@@ -31,6 +31,7 @@ export class UserManagerCommand extends Command {
 			),
 			new CommandPermission(
 				[],
+				[],
 				["suspended"],
 				true
 			),
@@ -144,7 +145,7 @@ export class UserManagerCommand extends Command {
 			await m.delete().catch(e => { });
 			// add account or deal with name change
 			if (r.emoji.name === "➕") {
-
+				this.addAccount(msg, dmChannel, userDb);
 			}
 			// remove account
 			else if (r.emoji.name === "➖") {
@@ -412,7 +413,7 @@ export class UserManagerCommand extends Command {
 					if (typeof nameToReplace === "undefined") {
 						await VerificationHandler.newNameEntry(resolvedUserDbDiscord, msg.author, nameFromProfile);
 						statusSb.append(`The name, \`${nameFromProfile}\`, has been added as an alternative account.`).appendLine();
-					} 
+					}
 					else {
 						if (isMainIGN) {
 							await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne({ discordUserId: msg.author.id }, {
@@ -459,6 +460,7 @@ export class UserManagerCommand extends Command {
 			// to see if we can replace the old
 			// name with the new name
 			if (nameToReplaceWith !== "") {
+				// TODO make sure this works!
 				const guildDocuments: IRaidGuild[] = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.find({}).toArray();
 				for (const doc of guildDocuments) {
 					const guild: Guild | undefined = Zero.RaidClient.guilds.cache.get(doc.guildID);
@@ -466,9 +468,9 @@ export class UserManagerCommand extends Command {
 						const member: GuildMember | undefined = guild.members.cache.get(msg.author.id);
 						if (typeof member !== "undefined" && member.roles.cache.has(doc.roles.raider)) {
 							const name: string = member.displayName;
-							
+
 							let allNames: string[] = name.split("|");
-							let symbols: string = this.getSymbols(allNames[0]);
+							let symbols: string = this.getSymbolsFromName(allNames[0]);
 							allNames = allNames.map(x => x.trim().replace(/[^A-Za-z]/g, ""));
 							for (let i = 0; i < allNames.length; i++) {
 								if (allNames[i].toLowerCase() === nameToReplaceWith.toLowerCase()) {
@@ -490,6 +492,15 @@ export class UserManagerCommand extends Command {
 	}
 
 	/**
+	 * @param {Message} msg The author's message. 
+	 * @param {DMChannel} dmChannel The DM Channel. 
+	 * @param {IRaidUser} userDb The user db. 
+	 */
+	public async removeAccount(msg: Message, dmChannel: DMChannel, userDb: IRaidUser): Promise<void> {
+
+	}
+
+	/**
 	 * The reaction collector filter that can be used for all reaction collectors.
 	 * @param {EmojiResolvable[]} reactions The reactions. 
 	 * @param {Message} msg The message from the author.  
@@ -504,7 +515,7 @@ export class UserManagerCommand extends Command {
 	 * Returns a string consisting of all symbols BEFORE any letters.
 	 * @param {string} name The name. 
 	 */
-	private getSymbols(name: string): string {
+	private getSymbolsFromName(name: string): string {
 		let symbols: string = "";
 		for (let i = 0; i < name.length; i++) {
 			if (!/^[A-Za-z]+$/.test(name[i])) {

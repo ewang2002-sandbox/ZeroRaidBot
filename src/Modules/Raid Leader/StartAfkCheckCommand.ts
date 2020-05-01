@@ -19,6 +19,7 @@ export class StartAfkCheckCommand extends Command {
 			),
 			new CommandPermission(
 				[],
+				["MANAGE_CHANNELS", "ADD_REACTIONS", "EMBED_LINKS"],
 				["headRaidLeader", "raidLeader", "almostRaidLeader", "trialRaidLeader"],
 				false
 			),

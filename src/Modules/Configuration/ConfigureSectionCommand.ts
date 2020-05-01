@@ -248,6 +248,7 @@ export class ConfigureSectionCommand extends Command {
 			),
 			new CommandPermission(
 				["ADMINISTRATOR"],
+				["ADD_REACTIONS", "MANAGE_MESSAGES", "EMBED_LINKS"],
 				[],
 				false
 			),

@@ -22,7 +22,8 @@ export class UnsuspendCommand extends Command {
 				2
 			),
 			new CommandPermission(
-				[],
+                ["KICK_MEMBERS"],
+                ["MANAGE_ROLES", "EMBED_LINKS"],
 				["raidLeader", "headRaidLeader", "officer", "moderator"],
 				false
 			),

@@ -321,6 +321,7 @@ export class UserManagerCommand extends Command {
 				return;
 			}
 
+			const nameFromProfile: string = requestData.data.name;
 			let codeFound: boolean = false;
 			for (let i = 0; i < requestData.data.description.length; i++) {
 				if (requestData.data.description[i].includes(code)) {
@@ -364,63 +365,84 @@ export class UserManagerCommand extends Command {
 				}
 			}
 
-			// we're replacing an entry
-			if (nameToReplaceWith === "") {
-				await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne({ discordUserId: msg.author.id }, {
-					$push: {
-						otherAccountNames: {
-							lowercase:  requestData.data.name.toLowerCase(),
-							displayName: requestData.data.name
+
+			const resolvedUserDbDiscord: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient
+				.findOne({ discordUserId: msg.author.id });
+
+			const ignFilterQuery: FilterQuery<IRaidUser> = {
+				$or: [
+					{
+						rotmgLowercaseName: nameFromProfile.toLowerCase()
+					},
+					{
+						"otherAccountNames.lowercase": nameFromProfile.toLowerCase()
+					}
+				]
+			};
+			const resolvedUserDbIGN: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient
+				.findOne(ignFilterQuery);
+
+			const statusSb: StringBuilder = new StringBuilder();
+
+			// discord id found; ign NOT found in db
+			// if we're adding an alt account
+			// this should be the only boolean condition
+			// that is true
+			if (resolvedUserDbDiscord !== null && resolvedUserDbIGN === null) {
+				let names: string[] = [
+					resolvedUserDbDiscord.rotmgLowercaseName
+					, ...resolvedUserDbDiscord.otherAccountNames.map(x => x.lowercase)
+				];
+
+				let isMainIGN: boolean = false;
+				let nameToReplace: string | undefined;
+				nameHistory.shift();
+				if (nameHistory.length !== 0) {
+					for (let i = 0; i < names.length; i++) {
+						for (let j = 0; j < nameHistory.length; j++) {
+							if (names[i] === nameHistory[j].name.toLowerCase()) {
+								nameToReplace = nameHistory[j].name;
+								if (i === 0) {
+									isMainIGN = true;
+								}
+							}
 						}
 					}
-				});
-			}
-			else {
-				let updateQuery: UpdateQuery<IRaidUser>;
-				let filterQuery: FilterQuery<IRaidUser>;
 
-				// main account
-				if (userDb.rotmgLowercaseName === nameToReplaceWith.toLowerCase()) {
-					filterQuery = {
-						$and: [ // both conditions must be met
-							{
-								discordUserId: msg.author.id
-							},
-							{
-								rotmgLowercaseName: nameToReplaceWith.toLowerCase()
-							}
-						]
-					};
-
-					updateQuery = {
-						$set: {
-							rotmgDisplayName: requestData.data.name,
-							rotmgLowercaseName: requestData.data.name.toLowerCase()
+					if (typeof nameToReplace === "undefined") {
+						await VerificationHandler.newNameEntry(resolvedUserDbDiscord, msg.author, nameFromProfile);
+						statusSb.append(`The name, \`${nameFromProfile}\`, has been added as an alternative account.`).appendLine();
+					} 
+					else {
+						if (isMainIGN) {
+							await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne({ discordUserId: msg.author.id }, {
+								$set: {
+									rotmgDisplayName: nameFromProfile,
+									rotmgLowercaseName: nameFromProfile.toLowerCase()
+								}
+							});
+							statusSb.append(`Your old main account name, \`${nameToReplace}\`, has been replaced with your new name, \`${nameFromProfile}\`.`).appendLine();
 						}
-					};
+						else {
+							await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne({
+								discordUserId: msg.author.id,
+								"otherAccountNames.lowercase": nameToReplace.toLowerCase()
+							}, {
+								$set: {
+									"otherAccountNames.$.lowercase": nameFromProfile.toLowerCase(),
+									"otherAccountNames.$.displayName": nameFromProfile
+								}
+							});
+							statusSb.append(`Your old alternative account name, \`${nameToReplace}\`, has been replaced with your new name, \`${nameFromProfile}\`.`).appendLine();
+						}
+					}
 				}
-				// alt account
 				else {
-					filterQuery = {
-						$and: [ // both conditions must be met
-							{
-								discordUserId: msg.author.id
-							},
-							{
-								"otherAccountNames.lowercase": nameToReplaceWith.toLowerCase()
-							}
-						]
-					};
-
-					updateQuery = {
-						$set: {
-							"otherAccountNames.$.displayName": requestData.data.name,
-							"otherAccountNames.$.lowercase": requestData.data.name.toLowerCase()
-						}
-					};
+					// array length is 0
+					// meaning no name history at all
+					await VerificationHandler.newNameEntry(resolvedUserDbDiscord, msg.author, nameFromProfile);
+					statusSb.append(`The name, \`${nameFromProfile}\`, has been added as an alternative account.`).appendLine();
 				}
-
-				await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne(filterQuery, updateQuery).catch(e => { });
 			}
 
 			// success!
@@ -428,7 +450,7 @@ export class UserManagerCommand extends Command {
 			const successEmbed: MessageEmbed = new MessageEmbed()
 				.setTitle("Profile Manager: Successful Verification")
 				.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
-				.setDescription(nameToReplaceWith === "" ? `The name, **\`${requestData.data.name}\`**, has been added as an alternative account.` : `The name, **\`${nameToReplaceWith}\`**, has been replaced with the name, **\`${requestData.data.name}\`**.`)
+				.setDescription(statusSb.toString())
 				.setColor("GREEN")
 				.setFooter("Verification Process: Stopped.");
 			await verifMessage.edit(successEmbed);
@@ -437,16 +459,29 @@ export class UserManagerCommand extends Command {
 			// to see if we can replace the old
 			// name with the new name
 			if (nameToReplaceWith !== "") {
-				const guildDocuments: IRaidGuild[] = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.find({ }).toArray();
+				const guildDocuments: IRaidGuild[] = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.find({}).toArray();
 				for (const doc of guildDocuments) {
 					const guild: Guild | undefined = Zero.RaidClient.guilds.cache.get(doc.guildID);
 					if (typeof guild !== "undefined") {
 						const member: GuildMember | undefined = guild.members.cache.get(msg.author.id);
 						if (typeof member !== "undefined" && member.roles.cache.has(doc.roles.raider)) {
 							const name: string = member.displayName;
-							if (name.toLowerCase().includes(nameToReplaceWith.toLowerCase())) {
-								
+							
+							let allNames: string[] = name.split("|");
+							let symbols: string = this.getSymbols(allNames[0]);
+							allNames = allNames.map(x => x.trim().replace(/[^A-Za-z]/g, ""));
+							for (let i = 0; i < allNames.length; i++) {
+								if (allNames[i].toLowerCase() === nameToReplaceWith.toLowerCase()) {
+									allNames[i] = nameToReplaceWith;
+								}
 							}
+
+							// remove duplicates. 
+							allNames = allNames
+								.filter((item: string, index: number) => allNames.indexOf(item) === index);
+
+							await member.setNickname(`${symbols}${allNames.join(" | ")}`)
+								.catch(e => { });
 						}
 					}
 				}
@@ -463,5 +498,24 @@ export class UserManagerCommand extends Command {
 		return (reaction: MessageReaction, user: User) => {
 			return reactions.includes(reaction.emoji.name) && user.id === msg.author.id && !user.bot;
 		}
+	}
+
+	/**
+	 * Returns a string consisting of all symbols BEFORE any letters.
+	 * @param {string} name The name. 
+	 */
+	private getSymbols(name: string): string {
+		let symbols: string = "";
+		for (let i = 0; i < name.length; i++) {
+			if (!/^[A-Za-z]+$/.test(name[i])) {
+				symbols += name[i];
+				continue;
+			}
+			else {
+				break;
+			}
+		}
+
+		return symbols;
 	}
 }

@@ -426,7 +426,6 @@ export module VerificationHandler {
 						return;
 					}
 
-					// TODO: check for name history
 					for (const blacklistEntry of guildDb.moderation.blacklistedUsers) {
 						for (const nameEntry of nameHistory.map(x => x.name)) {
 							if (blacklistEntry.inGameName.toLowerCase() === nameEntry.toLowerCase()) {
@@ -491,7 +490,7 @@ export module VerificationHandler {
 
 							let isMainIGN: boolean = false;
 							let nameToReplace: string | undefined;
-							nameHistory.shift();
+							nameHistory.shift(); // will remove the first name, which is the current name
 							if (nameHistory.length !== 0) {
 								for (let i = 0; i < names.length; i++) {
 									for (let j = 0; j < nameHistory.length; j++) {
@@ -504,7 +503,11 @@ export module VerificationHandler {
 									}
 								}
 
-								if (typeof nameToReplace !== "undefined") {
+								if (typeof nameToReplace === "undefined") {
+									// name history doesn't correspond to anything
+									await newNameEntry(resolvedUserDbDiscord, member, nameFromProfile);
+								} 
+								else {
 									if (isMainIGN) {
 										await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne({ discordUserId: member.id }, {
 											$set: {
@@ -529,24 +532,10 @@ export module VerificationHandler {
 							else {
 								// array length is 0
 								// meaning no name history at all
-								const oldMainName: string = resolvedUserDbDiscord.rotmgDisplayName;
-								await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne({
-									discordUserId: member.id
-								}, {
-									$set: {
-										rotmgDisplayName: nameFromProfile,
-										rotmgLowercaseName: nameFromProfile.toLowerCase()
-									},
-									$push: {
-										otherAccountNames: {
-											lowercase: oldMainName.toLowerCase(),
-											displayName: oldMainName
-										}
-									}
-								});
+								await newNameEntry(resolvedUserDbDiscord, member, nameFromProfile);
 							}
 						}
-						// discord id found but ign was not found in db
+						// ign found in db; discord id NOT found in db.
 						else if (resolvedUserDbIGN !== null && resolvedUserDbDiscord === null) {
 							await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne(ignFilterQuery, {
 								$set: {
@@ -616,6 +605,34 @@ export module VerificationHandler {
 			// TODO: find better way to make this apparant 
 			return;
 		}
+	}
+
+	/**
+	 * Replaces the current main name with the new name and puts the old main name as an alternative account.
+	 * @param {IRaidUser} resolvedUserDbDiscord The found DB based on Discord ID. 
+	 * @param {(GuildMember | User)} member The guild member. 
+	 * @param {string} nameFromProfile The new name. 
+	 */
+	export async function newNameEntry(
+		resolvedUserDbDiscord: IRaidUser, 
+		member: GuildMember | User, 
+		nameFromProfile: string
+	) {
+		const oldMainName: string = resolvedUserDbDiscord.rotmgDisplayName;
+		await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne({
+			discordUserId: member.id
+		}, {
+			$set: {
+				rotmgDisplayName: nameFromProfile,
+				rotmgLowercaseName: nameFromProfile.toLowerCase()
+			},
+			$push: {
+				otherAccountNames: {
+					lowercase: oldMainName.toLowerCase(),
+					displayName: oldMainName
+				}
+			}
+		});
 	}
 
 	/**

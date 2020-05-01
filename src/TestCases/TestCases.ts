@@ -37,4 +37,24 @@ export module TestCasesNameHistory {
     export function withNoNameChanges(): INameHistory[] {
         return [];
     }
+
+    export function withNoCorrespondingNames(): INameHistory[] {
+        return [
+            {
+                name: "ConsoleMC",
+                from: "",
+                to: ""
+            },
+            {
+                name: "AOsakmdad",
+                from: "",
+                to: ""
+            },
+            {
+                name: "OWEkisdS",
+                from: "",
+                to: ""
+            }
+        ]
+    }
 }

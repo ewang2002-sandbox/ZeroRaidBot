@@ -15,6 +15,7 @@ import { Zero } from "../../Zero";
 import { TiffitRealmEyeAPI } from "../../Constants/ConstantVars";
 import { FilterQuery, UpdateQuery } from "mongodb";
 import { VerificationHandler } from "../../Handlers/VerificationHandler";
+import { INameHistory, IAPIError } from "../../Definitions/ICustomREVerification";
 
 export class UserManagerCommand extends Command {
 	public constructor() {
@@ -330,7 +331,7 @@ export class UserManagerCommand extends Command {
 				return;
 			}
 
-			const nameHistory: VerificationHandler.INameHistory[] | VerificationHandler.IAPIError = await VerificationHandler
+			const nameHistory: INameHistory[] | IAPIError = await VerificationHandler
 				.getRealmEyeNameHistory(requestData.data.name);
 
 			if ("errorMessage" in nameHistory) {

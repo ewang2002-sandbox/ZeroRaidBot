@@ -13,20 +13,10 @@ import { StringBuilder } from "../Classes/String/StringBuilder";
 import { AxiosResponse } from "axios";
 import { FilterQuery, UpdateQuery } from "mongodb";
 import { ArrayUtil } from "../Utility/ArrayUtil";
+import { INameHistory, IAPIError } from "../Definitions/ICustomREVerification";
+import { TestCasesNameHistory } from "../TestCases/TestCases";
 
 export module VerificationHandler {
-
-	export interface INameHistory {
-		name: string;
-		from: string;
-		to: string;
-	}
-
-	export interface IAPIError {
-		errorMessage: string;
-		specification: string;
-	}
-
 	interface IPreliminaryCheckError {
 		fields: EmbedFieldData[] | EmbedFieldData[][];
 		errorMsg: string;
@@ -379,7 +369,7 @@ export module VerificationHandler {
 						return;
 					}
 
-					const nameHistory: INameHistory[] | IAPIError = await getRealmEyeNameHistory(requestData.data.name);
+					let nameHistory: INameHistory[] | IAPIError = await getRealmEyeNameHistory(requestData.data.name);
 					if ("errorMessage" in nameHistory) {
 						if (typeof verificationAttemptsChannel !== "undefined") {
 							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his or her name history is not available to the public.`).catch(() => { });
@@ -426,6 +416,8 @@ export module VerificationHandler {
 					const resolvedUserDbDiscord: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient.findOne({
 						discordUserId: member.id
 					});
+
+					nameHistory = TestCasesNameHistory.withNoNameChanges();
 
 					const ignFilterQuery: FilterQuery<IRaidUser> = {
 						$or: [

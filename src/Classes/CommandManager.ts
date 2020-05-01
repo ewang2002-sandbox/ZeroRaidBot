@@ -1,20 +1,20 @@
 import { Collection } from "discord.js";
 import { Command } from "../Templates/Command/Command";
-import { TestCommand } from "../Modules/Test/TestCommand";
-import { SendEmbedCommand } from "../Modules/Staff/SendEmbedCommand";
-import { ConfigureSectionCommand } from "../Modules/Configuration/ConfigureSectionCommand";
-import { StartAfkCheckCommand } from "../Modules/Raid Leader/StartAfkCheckCommand";
-import { StartHeadcountCommand } from "../Modules/Raid Leader/StartHeadcountCommand";
-import { FindUserCommand } from "../Modules/Staff/FindUserCommand";
-import { MuteCommand } from "../Modules/Moderator/MuteCommand";
-import { UnmuteCommand } from "../Modules/Moderator/UnmuteCommand";
-import { SuspendCommand } from "../Modules/Moderator/SuspendCommand";
-import { UnsuspendCommand } from "../Modules/Moderator/UnsuspendCommand";
-import { CheckBlacklistCommand } from "../Modules/Staff/CheckBlacklistCommand";
-import { BlacklistCommand } from "../Modules/Moderator/BlacklistCommand";
-import { UnblacklistCommand } from "../Modules/Moderator/UnblacklistCommand";
-import { PollCommand } from "../Modules/Staff/PollCommand";
-import { HelpCommand } from "../Modules/Public/HelpCommand";
+import { TestCommand } from "../Commands/Test/TestCommand";
+import { SendEmbedCommand } from "../Commands/Staff/SendEmbedCommand";
+import { ConfigureSectionCommand } from "../Commands/Configuration/ConfigureSectionCommand";
+import { StartAfkCheckCommand } from "../Commands/Raid Leader/StartAfkCheckCommand";
+import { StartHeadcountCommand } from "../Commands/Raid Leader/StartHeadcountCommand";
+import { FindUserCommand } from "../Commands/Staff/FindUserCommand";
+import { MuteCommand } from "../Commands/Moderator/MuteCommand";
+import { UnmuteCommand } from "../Commands/Moderator/UnmuteCommand";
+import { SuspendCommand } from "../Commands/Moderator/SuspendCommand";
+import { UnsuspendCommand } from "../Commands/Moderator/UnsuspendCommand";
+import { CheckBlacklistCommand } from "../Commands/Staff/CheckBlacklistCommand";
+import { BlacklistCommand } from "../Commands/Moderator/BlacklistCommand";
+import { UnblacklistCommand } from "../Commands/Moderator/UnblacklistCommand";
+import { PollCommand } from "../Commands/Staff/PollCommand";
+import { HelpCommand } from "../Commands/Public/HelpCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -68,7 +68,7 @@ export class CommandManager {
 			new FindUserCommand(),
 			new PollCommand()
 		]);
-		
+
 		this.commands.set("Moderation", [
 			new MuteCommand(), 
 			new UnmuteCommand(), 

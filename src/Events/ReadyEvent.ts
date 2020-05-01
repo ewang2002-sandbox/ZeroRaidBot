@@ -1,10 +1,9 @@
-import { Client, User, ClientUser, ClientApplication, GuildMember, Role } from "discord.js";
+import { User, ClientUser, ClientApplication, GuildMember, Role } from "discord.js";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
-import { Cursor } from "mongodb";
 import { Zero } from "../Zero";
-import { MuteCommand } from "../Modules/Moderator/MuteCommand";
-import { SuspendCommand } from "../Modules/Moderator/SuspendCommand";
+import { MuteCommand } from "../Commands/Moderator/MuteCommand";
+import { SuspendCommand } from "../Commands/Moderator/SuspendCommand";
 
 export async function onReadyEvent() {
 	const guildBots: string[] = [];
@@ -22,7 +21,7 @@ export async function onReadyEvent() {
 					const durationToServe: number = mutedUser.endsAt - new Date().getTime();
 					const member: GuildMember = guild.members.cache.get(mutedUser.userId) as GuildMember;
 					if (durationToServe < 0) {
-						await member.roles.remove(mutedRole).catch(e => { });
+						await member.roles.remove(mutedRole).catch(() => { });
 						continue;
 					}
 					MuteCommand.timeMute(guild, member, durationToServe);
@@ -40,8 +39,8 @@ export async function onReadyEvent() {
 					const durationToServe: number = suspendedUser.endsAt - new Date().getTime();
 					const member: GuildMember = guild.members.cache.get(suspendedUser.userId) as GuildMember;
 					if (durationToServe < 0) {
-						await member.roles.set(suspendedUser.roles).catch(e => { });
-						await member.roles.remove(suspendedRole).catch(e => { });
+						await member.roles.set(suspendedUser.roles).catch(() => { });
+						await member.roles.remove(suspendedRole).catch(() => { });
 						continue;
 					}
 					SuspendCommand.timeSuspend(guild, member, durationToServe, suspendedUser.roles);

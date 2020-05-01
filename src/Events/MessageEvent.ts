@@ -1,4 +1,4 @@
-import { Client, Message, Guild, ClientApplication, User, MessageEmbed, GuildMember } from "discord.js";
+import { Message, ClientApplication, User, MessageEmbed, GuildMember } from "discord.js";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { DefaultPrefix } from "../Configuration/Config";
 import { Command } from "../Templates/Command/Command";
@@ -11,7 +11,7 @@ import { MessageUtil } from "../Utility/MessageUtil";
 export async function onMessageEvent(msg: Message) {
 	// make sure we have a regular message to handle
 	if (msg.type === "PINS_ADD") {
-		await msg.delete().catch(e => { });
+		await msg.delete().catch(() => { });
 		return;
 	}
 
@@ -70,7 +70,7 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 	if (command.isBotOwnerOnly() && msg.author.id !== (app.owner as User).id) {
 		embed.setTitle("**Bot Owner Command Only**")
 			.setDescription("This command can only be used by the bot owner.");
-		msg.author.send(embed).catch(e => { });
+		msg.author.send(embed).catch(() => { });
 		return;
 	}
 
@@ -78,7 +78,7 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 	if (msg.guild === null && command.isGuildOnly()) {
 		embed.setTitle("**Server Command Only**")
 			.setDescription("This command only works in a server. Please try executing this command in a server.");
-		msg.author.send(embed).catch(e => { });
+		msg.author.send(embed).catch(() => { });
 		return;
 	}
 
@@ -91,7 +91,7 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 		if (command.isServerOwnerOnly() && msg.author.id !== msg.guild.ownerID) {
 			embed.setTitle("**Server Owner Command Only**")
 				.setDescription("This command can only be used by the guild server owner.");
-			MessageUtil.send(embed, msg.channel, 8 * 1000).catch(e => { });
+			MessageUtil.send(embed, msg.channel, 8 * 1000).catch(() => { });
 
 			return;
 		}
@@ -122,7 +122,7 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 							value: StringUtil.applyCodeBlocks(missingPermissions)
 						}
 					]);
-				MessageUtil.send(embed, msg.channel, 8 * 1000).catch(e => { });
+				MessageUtil.send(embed, msg.channel, 8 * 1000).catch(() => { });
 
 				return;
 			}
@@ -189,7 +189,7 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 						name: "Required Roles",
 						value: StringUtil.applyCodeBlocks(command.getRolePermissions().map(x => x.toUpperCase()).join(", "))
 					});
-				MessageUtil.send(embed, msg.channel, 8 * 1000).catch(e => { });
+				MessageUtil.send(embed, msg.channel, 8 * 1000).catch(() => { });
 
 				return;
 			}
@@ -225,7 +225,7 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 						value: StringUtil.applyCodeBlocks(missingPermissions)
 					}
 				]);
-			MessageUtil.send(embed, msg.channel, 8 * 1000).catch(e => { });
+			MessageUtil.send(embed, msg.channel, 8 * 1000).catch(() => { });
 
 			return;
 		}
@@ -247,11 +247,11 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 					inline: true
 				}
 			]);
-		MessageUtil.send(embed, msg.channel, 8 * 1000).catch(e => { });
+		MessageUtil.send(embed, msg.channel, 8 * 1000).catch(() => { });
 
 		return;
 	}
 
-	await msg.delete().catch(e => { });
+	await msg.delete().catch(() => { });
 	command.executeCommand(msg, args, guildHandler);
 }

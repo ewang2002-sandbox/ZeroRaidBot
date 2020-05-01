@@ -2,7 +2,7 @@ import { GuildMember, Role, PartialGuildMember } from "discord.js";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
 import { IMutedData, ISuspendedData } from "../Definitions/IPunishmentObject";
-import { MuteCommand } from "../Modules/Moderator/MuteCommand";
+import { MuteCommand } from "../Commands/Moderator/MuteCommand";
 
 export async function onGuildMemberAdd(
     member: GuildMember | PartialGuildMember

@@ -4,7 +4,7 @@ import { IRaidUser } from "../Templates/IRaidUser";
 import { MessageAutoTick } from "../Classes/Message/MessageAutoTick";
 import { StringUtil } from "../Utility/StringUtil";
 import { ISection } from "../Definitions/ISection";
-import { MongoDbHelper } from "../Helpers/MongoDbHelper";
+import { MongoDbHelper } from "./MongoDbHelper";
 import { MessageUtil } from "../Utility/MessageUtil";
 import { ITiffitRealmEyeProfile, ITiffitNoUser } from "../Definitions/ITiffitRealmEye";
 import { Zero } from "../Zero";
@@ -57,10 +57,12 @@ export module VerificationHandler {
 
 			// channel declaration
 			// yes, we know these can be textchannels b/c that's the input in configsections
-			let verificationAttemptsChannel: TextChannel | undefined = guild.channels.cache
+			const verificationAttemptsChannel: TextChannel | undefined = guild.channels.cache
 				.get(section.channels.logging.verificationAttemptsChannel) as TextChannel | undefined;
-			let verificationSuccessChannel: TextChannel | undefined = guild.channels.cache
+			const verificationSuccessChannel: TextChannel | undefined = guild.channels.cache
 				.get(section.channels.logging.verificationSuccessChannel) as TextChannel | undefined;
+			const manualVerificationChannel: TextChannel | undefined = guild.channels.cache
+				.get(section.channels.manualVerification) as TextChannel | undefined;
 
 			const verificationChannel: GuildChannel | undefined = guild.channels.cache.get(section.channels.verificationChannel);
 			if (typeof verificationChannel === "undefined" || !(verificationChannel instanceof TextChannel)) {
@@ -459,93 +461,7 @@ export module VerificationHandler {
 						.setColor("GREEN")
 						.setFooter("Verification Process: Stopped.");
 					await botMsg.edit(successEmbed);
-
-					const resolvedUserDbDiscord: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient
-						.findOne({ discordUserId: member.id });
-
-					const ignFilterQuery: FilterQuery<IRaidUser> = {
-						$or: [
-							{
-								rotmgLowercaseName: nameFromProfile.toLowerCase()
-							},
-							{
-								"otherAccountNames.lowercase": nameFromProfile.toLowerCase()
-							}
-						]
-					};
-					const resolvedUserDbIGN: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient
-						.findOne(ignFilterQuery);
-
-					// completely new profile
-					if (resolvedUserDbDiscord === null && resolvedUserDbIGN === null) {
-						const userMongo: MongoDbHelper.MongoDbUserManager = new MongoDbHelper.MongoDbUserManager(nameFromProfile);
-						await userMongo.createNewUserDB(member.id);
-					}
-					else {
-						// discord id found; ign NOT found in db
-						if (resolvedUserDbDiscord !== null && resolvedUserDbIGN === null) {
-							let names: string[] = [
-								resolvedUserDbDiscord.rotmgLowercaseName
-								, ...resolvedUserDbDiscord.otherAccountNames.map(x => x.lowercase)
-							];
-
-							let isMainIGN: boolean = false;
-							let nameToReplace: string | undefined;
-							nameHistory.shift(); // will remove the first name, which is the current name
-							if (nameHistory.length !== 0) {
-								for (let i = 0; i < names.length; i++) {
-									for (let j = 0; j < nameHistory.length; j++) {
-										if (names[i] === nameHistory[j].name.toLowerCase()) {
-											nameToReplace = nameHistory[j].name;
-											if (i === 0) {
-												isMainIGN = true;
-											}
-										}
-									}
-								}
-
-								if (typeof nameToReplace === "undefined") {
-									// name history doesn't correspond to anything
-									await newNameEntry(resolvedUserDbDiscord, member, nameFromProfile);
-								} 
-								else {
-									if (isMainIGN) {
-										await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne({ discordUserId: member.id }, {
-											$set: {
-												rotmgDisplayName: nameFromProfile,
-												rotmgLowercaseName: nameFromProfile.toLowerCase()
-											}
-										});
-									}
-									else {
-										await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne({
-											discordUserId: member.id,
-											"otherAccountNames.lowercase": nameToReplace.toLowerCase()
-										}, {
-											$set: {
-												"otherAccountNames.$.lowercase": nameFromProfile.toLowerCase(),
-												"otherAccountNames.$.displayName": nameFromProfile
-											}
-										});
-									}
-								}
-							}
-							else {
-								// array length is 0
-								// meaning no name history at all
-								await newNameEntry(resolvedUserDbDiscord, member, nameFromProfile);
-							}
-						}
-						// ign found in db; discord id NOT found in db.
-						else if (resolvedUserDbIGN !== null && resolvedUserDbDiscord === null) {
-							await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne(ignFilterQuery, {
-								$set: {
-									discordUserId: member.id
-								}
-							});
-						}
-					}
-
+					await accountInDatabase(member, nameFromProfile, nameHistory);
 					if (typeof verificationSuccessChannel !== "undefined") {
 						verificationSuccessChannel.send(`📥 **\`[${section.nameOfSection}]\`** ${member} has successfully been verified as \`${inGameName}\`.`).catch(console.error);
 					}
@@ -567,7 +483,7 @@ export module VerificationHandler {
 							if (Array.isArray(res) || res.id === member.id) {
 								continue;
 							}
-							
+
 							for (const [id, role] of res.roles.cache) {
 								await res.roles.remove(role).catch(e => { });
 							}
@@ -633,14 +549,104 @@ export module VerificationHandler {
 	}
 
 	/**
+	 * Adds the account to the database, or if the account exists, modifies it.
+	 * @param {GuildMember} member The guild member that has been verified. 
+	 * @param {string} nameFromProfile The name associated with the guild member. 
+	 * @param {INameHistory[]} nameHistory The person's name history. 
+	 */
+	async function accountInDatabase(member: GuildMember, nameFromProfile: string, nameHistory: INameHistory[]) {
+		const resolvedUserDbDiscord: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient
+			.findOne({ discordUserId: member.id });
+		const ignFilterQuery: FilterQuery<IRaidUser> = {
+			$or: [
+				{
+					rotmgLowercaseName: nameFromProfile.toLowerCase()
+				},
+				{
+					"otherAccountNames.lowercase": nameFromProfile.toLowerCase()
+				}
+			]
+		};
+		const resolvedUserDbIGN: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient
+			.findOne(ignFilterQuery);
+		// completely new profile
+		if (resolvedUserDbDiscord === null && resolvedUserDbIGN === null) {
+			const userMongo: MongoDbHelper.MongoDbUserManager = new MongoDbHelper.MongoDbUserManager(nameFromProfile);
+			await userMongo.createNewUserDB(member.id);
+		}
+		else {
+			// discord id found; ign NOT found in db
+			if (resolvedUserDbDiscord !== null && resolvedUserDbIGN === null) {
+				let names: string[] = [
+					resolvedUserDbDiscord.rotmgLowercaseName,
+					...resolvedUserDbDiscord.otherAccountNames.map(x => x.lowercase)
+				];
+				let isMainIGN: boolean = false;
+				let nameToReplace: string | undefined;
+				nameHistory.shift(); // will remove the first name, which is the current name
+				if (nameHistory.length !== 0) {
+					for (let i = 0; i < names.length; i++) {
+						for (let j = 0; j < nameHistory.length; j++) {
+							if (names[i] === nameHistory[j].name.toLowerCase()) {
+								nameToReplace = nameHistory[j].name;
+								if (i === 0) {
+									isMainIGN = true;
+								}
+							}
+						}
+					}
+					if (typeof nameToReplace === "undefined") {
+						// name history doesn't correspond to anything
+						await newNameEntry(resolvedUserDbDiscord, member, nameFromProfile);
+					}
+					else {
+						if (isMainIGN) {
+							await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne({ discordUserId: member.id }, {
+								$set: {
+									rotmgDisplayName: nameFromProfile,
+									rotmgLowercaseName: nameFromProfile.toLowerCase()
+								}
+							});
+						}
+						else {
+							await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne({
+								discordUserId: member.id,
+								"otherAccountNames.lowercase": nameToReplace.toLowerCase()
+							}, {
+								$set: {
+									"otherAccountNames.$.lowercase": nameFromProfile.toLowerCase(),
+									"otherAccountNames.$.displayName": nameFromProfile
+								}
+							});
+						}
+					}
+				}
+				else {
+					// array length is 0
+					// meaning no name history at all
+					await newNameEntry(resolvedUserDbDiscord, member, nameFromProfile);
+				}
+			}
+			// ign found in db; discord id NOT found in db.
+			else if (resolvedUserDbIGN !== null && resolvedUserDbDiscord === null) {
+				await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne(ignFilterQuery, {
+					$set: {
+						discordUserId: member.id
+					}
+				});
+			}
+		}
+	}
+
+	/**
 	 * Replaces the current main name with the new name and puts the old main name as an alternative account.
 	 * @param {IRaidUser} resolvedUserDbDiscord The found DB based on Discord ID. 
 	 * @param {(GuildMember | User)} member The guild member. 
 	 * @param {string} nameFromProfile The new name. 
 	 */
 	export async function newNameEntry(
-		resolvedUserDbDiscord: IRaidUser, 
-		member: GuildMember | User, 
+		resolvedUserDbDiscord: IRaidUser,
+		member: GuildMember | User,
 		nameFromProfile: string
 	) {
 		const oldMainName: string = resolvedUserDbDiscord.rotmgDisplayName;
@@ -907,5 +913,9 @@ export module VerificationHandler {
 			code += ArrayUtil.getRandomElement<string>(possibleChars);
 		}
 		return code;
+	}
+
+	async function manualVerification(guild: Guild, member: GuildMember, manualVerificationChannel: TextChannel): Promise<void> {
+
 	}
 }

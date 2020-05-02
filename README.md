@@ -1,5 +1,5 @@
 # Zero
-⚠️ Yes, I deleted the bot's original repository -- the one with 100+ commits -- because I might have accidently uploaded some sensitive information. Sorry about that.
+This repository is a newer repository; the older one is currently not public due to some sensitive credentials being leaked (we have since changed the passwords). If you would like to view the original repository, please submit an issue. Thanks.
 
 A [Realm of the Mad God](https://www.realmofthemadgod.com/) Discord Bot designed for verification, moderation, and raid management.
 
@@ -22,7 +22,7 @@ THEREFORE, there will be no official public version of this bot.
 ## Project Layout
 For this repository, the `master` branch is the developer's branch. In other words, the branch where unstable code -- code that either won't compile, has numerous errors, is incomplete, etc. -- will be pushed. 
 
-The `stable` branch is where code that generally has no errors will reside. The code in the `stable` branch have been tested so there should not be any errors. NOTE: for the first few days this system is in place, this may not be the case; that is, code in the `stable` branch may not compile or may have runtime errors. 
+The `stable` branch is where code that generally has no errors will reside. The code in the `stable` branch have been tested so there should not be any errors. The official, live bot will be using the code in the `stable` branch.
 
 ## Installation Guide
 **Creating the Bot Application**

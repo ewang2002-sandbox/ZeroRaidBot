@@ -1,7 +1,7 @@
 import { GuildMember, Guild, PartialGuildMember } from "discord.js";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
-import { UserHandler } from "../Handlers/UserHandler";
+import { UserHandler } from "../Helpers/UserHandler";
 
 export async function onGuildMemberUpdate(
     oldMember: GuildMember | PartialGuildMember,

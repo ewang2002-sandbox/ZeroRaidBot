@@ -9,6 +9,8 @@ import { onMessageReactionRemove } from "./Events/MessageReactionRemoveEvent";
 import { onGuildMemberAdd } from "./Events/GuildMemberAddEvent";
 import { onGuildCreate } from "./Events/GuildCreateEvent";
 import { onGuildMemberUpdate } from "./Events/GuildMemberUpdate";
+import { Collection } from "mongodb";
+import { IRaidBot } from "./Templates/IRaidBot";
 
 export class Zero {
 	/** 
@@ -59,10 +61,10 @@ export class Zero {
 	 */
 	public async login(): Promise<void> {
 		try {
-			const mdm: MongoDbHelper.MongoDbHelper = new MongoDbHelper.MongoDbHelper();
+			const mdm: MongoDbHelper.MongoDbBase = new MongoDbHelper.MongoDbBase();
 			await mdm.connect();
 			await Zero.RaidClient.login(this._token);
-			(Zero.RaidClient.user as ClientUser).setActivity("Being programmed to death.", { type: "CUSTOM_STATUS" });
+			(Zero.RaidClient.user as ClientUser).setActivity("my soul dying.", { type: "WATCHING" });
 		}
 		catch (e) {
 			throw new ReferenceError(e);

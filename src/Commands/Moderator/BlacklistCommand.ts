@@ -6,7 +6,7 @@ import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
 import { StringUtil } from "../../Utility/StringUtil";
-import { UserHandler } from "../../Handlers/UserHandler";
+import { UserHandler } from "../../Helpers/UserHandler";
 import { IRaidUser } from "../../Templates/IRaidUser";
 import { StringBuilder } from "../../Classes/String/StringBuilder";
 

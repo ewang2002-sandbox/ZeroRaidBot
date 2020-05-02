@@ -3,12 +3,18 @@ import { Credentials } from "../Configuration/Config";
 import { IRaidUser } from "../Templates/IRaidUser";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { AFKDungeon } from "../Constants/AFKDungeon";
+import { IRaidBot } from "../Templates/IRaidBot";
+import { Zero } from "../Zero";
+import { ClientUser } from "discord.js";
 
 export module MongoDbHelper {
+	export let MongoBotSettingsClient: Collection<IRaidBot>;
+
+
 	/**
 	 * The base class for MongoDb. This class should be instantiated once at the beginning. 
 	 */
-	export class MongoDbHelper {
+	export class MongoDbBase {
 		public static MongoClient: MongoClient;
 
 		/**
@@ -26,12 +32,18 @@ export module MongoDbHelper {
 			const mongoDbClient: MongoClient = new MongoClient(Credentials.dbURL, {
 				useNewUrlParser: true
 			});
-			MongoDbHelper.MongoClient = await mongoDbClient.connect();
+			MongoDbHelper.MongoDbBase.MongoClient = await mongoDbClient.connect();
 
-			MongoDbUserManager.MongoUserClient = MongoDbHelper.MongoClient.db(Credentials.dbName)
+			MongoDbUserManager.MongoUserClient = MongoDbHelper.MongoDbBase.MongoClient
+				.db(Credentials.dbName)
 				.collection<IRaidUser>(Credentials.userCollectionName);
-			MongoDbGuildManager.MongoGuildClient = MongoDbHelper.MongoClient.db(Credentials.dbName)
+			MongoDbGuildManager.MongoGuildClient = MongoDbHelper.MongoDbBase.MongoClient
+				.db(Credentials.dbName)
 				.collection<IRaidGuild>(Credentials.guildCollectionName);
+			MongoBotSettingsClient = MongoDbHelper.MongoDbBase.MongoClient
+				.db(Credentials.dbName)
+				.collection<IRaidBot>(Credentials.botCollectionName);
+			Object.freeze(MongoBotSettingsClient); // will this work? 
 		}
 	}
 
@@ -202,7 +214,8 @@ export module MongoDbHelper {
 						generalRaidAfkCheckChannel: "",
 						verificationChan: "",
 						controlPanelChannel: "",
-						raidRequestChannel: ""
+						raidRequestChannel: "",
+						networkAnnouncementsChannel: ""
 					},
 					roles: {
 						teamRole: "",
@@ -271,5 +284,13 @@ export module MongoDbHelper {
 				});
 			});
 		}
+	}
+
+	/**
+	 * Gets the bot settings.
+	 */
+	export async function getBotSettingsDb(): Promise<IRaidBot> {
+		const bot: ClientUser = (Zero.RaidClient.user as ClientUser);
+		return await MongoBotSettingsClient.findOne({ botId: bot.id }) as IRaidBot;
 	}
 }

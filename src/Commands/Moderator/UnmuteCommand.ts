@@ -6,7 +6,7 @@ import { MessageUtil } from "../../Utility/MessageUtil";
 import { StringUtil } from "../../Utility/StringUtil";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
-import { UserHandler } from "../../Handlers/UserHandler";
+import { UserHandler } from "../../Helpers/UserHandler";
 
 export class UnmuteCommand extends Command {
 	public constructor() {

@@ -215,6 +215,11 @@ export interface IRaidGuild {
 		 * Raid requests
 		 */
 		raidRequestChannel: string;
+
+		/**
+		 * Any messages from Network Admins will be sent to this channel.
+		 */
+		networkAnnouncementsChannel: string;
 	},
 
 	/**

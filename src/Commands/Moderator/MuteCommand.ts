@@ -6,7 +6,7 @@ import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
 import { StringUtil } from "../../Utility/StringUtil";
-import { UserHandler } from "../../Handlers/UserHandler";
+import { UserHandler } from "../../Helpers/UserHandler";
 
 export class MuteCommand extends Command {
 	public static currentTimeout: { timeout: NodeJS.Timeout, id: string }[] = [];

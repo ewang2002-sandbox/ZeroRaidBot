@@ -3,7 +3,7 @@ import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
 import { Message, GuildMember, MessageEmbed, User } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
-import { UserHandler } from "../../Handlers/UserHandler";
+import { UserHandler } from "../../Helpers/UserHandler";
 import { DateUtil } from "../../Utility/DateUtil";
 import { StringUtil } from "../../Utility/StringUtil";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
@@ -72,7 +72,6 @@ export class FindUserCommand extends Command {
 					}
 				}
 				let desc: string = `**\`${nameToSearchFor}\`** has been found in the database. `;
-				//embed.setDescription( ${typeof result === "undefined" ? "The person you are looking for is __not__ in the server." : `Additionally, the person you are looking for __is__ in the server.\nMention: ${result}`}`);
 				if (typeof result !== "undefined") {
 					desc += `Additionally, the person you are looking for __is__ in the server.\nMention: ${result}`;
 

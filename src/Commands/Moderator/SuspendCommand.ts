@@ -5,7 +5,7 @@ import { Message, GuildMember, Guild, MessageEmbed, Role, TextChannel } from "di
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
-import { UserHandler } from "../../Handlers/UserHandler";
+import { UserHandler } from "../../Helpers/UserHandler";
 
 export class SuspendCommand extends Command {
 	public static currentTimeout: { timeout: NodeJS.Timeout, id: string }[] = [];

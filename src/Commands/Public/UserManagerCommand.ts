@@ -14,10 +14,12 @@ import { ITiffitNoUser, ITiffitRealmEyeProfile } from "../../Definitions/ITiffit
 import { Zero } from "../../Zero";
 import { TiffitRealmEyeAPI } from "../../Constants/ConstantVars";
 import { FilterQuery, UpdateQuery } from "mongodb";
-import { VerificationHandler } from "../../Handlers/VerificationHandler";
+import { VerificationHandler } from "../../Helpers/VerificationHandler";
 import { INameHistory, IAPIError } from "../../Definitions/ICustomREVerification";
 
 export class UserManagerCommand extends Command {
+	public static readonly MAX_ALTS_ALLOWED: number = 8;
+
 	public constructor() {
 		super(
 			new CommandDetail(
@@ -109,9 +111,11 @@ export class UserManagerCommand extends Command {
 			.setTimestamp();
 		//.setDescription("⇒ React with ➕ to add an alternative account.\n⇒ React with ➖ remove an alternative account.\n⇒ React with 🔄 to switch your main account with one of your alternative account.\n⇒ React with ❌ to cancel this process.");
 
-		sbDesc.append("⇒ React with ➕ to verify an alternative account. Use this command if you recently got a name change.")
-			.appendLine();
-		reactions.push("➕");
+		if (userDb.otherAccountNames.length + 1 <= 8) {
+			sbDesc.append("⇒ React with ➕ to verify an alternative account. Use this command if you recently got a name change.")
+				.appendLine();
+			reactions.push("➕");
+		}
 
 		if (userDb.otherAccountNames.length !== 0) {
 			sbDesc.append("⇒ React with ➖ to remove an alternative account.")
@@ -163,11 +167,13 @@ export class UserManagerCommand extends Command {
 	}
 
 	/**
+	 * Precondition: The current amount of alternative accounts + LIMIT <= 8 
+	 * If adding an extra account exceeds the limit, do not run.
 	 * @param {Message} msg The author's message. 
 	 * @param {DMChannel} dmChannel The DM Channel. 
 	 * @param {IRaidUser} userDb The user db. 
 	 */
-	public async addAccount(msg: Message, dmChannel: DMChannel, userDb: IRaidUser): Promise<void> {
+	private async addAccount(msg: Message, dmChannel: DMChannel, userDb: IRaidUser): Promise<void> {
 		const inGameName: string | "CANCEL_" | "TIME_" = await new Promise(async (resolve) => {
 			const nameEmbed: MessageEmbed = new MessageEmbed()
 				.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
@@ -492,11 +498,19 @@ export class UserManagerCommand extends Command {
 	}
 
 	/**
+	 * Precondition: There is at least 1 alt account.
 	 * @param {Message} msg The author's message. 
 	 * @param {DMChannel} dmChannel The DM Channel. 
 	 * @param {IRaidUser} userDb The user db. 
 	 */
-	public async removeAccount(msg: Message, dmChannel: DMChannel, userDb: IRaidUser): Promise<void> {
+	private async removeAccount(msg: Message, dmChannel: DMChannel, userDb: IRaidUser): Promise<void> {
+		const altNames: string[] = userDb.otherAccountNames.map(x => x.lowercase);
+		const currentAlts: StringBuilder = new StringBuilder();
+		for (let i = 0; i < altNames.length; i++) {
+			currentAlts.append(`**\`[${i}]\`** ${altNames[i]}`);
+		}
+
+		const removeAccEmbed: MessageEmbed = new MessageEmbed();
 
 	}
 

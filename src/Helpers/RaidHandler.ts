@@ -7,7 +7,7 @@ import { IDungeonData } from "../Definitions/IDungeonData";
 import { IRaidInfo } from "../Definitions/IRaidInfo";
 import { ISection } from "../Definitions/ISection";
 import { RaidStatus } from "../Definitions/RaidStatus";
-import { RaidDbHelper } from "../Helpers/RaidDbHelper";
+import { RaidDbHelper } from "./RaidDbHelper";
 import { Zero } from "../Zero";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { ArrayUtil } from "../Utility/ArrayUtil";
@@ -18,7 +18,7 @@ import { IHeadCountInfo } from "../Definitions/IHeadCountInfo";
 import { TimeUnit } from "../Definitions/TimeUnit";
 import { MessageAutoTick } from "../Classes/Message/MessageAutoTick";
 import { NumberUtil } from "../Utility/NumberUtil";
-import { MongoDbHelper } from "../Helpers/MongoDbHelper";
+import { MongoDbHelper } from "./MongoDbHelper";
 
 export module RaidHandler {
 	/**

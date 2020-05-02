@@ -3,7 +3,7 @@ import { CommandPermission } from "../../Templates/Command/CommandPermission";
 import { Command } from "../../Templates/Command/Command";
 import { Message, Guild } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
-import { RaidHandler } from "../../Handlers/RaidHandler";
+import { RaidHandler } from "../../Helpers/RaidHandler";
 
 export class StartHeadcountCommand extends Command {
 	public constructor() {

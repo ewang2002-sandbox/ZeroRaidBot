@@ -4,7 +4,7 @@ import { CommandPermission } from "../../Templates/Command/CommandPermission";
 import { Message, TextChannel, GuildMember } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { GenericMessageCollector } from "../../Classes/Message/GenericMessageCollector";
-import { UserHandler } from "../../Handlers/UserHandler";
+import { UserHandler } from "../../Helpers/UserHandler";
 
 export class TestCommand extends Command {
 	public constructor() {

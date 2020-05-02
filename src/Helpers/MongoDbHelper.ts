@@ -230,6 +230,7 @@ export module MongoDbHelper {
 						raider: "",
 						suspended: "",
 						talkingRoles: [],
+						earlyLocationRoles: [],
 						optRoles: {
 							mutedRole: "",
 							keyTier1: {
@@ -249,6 +250,7 @@ export module MongoDbHelper {
 					properties: {
 						successfulVerificationMessage: "",
 						modMail: [],
+						manualVerificationEntries: [],
 						dungeons: AFKDungeon.map(x => x.id),
 					},
 					moderation: {

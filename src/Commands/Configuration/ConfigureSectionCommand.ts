@@ -148,6 +148,13 @@ export class ConfigureSectionCommand extends Command {
 			m: true,
 			mainMongo: "generalChannels.raidRequestChannel",
 			sectMongo: ""
+		},
+		{
+			q: "Configure Network Announcements Channel",
+			d: "Mention, or type the ID of, the channel that you want to make the network announcements channel. When a message is sent in the Network Announcements channel in the Network Administrator's server, the message will be forwarded to all servers.",
+			m: true,
+			mainMongo: "generalChannels.networkAnnouncementsChannel",
+			sectMongo: ""
 		}
 	];
 
@@ -451,7 +458,8 @@ export class ConfigureSectionCommand extends Command {
 						}
 					},
 					properties: {
-						dungeons: AFKDungeon.map(x => x.id)
+						dungeons: AFKDungeon.map(x => x.id),
+						manualVerificationEntries: []
 					}
 				}
 			}
@@ -687,9 +695,10 @@ export class ConfigureSectionCommand extends Command {
 				.addField("Configure Join & Leave Logging Channel", "React with 📥 to configure join & leave logs.")
 				.addField("Configure Bot Updates Channel", "React with 🤖 to configure the bot updates channel. Any bot changelog information will be forwarded to this channel.")
 				.addField("Configure Moderation Mail Channel", "React with 📬 to configure the moderation mail channel.")
-				.addField("Configure Raid Requests Channel", "React with ❓ to configure the raid requests channel.");
+				.addField("Configure Raid Requests Channel", "React with ❓ to configure the raid requests channel.")
+				.addField("Configure Network Announcements Channel", "React with to configure the network announcements channel.");
 
-			reactions.push("⚒️", "⚠️", "📥", "🤖", "📬", "❓");
+			reactions.push("⚒️", "⚠️", "📥", "🤖", "📬", "❓", "📢");
 		}
 
 		embed
@@ -883,6 +892,16 @@ export class ConfigureSectionCommand extends Command {
 					section,
 					guild.channels.cache.get(guildData.generalChannels.raidRequestChannel),
 					"generalChannels.raidRequestChannel"
+				);
+			}
+			else if (r.emoji.name === "📢") {
+				await this.resetBotEmbed(botSentMsg).catch(() => { });
+				res = await this.updateChannelCommand(
+					msg,
+					"Network Announcements Channel",
+					section,
+					guild.channels.cache.get(guildData.generalChannels.networkAnnouncementsChannel),
+					"generalChannels.networkAnnouncementsChannel"
 				);
 			}
 			// configuration wizard

@@ -372,7 +372,8 @@ export class UserManagerCommand extends Command {
 				}
 			}
 
-
+			// TODO might want to use VerificationHandler.accountInDatabase(...)
+			//#region db
 			const resolvedUserDbDiscord: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient
 				.findOne({ discordUserId: msg.author.id });
 
@@ -451,6 +452,7 @@ export class UserManagerCommand extends Command {
 					statusSb.append(`The name, \`${nameFromProfile}\`, has been added as an alternative account.`).appendLine();
 				}
 			}
+			//#endregion
 
 			// success!
 			reactCollector.stop();

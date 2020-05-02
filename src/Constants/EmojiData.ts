@@ -21,6 +21,7 @@ export const ScholarSeal: string = "678792068935450634";
 
 // reactions i guess
 export const AllEmoji: string = "561605182153031680";
+export const NitroEmoji: string = "706246225200152656";
 
 /**
  * Emojis and their definitions.

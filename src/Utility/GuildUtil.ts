@@ -40,6 +40,7 @@ export namespace GuildUtil {
 			},
 			properties: {
 				dungeons: guildData.properties.dungeons,
+				manualVerificationEntries: guildData.properties.manualVerificationEntries
 			}
 		}
 	}

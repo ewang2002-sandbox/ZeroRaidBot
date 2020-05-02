@@ -1,4 +1,4 @@
-import { MessageReaction, User, Message, Guild, GuildMember, TextChannel, EmojiResolvable, RoleResolvable, MessageCollector, DMChannel, VoiceChannel, Collection, PartialUser } from "discord.js";
+import { MessageReaction, User, Message, Guild, GuildMember, TextChannel, EmojiResolvable, RoleResolvable, MessageCollector, DMChannel, VoiceChannel, Collection, PartialUser, Role, MessageEmbed } from "discord.js";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
@@ -11,6 +11,9 @@ import { AFKDungeon } from "../Constants/AFKDungeon";
 import { IHeadCountInfo } from "../Definitions/IHeadCountInfo";
 import { RaidDbHelper } from "../Helpers/RaidDbHelper";
 import { StringUtil } from "../Utility/StringUtil";
+import { IManualVerification } from "../Definitions/IManualVerification";
+import { FilterQuery } from "mongodb";
+import { IRaidUser } from "../Templates/IRaidUser";
 
 export async function onMessageReactionAdd(
     reaction: MessageReaction,
@@ -59,13 +62,94 @@ export async function onMessageReactionAdd(
         guildDb.generalChannels.verificationChan,
         guildDb.generalChannels.modMailChannel,
         guildDb.generalChannels.controlPanelChannel,
+        guildDb.generalChannels.manualVerification,
         ...guildDb.sections.map(x => x.channels.verificationChannel),
-        ...guildDb.sections.map(x => x.channels.controlPanelChannel)
+        ...guildDb.sections.map(x => x.channels.controlPanelChannel),
+        ...guildDb.sections.map(x => x.channels.manualVerification)
     ];
 
     if (channelsWhereReactionsCanBeDeleted.includes(reaction.message.channel.id)) {
         await reaction.users.remove(user.id).catch(e => { });
     }
+
+    //#region MANUAL VERIFICATION
+    let manualVerificationProfile: IManualVerification | undefined;
+    let sectionForManualVerif: ISection | undefined;
+    for (const sec of allSections) {
+        for (const manualVerifEntry of sec.properties.manualVerificationEntries) {
+            if (manualVerifEntry.manualVerificationChannel === reaction.message.channel.id) {
+                manualVerificationProfile = manualVerifEntry;
+                sectionForManualVerif = sec;
+                break;
+            }
+        }
+    }
+
+    if (typeof manualVerificationProfile !== "undefined"
+        && typeof sectionForManualVerif !== "undefined"
+        && ["☑️", "❌"].includes(reaction.emoji.name)) {
+        const manualVerifMember: GuildMember | undefined = guild.members.cache
+            .get(manualVerificationProfile.userId);
+        const sectionVerifiedRole: Role | undefined = guild.roles.cache
+            .get(sectionForManualVerif.verifiedRole);
+        const verificationLoggingChannel: TextChannel | undefined = guild.channels.cache
+            .get(sectionForManualVerif.channels.logging.verificationSuccessChannel) as TextChannel | undefined;
+
+        if (typeof manualVerifMember === "undefined" || typeof sectionVerifiedRole === "undefined") {
+            return; // GuildMemberRemove should auto take care of this
+        }
+
+        let loggingMsg: string = `**\`[${sectionForManualVerif.nameOfSection}]\`** `;
+        if (reaction.emoji.name === "☑️") {
+            await manualVerifMember.roles.add(sectionVerifiedRole).catch(e => { });
+            if (sectionForManualVerif.isMain) {
+                await manualVerifMember.setNickname(manualVerificationProfile.inGameName).catch(e => { });
+                await VerificationHandler.accountInDatabase(manualVerifMember, manualVerificationProfile.inGameName, manualVerificationProfile.nameHistory);
+                const successEmbed: MessageEmbed = new MessageEmbed()
+                    .setTitle(`Successful Verification: **${guild.name}**`)
+                    .setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+                    .setDescription(guildDb.properties.successfulVerificationMessage.length === 0 ? "You have been successfully verified. Please make sure you read the rules posted in the server, if any, and any other regulations/guidelines. Good luck and have fun!" : guildDb.properties.successfulVerificationMessage)
+                    .setColor("GREEN")
+                    .setFooter("Verification Process: Stopped.");
+                await manualVerifMember.send(successEmbed).catch(e => { });
+            }
+            else {
+                await manualVerifMember.send(`**\`[${guild.name}]\`**: You have successfully been verified in the **\`${sectionForManualVerif.nameOfSection}\`** section!`).catch(() => { });
+            }
+            loggingMsg = `✅ ${loggingMsg};`
+            loggingMsg += `${manualVerifMember} has been manually verified as ${manualVerificationProfile.inGameName}. This manual verification was done by ${member} (${member.displayName})`;
+        }
+        else {
+            loggingMsg = `❌ ${loggingMsg};`
+            loggingMsg += `${manualVerifMember} (${manualVerificationProfile.inGameName})'s manual verification review has been rejected by ${reaction.message.member} (${member.displayName})`;
+            await manualVerifMember.send(`**\`[${guild.name}]\`**: After reviewing your profile, your manual verification for the **\`${sectionForManualVerif.nameOfSection}\`** section could not be completed. This manual review was done by ${member} (${member.displayName}).`).catch(() => { });
+        }
+
+        if (typeof verificationLoggingChannel !== "undefined") {
+            await verificationLoggingChannel.send(loggingMsg).catch(e => { });
+        }
+
+        const filterQuery: FilterQuery<IRaidGuild> = sectionForManualVerif.isMain
+            ? { guildID: member.guild.id }
+            : {
+                guildID: member.guild.id,
+                "sections.channels.manualVerification": sectionForManualVerif.channels.manualVerification
+            };
+        const updateKey: string = sectionForManualVerif.isMain
+            ? "properties.manualVerificationEntries"
+            : "sections.$.properties.manualVerificationEntries";
+
+        await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne(filterQuery, {
+            $pull: {
+                [updateKey]: {
+                    userId: manualVerifMember.id
+                }
+            }
+        });
+        await reaction.message.delete().catch(e => { });
+        return;
+    }
+    //#endregion
 
     //#region VERIFICATION
     let sectionForVerification: ISection | undefined;

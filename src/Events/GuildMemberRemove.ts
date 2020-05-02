@@ -1,8 +1,12 @@
-import { GuildMember, PartialGuildMember, TextChannel, MessageEmbed } from "discord.js";
+import { GuildMember, PartialGuildMember, TextChannel, MessageEmbed, Message } from "discord.js";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
 import { StringUtil } from "../Utility/StringUtil";
 import { DateUtil } from "../Utility/DateUtil";
+import { FilterQuery } from "mongodb";
+import { ISection } from "../Definitions/ISection";
+import { GuildUtil } from "../Utility/GuildUtil";
+import { IManualVerification } from "../Definitions/IManualVerification";
 
 export async function onGuildMemberRemove(
     member: GuildMember | PartialGuildMember
@@ -26,5 +30,48 @@ export async function onGuildMemberRemove(
             .setColor("RANDOM")
             .setFooter(member.guild.name);
         await joinLeaveChannel.send(joinEmbed).catch(e => { });
+    }
+
+    // check and see if they were under manual verif
+    const allSections: ISection[] = [GuildUtil.getDefaultSection(db), ...db.sections];
+    for (const section of allSections) {
+        const manualVerifEntry: IManualVerification | undefined = section.properties.manualVerificationEntries
+            .find(x => x.userId === member.id);
+        if (typeof manualVerifEntry === "undefined") {
+            continue;
+        }
+        if (manualVerifEntry.userId === member.id) {
+            const filterQuery: FilterQuery<IRaidGuild> = section.isMain
+                ? { guildID: member.guild.id }
+                : {
+                    guildID: member.guild.id,
+                    "sections.channels.manualVerification": section.channels.manualVerification
+                };
+
+            const updateKey: string = section.isMain
+                ? "properties.manualVerificationEntries"
+                : "sections.$.properties.manualVerificationEntries";
+
+
+            await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne(filterQuery, {
+                $pull: {
+                    [updateKey]: {
+                        userId: member.id
+                    }
+                }
+            });
+            const manualVerifyChannel: TextChannel | undefined = member.guild.channels.cache
+                .get(manualVerifEntry.manualVerificationChannel) as TextChannel | undefined;
+            if (typeof manualVerifyChannel !== "undefined") {
+                let m: Message;
+                try {
+                    m = await manualVerifyChannel.messages.fetch(manualVerifEntry.msgId);
+                }
+                catch (e) {
+                    return;
+                }
+                await m.delete().catch(e => { });
+            }
+        }
     }
 }

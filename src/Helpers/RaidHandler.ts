@@ -705,7 +705,7 @@ export module RaidHandler {
 				// if they were not found in the list of reactions
 				// AND they are not a staff member 
 				if (!(isFound
-					|| member.roles.cache.some(x => [guildDb.roles.raidLeader, guildDb.roles.trialRaidLeader, guildDb.roles.headRaidLeader, guildDb.roles.moderator].includes(x.id)))) {
+					|| member.roles.cache.some(x => [guildDb.roles.raidLeader, guildDb.roles.trialRaidLeader, guildDb.roles.headRaidLeader, guildDb.roles.moderator, guildDb.roles.almostRaidLeader, guildDb.roles.officer].includes(x.id)))) {
 					member.voice.setChannel(loungeVC).catch(() => { });
 				}
 			}

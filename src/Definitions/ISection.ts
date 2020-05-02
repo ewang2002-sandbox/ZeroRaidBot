@@ -1,4 +1,5 @@
 import { IVerification } from "./IVerification";
+import { IManualVerification } from "./IManualVerification";
 
 /**
  * The name of the section will be the name of the category that the channels are under.
@@ -42,7 +43,7 @@ export interface ISection {
 		 * Manual verification channel for the section.
 		 */
 		manualVerification: string;
-		
+
 		/**
 		 * Logging channels.
 		 */
@@ -77,5 +78,10 @@ export interface ISection {
 		 * The dungeons to allow or exclude.
 		 */
 		dungeons: number[];
+
+		/**
+		 * All ongoing manual verification.
+		 */
+		manualVerificationEntries: IManualVerification[];
 	}
 }

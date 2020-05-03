@@ -811,8 +811,6 @@ export module VerificationHandler {
 		};
 		const resolvedUserDbIGN: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient
 			.findOne(ignFilterQuery);
-		console.log(resolvedUserDbDiscord);
-		console.log(resolvedUserDbIGN);
 		// completely new profile
 		if (resolvedUserDbDiscord === null && resolvedUserDbIGN === null) {
 			const userMongo: MongoDbHelper.MongoDbUserManager = new MongoDbHelper.MongoDbUserManager(nameFromProfile);

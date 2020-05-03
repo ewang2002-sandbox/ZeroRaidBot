@@ -1,8 +1,8 @@
-import { CategoryChannel, ChannelCreationOverwrites, ClientUser, Collection, Emoji, Guild, GuildMember, Message, MessageCollector, MessageEmbed, MessageReaction, ReactionCollector, TextChannel, User, VoiceChannel, GuildEmoji, EmojiResolvable, ColorResolvable, DMChannel } from "discord.js";
+import { CategoryChannel, ChannelCreationOverwrites, ClientUser, Collection, Guild, GuildMember, Message, MessageCollector, MessageEmbed, MessageReaction, ReactionCollector, TextChannel, User, VoiceChannel, GuildEmoji, EmojiResolvable, ColorResolvable, DMChannel, Role } from "discord.js";
 import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollector";
 import { MessageSimpleTick } from "../Classes/Message/MessageSimpleTick";
 import { AFKDungeon } from "../Constants/AFKDungeon";
-import { AllEmoji } from "../Constants/EmojiData";
+import { AllEmoji, NitroEmoji } from "../Constants/EmojiData";
 import { IDungeonData } from "../Definitions/IDungeonData";
 import { IRaidInfo } from "../Definitions/IRaidInfo";
 import { ISection } from "../Definitions/ISection";
@@ -34,6 +34,7 @@ export module RaidHandler {
 		mst: MessageSimpleTick,
 		vcId: string;
 		keyReacts: GuildMember[];
+		earlyReacts: GuildMember[];
 	}
 
 	/**
@@ -314,7 +315,6 @@ export module RaidHandler {
 			.sort((a: number, b: number) => a - b);
 
 		// sort in order from least to greatest
-		console.log(allNums);
 		let newRaidNum: number;
 		if (allNums.length === 0) {
 			newRaidNum = 1;
@@ -390,48 +390,52 @@ export module RaidHandler {
 			userLimit: 99
 		});
 
+		const earlyLocationEmoji: GuildEmoji = msg.client.emojis.cache.get(NitroEmoji) as GuildEmoji;
+		const earlyLocationRoles: (Role | undefined)[] = guildDb.roles.earlyLocationRoles
+			.map(x => guild.roles.cache.get(x));
+		const existingEarlyLocRoles: Role[] = [];
+		for (const role of earlyLocationRoles) {
+			if (typeof role !== "undefined") {
+				existingEarlyLocRoles.push(role);
+			}
+		}
+		
+		let optionalReactsField: string = "";
+		let reactWithNitroBoosterEmoji: boolean = false;
+		if (existingEarlyLocRoles.length !== 0) {
+			optionalReactsField += `⇒ If you have one of the following roles, ${existingEarlyLocRoles.join(" ")}, react with ${earlyLocationEmoji} to get the raid location early.\n`;
+			reactWithNitroBoosterEmoji = true;
+		}
+
+		if (SELECTED_DUNGEON.keyEmojIDs.length !== 0) {
+			optionalReactsField += `⇒ If you have ${SELECTED_DUNGEON.keyEmojIDs.length === 1 ? `a ${SELECTED_DUNGEON.keyEmojIDs[0].keyEmojiName}` : "one of the following keys"}, react accordingly with ${SELECTED_DUNGEON.keyEmojIDs.map(x => guild.client.emojis.cache.get(x.keyEmojID)).join(" ")}\n`;
+		}
+		optionalReactsField += `⇒ React with the emoji(s) corresponding to your class and gear choices.`;
+
 		const afkCheckEmbed: MessageEmbed = new MessageEmbed()
 			// TODO check if mobile can see the emoji.
 			.setAuthor(`${member.displayName} has initiated a ${SELECTED_DUNGEON.dungeonName} AFK Check.`, SELECTED_DUNGEON.portalLink)
 			.setDescription(`⇒ **Join** the **${NEW_RAID_VC.name}** voice channel to participate in this raid.\n⇒ **React** to the ${msg.client.emojis.cache.get(SELECTED_DUNGEON.portalEmojiID)} emoji to show that you are joining in on this raid.`)
-			.addField("Optional Reactions", `${SELECTED_DUNGEON.keyEmojIDs.length === 0 ? "" : `⇒ If you have ${SELECTED_DUNGEON.keyEmojIDs.length === 1 ? `a ${SELECTED_DUNGEON.keyEmojIDs[0].keyEmojiName}` : "one of the following keys"}, react accordingly with ${SELECTED_DUNGEON.keyEmojIDs.map(x => guild.client.emojis.cache.get(x.keyEmojID)).join(" ")}`}.\n⇒ React with the emoji(s) corresponding to your class and gear choices.`)
+			.addField("Optional Reactions", optionalReactsField)
 			.setColor(ArrayUtil.getRandomElement(SELECTED_DUNGEON.colors))
 			.setImage(ArrayUtil.getRandomElement(SELECTED_DUNGEON.bossLink))
 			.setFooter(`${guild.name}: Raid AFK Check`);
 
-		/* maybe i'll include this... maybe...
-		let fieldNum: number = 1;
-		let reqStr: string = "";
-		if (SELECTED_DUNGEON.reactions.length !== 0) {
-			// loop through each reaction required by the selected dungeon
-			SELECTED_DUNGEON.reactions.forEach(req => {
-				// loop through each general emoji information
-				for (let i = 0; i < getEmojiData().length; i++) {
-					// and look for a match in IDs 
-					if (getEmojiData()[i][0] === req) {
-						// because an embed field can have 1024 characters max
-						if (reqStr.length + getEmojiData()[i][1].length > 1000) {
-							afkCheckEmbed.addFields({
-								name: `Optional Reactions ${fieldNum}`,
-								value: reqStr
-							});
-							reqStr = "";
-						}
-						reqStr += getEmojiData()[i][1] + "\n";
-						break;
-					}
-				}
-			});
+		const afkCheckMessage: Message = await AFK_CHECK_CHANNEL.send(`@here, a new ${SELECTED_DUNGEON.dungeonName} AFK check is currently ongoing. There are 5 minutes and 0 seconds remaining on this AFK check.`, { embed: afkCheckEmbed });
+
+		// pin & react
+		await afkCheckMessage.pin().catch(() => { });
+		await afkCheckMessage.react(SELECTED_DUNGEON.portalEmojiID).catch(() => { });
+		if (reactWithNitroBoosterEmoji) {
+			await afkCheckMessage.react(earlyLocationEmoji).catch(e => { });
+		}
+		for await (const keyId of SELECTED_DUNGEON.keyEmojIDs) {
+			await afkCheckMessage.react(keyId.keyEmojID).catch(() => { });
 		}
 
-		if (afkCheckEmbed.fields.length === 0 && SELECTED_DUNGEON.reactions.length !== 0) {
-			afkCheckEmbed.addFields({
-				name: "Optional Reactions",
-				value: reqStr
-			});
-		}*/
-
-		const afkCheckMessage: Message = await AFK_CHECK_CHANNEL.send(`@here, a new ${SELECTED_DUNGEON.dungeonName} AFK check is currently ongoing. There are 5 minutes and 0 seconds remaining on this AFK check.`, { embed: afkCheckEmbed });
+		for await (const reaction of SELECTED_DUNGEON.reactions) {
+			await afkCheckMessage.react(reaction).catch(() => { });
+		}
 
 		const mst: MessageSimpleTick = new MessageSimpleTick(afkCheckMessage, `@here, a new ${SELECTED_DUNGEON.dungeonName} AFK check is currently ongoing. There are {m} minutes and {s} seconds remaining on this AFK check.`, MAX_TIME_LEFT);
 
@@ -478,13 +482,20 @@ export module RaidHandler {
 			startTime: new Date().getTime(),
 			startedBy: msg.author.id,
 			status: RaidStatus.AFKCheck,
-			keyReacts: []
+			keyReacts: [],
+			earlyReacts: []
 		};
+
+		// add to db 
+		guildDb = await RaidDbHelper.addRaidChannel(guild, rs);
 
 		// create collector for key filtering
 		const collFilter = (reaction: MessageReaction, user: User) => {
 			// TODO: make sure this works. 
-			return reaction.emoji.id !== null && SELECTED_DUNGEON.keyEmojIDs.some(x => x.keyEmojID === reaction.emoji.id) && user.id !== (Zero.RaidClient.user as User).id;
+			return reaction.emoji.id !== null
+				&& (SELECTED_DUNGEON.keyEmojIDs.some(x => x.keyEmojID === reaction.emoji.id)
+					|| reaction.emoji.id === earlyLocationEmoji.id)
+				&& user.id !== (Zero.RaidClient.user as User).id;
 		}
 
 		// prepare collector
@@ -496,42 +507,69 @@ export module RaidHandler {
 			vcId: NEW_RAID_VC.id,
 			reactCollector: reactCollector,
 			mst: mst,
-			keyReacts: []
+			keyReacts: [],
+			earlyReacts: []
 		});
-
-		// pin & react
-		await afkCheckMessage.pin().catch(() => { });
-		await afkCheckMessage.react(SELECTED_DUNGEON.portalEmojiID).catch(() => { });
-		for await (const keyId of SELECTED_DUNGEON.keyEmojIDs) {
-			await afkCheckMessage.react(keyId.keyEmojID).catch(() => { });
-		}
-
-		for await (const reaction of SELECTED_DUNGEON.reactions) {
-			await afkCheckMessage.react(reaction).catch(() => { });
-		}
-
-		// add to db 
-		guildDb = await RaidDbHelper.addRaidChannel(guild, rs);
 
 		// collector events
 		let keysThatReacted: GuildMember[] = [];
+		let earlyReactions: GuildMember[] = [];
 		reactCollector.on("collect", async (reaction: MessageReaction, user: User) => {
 			const member: GuildMember | null = guild.member(user);
-			if (reaction.emoji.id !== null
-				&& rs.dungeonInfo.keyEmojIDs.some(x => x.keyEmojID === reaction.emoji.id)
-				&& member !== null
-				&& !keysThatReacted.some(x => x.id === user.id)) {
-				if (keysThatReacted.length + 1 > 10) {
-					await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** Thank you for your interest in contributing a key to the raid. However, we have enough people for now! A leader will give instructions if keys are needed; please ensure you are paying attention to the leader.`).catch(() => { });
-					return;
+			if (reaction.emoji.id !== null && member !== null) {
+				if (rs.dungeonInfo.keyEmojIDs.some(x => x.keyEmojID === reaction.emoji.id)
+					&& !keysThatReacted.some(x => x.id === user.id)) {
+					if (keysThatReacted.length + 1 > 10) {
+						await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** Thank you for your interest in contributing a key to the raid. However, we have enough people for now! A leader will give instructions if keys are needed; please ensure you are paying attention to the leader.`).catch(() => { });
+						return;
+					}
+					// key react 
+					let hasAccepted: boolean = await keyReact(user, guild, NEW_RAID_VC, rs);
+					if (hasAccepted) {
+						keysThatReacted.push(member);
+						let cpDescWithKey: string = `${controlPanelDescription}`;
+						if (keysThatReacted.length !== 0) {
+							cpDescWithKey += `\n\nKey Reactions: ${keysThatReacted.join(" ")}`;
+						}
+						if (earlyReactions.length !== 0) {
+							cpDescWithKey += `\n\nEarly Reactions: ${earlyReactions.join(" ")}`;
+						}
+						controlPanelEmbed.setDescription(cpDescWithKey);
+						controlPanelMsg.edit(controlPanelEmbed).catch(() => { });
+
+						const currData: IStoredRaidData | undefined = CURRENT_RAID_DATA.find(x => x.vcId === rs.vcID);
+						if (typeof currData === "undefined") {
+							reactCollector.stop();
+							return;
+						}
+
+						currData.keyReacts.push(member);
+
+						rs.keyReacts.push(member.id);
+						guildDb = await RaidDbHelper.addKeyReaction(guild, rs.vcID, member);
+					}
 				}
-				// key react 
-				let hasAccepted: boolean = await keyReact(user, guild, NEW_RAID_VC, rs);
-				if (hasAccepted) {
-					keysThatReacted.push(member);
-					let cpDescWithKey: string = `${controlPanelDescription}\n\nKey Reactions: ${keysThatReacted.join(" ")}`;
-					controlPanelEmbed.setDescription(cpDescWithKey);
+
+				if (reaction.emoji.id === earlyLocationEmoji.id
+					&& !earlyReactions.some(x => x.id === user.id)
+					// if you reacted w/ key you dont need the location twice.
+					&& !keysThatReacted.some(x => x.id === user.id)) {
+					if (earlyReactions.length + 1 > 10) {
+						await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** You are unable to get the location early due to the volume of people that has requested the location early.`).catch(() => { });
+						return;
+					}
+
+					earlyReactions.push(member);
+					let cpDescWithEarly: string = `${controlPanelDescription}`;
+					if (keysThatReacted.length !== 0) {
+						cpDescWithEarly += `\n\nKey Reactions: ${keysThatReacted.join(" ")}`;
+					}
+					if (earlyReactions.length !== 0) {
+						cpDescWithEarly += `\n\nEarly Reactions: ${earlyReactions.join(" ")}`;
+					}
+					controlPanelEmbed.setDescription(cpDescWithEarly);
 					controlPanelMsg.edit(controlPanelEmbed).catch(() => { });
+
 
 					const currData: IStoredRaidData | undefined = CURRENT_RAID_DATA.find(x => x.vcId === rs.vcID);
 					if (typeof currData === "undefined") {
@@ -539,10 +577,10 @@ export module RaidHandler {
 						return;
 					}
 
-					(CURRENT_RAID_DATA.find(x => x.vcId === rs.vcID) as IStoredRaidData).keyReacts.push(member);
+					currData.keyReacts.push(member);
 
 					rs.keyReacts.push(member.id);
-					guildDb = await RaidDbHelper.addKeyReaction(guild, rs.vcID, member);
+					guildDb = await RaidDbHelper.addEarlyReaction(guild, rs.vcID, member);
 				}
 			}
 		});
@@ -633,10 +671,11 @@ export module RaidHandler {
 		const raidVc: VoiceChannel = guild.channels.cache.get(rs.vcID) as VoiceChannel;
 
 		// dungeon emoji 
-		const portalEmoji: Emoji = Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID) as Emoji;
+		const portalEmoji: GuildEmoji = Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID) as GuildEmoji;
 
 		// key reactions
-		let peopleThatReactedToKey: GuildMember[] | undefined;
+		let peopleThatReactedToKey: (GuildMember | null)[] = [];
+		let peopleThatGotLocEarly: (GuildMember | null)[] = [];
 
 		// TODO: optimize code (two for loops that iterate through the activeRaidsAndHeadcount prop)
 		// update raid status so we're in raid mode
@@ -654,7 +693,9 @@ export module RaidHandler {
 			for (let i = 0; i < guildDb.activeRaidsAndHeadcounts.raidChannels.length; i++) {
 				if (guildDb.activeRaidsAndHeadcounts.raidChannels[i].vcID === raidVC.id) {
 					peopleThatReactedToKey = guildDb.activeRaidsAndHeadcounts.raidChannels[i].keyReacts
-						.map(x => guild.member(x)).filter(y => y !== null) as GuildMember[]; // TODO check if this works
+						.map(x => guild.member(x)); // TODO check if this works
+					peopleThatGotLocEarly = guildDb.activeRaidsAndHeadcounts.raidChannels[i].earlyReacts
+						.map(x => guild.member(x))
 					foundInDb = true;
 					break;
 				}
@@ -668,6 +709,7 @@ export module RaidHandler {
 			curRaidDataArrElem.reactCollector.stop();
 			curRaidDataArrElem.mst.disableAutoTick();
 			peopleThatReactedToKey = curRaidDataArrElem.keyReacts;
+			peopleThatGotLocEarly = curRaidDataArrElem.earlyReacts;
 		}
 
 		await RaidDbHelper.updateRaidStatus(guild, raidVC.id);
@@ -711,13 +753,23 @@ export module RaidHandler {
 			}
 		}
 
+		// remove any null entries
+		peopleThatGotLocEarly = peopleThatGotLocEarly.filter(x => x !== null);
+		peopleThatReactedToKey = peopleThatReactedToKey.filter(x => x !== null);
+
 		const postAfkControlPanelEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(`Control Panel: Raiding ${rs.raidNum}`, rs.dungeonInfo.portalLink)
 			.setDescription("A post-AFK check is currently running.")
-			.addField("Key Reactions", (peopleThatReactedToKey as GuildMember[]).length === 0 ? "No Keys" : (peopleThatReactedToKey as GuildMember[]).join(" ")) // TODO check if this works. 
 			.setColor(ArrayUtil.getRandomElement<ColorResolvable>(rs.dungeonInfo.colors))
 			.setTimestamp()
 			.setFooter(`Control Panel • Post AFK • R${rs.raidNum}`);
+		if (peopleThatReactedToKey.length !== 0) {
+			postAfkControlPanelEmbed.addField("Key Reactions", peopleThatReactedToKey.join(" "));
+		}
+		if (peopleThatGotLocEarly.length !== 0) {
+			postAfkControlPanelEmbed.addField("Early Location", peopleThatGotLocEarly.join(" "));
+		}
+		
 		await cpMsg.edit(postAfkControlPanelEmbed).catch(() => { });
 
 		const postAfkEmbed: MessageEmbed = new MessageEmbed()
@@ -762,9 +814,19 @@ export module RaidHandler {
 			const raidersPresent: number = raidVC.members.size;
 			const initiator: GuildMember | null = guild.member(rs.startedBy);
 
+			let descStr: string = `Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the raid.\nRaid Section: ${rs.section.nameOfSection}\nInitiator: ${initiator === null ? "Unknown" : initiator} (${initiator === null ? "Unknown" : initiator.displayName})\nDungeon: ${rs.dungeonInfo.dungeonName} ${Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID)}\nVoice Channel: Raiding ${rs.raidNum}`;
+
+			if (peopleThatGotLocEarly.length !== 0) {
+				descStr += `\n\nEarly Locations: ${peopleThatGotLocEarly.join(" ")}`;
+			}
+
+			if (peopleThatReactedToKey.length !== 0) {
+				descStr += `\n\nKey Reacts: ${peopleThatReactedToKey.join(" ")}`;
+			}
+
 			const startRunControlPanelEmbed: MessageEmbed = new MessageEmbed()
 				.setAuthor(`Control Panel: Raiding ${rs.raidNum}`, rs.dungeonInfo.portalLink)
-				.setDescription(`Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the raid.\nRaid Section: ${rs.section.nameOfSection}\nInitiator: ${initiator === null ? "Unknown" : initiator} (${initiator === null ? "Unknown" : initiator.displayName})\nDungeon: ${rs.dungeonInfo.dungeonName} ${Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID)}\nVoice Channel: Raiding ${rs.raidNum}\n\n${(peopleThatReactedToKey as GuildMember[]).length === 0 ? "No Keys" : (peopleThatReactedToKey as GuildMember[]).join(" ")}`)
+				.setDescription(descStr)
 				.addField("End Raid", "React with ⏹️ to end the raid. This will move members into the lounge voice channel, if applicable, and delete the voice channel.")
 				.addField("Set Location", "React with ✏️ to set a new location. You will be DMed. The new location will be sent to anyone that has the location (people that reacted with key, Nitro boosters, raid leaders, etc.)")
 				.addField("Get Location", "React with 🗺️ to get the current raid location.")
@@ -1354,6 +1416,3 @@ export module RaidHandler {
 		return !Number.isNaN(Number.parseInt(vc.name.split(" ")[vc.name.split(" ").length - 1]));
 	}
 }
-
-
-// TODO make headcount X emoji work in messageReactionAdd.ts

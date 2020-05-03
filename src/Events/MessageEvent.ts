@@ -1,6 +1,6 @@
 import { Message, ClientApplication, User, MessageEmbed, GuildMember } from "discord.js";
 import { IRaidGuild } from "../Templates/IRaidGuild";
-import { DefaultPrefix } from "../Configuration/Config";
+import { DefaultPrefix, BotConfiguration } from "../Configuration/Config";
 import { Command } from "../Templates/Command/Command";
 import { Zero } from "../Zero";
 import { RoleNames } from "../Definitions/Types";
@@ -66,8 +66,9 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 		.setColor("RED")
 		.setFooter(msg.guild === null ? "Zero" : msg.guild.name);
 
+	const owners: string[] = [(app.owner as User).id, ...BotConfiguration.botOwners];
 	// let's do some checks
-	if (command.isBotOwnerOnly() && msg.author.id !== (app.owner as User).id) {
+	if (command.isBotOwnerOnly() && !owners.some(x => x === msg.author.id)) {
 		embed.setTitle("**Bot Owner Command Only**")
 			.setDescription("This command can only be used by the bot owner.");
 		msg.author.send(embed).catch(() => { });

@@ -7,19 +7,23 @@ const PRODUCTION_BOT: boolean = false;
 /**
  * The bot token.
  */
-export const Credentials: IConfigurationSettings = PRODUCTION_BOT
+export const BotConfiguration: IConfigurationSettings = PRODUCTION_BOT
     ? {
         token: "",
         dbURL: "",
         dbName: "",
         userCollectionName: "",
-        guildCollectionName: ""
+        guildCollectionName: "",
+        botCollectionName: "",
+        botOwners: []
     } : {
         token: "",
         dbURL: "",
         dbName: "",
         userCollectionName: "",
-        guildCollectionName: ""
+        guildCollectionName: "",
+        botCollectionName: "",
+        botOwners: []
     };
 
 /**
@@ -64,4 +68,12 @@ interface IConfigurationSettings {
      * @type {string}
      */
     guildCollectionName: string;
+    /**
+     * Bot settings collection name.
+     */
+    botCollectionName: string;
+    /**
+     * Bot owners.
+     */
+    botOwners: string[];
 }

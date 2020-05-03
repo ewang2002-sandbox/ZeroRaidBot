@@ -1,5 +1,5 @@
 import { MongoClient, Db, Collection, Cursor } from "mongodb";
-import { Credentials } from "../Configuration/Config";
+import { BotConfiguration } from "../Configuration/Config";
 import { IRaidUser } from "../Templates/IRaidUser";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { AFKDungeon } from "../Constants/AFKDungeon";
@@ -29,20 +29,20 @@ export module MongoDbHelper {
 		 * Connects to the database.
 		 */
 		public async connect(): Promise<void> {
-			const mongoDbClient: MongoClient = new MongoClient(Credentials.dbURL, {
+			const mongoDbClient: MongoClient = new MongoClient(BotConfiguration.dbURL, {
 				useNewUrlParser: true
 			});
 			MongoDbHelper.MongoDbBase.MongoClient = await mongoDbClient.connect();
 
 			MongoDbUserManager.MongoUserClient = MongoDbHelper.MongoDbBase.MongoClient
-				.db(Credentials.dbName)
-				.collection<IRaidUser>(Credentials.userCollectionName);
+				.db(BotConfiguration.dbName)
+				.collection<IRaidUser>(BotConfiguration.userCollectionName);
 			MongoDbGuildManager.MongoGuildClient = MongoDbHelper.MongoDbBase.MongoClient
-				.db(Credentials.dbName)
-				.collection<IRaidGuild>(Credentials.guildCollectionName);
+				.db(BotConfiguration.dbName)
+				.collection<IRaidGuild>(BotConfiguration.guildCollectionName);
 			MongoBotSettingsClient = MongoDbHelper.MongoDbBase.MongoClient
-				.db(Credentials.dbName)
-				.collection<IRaidBot>(Credentials.botCollectionName);
+				.db(BotConfiguration.dbName)
+				.collection<IRaidBot>(BotConfiguration.botCollectionName);
 			Object.freeze(MongoBotSettingsClient); // will this work? 
 		}
 	}

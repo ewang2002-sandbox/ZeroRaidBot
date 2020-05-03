@@ -48,7 +48,7 @@ export class BlacklistCommand extends Command {
 			args = args.join(" ").replace("--silent", "").split(" ");
 		}
 
-		let nameToBlacklist: string = args[0];
+		let nameToBlacklist: string = args.shift() as string;
 
 		const isBlacklisted: boolean = guildDb.moderation.blacklistedUsers
 			.some(x => x.inGameName.toLowerCase().trim() === nameToBlacklist.toLowerCase().trim());
@@ -58,7 +58,11 @@ export class BlacklistCommand extends Command {
 			return;
 		}
 
-		const reason: string = args.pop() as string; // there will always be at least 2 elements
+		const reason: string = args.join(" ") // there will always be at least 2 elements
+		if (reason.length > 500) {
+			await MessageUtil.send({ content: `The reason you provided is too long; your reasoning is ${reason.length} characters long, and the maximum length is 500 characters.` }, msg.channel);
+			return;
+		}
 		const memberToBlacklist: GuildMember | null = await UserHandler.resolveMember(msg, guildDb);
 
 		// check to see if in server 
@@ -81,8 +85,7 @@ export class BlacklistCommand extends Command {
 					inGameName: nameToBlacklist.toLowerCase(),
 					reason: reason,
 					date: new Date().getTime(),
-					moderator: mod.id,
-					isNetworkBlacklist: false
+					moderator: mod.id
 				}
 			}
 		});
@@ -106,8 +109,7 @@ export class BlacklistCommand extends Command {
 						inGameName: nameToBlacklist.toLowerCase(),
 						reason: reason,
 						date: new Date().getTime(),
-						moderator: mod.id,
-						isNetworkBlacklist: false
+						moderator: mod.id
 					}
 				}
 			});
@@ -134,8 +136,7 @@ export class BlacklistCommand extends Command {
 							inGameName: entry.toLowerCase(),
 							reason: reason,
 							date: new Date().getTime(),
-							moderator: mod.id,
-							isNetworkBlacklist: false
+							moderator: mod.id
 						}
 					}
 				});

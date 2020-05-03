@@ -344,7 +344,7 @@ export async function setNewLocationPrompt(
             // send location out to ppl
             const curRaidDataArrElem = RaidHandler.CURRENT_RAID_DATA.find(x => x.vcId === raidInfo.vcID);
             if (typeof curRaidDataArrElem === "undefined") {
-                for await (const person of raidInfo.keyReacts) {
+                for await (const person of [...raidInfo.keyReacts, ...raidInfo.earlyReacts]) {
                     const memberToMsg: GuildMember | null = guild.member(person);
                     if (memberToMsg === null) {
                         continue;
@@ -353,7 +353,7 @@ export async function setNewLocationPrompt(
                 }
             }
             else {
-                for await (const person of curRaidDataArrElem.keyReacts) {
+                for await (const person of [...curRaidDataArrElem.keyReacts, ...curRaidDataArrElem.earlyReacts]) {
                     await person.send(`**\`[${guild.name} ⇒ ${raidInfo.section.nameOfSection}]\`** A __new__ location for this raid has been set by a leader. The location is: ${StringUtil.applyCodeBlocks(m.content)}Do not tell anyone this location.`).catch(e => { });
                 }
             }

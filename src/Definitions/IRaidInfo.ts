@@ -47,4 +47,8 @@ export interface IRaidInfo {
 	 * Key reactions.
 	 */
 	keyReacts: string[];
+	/**
+	 * Early reactions.
+	 */
+	earlyReacts: string[];
 }

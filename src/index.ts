@@ -1,9 +1,9 @@
 import { Zero } from "./Zero";
-import { Credentials } from "./Configuration/Config";
+import { BotConfiguration } from "./Configuration/Config";
 import { DateUtil } from "./Utility/DateUtil";
 import { MessageEmbed } from "discord.js";
 
-const bot: Zero = new Zero(Credentials.token);
+const bot: Zero = new Zero(BotConfiguration.token);
 bot.login();
 
 process.on("uncaughtException", (error) => {

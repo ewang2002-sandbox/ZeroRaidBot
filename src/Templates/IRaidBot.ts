@@ -1,3 +1,5 @@
+import { INetworkBlacklistedUser } from "../Definitions/IBlacklistedUser";
+
 /**
  * The bot settings. Only NETWORK ADMINS will be able to modify. There should only be ONE ENTRY.
  */
@@ -19,11 +21,15 @@ export interface IRaidBot {
         /**
          * This channel is where all blacklists will be logged.
          */
-        blacklistLogging: string;
+        networkBlacklistLogs: string;
 
         /**
          * Staff announcements channel -- any messages sent here will be sent out to all servers.
          */
         staffAnnouncementsChannel: string;
     };
+
+    moderation: {
+        networkBlacklisted: INetworkBlacklistedUser[];
+    }
 }

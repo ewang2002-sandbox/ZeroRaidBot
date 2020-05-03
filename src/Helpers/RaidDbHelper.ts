@@ -65,6 +65,27 @@ export module RaidDbHelper {
 	}
 
 	/**
+	 * Adds a person that has indicated that he/she wants the location early to the guild doc.
+	 * @param {Guild} guild The guild. 
+	 * @param {string} vcID The voice channel ID.
+	 * @param {(GuildMember | string | User)} member The guild member that reacted with the early reaction emoji.
+	 */
+	export function addEarlyReaction(
+		guild: Guild,
+		vcID: string,
+		member: GuildMember | string | User
+	): Promise<IRaidGuild> {
+		return new Promise(async (resolve, reject) => {
+			const data: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "activeRaidsAndHeadcounts.raidChannels.vcID": vcID }, {
+				$push: {
+					"activeRaidsAndHeadcounts.raidChannels.$.earlyReacts": typeof member === "object" ? member.id : member
+				}
+			}, { returnOriginal: false });
+			resolve(data.value);
+		});
+	}
+
+	/**
 	 * Adds a new `IHeadCountInfo` to the array of current headcounts. 
 	 * @param {Guild} guild The target guild. 
 	 * @param {IHeadCountInfo} ri The data to add to the list of current headcounts. 

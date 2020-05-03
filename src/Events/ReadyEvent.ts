@@ -4,6 +4,8 @@ import { MongoDbHelper } from "../Helpers/MongoDbHelper";
 import { Zero } from "../Zero";
 import { MuteCommand } from "../Commands/Moderator/MuteCommand";
 import { SuspendCommand } from "../Commands/Moderator/SuspendCommand";
+import { IRaidBot } from "../Templates/IRaidBot";
+import { InsertOneWriteOpResult, WithId } from "mongodb";
 
 export async function onReadyEvent() {
 	const guildBots: string[] = [];
@@ -48,6 +50,24 @@ export async function onReadyEvent() {
 			}
 		}
 	}
+	
+	const botDb: IRaidBot | null = await MongoDbHelper.MongoBotSettingsClient
+		.findOne({ botId: (Zero.RaidClient.user as ClientUser).id });
+
+	if (botDb === null) {
+		await MongoDbHelper.MongoBotSettingsClient.insertOne({
+			botId: (Zero.RaidClient.user as ClientUser).id,
+			channels: {
+				altAccountRemovalChannel: "",
+				networkBlacklistLogs: "",
+				staffAnnouncementsChannel: ""
+			},
+			moderation: {
+				networkBlacklisted: []
+			}
+		});
+	}
+
 
 	// get info
 	let app: ClientApplication = await Zero.RaidClient.fetchApplication();

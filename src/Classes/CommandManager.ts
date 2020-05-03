@@ -66,7 +66,8 @@ export class CommandManager {
 		this.commands.set("Staff", [
 			new SendEmbedCommand(), 
 			new FindUserCommand(),
-			new PollCommand()
+			new PollCommand(),
+			new CheckBlacklistCommand()
 		]);
 
 		this.commands.set("Moderation", [

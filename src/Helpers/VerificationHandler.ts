@@ -1152,11 +1152,11 @@ export module VerificationHandler {
 
 		const manualVerifEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(member.user.tag, member.user.displayAvatarURL())
-			.setTitle(`Manual Verification Request: ${verificationInfo.name}`)
-			.setDescription(`⇒ User: ${member}\n⇒ IGN: ${verificationInfo.name}\n⇒ RealmEye: [Profile](https://www.realmeye.com/player/${verificationInfo.name})\n\nReact with ☑️ to manually verify this person; otherwise, react with ❌.`)
-			.addField("Maxed Characters", verificationInfo.characterCount === -1 ? "Hidden" : characterStats)
-			.addField("Current Rank", verificationInfo.rank)
-			.addField("Alive Fame", verificationInfo.fame)
+			.setTitle(`Manual Verification Request: **${verificationInfo.name}**`)
+			.setDescription(`⇒ Section: ${section.nameOfSection}\n ⇒ User: ${member}\n⇒ IGN: ${verificationInfo.name}\n⇒ RealmEye: [Profile](https://www.realmeye.com/player/${verificationInfo.name})\n\nReact with ☑️ to manually verify this person; otherwise, react with ❌.`)
+			.addField("Maxed Characters", StringUtil.applyCodeBlocks(verificationInfo.characterCount === -1 ? "Hidden" : characterStats), true)
+			.addField("Current Rank", StringUtil.applyCodeBlocks(verificationInfo.rank.toString()), true)
+			.addField("Alive Fame", StringUtil.applyCodeBlocks(verificationInfo.fame.toString()), true)
 			.setColor("YELLOW")
 			.setFooter("Requested On")
 			.setTimestamp();

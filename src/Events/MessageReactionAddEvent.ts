@@ -114,15 +114,20 @@ export async function onMessageReactionAdd(
                 await manualVerifMember.send(successEmbed).catch(e => { });
             }
             else {
-                await manualVerifMember.send(`**\`[${guild.name}]\`**: You have successfully been verified in the **\`${sectionForManualVerif.nameOfSection}\`** section!`).catch(() => { });
+                await manualVerifMember.send(`**\`[${guild.name}]\`** You have successfully been verified in the **\`${sectionForManualVerif.nameOfSection}\`** section!`).catch(() => { });
             }
-            loggingMsg = `✅ ${loggingMsg};`
+            loggingMsg = `✅ ${loggingMsg}`;
             loggingMsg += `${manualVerifMember} has been manually verified as ${manualVerificationProfile.inGameName}. This manual verification was done by ${member} (${member.displayName})`;
         }
         else {
-            loggingMsg = `❌ ${loggingMsg};`
+            loggingMsg = `❌ ${loggingMsg}`;
             loggingMsg += `${manualVerifMember} (${manualVerificationProfile.inGameName})'s manual verification review has been rejected by ${reaction.message.member} (${member.displayName})`;
-            await manualVerifMember.send(`**\`[${guild.name}]\`**: After reviewing your profile, your manual verification for the **\`${sectionForManualVerif.nameOfSection}\`** section could not be completed. This manual review was done by ${member} (${member.displayName}).`).catch(() => { });
+            if (sectionForManualVerif.isMain) {
+                await manualVerifMember.send(`**\`[${guild.name}]\`**: After manually reviewing your profile, we have determined that you do not meet the requirements defined by server. This manual review was done by ${member} (${member.displayName}).`).catch(() => { });
+            }
+            else {
+                await manualVerifMember.send(`**\`[${guild.name}]\`**: After reviewing your profile, we have determined that your profile does not meet the minimum requirements for the **\`${sectionForManualVerif.nameOfSection}\`** section . This manual review was done by ${member} (${member.displayName}).`).catch(() => { });
+            }
         }
 
         if (typeof verificationLoggingChannel !== "undefined") {

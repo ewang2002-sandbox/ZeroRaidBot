@@ -20,20 +20,25 @@ import { GuildUtil } from "../Utility/GuildUtil";
 import { IManualVerification } from "../Definitions/IManualVerification";
 
 export module VerificationHandler {
-	interface IPreliminaryCheckError {
-		fields: EmbedFieldData[] | EmbedFieldData[][];
-		errorMsg: string;
-		errorMsgForLogging: string;
-		errorCode: "FAME_TOO_LOW" | "RANK_TOO_LOW" | "CHARACTERS_HIDDEN" | "CHARACTER_STATS_TOO_LOW";
-	}
+	interface ICheckResults {
+		characters: {
+			amt: [number, number, number, number, number, number, number, number, number];
+			passed: boolean;
+			hidden: boolean;
+		};
 
-	interface IPreliminaryCheckPass {
-		rank: number;
-		aliveFame: number;
-		stats: [number, number, number, number, number, number, number, number, number];
-	}
+		aliveFame: {
+			amt: number;
+			passed: boolean;
+		};
 
-	type PreliminaryCheck = IPreliminaryCheckPass | IPreliminaryCheckError;
+		rank: {
+			amt: number;
+			passed: boolean;
+		}
+
+		passedAll: boolean;
+	}
 
 	/**
 	 * Verifies a user.
@@ -420,9 +425,9 @@ export module VerificationHandler {
 						return;
 					}
 
-					const prelimCheck: PreliminaryCheck = preliminaryCheck(section, requestData.data);
-					if ("fields" in prelimCheck) {
-						if (prelimCheck.errorCode === "CHARACTERS_HIDDEN") {
+					const prelimCheck: ICheckResults = preliminaryCheck(section, requestData.data);
+					if (!prelimCheck.passedAll) {
+						if (section.verification.maxedStats.required && prelimCheck.characters.hidden) {
 							if (typeof verificationAttemptsChannel !== "undefined") {
 								verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her characters are hidden and needs to be available to the public.`).catch(() => { });
 							}
@@ -431,10 +436,31 @@ export module VerificationHandler {
 							return;
 						}
 
-						// MANUAL VERIF
+						const reqsFailedToMeet: StringBuilder = new StringBuilder();
+						if (!prelimCheck.aliveFame.passed) {
+							reqsFailedToMeet.append(`Alive Fame: ${prelimCheck.aliveFame.amt}/${section.verification.aliveFame.minimum}`)
+								.appendLine();
+						}
 
+						if (!prelimCheck.rank.passed) {
+							reqsFailedToMeet.append(`Rank: ${prelimCheck.rank.amt}/${section.verification.stars.minimum}`)
+								.appendLine();
+						}
+
+						if (!prelimCheck.characters.passed) {
+							let strChar: string = "";
+							for (let i = 0; i < prelimCheck.characters.amt.length; i++) {
+								strChar += `⇒ ${prelimCheck.characters.amt[i]}/${section.verification.maxedStats.statsReq[i]} ${i}/8\n`;
+							}
+							reqsFailedToMeet.append("Characters: See List.")
+								.appendLine()
+								.append(strChar);
+						}
+
+						// MANUAL VERIF
 						reactCollector.stop();
-						let outputLogs: string = `⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her RotMG profile has failed to meet one or more requirement(s). The verification process has been stopped.\n\t⇒ Error Code: ${prelimCheck.errorCode}\n\t⇒ Error Message: ${prelimCheck.errorMsgForLogging}`;
+						let outputLogs: string = `⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her RotMG profile has failed to meet one or more requirement(s). The requirements that were not met are listed below.${StringUtil.applyCodeBlocks(reqsFailedToMeet.toString())}`;
+
 
 						const failedEmbed: MessageEmbed = new MessageEmbed()
 							.setTitle(`Verification For: **${guild.name}**`)
@@ -444,13 +470,14 @@ export module VerificationHandler {
 						if (typeof manualVerificationChannel === "undefined") {
 							failedEmbed
 								.setDescription("You have failed to meet the requirements for the server. Please review the below requirements you have failed to meet and make note of them.")
-								.addFields(...prelimCheck.fields)
+								.addField("Requirements Missed", reqsFailedToMeet.toString())
 								.setFooter("Verification Process: Stopped.");
 						}
 						else {
 							const wantsToBeManuallyVerified: boolean | "TIME" = await new Promise(async (resolve, reject) => {
-								const failedAppealEmbed: MessageEmbed = failedEmbed
-									.setDescription(`You did not meet the requirements for this server. The requirements are: ${StringUtil.applyCodeBlocks(reqs.toString())}Would you like to appeal the decision with a staff member? Unreact and react with ✅ to appeal with a staff member; otherwise, react with ❌.\n\nNOTE: This may take up to a day. You will not be able to verify while your profile is under manual review. YOU ARE NOT GUARANTEED TO BE VERIFIED.`)
+								const failedAppealEmbed: MessageEmbed = new MessageEmbed(failedEmbed)
+									.setDescription(`You did not meet the requirements for this server. The requirements are: ${StringUtil.applyCodeBlocks(reqs.toString())}\nThe requirements you have failed to meet are listed below:\n${StringUtil.applyCodeBlocks(reqsFailedToMeet.toString())}\n\nWould you like to appeal the decision with a staff member? Unreact and react with ✅ to appeal with a staff member; otherwise, react with ❌.`)
+									.addField("Consider the Following", "⇒ This process may take up to one day.\n⇒ You will not be able to verify while your profile is being reviewed.\n⇒ You are NOT guaranteed to be verified.")
 									.setFooter("⏳ Time Remaining: 2 Minutes and 0 Seconds.");
 								const manaulVerifMsg: Message = await botMsg.edit(failedAppealEmbed);
 								await manaulVerifMsg.react("✅").catch(() => { });
@@ -507,13 +534,13 @@ export module VerificationHandler {
 								failedEmbed
 									.setDescription("You have chosen to have your profile manually reviewed by a staff member. Please be patient while a staff member checks your profile.")
 									.setFooter("Verification Process: Stopped.");
-								manualVerification(guild, member, requestData.data, manualVerificationChannel, section, nameHistory);
-								outputLogs += `\nThis profile has been sent to the manual verification channel`;
+								manualVerification(guild, member, requestData.data, manualVerificationChannel, section, reqsFailedToMeet, nameHistory);
+								outputLogs += `\nThis profile has been sent to the manual verification channel for further review.`;
 							}
 							else {
 								failedEmbed
-									.setDescription(`You have failed to meet the requirements for the server, and have chosen not to accept the manual verification offer. The server's verification requirements are below. ${StringUtil.applyCodeBlocks(reqs.toString())}\nReview which verification requirement you failed to meet below.`)
-									.addFields(...prelimCheck.fields)
+									.setDescription(`You have failed to meet the requirements for the server, and have chosen not to accept the manual verification offer. The server's verification requirements are below. ${StringUtil.applyCodeBlocks(reqs.toString())}`)
+									.addField("Missed Requirements", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()))
 									.setFooter("Verification Process: Stopped.");
 							}
 						}
@@ -588,6 +615,8 @@ export module VerificationHandler {
 					}
 				});
 			}
+			// SECTION
+			// VERIFICATION
 			else {
 				const name: string = member.displayName.split("|").map(x => x.trim())[0];
 				if (typeof verificationAttemptsChannel !== "undefined") {
@@ -615,37 +644,60 @@ export module VerificationHandler {
 					return;
 				}
 
-				const prelimCheck: PreliminaryCheck = preliminaryCheck(section, requestData.data);
-				if ("fields" in prelimCheck) {
-					if (prelimCheck.errorCode === "CHARACTERS_HIDDEN") {
+				const prelimCheck: ICheckResults = preliminaryCheck(section, requestData.data);
+				// TODO make prelim check handle into a function? 
+				if (!prelimCheck.passedAll) {
+					if (section.verification.maxedStats.required && prelimCheck.characters.hidden) {
 						if (typeof verificationAttemptsChannel !== "undefined") {
-							verificationAttemptsChannel.send(`⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her RotMG profile has failed to meet one or more requirement(s). The verification process has been stopped.\n\t⇒ Error Code: ${prelimCheck.errorCode}\n\t⇒ Error Message: ${prelimCheck.errorMsgForLogging}`);
+							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her characters are hidden and needs to be available to the public.`).catch(() => { });
 						}
 						await member.send("Your characters are currently hidden. Please make sure everyone can see your characters.");
 						return;
 					}
 
-
-					// MANUAL VERIF
 					const botMsg: Message = await dmChannel.send(new MessageEmbed());
 
-					let outputLogs: string = `⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her RotMG profile has failed to meet one or more requirement(s). The verification process has been stopped.\n\t⇒ Error Code: ${prelimCheck.errorCode}\n\t⇒ Error Message: ${prelimCheck.errorMsgForLogging}`;
+					const reqsFailedToMeet: StringBuilder = new StringBuilder();
+					if (!prelimCheck.aliveFame.passed) {
+						reqsFailedToMeet.append(`Alive Fame: ${prelimCheck.aliveFame.amt}/${section.verification.aliveFame.minimum}`)
+							.appendLine();
+					}
+
+					if (!prelimCheck.rank.passed) {
+						reqsFailedToMeet.append(`Rank: ${prelimCheck.rank.amt}/${section.verification.stars.minimum}`)
+							.appendLine();
+					}
+
+					if (!prelimCheck.characters.passed) {
+						let strChar: string = "";
+						for (let i = 0; i < prelimCheck.characters.amt.length; i++) {
+							strChar += `⇒ ${prelimCheck.characters.amt[i]}/${section.verification.maxedStats.statsReq[i]} ${i}/8\n`;
+						}
+						reqsFailedToMeet.append("Characters: See List.")
+							.appendLine()
+							.append(strChar);
+					}
+
+					// MANUAL VERIF
+					let outputLogs: string = `⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her RotMG profile has failed to meet one or more requirement(s). The requirements that were not met are listed below.${StringUtil.applyCodeBlocks(reqsFailedToMeet.toString())}`;
+
 
 					const failedEmbed: MessageEmbed = new MessageEmbed()
-						.setTitle(`Manual Verification: **${guild.name}** ⇒ **${section.nameOfSection}**`)
+						.setTitle(`Verification For: **${guild.name}** ⇒ **${section.nameOfSection}**`)
 						.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
 						.setColor("RED");
 
 					if (typeof manualVerificationChannel === "undefined") {
 						failedEmbed
 							.setDescription("You have failed to meet the requirements for the section. Please review the below requirements you have failed to meet and make note of them.")
-							.addFields(...prelimCheck.fields)
+							.addField("Requirements Missed", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()))
 							.setFooter("Verification Process: Stopped.");
 					}
 					else {
 						const wantsToBeManuallyVerified: boolean | "TIME" = await new Promise(async (resolve, reject) => {
-							const failedAppealEmbed: MessageEmbed = failedEmbed
-								.setDescription(`You did not meet the requirements for this section. The requirements are: ${StringUtil.applyCodeBlocks(reqs.toString())}Would you like to appeal the decision with a staff member? Unreact and react with ✅ to appeal with a staff member; otherwise, react with ❌.\n\nNOTE: This may take up to a day. You will not be able to verify while your profile is under manual review. YOU ARE NOT GUARANTEED TO BE VERIFIED.`)
+							const failedAppealEmbed: MessageEmbed = new MessageEmbed(failedEmbed)
+								.setDescription(`You did not meet the requirements for this section. The requirements are: ${StringUtil.applyCodeBlocks(reqs.toString())}\nThe requirements you have failed to meet are listed below:\n${StringUtil.applyCodeBlocks(reqsFailedToMeet.toString())}\n\nWould you like to appeal the decision with a staff member? Unreact and react with ✅ to appeal with a staff member; otherwise, react with ❌.`)
+								.addField("Consider the Following", "⇒ This process may take up to one day.\n⇒ You will not be able to verify while your profile is being reviewed.\n⇒ You are NOT guaranteed to be verified.")
 								.setFooter("⏳ Time Remaining: 2 Minutes and 0 Seconds.");
 							const manaulVerifMsg: Message = await botMsg.edit(failedAppealEmbed);
 							await manaulVerifMsg.react("✅").catch(() => { });
@@ -702,13 +754,13 @@ export module VerificationHandler {
 							failedEmbed
 								.setDescription("You have chosen to have your profile manually reviewed by a staff member. Please be patient while a staff member checks your profile.")
 								.setFooter("Verification Process: Stopped.");
-							manualVerification(guild, member, requestData.data, manualVerificationChannel, section);
-							outputLogs += `\nThis profile has been sent to the manual verification channel`;
+							manualVerification(guild, member, requestData.data, manualVerificationChannel, section, reqsFailedToMeet);
+							outputLogs += `\nThis profile has been sent to the manual verification channel for further review.`;
 						}
 						else {
 							failedEmbed
-								.setDescription(`You have failed to meet the requirements for the server, and have chosen not to accept the manual verification offer. The server's verification requirements are below. ${StringUtil.applyCodeBlocks(reqs.toString())}\nReview which verification requirement you failed to meet below.`)
-								.addFields(...prelimCheck.fields)
+								.setDescription(`You have failed to meet the requirements for the section, and have chosen not to accept the manual verification offer. The section's verification requirements are below. ${StringUtil.applyCodeBlocks(reqs.toString())}`)
+								.addField("Missed Requirements", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()))
 								.setFooter("Verification Process: Stopped.");
 						}
 					}
@@ -759,6 +811,8 @@ export module VerificationHandler {
 		};
 		const resolvedUserDbIGN: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient
 			.findOne(ignFilterQuery);
+		console.log(resolvedUserDbDiscord);
+		console.log(resolvedUserDbIGN);
 		// completely new profile
 		if (resolvedUserDbDiscord === null && resolvedUserDbIGN === null) {
 			const userMongo: MongoDbHelper.MongoDbUserManager = new MongoDbHelper.MongoDbUserManager(nameFromProfile);
@@ -887,49 +941,7 @@ export module VerificationHandler {
 	function preliminaryCheck(
 		sec: ISection,
 		reapi: ITiffitRealmEyeProfile
-	): PreliminaryCheck {
-		// check rank
-		if (sec.verification.stars.required && reapi.rank < sec.verification.stars.minimum) {
-			return {
-				errorMsg: "Your rank is not high enough to pass the verification check.",
-				errorMsgForLogging: "The user's rank is not high enough to pass the verification check.",
-				errorCode: "RANK_TOO_LOW",
-				fields: [
-					{
-						name: "Minimum Rank",
-						value: StringUtil.applyCodeBlocks(sec.verification.stars.minimum.toString()),
-						inline: true
-					},
-					{
-						name: "Account Rank",
-						value: StringUtil.applyCodeBlocks(reapi.rank.toString()),
-						inline: true
-					}
-				]
-			};
-		}
-
-		// check alive fame
-		if (sec.verification.aliveFame.required && reapi.fame < sec.verification.aliveFame.minimum) {
-			return {
-				errorMsg: "Your total alive fame is not high enough to pass the verification check.",
-				errorMsgForLogging: "The user's total alive fame is not high enough to pass the verification check.",
-				errorCode: "RANK_TOO_LOW",
-				fields: [
-					{
-						name: "Minimum Fame",
-						value: StringUtil.applyCodeBlocks(sec.verification.aliveFame.minimum.toString()),
-						inline: true
-					},
-					{
-						name: "Account Fame",
-						value: StringUtil.applyCodeBlocks(reapi.fame.toString()),
-						inline: true
-					}
-				]
-			};
-		}
-
+	): ICheckResults {
 		// char pts 
 		let zero: number = 0;
 		let one: number = 0;
@@ -956,81 +968,60 @@ export module VerificationHandler {
 			}
 		}
 
-		if (sec.verification.maxedStats.required) {
-			if (reapi.characterCount === -1) {
-				return {
-					errorMsg: "Your characters are currently hidden.",
-					errorMsgForLogging: "The user's characters are currently hidden.",
-					errorCode: "CHARACTERS_HIDDEN",
-					fields: [
-						{
-							name: "Characters Hidden",
-							value: StringUtil.applyCodeBlocks("Profile characters are hidden. Make sure everyone can see your characters."),
-							inline: true
-						}
-					]
+		const currVsReq: [number, number][] = [
+			[zero, sec.verification.maxedStats.statsReq[0]],
+			[one, sec.verification.maxedStats.statsReq[1]],
+			[two, sec.verification.maxedStats.statsReq[2]],
+			[three, sec.verification.maxedStats.statsReq[3]],
+			[four, sec.verification.maxedStats.statsReq[4]],
+			[five, sec.verification.maxedStats.statsReq[5]],
+			[six, sec.verification.maxedStats.statsReq[6]],
+			[seven, sec.verification.maxedStats.statsReq[7]],
+			[eight, sec.verification.maxedStats.statsReq[8]]
+		];
+
+		let failsToMeetReq: boolean = false;
+		let extras: number = 0;
+
+		for (let i = currVsReq.length - 1; i >= 0; i--) {
+			if (currVsReq[i][0] < currVsReq[i][1]) {
+				let diff: number = currVsReq[i][1] - currVsReq[i][0];
+				extras -= diff;
+				if (extras < 0) {
+					failsToMeetReq = true;
+					break;
 				}
 			}
-
-			const currVsReq: [number, number][] = [
-				[zero, sec.verification.maxedStats.statsReq[0]],
-				[one, sec.verification.maxedStats.statsReq[1]],
-				[two, sec.verification.maxedStats.statsReq[2]],
-				[three, sec.verification.maxedStats.statsReq[3]],
-				[four, sec.verification.maxedStats.statsReq[4]],
-				[five, sec.verification.maxedStats.statsReq[5]],
-				[six, sec.verification.maxedStats.statsReq[6]],
-				[seven, sec.verification.maxedStats.statsReq[7]],
-				[eight, sec.verification.maxedStats.statsReq[8]]
-			];
-
-			let failsToMeetReq: boolean = false;
-			let extras: number = 0;
-
-			for (let i = currVsReq.length - 1; i >= 0; i--) {
-				if (currVsReq[i][0] < currVsReq[i][1]) {
-					let diff: number = currVsReq[i][1] - currVsReq[i][0];
-					extras -= diff;
-					if (extras < 0) {
-						failsToMeetReq = true;
-						break;
-					}
-				}
-				else {
-					extras += currVsReq[i][0] - currVsReq[i][1];
-				}
-			}
-
-			if (failsToMeetReq) {
-				const neededChar: StringBuilder = new StringBuilder();
-				if (sec.verification.maxedStats.required) {
-					for (let i = 0; i < sec.verification.maxedStats.statsReq.length; i++) {
-						if (sec.verification.maxedStats.statsReq[i] !== 0) {
-							neededChar.append(`• ${sec.verification.maxedStats.statsReq[i]} ${i}/8 Character(s).`)
-								.appendLine();
-						}
-					}
-				}
-
-				return {
-					errorMsg: "Your characters' maxed stats do not meet the minimum maxed stats required.",
-					errorMsgForLogging: "The characters' maxed stats are not sufficient enough to pass verification.",
-					errorCode: "CHARACTER_STATS_TOO_LOW",
-					fields: [
-						{
-							name: "Required Characters",
-							value: StringUtil.applyCodeBlocks(neededChar.toString()),
-							inline: true
-						}
-					]
-				}
+			else {
+				extras += currVsReq[i][0] - currVsReq[i][1];
 			}
 		}
 
+		const rankPassed: boolean = sec.verification.stars.required
+			? reapi.rank >= sec.verification.stars.minimum
+			: true;
+		const famePassed: boolean = sec.verification.aliveFame.required
+			? reapi.fame >= sec.verification.aliveFame.minimum
+			: true;
+		const charPassed: boolean = sec.verification.maxedStats.required
+			? !failsToMeetReq
+			: true;
+
 		return {
-			rank: reapi.rank,
-			aliveFame: reapi.account_fame,
-			stats: [zero, one, two, three, four, five, six, seven, eight]
+			rank: {
+				amt: reapi.rank,
+				passed: rankPassed
+			},
+			aliveFame: {
+				amt: reapi.fame,
+				passed: famePassed
+			},
+			characters: {
+				amt: [zero, one, two, three, four, five, six, seven, eight],
+				passed: charPassed,
+				hidden: reapi.characterCount === -1
+			},
+			passedAll: rankPassed && famePassed && charPassed
 		};
 	}
 
@@ -1112,8 +1103,14 @@ export module VerificationHandler {
 		verificationInfo: ITiffitRealmEyeProfile,
 		manualVerificationChannel: TextChannel,
 		section: ISection,
+		reqsFailedToMeet: StringBuilder,
 		nameHistoryInfo: INameHistory[] = []
 	): Promise<void> {
+		if (section.isMain) {
+			// we can safely assume
+			// that the id = the person.
+			await accountInDatabase(member, verificationInfo.name, nameHistoryInfo);
+		}
 		let zero: number = 0;
 		let one: number = 0;
 		let two: number = 0;
@@ -1154,9 +1151,7 @@ export module VerificationHandler {
 			.setAuthor(member.user.tag, member.user.displayAvatarURL())
 			.setTitle(`Manual Verification Request: **${verificationInfo.name}**`)
 			.setDescription(`⇒ Section: ${section.nameOfSection}\n ⇒ User: ${member}\n⇒ IGN: ${verificationInfo.name}\n⇒ RealmEye: [Profile](https://www.realmeye.com/player/${verificationInfo.name})\n\nReact with ☑️ to manually verify this person; otherwise, react with ❌.`)
-			.addField("Maxed Characters", StringUtil.applyCodeBlocks(verificationInfo.characterCount === -1 ? "Hidden" : characterStats), true)
-			.addField("Current Rank", StringUtil.applyCodeBlocks(verificationInfo.rank.toString()), true)
-			.addField("Alive Fame", StringUtil.applyCodeBlocks(verificationInfo.fame.toString()), true)
+			.addField("Unmet Requirements", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()), true)
 			.setColor("YELLOW")
 			.setFooter("Requested On")
 			.setTimestamp();
@@ -1174,7 +1169,7 @@ export module VerificationHandler {
 		const updateKey: string = section.isMain
 			? "properties.manualVerificationEntries"
 			: "sections.$.properties.manualVerificationEntries";
-		
+
 		await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne(filterQuery, {
 			$push: {
 				[updateKey]: {
@@ -1187,6 +1182,6 @@ export module VerificationHandler {
 					manualVerificationChannel: manualVerificationChannel.id
 				}
 			}
-		})
+		});
 	}
 }

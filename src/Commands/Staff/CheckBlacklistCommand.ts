@@ -100,11 +100,11 @@ export class CheckBlacklistCommand extends Command {
 				.appendLine()
 				.append(`⇒ Blacklisted Name: ${networkBlacklistEntry.inGameName}`)
 				.appendLine()
+				.append(`⇒ Moderator: ${networkBlacklistEntry.moderator}`)
+				.appendLine()
 				.append(`⇒ Reason: ${networkBlacklistEntry.reason}`)
 				.appendLine()
 				.append(`⇒ Date: ${DateUtil.getTime(networkBlacklistEntry.date)}`)
-				.appendLine()
-				.append(`⇒ Moderator: ${networkBlacklistEntry.moderator}`)
 				.appendLine()
 				.appendLine();
 		}
@@ -119,11 +119,11 @@ export class CheckBlacklistCommand extends Command {
 				.appendLine()
 				.append(`⇒ Blacklisted Name: ${serverBlacklistEntry.inGameName}`)
 				.appendLine()
+				.append(`⇒ Moderator: ${serverBlacklistEntry.moderator}`)
+				.appendLine()
 				.append(`⇒ Reason: ${serverBlacklistEntry.reason}`)
 				.appendLine()
 				.append(`⇒ Date: ${DateUtil.getTime(serverBlacklistEntry.date)}`)
-				.appendLine()
-				.append(`⇒ Moderator: ${serverBlacklistEntry.moderator}`)
 				.appendLine()
 				.appendLine();
 		}
@@ -134,6 +134,69 @@ export class CheckBlacklistCommand extends Command {
 		}
 
 		embed.setDescription(sb.toString());
+
+		const allGuildDbs: IRaidGuild[] = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient
+			.find({}).toArray();
+		let str: string = "";
+		let index: number = 1;
+		for (const [id, cGuild] of msg.client.guilds.cache) {
+			const associatedDb: IRaidGuild | undefined = allGuildDbs
+				.find(x => x.guildID === id);
+			if (typeof associatedDb === "undefined") {
+				continue;
+			}
+
+			const hasEssentialRoles: boolean = cGuild.roles.cache.has(associatedDb.roles.raider) && cGuild.roles.cache.has(associatedDb.roles.moderator);
+
+			if (!hasEssentialRoles) {
+				continue;
+			}
+
+			let blacklistEntry: IBlacklistedUser | undefined;
+			for (const entry of associatedDb.moderation.blacklistedUsers) {
+				for (const allNames of allNamesToSearch) {
+					if (entry.inGameName.toLowerCase() === allNames) {
+						blacklistEntry = entry;
+					}
+				}
+			}
+
+			if (typeof blacklistEntry === "undefined") {
+				continue;
+			}
+
+			const tempSb: StringBuilder = new StringBuilder()
+				.append(`Server: ${guild.name}`)
+				.appendLine()
+				.append(`⇒ Blacklisted Name: ${blacklistEntry.inGameName}`)
+				.appendLine()
+				.append(`⇒ Moderator: ${blacklistEntry.moderator}`)
+				.appendLine()
+				.append(`⇒ Reason: ${blacklistEntry.reason}`)
+				.appendLine()
+				.append(`⇒ Date: ${DateUtil.getTime(blacklistEntry.date)}`)
+				.appendLine()
+				.appendLine();
+			
+			if (str.length + tempSb.toString().length > 1020) {
+				embed.addField(`Server Blacklist Entry: ${index}`, str);
+				str = tempSb.toString();
+				index++;
+			}
+			else {
+				str += tempSb.toString();
+			}
+		}
+
+		if (str.length !== 0) {
+			if (embed.fields.length === 0) {
+				embed.addField(`Server Blacklist Entry`, str);
+			}
+			else {
+				embed.addField(`Server Blacklist Entry: ${index}`, str);
+			}
+		}
+
 		await msg.channel.send(embed).catch(e => { });
 	}
 }

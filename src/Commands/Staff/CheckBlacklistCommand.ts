@@ -9,6 +9,7 @@ import { INetworkBlacklistedUser, IBlacklistedUser } from "../../Definitions/IBl
 import { StringBuilder } from "../../Classes/String/StringBuilder";
 import { IRaidUser } from "../../Templates/IRaidUser";
 import { DateUtil } from "../../Utility/DateUtil";
+import { StringUtil } from "../../Utility/StringUtil";
 
 export class CheckBlacklistCommand extends Command {
 	public constructor() {
@@ -87,18 +88,18 @@ export class CheckBlacklistCommand extends Command {
 		const embed: MessageEmbed = new MessageEmbed()
 			.setAuthor(guild.name, typeof guild.iconURL() === "undefined" ? undefined : guild.iconURL() as string)
 			.setColor("RED")
-			.setTitle(`Blacklist Search: ${args[0]}`);
+			.setTitle(`Blacklist Search: **${args[0]}**`);
 		const sb: StringBuilder = new StringBuilder()
-			.append(`Found in Database: ${userDb === null ? "No" : "Yes"}`)
-			.appendLine()
 			.append(`Checked Names: ${allNamesToSearch.join(", ")}`)
+			.appendLine()
+			.append(`Found in Database: ${userDb === null ? "❌" : "☑️"}`)
 			.appendLine()
 			.appendLine();
 
 		if (typeof networkBlacklistEntry !== "undefined") {
-			sb.append("Network Blacklisted: Yes")
+			sb.append("Network Blacklisted: ☑️")
 				.appendLine()
-				.append(`⇒ Blacklisted Name: ${networkBlacklistEntry.inGameName}`)
+				.append(`⇒ **Name**: ${networkBlacklistEntry.inGameName}`)
 				.appendLine()
 				.append(`⇒ Moderator: ${networkBlacklistEntry.moderator}`)
 				.appendLine()
@@ -109,26 +110,26 @@ export class CheckBlacklistCommand extends Command {
 				.appendLine();
 		}
 		else {
-			sb.append("Network Blacklisted: No")
+			sb.append("Network Blacklisted: ❌")
 				.appendLine()
 				.appendLine();
 		}
 
 		if (typeof serverBlacklistEntry !== "undefined") {
-			sb.append("Server Blacklisted: Yes")
+			sb.append("Server Blacklisted: ☑️")
 				.appendLine()
-				.append(`⇒ Blacklisted Name: ${serverBlacklistEntry.inGameName}`)
+				.append(`⇒ **Name:** ${serverBlacklistEntry.inGameName}`)
 				.appendLine()
-				.append(`⇒ Moderator: ${serverBlacklistEntry.moderator}`)
+				.append(`⇒ **Moderator:** ${serverBlacklistEntry.moderator}`)
 				.appendLine()
-				.append(`⇒ Reason: ${serverBlacklistEntry.reason}`)
+				.append(`⇒ **Reason:** ${serverBlacklistEntry.reason}`)
 				.appendLine()
-				.append(`⇒ Date: ${DateUtil.getTime(serverBlacklistEntry.date)}`)
+				.append(`⇒ **Date:** ${DateUtil.getTime(serverBlacklistEntry.date)}`)
 				.appendLine()
 				.appendLine();
 		}
 		else {
-			sb.append("Server Blacklisted: No")
+			sb.append("Server Blacklisted: ❌")
 				.appendLine()
 				.appendLine();
 		}
@@ -139,6 +140,7 @@ export class CheckBlacklistCommand extends Command {
 			.find({}).toArray();
 		let str: string = "";
 		let index: number = 1;
+		let guildsChecked: number = 0;
 		for (const [id, cGuild] of msg.client.guilds.cache) {
 			const associatedDb: IRaidGuild | undefined = allGuildDbs
 				.find(x => x.guildID === id);
@@ -149,6 +151,12 @@ export class CheckBlacklistCommand extends Command {
 			const hasEssentialRoles: boolean = cGuild.roles.cache.has(associatedDb.roles.raider) && cGuild.roles.cache.has(associatedDb.roles.moderator);
 
 			if (!hasEssentialRoles) {
+				continue;
+			}
+
+			guildsChecked++;
+
+			if (guild.id === id) {
 				continue;
 			}
 
@@ -168,17 +176,17 @@ export class CheckBlacklistCommand extends Command {
 			const tempSb: StringBuilder = new StringBuilder()
 				.append(`Server: ${guild.name}`)
 				.appendLine()
-				.append(`⇒ Blacklisted Name: ${blacklistEntry.inGameName}`)
+				.append(`⇒ **Name:** ${blacklistEntry.inGameName}`)
 				.appendLine()
-				.append(`⇒ Moderator: ${blacklistEntry.moderator}`)
+				.append(`⇒ **Moderator:** ${blacklistEntry.moderator}`)
 				.appendLine()
-				.append(`⇒ Reason: ${blacklistEntry.reason}`)
+				.append(`⇒ **Reason:** ${blacklistEntry.reason}`)
 				.appendLine()
-				.append(`⇒ Date: ${DateUtil.getTime(blacklistEntry.date)}`)
+				.append(`⇒ **Date:** ${DateUtil.getTime(blacklistEntry.date)}`)
 				.appendLine()
 				.appendLine();
-			
-			if (str.length + tempSb.toString().length > 1020) {
+
+			if (str.length + tempSb.toString().length > 1012) {
 				embed.addField(`Server Blacklist Entry: ${index}`, str);
 				str = tempSb.toString();
 				index++;
@@ -197,6 +205,7 @@ export class CheckBlacklistCommand extends Command {
 			}
 		}
 
+		embed.setFooter(`Servers Checked: ${guildsChecked}`);
 		await msg.channel.send(embed).catch(e => { });
 	}
 }

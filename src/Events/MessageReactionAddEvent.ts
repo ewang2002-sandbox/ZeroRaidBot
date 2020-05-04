@@ -104,7 +104,16 @@ export async function onMessageReactionAdd(
             await manualVerifMember.roles.add(sectionVerifiedRole).catch(e => { });
             if (sectionForManualVerif.isMain) {
                 await manualVerifMember.setNickname(manualVerificationProfile.inGameName).catch(e => { });
-                await VerificationHandler.accountInDatabase(manualVerifMember, manualVerificationProfile.inGameName, manualVerificationProfile.nameHistory);
+                await VerificationHandler.accountInDatabase(
+                    manualVerifMember, 
+                    manualVerificationProfile.inGameName, 
+                    manualVerificationProfile.nameHistory
+                );
+                await VerificationHandler.findOtherUserAndRemoveVerifiedRole(
+                    member, 
+                    guild, 
+                    guildDb
+                );
                 const successEmbed: MessageEmbed = new MessageEmbed()
                     .setTitle(`Successful Verification: **${guild.name}**`)
                     .setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)

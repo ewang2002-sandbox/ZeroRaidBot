@@ -83,5 +83,10 @@ export interface ISection {
 		 * All ongoing manual verification.
 		 */
 		manualVerificationEntries: IManualVerification[];
+
+		/**
+		 * Shows verification requirements.
+		 */
+		showVerificationRequirements: boolean;
 	}
 }

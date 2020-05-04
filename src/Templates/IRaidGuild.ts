@@ -238,6 +238,11 @@ export interface IRaidGuild {
 		successfulVerificationMessage: string;
 
 		/**
+		 * Shows verification requirements.
+		 */
+		showVerificationRequirements: boolean;
+
+		/**
 		 * An array of current modmail users. 
 		 */
 		modMail: IModMail[];

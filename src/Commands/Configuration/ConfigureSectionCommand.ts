@@ -390,7 +390,9 @@ export class ConfigureSectionCommand extends Command {
 				TimeUnit.MINUTE
 			);
 
-			const controlPanelChannel: TextChannel | "CANCEL" | "TIME" = await col4.send(GenericMessageCollector.getChannelPrompt(msg));
+			const controlPanelChannel: TextChannel | "CANCEL" | "TIME" = await col4.send(
+				GenericMessageCollector.getChannelPrompt(msg, msg.channel)
+			);
 
 			if (controlPanelChannel === "CANCEL" || controlPanelChannel === "TIME") {
 				return;
@@ -419,7 +421,9 @@ export class ConfigureSectionCommand extends Command {
 			TimeUnit.MINUTE
 		);
 
-		const verifiedRole: Role | "CANCEL" | "TIME" = await col3.send(GenericMessageCollector.getRolePrompt(msg));
+		const verifiedRole: Role | "CANCEL" | "TIME" = await col3.send(
+			GenericMessageCollector.getRolePrompt(msg, msg.channel)
+		);
 
 		if (verifiedRole === "CANCEL" || verifiedRole === "TIME") {
 			return;
@@ -459,7 +463,8 @@ export class ConfigureSectionCommand extends Command {
 					},
 					properties: {
 						dungeons: AFKDungeon.map(x => x.id),
-						manualVerificationEntries: []
+						manualVerificationEntries: [],
+						showVerificationRequirements: true
 					}
 				}
 			}
@@ -1209,9 +1214,10 @@ export class ConfigureSectionCommand extends Command {
 			.addField("Go Back", "React with ⬅️ to go back to the Main Menu.")
 			.addField("Configure Rank Requirements", "React with ⭐ to configure rank requirements.")
 			.addField("Configure Fame Requirements", "React with 📛 to configure fame requirements.")
-			.addField("Configure Maxed Stats Requirements", "React with ➕ to configure maxed stats requirements.");
+			.addField("Configure Maxed Stats Requirements", "React with ➕ to configure maxed stats requirements.")
+			.addField(`${!section.properties.showVerificationRequirements ? "Show" : "Hide"} Verification Requirements`, `React with 🛡️ to ${!section.properties.showVerificationRequirements ? "show" : "hide"} the verification requirements. This will affect both the verification requirement embed *and* the direct message verification.`);
 
-		reactions.push("⬅️", "⭐", "📛", "➕");
+		reactions.push("⬅️", "⭐", "📛", "➕", "🛡️");
 
 		if (typeof verificationChannel !== "undefined") {
 			embed.addField("Send Verification Embed", "React with 📧 to send the embed containing verification instructions out.");
@@ -1286,6 +1292,18 @@ export class ConfigureSectionCommand extends Command {
 					["sections.$.verification.maxedStats.required", "sections.$.verification.maxedStats.statsReq"]
 				);
 			}
+			// show/hide reqs
+			else if (r.emoji.name === "🛡️") {
+				const filterQuery: FilterQuery<IRaidGuild> = section.isMain
+					? { guildID: guild.id }
+					: { guildID: guild.id, "sections.verifiedRole": section.verifiedRole };
+				const updateQuery: UpdateQuery<IRaidGuild> = section.isMain
+					? { $set: { "properties.showVerificationRequirements": !section.properties.showVerificationRequirements } }
+					: { $set: { "sections.$.properties.showVerificationRequirements": !section.properties.showVerificationRequirements } };
+				res = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(filterQuery, updateQuery, {
+					returnOriginal: false
+				})).value as IRaidGuild;
+			}
 			// send embed
 			else if (r.emoji.name === "📧") {
 				let reqs: StringBuilder = new StringBuilder()
@@ -1293,33 +1311,36 @@ export class ConfigureSectionCommand extends Command {
 					.appendLine()
 					.append("• Private \"Last Seen\" Location.")
 					.appendLine();
+
 				if (section.isMain) {
 					reqs.append("• Public Name History.")
 						.appendLine();
 				}
 
-				if (section.verification.aliveFame.required) {
-					reqs.append(`• ${section.verification.aliveFame.minimum} Alive Fame.`)
-						.appendLine();
-				}
+				if (section.properties.showVerificationRequirements) {
+					if (section.verification.aliveFame.required) {
+						reqs.append(`• ${section.verification.aliveFame.minimum} Alive Fame.`)
+							.appendLine();
+					}
 
-				if (section.verification.stars.required) {
-					reqs.append(`• ${section.verification.stars.minimum} Stars.`)
-						.appendLine();
-				}
+					if (section.verification.stars.required) {
+						reqs.append(`• ${section.verification.stars.minimum} Stars.`)
+							.appendLine();
+					}
 
-				if (section.verification.maxedStats.required) {
-					for (let i = 0; i < section.verification.maxedStats.statsReq.length; i++) {
-						if (section.verification.maxedStats.statsReq[i] !== 0) {
-							reqs.append(`• ${section.verification.maxedStats.statsReq[i]} ${i}/8 Character(s).`)
-								.appendLine();
+					if (section.verification.maxedStats.required) {
+						for (let i = 0; i < section.verification.maxedStats.statsReq.length; i++) {
+							if (section.verification.maxedStats.statsReq[i] !== 0) {
+								reqs.append(`• ${section.verification.maxedStats.statsReq[i]} ${i}/8 Character(s).`)
+									.appendLine();
+							}
 						}
 					}
 				}
 
 				const verifEmbed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", { authorType: "GUILD" })
 					.setTitle(`**${section.isMain ? "Server" : "Section"} Verification Channel**`)
-					.setDescription(`Welcome to ${section.isMain ? `**\`${guild.name}\`**` : `the **\`${section.nameOfSection}\`** section.`}! In order to join in on our raids, you will have to first verify your identity. The requirements for this server are listed below. ${StringUtil.applyCodeBlocks(reqs.toString())}\n\nIf you meet these requirements, then please react to the ✅ to get started. ${!section.isMain ? "To unverify from the section, simply react with ❌." : ""}`)
+					.setDescription(`Welcome to ${section.isMain ? `**\`${guild.name}\`**` : `the **\`${section.nameOfSection}\`** section.`}! In order to join in on our raids, you will have to first verify your identity. The requirements for this server are listed below. ${StringUtil.applyCodeBlocks(reqs.toString())}\nIf you meet these requirements, then please react to the ✅ to get started. ${!section.isMain ? "To unverify from the section, simply react with ❌." : ""}`)
 					.setFooter(section.isMain ? "Server Verification" : "Section Verification")
 					.setColor("RANDOM");
 				const z: Message = await (verificationChannel as TextChannel).send(verifEmbed);
@@ -1466,7 +1487,7 @@ export class ConfigureSectionCommand extends Command {
 							embed: promptEmbed.setTitle("**Edit Minimum Fame**").setDescription("Type the minimum amount of fame a person needs to meet the requirements.")
 						}, 2, TimeUnit.MINUTE);
 
-						const n: number | "TIME" | "CANCEL" = await gm0.send(GenericMessageCollector.getNumber(msg, 0));
+						const n: number | "TIME" | "CANCEL" = await gm0.send(GenericMessageCollector.getNumber(msg, msg.channel, 0));
 						if (n === "TIME") {
 							return resolve("TIME");
 						}
@@ -1486,7 +1507,7 @@ export class ConfigureSectionCommand extends Command {
 							embed: promptEmbed.setTitle("**Edit Minimum Rank**").setDescription("Type the minimum rank a person needs to meet the requirements.")
 						}, 2, TimeUnit.MINUTE);
 
-						const n: number | "TIME" | "CANCEL" = await gm0.send(GenericMessageCollector.getNumber(msg, 0, 75));
+						const n: number | "TIME" | "CANCEL" = await gm0.send(GenericMessageCollector.getNumber(msg, msg.channel, 0, 75));
 						if (n === "TIME") {
 							return resolve("TIME");
 						}
@@ -1505,7 +1526,7 @@ export class ConfigureSectionCommand extends Command {
 						const gmc2: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, {
 							embed: promptEmbed.setTitle("**Edit Required Character Stats**").setDescription("Please type the stats type that you want to modify. For example, to modify the amount of `7/8`s needed to verify, type `7`.")
 						}, 2, TimeUnit.MINUTE);
-						const n: number | "TIME" | "CANCEL" = await gmc2.send(GenericMessageCollector.getNumber(msg, 0, 8));
+						const n: number | "TIME" | "CANCEL" = await gmc2.send(GenericMessageCollector.getNumber(msg, msg.channel, 0, 8));
 						if (n === "TIME") {
 							return resolve("TIME");
 						}
@@ -1519,7 +1540,7 @@ export class ConfigureSectionCommand extends Command {
 							embed: promptEmbed.setTitle("**Edit Required Character Stats**").setDescription(`You are currently modifying the required amount of ${n}/8 needed. Please type the amount of ${n}/8 characters needed.`)
 						}, 2, TimeUnit.MINUTE);
 
-						const m: number | "TIME" | "CANCEL" = await gmc3.send(GenericMessageCollector.getNumber(msg, 0, 15));
+						const m: number | "TIME" | "CANCEL" = await gmc3.send(GenericMessageCollector.getNumber(msg, msg.channel, 0, 15));
 						if (m === "TIME") {
 							return resolve("TIME");
 						}
@@ -1678,7 +1699,7 @@ export class ConfigureSectionCommand extends Command {
 
 		const chan: TextChannel | "CANCEL" | "TIME" = await (new GenericMessageCollector<TextChannel>(msg, {
 			embed: embed
-		}, 3, TimeUnit.MINUTE)).send(GenericMessageCollector.getChannelPrompt(msg));
+		}, 3, TimeUnit.MINUTE)).send(GenericMessageCollector.getChannelPrompt(msg, msg.channel));
 
 		if (chan === "CANCEL") {
 			return "CANCEL";
@@ -1721,7 +1742,7 @@ export class ConfigureSectionCommand extends Command {
 
 		const chan: Role | "CANCEL" | "TIME" = await (new GenericMessageCollector<Role>(msg, {
 			embed: embed
-		}, 3, TimeUnit.MINUTE)).send(GenericMessageCollector.getRolePrompt(msg));
+		}, 3, TimeUnit.MINUTE)).send(GenericMessageCollector.getRolePrompt(msg, msg.channel));
 
 		if (chan === "CANCEL") {
 			return "CANCEL";
@@ -2012,6 +2033,8 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 			.append(`Verified Role: ${typeof verifiedRole === "undefined" ? "N/A" : verifiedRole}`)
 
 		const verificationSB: StringBuilder = new StringBuilder("__Verification__")
+			.appendLine()
+			.append(`Show Requirements: ${section.properties.showVerificationRequirements ? "Yes" : "No"}`)
 			.appendLine()
 			.append(`Stars: ${section.verification.stars.minimum} (${starReq})`)
 			.appendLine()

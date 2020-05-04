@@ -252,6 +252,7 @@ export module MongoDbHelper {
 						modMail: [],
 						manualVerificationEntries: [],
 						dungeons: AFKDungeon.map(x => x.id),
+						showVerificationRequirements: true
 					},
 					moderation: {
 						blacklistedUsers: [],

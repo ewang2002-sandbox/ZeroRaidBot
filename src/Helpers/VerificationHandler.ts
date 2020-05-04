@@ -99,21 +99,23 @@ export module VerificationHandler {
 				.append("• Public Name History.")
 				.appendLine();
 
-			if (section.verification.aliveFame.required) {
-				reqs.append(`• ${section.verification.aliveFame.minimum} Alive Fame.`)
-					.appendLine();
-			}
+			if (section.properties.showVerificationRequirements) {
+				if (section.verification.aliveFame.required) {
+					reqs.append(`• ${section.verification.aliveFame.minimum} Alive Fame.`)
+						.appendLine();
+				}
 
-			if (section.verification.stars.required) {
-				reqs.append(`• ${section.verification.stars.minimum} Stars.`)
-					.appendLine();
-			}
+				if (section.verification.stars.required) {
+					reqs.append(`• ${section.verification.stars.minimum} Stars.`)
+						.appendLine();
+				}
 
-			if (section.verification.maxedStats.required) {
-				for (let i = 0; i < section.verification.maxedStats.statsReq.length; i++) {
-					if (section.verification.maxedStats.statsReq[i] !== 0) {
-						reqs.append(`• ${section.verification.maxedStats.statsReq[i]} ${i}/8 Character(s).`)
-							.appendLine();
+				if (section.verification.maxedStats.required) {
+					for (let i = 0; i < section.verification.maxedStats.statsReq.length; i++) {
+						if (section.verification.maxedStats.statsReq[i] !== 0) {
+							reqs.append(`• ${section.verification.maxedStats.statsReq[i]} ${i}/8 Character(s).`)
+								.appendLine();
+						}
 					}
 				}
 			}
@@ -450,7 +452,7 @@ export module VerificationHandler {
 						if (!prelimCheck.characters.passed) {
 							let strChar: string = "";
 							for (let i = 0; i < prelimCheck.characters.amt.length; i++) {
-								strChar += `⇒ ${prelimCheck.characters.amt[i]}/${section.verification.maxedStats.statsReq[i]} ${i}/8\n`;
+								strChar += `⇒ ${i}/8 Characters: ${prelimCheck.characters.amt[i]}/${section.verification.maxedStats.statsReq[i]}\n`;
 							}
 							reqsFailedToMeet.append("Characters: See List.")
 								.appendLine()
@@ -469,15 +471,28 @@ export module VerificationHandler {
 
 						if (typeof manualVerificationChannel === "undefined") {
 							failedEmbed
-								.setDescription("You have failed to meet the requirements for the server. Please review the below requirements you have failed to meet and make note of them.")
-								.addField("Requirements Missed", reqsFailedToMeet.toString())
 								.setFooter("Verification Process: Stopped.");
+							if (section.properties.showVerificationRequirements) {
+								failedEmbed
+									.setDescription("You have failed to meet the requirements for the server. Please review the below requirements you have failed to meet and make note of them.")
+									.addField("Requirements Missed", reqsFailedToMeet.toString());
+							}
+							else {
+								failedEmbed
+									.setDescription("You have failed to meet the requirements for the server. If you feel this is in error, please contact a staff member or go to #help-desk");
+							}
 						}
 						else {
+							let descStr: string = "You did not meet the requirements for this server. ";
+							if (section.properties.showVerificationRequirements) {
+								descStr += `The requirements are: ${StringUtil.applyCodeBlocks(reqs.toString())}\nThe requirements you have failed to meet are listed below:\n${StringUtil.applyCodeBlocks(reqsFailedToMeet.toString())}`;
+							}
+							descStr += "\n\nWould you like to appeal the decision with a staff member? Unreact and react with ✅ to appeal with a staff member; otherwise, react with ❌.";
+
 							const wantsToBeManuallyVerified: boolean | "TIME" = await new Promise(async (resolve, reject) => {
 								const failedAppealEmbed: MessageEmbed = new MessageEmbed(failedEmbed)
-									.setDescription(`You did not meet the requirements for this server. The requirements are: ${StringUtil.applyCodeBlocks(reqs.toString())}\nThe requirements you have failed to meet are listed below:\n${StringUtil.applyCodeBlocks(reqsFailedToMeet.toString())}\n\nWould you like to appeal the decision with a staff member? Unreact and react with ✅ to appeal with a staff member; otherwise, react with ❌.`)
 									.addField("Consider the Following", "⇒ This process may take up to one day.\n⇒ You will not be able to verify while your profile is being reviewed.\n⇒ You are NOT guaranteed to be verified.")
+									.setDescription(descStr)
 									.setFooter("⏳ Time Remaining: 2 Minutes and 0 Seconds.");
 								const manaulVerifMsg: Message = await botMsg.edit(failedAppealEmbed);
 								await manaulVerifMsg.react("✅").catch(() => { });
@@ -585,34 +600,12 @@ export module VerificationHandler {
 						.setColor("GREEN")
 						.setFooter("Verification Process: Stopped.");
 					await botMsg.edit(successEmbed);
-					await accountInDatabase(member, nameFromProfile, nameHistory);
 					if (typeof verificationSuccessChannel !== "undefined") {
 						verificationSuccessChannel.send(`📥 **\`[${section.nameOfSection}]\`** ${member} has successfully been verified as \`${inGameName}\`.`).catch(console.error);
 					}
 
-					// now let's check to see if anyone else verified as the same name
-					// TODO perhaps also check old id? 
-					const newUserDb: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient.findOne({
-						discordUserId: member.id
-					});
-
-					if (newUserDb !== null) {
-						let names: string[] = [
-							newUserDb.rotmgLowercaseName
-							, ...newUserDb.otherAccountNames.map(x => x.lowercase)
-						];
-
-						for (const name of names) {
-							const res: GuildMember | GuildMember[] = UserHandler.findUserByInGameName(guild, name, guildDb);
-							if (Array.isArray(res) || res.id === member.id) {
-								continue;
-							}
-
-							for (const [id, role] of res.roles.cache) {
-								await res.roles.remove(role).catch(e => { });
-							}
-						}
-					}
+					await accountInDatabase(member, nameFromProfile, nameHistory);
+					await findOtherUserAndRemoveVerifiedRole(member, guild, guildDb);
 				});
 			}
 			// SECTION
@@ -671,7 +664,7 @@ export module VerificationHandler {
 					if (!prelimCheck.characters.passed) {
 						let strChar: string = "";
 						for (let i = 0; i < prelimCheck.characters.amt.length; i++) {
-							strChar += `⇒ ${prelimCheck.characters.amt[i]}/${section.verification.maxedStats.statsReq[i]} ${i}/8\n`;
+							strChar += `⇒ ${i}/8 Characters: ${prelimCheck.characters.amt[i]}/${section.verification.maxedStats.statsReq[i]}\n`;
 						}
 						reqsFailedToMeet.append("Characters: See List.")
 							.appendLine()
@@ -689,14 +682,27 @@ export module VerificationHandler {
 
 					if (typeof manualVerificationChannel === "undefined") {
 						failedEmbed
-							.setDescription("You have failed to meet the requirements for the section. Please review the below requirements you have failed to meet and make note of them.")
-							.addField("Requirements Missed", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()))
 							.setFooter("Verification Process: Stopped.");
+						if (section.properties.showVerificationRequirements) {
+							failedEmbed
+								.setDescription("You have failed to meet the requirements for the section. Please review the below requirements you have failed to meet and make note of them.")
+								.addField("Requirements Missed", reqsFailedToMeet.toString());
+						}
+						else {
+							failedEmbed
+								.setDescription("You have failed to meet the requirements for the section. If you feel this is in error, please contact a staff member or go to #help-desk");
+						}
 					}
 					else {
+						let descStr: string = "You did not meet the requirements for this server. ";
+						if (section.properties.showVerificationRequirements) {
+							descStr += `The requirements are: ${StringUtil.applyCodeBlocks(reqs.toString())}\nThe requirements you have failed to meet are listed below:\n${StringUtil.applyCodeBlocks(reqsFailedToMeet.toString())}`;
+						}
+						descStr += "\n\nWould you like to appeal the decision with a staff member? Unreact and react with ✅ to appeal with a staff member; otherwise, react with ❌.";
+
 						const wantsToBeManuallyVerified: boolean | "TIME" = await new Promise(async (resolve, reject) => {
 							const failedAppealEmbed: MessageEmbed = new MessageEmbed(failedEmbed)
-								.setDescription(`You did not meet the requirements for this section. The requirements are: ${StringUtil.applyCodeBlocks(reqs.toString())}\nThe requirements you have failed to meet are listed below:\n${StringUtil.applyCodeBlocks(reqsFailedToMeet.toString())}\n\nWould you like to appeal the decision with a staff member? Unreact and react with ✅ to appeal with a staff member; otherwise, react with ❌.`)
+								.setDescription(descStr)
 								.addField("Consider the Following", "⇒ This process may take up to one day.\n⇒ You will not be able to verify while your profile is being reviewed.\n⇒ You are NOT guaranteed to be verified.")
 								.setFooter("⏳ Time Remaining: 2 Minutes and 0 Seconds.");
 							const manaulVerifMsg: Message = await botMsg.edit(failedAppealEmbed);
@@ -1148,7 +1154,7 @@ export module VerificationHandler {
 		const manualVerifEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(member.user.tag, member.user.displayAvatarURL())
 			.setTitle(`Manual Verification Request: **${verificationInfo.name}**`)
-			.setDescription(`⇒ Section: ${section.nameOfSection}\n ⇒ User: ${member}\n⇒ IGN: ${verificationInfo.name}\n⇒ RealmEye: [Profile](https://www.realmeye.com/player/${verificationInfo.name})\n\nReact with ☑️ to manually verify this person; otherwise, react with ❌.`)
+			.setDescription(`⇒ **Section:** ${section.nameOfSection}\n ⇒ **User:** ${member}\n⇒ **IGN:** ${verificationInfo.name}\n⇒ **RealmEye:** [Profile](https://www.realmeye.com/player/${verificationInfo.name})\n\nReact with ☑️ to manually verify this person; otherwise, react with ❌.`)
 			.addField("Unmet Requirements", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()), true)
 			.setColor("YELLOW")
 			.setFooter("Requested On")
@@ -1181,5 +1187,35 @@ export module VerificationHandler {
 				}
 			}
 		});
+	}
+
+	export async function findOtherUserAndRemoveVerifiedRole(
+		member: GuildMember, 
+		guild: Guild, 
+		guildDb: IRaidGuild
+	): Promise<void> {
+		// now let's check to see if anyone else verified as the same name
+		// TODO perhaps also check old id? 
+		const newUserDb: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient.findOne({
+			discordUserId: member.id
+		});
+
+		if (newUserDb !== null) {
+			let names: string[] = [
+				newUserDb.rotmgLowercaseName
+				, ...newUserDb.otherAccountNames.map(x => x.lowercase)
+			];
+
+			for (const name of names) {
+				const res: GuildMember | GuildMember[] = UserHandler.findUserByInGameName(guild, name, guildDb);
+				if (Array.isArray(res) || res.id === member.id) {
+					continue;
+				}
+
+				for (const [id, role] of res.roles.cache) {
+					await res.roles.remove(role).catch(e => { });
+				}
+			}
+		}
 	}
 }

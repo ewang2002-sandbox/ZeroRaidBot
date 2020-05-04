@@ -108,7 +108,7 @@ export class GenericMessageCollector<T> {
 	 * @returns {Promise<T | "CANCEL" | "TIME">} The resolved object, or one of two flags: "CANCEL" if the user canceled their request, or "TIME" if the time ran out.
 	 */
 	public async send(
-		func: (collectedMessage: Message) => Promise<T | void>,
+		func: (collectedMessage: Message, ...otherArgs: any) => Promise<T | void>,
 		deleteResponseMessages: boolean = true
 	): Promise<T | "CANCEL" | "TIME"> {
 		return new Promise(async (resolve) => {
@@ -154,18 +154,22 @@ export class GenericMessageCollector<T> {
 	/**
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with either a TextChannel mention or ID.
 	 * @param {Message} msg The message that triggered this class. This is generally a message that results in the exeuction of the command. 
+	 * @param {TextBasedChannelFields} pChan The channel to send any messages to.
 	 * @example 
 	 * const gmc: GenericMessageCollector<TextChannel> = new GenericMessageCollector<TextChannel>(msg, { embed: embed }, 1, TimeUnit.MINUTE);
 	 * const response: TextChannel | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getChannelPrompt(msg)); 
 	 */
-	public static getChannelPrompt(msg: Message): (m: Message) => Promise<void | TextChannel> {
+	public static getChannelPrompt(
+		msg: Message, 
+		pChan: TextBasedChannelFields
+	): (m: Message) => Promise<void | TextChannel> {
 		return async (m: Message): Promise<void | TextChannel> => {
 			const channel: GuildChannel | undefined = m.mentions.channels.first();
 			let resolvedChannel: GuildChannel;
 			if (typeof channel === "undefined") {
 				let reCh: GuildChannel | undefined = (msg.guild as Guild).channels.cache.get(m.content) as GuildChannel | undefined;
 				if (typeof reCh === "undefined") {
-					await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_ID", null, "channel"), msg.channel);
+					await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_ID", null, "channel"), pChan);
 					return;
 				}
 				resolvedChannel = reCh;
@@ -177,7 +181,7 @@ export class GenericMessageCollector<T> {
 			const permissions: Readonly<Permissions> | null = resolvedChannel.permissionsFor(((msg.guild as Guild).me as GuildMember));
 			if (permissions !== null) {
 				if (!(permissions.has("VIEW_CHANNEL") && permissions.has("SEND_MESSAGES") && permissions.has("ADD_REACTIONS") && permissions.has("READ_MESSAGE_HISTORY"))) {
-					await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "NO_CHAN_PERMISSIONS", null, "`VIEW_CHANNEL`", "`SEND_MESSAGES`", "`ADD_REACTIONS`", "`READ_MESSAGE_HISTORY`"), msg.channel as TextChannel);
+					await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "NO_CHAN_PERMISSIONS", null, "`VIEW_CHANNEL`", "`SEND_MESSAGES`", "`ADD_REACTIONS`", "`READ_MESSAGE_HISTORY`"), pChan);
 					return;
 				}
 			}
@@ -194,27 +198,33 @@ export class GenericMessageCollector<T> {
 	/**
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with a number.
 	 * @param {Message} msg The message that triggered this class. This is generally a message that results in the exeuction of the command. 
+	 * @param {TextBasedChannelFields} channel The channel to send messages to.
 	 * @param {number} [min] The minimum, inclusive.
 	 * @param {number} [max] The maximum, inclusive.
 	 * @example 
 	 * const gmc: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, { embed: embed }, 1, TimeUnit.MINUTE);
 	 * const response: number | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getNumber(msg)); 
 	 */
-	public static getNumber(msg: Message, min?: number, max?: number): (m: Message) => Promise<void | number> {
+	public static getNumber(
+		msg: Message, 
+		channel: TextBasedChannelFields, 
+		min?: number, 
+		max?: number
+	): (m: Message) => Promise<void | number> {
 		return async (m: Message): Promise<void | number> => {
 			const num: number = Number.parseInt(m.content);
 			if (Number.isNaN(num)) {
-				MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_NUMBER_INPUT", null), msg.channel as TextChannel);
+				MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_NUMBER_INPUT", null), channel);
 				return;
 			}
 
 			if (typeof min !== "undefined" && num < min) {
-				MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null).setTitle("Number Too Low").setDescription(`The number you selected is lower than ${min}. Try again.`), msg.channel as TextChannel);
+				MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null).setTitle("Number Too Low").setDescription(`The number you selected is lower than ${min}. Try again.`), channel);
 				return;
 			}
 
 			if (typeof max !== "undefined" && max < num) {
-				MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null).setTitle("Number Too High").setDescription(`The number you selected is higher than ${max}. Try again.`), msg.channel as TextChannel);
+				MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null).setTitle("Number Too High").setDescription(`The number you selected is higher than ${max}. Try again.`), channel);
 				return;
 			}
 
@@ -225,11 +235,12 @@ export class GenericMessageCollector<T> {
 	/**
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with a role ID or mention.
 	 * @param {Message} msg The message that triggered this class. This is generally a message that results in the exeuction of the command. 
+	 * @param {TextBasedChannelFields} pChan The channel to send messages to.
 	 * @example 
 	 * const gmc: GenericMessageCollector<Role> = new GenericMessageCollector<Role>(msg, { embed: embed }, 1, TimeUnit.MINUTE);
 	 * const response: Role | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getRolePrompt(msg)); 
 	 */
-	public static getRolePrompt(msg: Message): (collectedMessage: Message) => Promise<void | Role> {
+	public static getRolePrompt(msg: Message, pChan: TextBasedChannelFields): (collectedMessage: Message) => Promise<void | Role> {
 		return async (m: Message): Promise<void | Role> => {
 			const role: Role | undefined = m.mentions.roles.first();
 			let resolvedRole: Role;

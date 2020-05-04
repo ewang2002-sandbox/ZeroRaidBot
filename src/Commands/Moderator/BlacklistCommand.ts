@@ -85,7 +85,7 @@ export class BlacklistCommand extends Command {
 					inGameName: nameToBlacklist.toLowerCase(),
 					reason: reason,
 					date: new Date().getTime(),
-					moderator: mod.id
+					moderator: mod.displayName
 				}
 			}
 		});

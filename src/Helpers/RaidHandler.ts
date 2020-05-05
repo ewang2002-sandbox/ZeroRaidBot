@@ -238,14 +238,21 @@ export module RaidHandler {
 				});
 
 				reactCollector.on("collect", async (r: MessageReaction, u: User) => {
-					await r.users.remove().catch(() => { });
+					await r.users.remove(u).catch(() => { });
 					const memberThatAnswered: GuildMember | null = guild.member(u);
 					if (memberThatAnswered === null) {
 						return;
 					}
 
 					// make sure he or she has a leader/higher-up role
-					if (!(memberThatAnswered.roles.cache.has(guildDb.roles.headRaidLeader) || memberThatAnswered.roles.cache.has(guildDb.roles.raidLeader))) {
+					const allowsRoles: string[] = [
+						guildDb.roles.headRaidLeader,
+						guildDb.roles.raidLeader,
+						guildDb.roles.moderator,
+						guildDb.roles.officer
+					];
+
+					if (!(allowsRoles.some(x => memberThatAnswered.roles.cache.has(x)) || memberThatAnswered.hasPermission("ADMINISTRATOR"))) {
 						return;
 					}
 
@@ -399,7 +406,7 @@ export module RaidHandler {
 				existingEarlyLocRoles.push(role);
 			}
 		}
-		
+
 		let optionalReactsField: string = "";
 		let reactWithNitroBoosterEmoji: boolean = false;
 		if (existingEarlyLocRoles.length !== 0) {
@@ -516,60 +523,29 @@ export module RaidHandler {
 		let earlyReactions: GuildMember[] = [];
 		reactCollector.on("collect", async (reaction: MessageReaction, user: User) => {
 			const member: GuildMember | null = guild.member(user);
-			if (reaction.emoji.id !== null && member !== null) {
-				if (rs.dungeonInfo.keyEmojIDs.some(x => x.keyEmojID === reaction.emoji.id)
-					&& !keysThatReacted.some(x => x.id === user.id)) {
-					if (keysThatReacted.length + 1 > 10) {
-						await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** Thank you for your interest in contributing a key to the raid. However, we have enough people for now! A leader will give instructions if keys are needed; please ensure you are paying attention to the leader.`).catch(() => { });
-						return;
-					}
-					// key react 
-					let hasAccepted: boolean = await keyReact(user, guild, NEW_RAID_VC, rs);
-					if (hasAccepted) {
-						keysThatReacted.push(member);
-						let cpDescWithKey: string = `${controlPanelDescription}`;
-						if (keysThatReacted.length !== 0) {
-							cpDescWithKey += `\n\nKey Reactions: ${keysThatReacted.join(" ")}`;
-						}
-						if (earlyReactions.length !== 0) {
-							cpDescWithKey += `\n\nEarly Reactions: ${earlyReactions.join(" ")}`;
-						}
-						controlPanelEmbed.setDescription(cpDescWithKey);
-						controlPanelMsg.edit(controlPanelEmbed).catch(() => { });
-
-						const currData: IStoredRaidData | undefined = CURRENT_RAID_DATA.find(x => x.vcId === rs.vcID);
-						if (typeof currData === "undefined") {
-							reactCollector.stop();
-							return;
-						}
-
-						currData.keyReacts.push(member);
-
-						rs.keyReacts.push(member.id);
-						guildDb = await RaidDbHelper.addKeyReaction(guild, rs.vcID, member);
-					}
+			if (member === null) {
+				return;
+			}
+			// TODO somehow key entry (in end afk control panel) have data from the early react (merged data)
+			// check on this
+			if (rs.dungeonInfo.keyEmojIDs.some(x => x.keyEmojID === reaction.emoji.id)
+				&& !keysThatReacted.some(x => x.id === user.id)) {
+				if (keysThatReacted.length + 1 > 10) {
+					await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** Thank you for your interest in contributing a key to the raid. However, we have enough people for now! A leader will give instructions if keys are needed; please ensure you are paying attention to the leader.`).catch(() => { });
+					return;
 				}
-
-				if (reaction.emoji.id === earlyLocationEmoji.id
-					&& !earlyReactions.some(x => x.id === user.id)
-					// if you reacted w/ key you dont need the location twice.
-					&& !keysThatReacted.some(x => x.id === user.id)) {
-					if (earlyReactions.length + 1 > 10) {
-						await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** You are unable to get the location early due to the volume of people that has requested the location early.`).catch(() => { });
-						return;
-					}
-
-					earlyReactions.push(member);
-					let cpDescWithEarly: string = `${controlPanelDescription}`;
+				// key react 
+				let hasAccepted: boolean = await keyReact(user, guild, NEW_RAID_VC, rs);
+				if (hasAccepted) {
+					let cpDescWithKey: string = `${controlPanelDescription}`;
 					if (keysThatReacted.length !== 0) {
-						cpDescWithEarly += `\n\nKey Reactions: ${keysThatReacted.join(" ")}`;
+						cpDescWithKey += `\n\nKey Reactions: ${keysThatReacted.join(" ")}`;
 					}
 					if (earlyReactions.length !== 0) {
-						cpDescWithEarly += `\n\nEarly Reactions: ${earlyReactions.join(" ")}`;
+						cpDescWithKey += `\n\nEarly Reactions: ${earlyReactions.join(" ")}`;
 					}
-					controlPanelEmbed.setDescription(cpDescWithEarly);
+					controlPanelEmbed.setDescription(cpDescWithKey);
 					controlPanelMsg.edit(controlPanelEmbed).catch(() => { });
-
 
 					const currData: IStoredRaidData | undefined = CURRENT_RAID_DATA.find(x => x.vcId === rs.vcID);
 					if (typeof currData === "undefined") {
@@ -577,11 +553,48 @@ export module RaidHandler {
 						return;
 					}
 
-					currData.keyReacts.push(member);
-
-					rs.keyReacts.push(member.id);
-					guildDb = await RaidDbHelper.addEarlyReaction(guild, rs.vcID, member);
+					if (!earlyReactions.some(x => x.id === user.id)) {
+						keysThatReacted.push(member);
+						currData.keyReacts.push(member);
+						rs.keyReacts.push(member.id);
+						guildDb = await RaidDbHelper.addKeyReaction(guild, rs.vcID, member);
+					}
 				}
+			}
+
+			if (reaction.emoji.id === earlyLocationEmoji.id
+				&& !earlyReactions.some(x => x.id === user.id)
+				// if you reacted w/ key you dont need the location twice.
+				&& !keysThatReacted.some(x => x.id === user.id)) {
+				if (earlyReactions.length + 1 > 10) {
+					await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** You are unable to get the location early due to the volume of people that has requested the location early.`).catch(() => { });
+					return;
+				}
+
+				await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** The location for this raid is ${StringUtil.applyCodeBlocks(rs.location)}Do not tell anyone this location.`);
+
+				earlyReactions.push(member);
+				let cpDescWithEarly: string = `${controlPanelDescription}`;
+				if (keysThatReacted.length !== 0) {
+					cpDescWithEarly += `\n\nKey Reactions: ${keysThatReacted.join(" ")}`;
+				}
+				if (earlyReactions.length !== 0) {
+					cpDescWithEarly += `\n\nEarly Reactions: ${earlyReactions.join(" ")}`;
+				}
+				controlPanelEmbed.setDescription(cpDescWithEarly);
+				controlPanelMsg.edit(controlPanelEmbed).catch(() => { });
+
+
+				const currData: IStoredRaidData | undefined = CURRENT_RAID_DATA.find(x => x.vcId === rs.vcID);
+				if (typeof currData === "undefined") {
+					reactCollector.stop();
+					return;
+				}
+
+				currData.earlyReacts.push(member);
+
+				rs.earlyReacts.push(member.id);
+				guildDb = await RaidDbHelper.addEarlyReaction(guild, rs.vcID, member);
 			}
 		});
 	} // END OF FUNCTION
@@ -769,7 +782,7 @@ export module RaidHandler {
 		if (peopleThatGotLocEarly.length !== 0) {
 			postAfkControlPanelEmbed.addField("Early Location", peopleThatGotLocEarly.join(" "));
 		}
-		
+
 		await cpMsg.edit(postAfkControlPanelEmbed).catch(() => { });
 
 		const postAfkEmbed: MessageEmbed = new MessageEmbed()

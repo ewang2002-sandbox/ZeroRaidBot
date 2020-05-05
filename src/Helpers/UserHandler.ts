@@ -24,7 +24,7 @@ export namespace UserHandler {
 			guildData.roles.raidLeader,
 			guildData.roles.trialRaidLeader,
             guildData.roles.support,
-			guildData.roles.trialRaidLeader,
+			guildData.roles.almostRaidLeader,
 			guildData.roles.officer
 		];
 		

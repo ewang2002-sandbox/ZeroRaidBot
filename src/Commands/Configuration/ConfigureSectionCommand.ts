@@ -48,6 +48,7 @@ export class ConfigureSectionCommand extends Command {
 	];
 
 	private static MAX_SECTIONS: number = 8;
+	private static MAX_ARRAY_LENGTH_ROLES: number = 8;
 
 	/**
 	 * q = question/title
@@ -990,12 +991,14 @@ export class ConfigureSectionCommand extends Command {
 				.addField("Configure Support Role", "React with 📛 to configure the Support/Helper role.")
 				.addField("Configure Pardoned Leader Role", "React with 💤 to configure the Pardoned Leader role.")
 				.addField("Configure Suspended Role", "React with ⛔ to configure the Suspended role.")
-			//.addField("Configure Talking Roles", "React to 🔈 to configure talking roles.")
+				.addField("Configure Talking Roles", "React with 🔈 to configure talking roles.")
+				.addField("Configure Early Location Roles", "React with 🗺️ to configure early location roles.");
 			//.addField("Configure Tier I Key Role", "React with 🗝️ to configure the Tier 1 Key Donator role.")
 			//.addField("Configure Tier II Key Role", "React with 🔑 to configure the Tier 2 Key Donator role.")
 			//.addField("Configure Tier III Key Role", "React with 🍀 to configure the Tier 3 Key Donator role.");
 
-			reactions.push("👪", "⚒️", "🥇", "🥈", "🥉", "🚩", "📛", "💤", "⛔"); // , "🔈", "🗝️", "🔑", "🍀"
+			reactions.push("👪", "⚒️", "🥇", "🥈", "🥉", "🚩", "📛", "💤", "⛔", "🔈", "🗺️"); 
+				// , "🔈", "🗝️", "🔑", "🍀"
 		}
 
 		embed
@@ -1147,6 +1150,28 @@ export class ConfigureSectionCommand extends Command {
 					"roles.suspended"
 				);
 			}
+			// talking roles
+			else if (r.emoji.name === "🔈") {
+				await this.resetBotEmbed(botSentMsg).catch(() => { });
+				res = await this.updateArrayRoleCommand(
+					msg,
+					"Talking Roles",
+					guildData,
+					"roles.talkingRoles",
+					guildData.roles.talkingRoles
+				);
+			}
+			// early loc roles
+			else if (r.emoji.name === "🗺️") {
+				await this.resetBotEmbed(botSentMsg).catch(() => { });
+				res = await this.updateArrayRoleCommand(
+					msg,
+					"Early Location Roles",
+					guildData,
+					"roles.earlyLocationRoles",
+					guildData.roles.earlyLocationRoles
+				);
+			}
 			// configuration wizard
 			else if (r.emoji.name === "💾") {
 				res = await this.startWizard(msg, section, botSentMsg, this._roleQs, "ROLE");
@@ -1177,6 +1202,57 @@ export class ConfigureSectionCommand extends Command {
 
 			this.sectionRoleMenuCommand(msg, res, section, botSentMsg, false, this.getStringRepOfGuildDoc(msg, section, res).roleSB.toString());
 		});
+	}
+
+	private async updateArrayRoleCommand(
+		msg: Message,
+		roleName: string,
+		guildData: IRaidGuild, 
+		mongoPath: string,
+		currRoles: string[]
+	): Promise<IRaidGuild | "CANCEL" | "TIME"> {
+		const guild: Guild = msg.guild as Guild;
+		guildData = await this.removeDeadElements(guildData, currRoles, mongoPath, guild);
+
+		const roles: (Role | undefined)[] = currRoles.map(x => guild.roles.cache.get(x));
+		
+		const resolvedRole: Role[] = [];
+		for (const role of roles) {
+			if (typeof role !== "undefined") {
+				resolvedRole.push(role);
+			}
+		}
+
+		const embed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", { authorType: "GUILD" })
+			.setTitle(`Changing **${roleName}**`)
+			.setDescription(`Current Roles Inputted: ${resolvedRole.length === 0 ? "None" : resolvedRole}.\n Please mention, or type the ID of, the role now. If you select a role that is listed above, the role will be removed; otherwise, it will be added.`);
+
+		const targetRole: Role | "CANCEL" | "TIME" = await (new GenericMessageCollector<Role>(msg, {
+			embed: embed
+		}, 3, TimeUnit.MINUTE)).send(GenericMessageCollector.getRolePrompt(msg, msg.channel));
+
+		if (targetRole === "CANCEL") {
+			return "CANCEL";
+		}
+
+		if (targetRole === "TIME") {
+			return "TIME";
+		}
+
+		if (resolvedRole.some(x => x.id === targetRole.id)) {
+			return (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id }, {
+				$pull: {
+					[mongoPath]: targetRole.id
+				}
+			}, { returnOriginal: false })).value as IRaidGuild;
+		}
+		else {
+			return (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id }, {
+				$push: {
+					[mongoPath]: targetRole.id
+				}
+			}, { returnOriginal: false })).value as IRaidGuild;
+		}
 	}
 
 	/**
@@ -2001,7 +2077,23 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 		const supportRole: Role | undefined = guild.roles.cache.get(guildData.roles.support);
 		const pardonedLeaderRole: Role | undefined = guild.roles.cache.get(guildData.roles.pardonedRaidLeader);
 		const suspendedRole: Role | undefined = guild.roles.cache.get(guildData.roles.suspended);
-		// TODO: talking roles
+		const allTalkingRoles: (Role | undefined)[] = guildData.roles.talkingRoles.map(x => guild.roles.cache.get(x));
+		const allEarlyLocRoles: (Role | undefined)[] = guildData.roles.earlyLocationRoles.map(x => guild.roles.cache.get(x));
+
+		const talkingRoles: Role[] = [];
+		for (const role of allTalkingRoles) {
+			if (typeof role !== "undefined") {
+				talkingRoles.push(role);
+			}
+		}
+
+		const earlyReactionRoles: Role[] = [];
+		for (const role of allEarlyLocRoles) {
+			if (typeof role !== "undefined") {
+				earlyReactionRoles.push(role);
+			}
+		}
+
 		const mutedRole: Role | undefined = guild.roles.cache.get(guildData.roles.optRoles.mutedRole);
 		const keyTier1: Role | undefined = guild.roles.cache.get(guildData.roles.optRoles.keyTier1.role);
 		const keyTier2: Role | undefined = guild.roles.cache.get(guildData.roles.optRoles.keyTier2.role);
@@ -2095,6 +2187,10 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 				.appendLine()
 				.append(`Suspended Role: ${typeof suspendedRole === "undefined" ? "N/A" : suspendedRole}`)
 				.appendLine()
+				.append(`Talking Roles: ${talkingRoles.length === 0 ? "None" : talkingRoles.join(", ")}`)
+				.appendLine()
+				.append(`Early Location Role: ${earlyReactionRoles.length === 0 ? "None" : earlyReactionRoles.join(", ")}`)
+				.appendLine()
 				.append(`Muted Role: ${typeof mutedRole === "undefined" ? "N/A" : mutedRole}`)
 				.appendLine()
 				.append(`Key Tier I Role: ${typeof keyTier1 === "undefined" ? "N/A" : keyTier1}`)
@@ -2131,7 +2227,6 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 			return reactions.includes(reaction.emoji.name) && user.id === msg.author.id && !user.bot;
 		}
 	}
-
 
 	/**
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with either a TextChannel mention or ID, or simply the "skip" message.
@@ -2192,5 +2287,42 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 			}
 			return resolvedRole;
 		};
+	}
+
+	/**
+	 * Removes any dead roles. Dead roles are roles that exist in the db but not in the server.
+	 * @param {IRaidGuild} guildDb The document.
+	 * @param {string[]} roleArray The array of roles to check. 
+	 * @param {string} field The Mongo path to the array specified above. 
+	 * @param {Guild} guild The guild. 
+	 */
+	private async removeDeadElements(
+		guildDb: IRaidGuild, 
+		roleArray: string[],
+		field: string,
+		guild: Guild
+	): Promise<IRaidGuild> {
+		const promises: Promise<unknown>[] = roleArray.map(role => {
+			return new Promise((resolve, reject) => {
+				if (!guild.roles.cache.has(role)) {
+					MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
+						$pull: {
+							[field]: role
+						}
+					}, (err, raw) => {
+						if (err) {
+							reject(err);
+						}
+						resolve();
+					});
+				} else {
+					resolve();
+				}
+			});
+		});
+
+		await Promise.all(promises);
+
+		return new MongoDbHelper.MongoDbGuildManager(guild.id).findOrCreateGuildDb();
 	}
 }

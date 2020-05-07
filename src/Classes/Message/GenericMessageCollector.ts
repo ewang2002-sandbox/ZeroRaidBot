@@ -40,10 +40,10 @@ export class GenericMessageCollector<T> {
 	 * @param {TextBasedChannelFields} targetChannel The channel to send the message to, if applicable. Defaults to the same channel where the message was sent.
 	 */
 	public constructor(
-		obj: Message | User | GuildMember, 
+		obj: Message | User | GuildMember,
 		msgToSend: MessageOptions,
-		maxDuration: number, 
-		timeUnit: TimeUnit, 
+		maxDuration: number,
+		timeUnit: TimeUnit,
 		targetChannel?: TextBasedChannelFields
 	) {
 		if (obj instanceof Message) {
@@ -152,7 +152,7 @@ export class GenericMessageCollector<T> {
 	}
 
 	/**
-	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with either a TextChannel mention or ID.
+	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with either a TextChannel mention or ID. THIS FUNCTION MUST ONLY BE USED IN A GUILD.
 	 * @param {Message} msg The message that triggered this class. This is generally a message that results in the exeuction of the command. 
 	 * @param {TextBasedChannelFields} pChan The channel to send any messages to.
 	 * @example 
@@ -160,9 +160,12 @@ export class GenericMessageCollector<T> {
 	 * const response: TextChannel | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getChannelPrompt(msg)); 
 	 */
 	public static getChannelPrompt(
-		msg: Message, 
+		msg: Message,
 		pChan: TextBasedChannelFields
 	): (m: Message) => Promise<void | TextChannel> {
+		if (msg.guild === null) {
+			throw new Error("The message object provided for this method was not sent from a guild.");
+		}
 		return async (m: Message): Promise<void | TextChannel> => {
 			const channel: GuildChannel | undefined = m.mentions.channels.first();
 			let resolvedChannel: GuildChannel;
@@ -197,7 +200,6 @@ export class GenericMessageCollector<T> {
 
 	/**
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with a number.
-	 * @param {Message} msg The message that triggered this class. This is generally a message that results in the exeuction of the command. 
 	 * @param {TextBasedChannelFields} channel The channel to send messages to.
 	 * @param {number} [min] The minimum, inclusive.
 	 * @param {number} [max] The maximum, inclusive.
@@ -206,25 +208,24 @@ export class GenericMessageCollector<T> {
 	 * const response: number | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getNumber(msg)); 
 	 */
 	public static getNumber(
-		msg: Message, 
-		channel: TextBasedChannelFields, 
-		min?: number, 
+		channel: TextBasedChannelFields,
+		min?: number,
 		max?: number
 	): (m: Message) => Promise<void | number> {
 		return async (m: Message): Promise<void | number> => {
 			const num: number = Number.parseInt(m.content);
 			if (Number.isNaN(num)) {
-				MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_NUMBER_INPUT", null), channel);
+				MessageUtil.send({ content: `${m.author}, please input a valid number.` }, channel);
 				return;
 			}
 
 			if (typeof min !== "undefined" && num < min) {
-				MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null).setTitle("Number Too Low").setDescription(`The number you selected is lower than ${min}. Try again.`), channel);
+				MessageUtil.send({ content: `${m.author}, please input a number that is greater than or equal to \`${min}\`.` }, channel);
 				return;
 			}
 
 			if (typeof max !== "undefined" && max < num) {
-				MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null).setTitle("Number Too High").setDescription(`The number you selected is higher than ${max}. Try again.`), channel);
+				MessageUtil.send({ content: `${m.author}, please input a number that is lower than or equal to \`${max}\`.` }, channel);
 				return;
 			}
 
@@ -233,7 +234,7 @@ export class GenericMessageCollector<T> {
 	}
 
 	/**
-	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with a role ID or mention.
+	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with a role ID or mention. THIS FUNCTION MUST ONLY BE USED IN A GUILD.
 	 * @param {Message} msg The message that triggered this class. This is generally a message that results in the exeuction of the command. 
 	 * @param {TextBasedChannelFields} pChan The channel to send messages to.
 	 * @example 
@@ -241,13 +242,16 @@ export class GenericMessageCollector<T> {
 	 * const response: Role | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getRolePrompt(msg)); 
 	 */
 	public static getRolePrompt(msg: Message, pChan: TextBasedChannelFields): (collectedMessage: Message) => Promise<void | Role> {
+		if (msg.guild === null) {
+			throw new Error("The message object provided for this method was not sent from a guild.");
+		}
 		return async (m: Message): Promise<void | Role> => {
 			const role: Role | undefined = m.mentions.roles.first();
 			let resolvedRole: Role;
 			if (typeof role === "undefined") {
 				let reRo: Role | undefined = (msg.guild as Guild).roles.cache.get(m.content) as Role | undefined;
 				if (typeof reRo === "undefined") {
-					await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_ID", null, "role"), msg.channel as TextChannel);
+					await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_ID", null, "role"), pChan);
 					return;
 				}
 				resolvedRole = reRo;
@@ -261,34 +265,34 @@ export class GenericMessageCollector<T> {
 
 	/**
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond and return the response.
-	 * @param {Message} msg The message that triggered this class. This is generally a message that results in the exeuction of the command. 
+	 * @param {TextBasedChannelFields} pChan The channel where messages should be sent to.
 	 * @param {StringPromptOptions} [options] Options, if any.
 	 * @example 
 	 * const gmc: GenericMessageCollector<string> = new GenericMessageCollector<string>(msg, { embed: embed }, 1, TimeUnit.MINUTE);
 	 * const response: string | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getStringPrompt(msg)); 
 	 */
-	public static getStringPrompt(msg: Message, options?: StringPromptOptions): (collectedMessage: Message) => Promise<void | string> {
+	public static getStringPrompt(pChan: TextBasedChannelFields, options?: StringPromptOptions): (collectedMessage: Message) => Promise<void | string> {
 		return async (m: Message): Promise<void | string> => {
 			if (m.content === null) {
-				MessageUtil.generateBuiltInEmbed(msg, "NO_INPUT", null);
+				MessageUtil.send({ content: `${m.author}, you did not provide any content. Try again. ` }, pChan);
 				return;
 			}
 
 			if (typeof options !== "undefined") {
 				if (typeof options.minCharacters !== "undefined" && m.content.length < options.minCharacters) {
-					MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null).setTitle("Input Too Low").setDescription(`Your input is too low; it can be a minimum of ${options.minCharacters} characters. Try again.`), msg.channel as PartialTextBasedChannelFields);
+					MessageUtil.send({ content: `${m.author}, the length of your input is too low; it must be at least ${options.minCharacters} characters long. Please try again.` }, pChan);
 					return;
 				}
 
 				if (typeof options.maxCharacters !== "undefined" && options.maxCharacters < m.content.length) {
-					MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null).setTitle("Input Too High").setDescription(`Your input is too high; it can be a maximum of ${options.maxCharacters} characters. Try again.`), msg.channel as PartialTextBasedChannelFields);
-					return;	
+					MessageUtil.send({ content: `${m.author}, the length of your input is too high; it must be at most ${options.maxCharacters} characters long. Please try again.` }, pChan);
+					return;
 				}
 
 				if (typeof options.regexToPass !== "undefined") {
 					if (!options.regexToPass.test(m.content)) {
 						let errorMessage: string = options.regexFailMessage || "Your input failed to pass the RegExp test. Please try again.";
-						MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null).setTitle("Invalid Input").setDescription(errorMessage), msg.channel as PartialTextBasedChannelFields);
+						MessageUtil.send({ content: `${m.author}, your input is invalid. Please try again.` }, pChan);
 						return;
 					}
 				}
@@ -299,15 +303,15 @@ export class GenericMessageCollector<T> {
 
 	/**
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with `yes` or `no` and return a boolean value associated with that choice.
-	 * @param {Message} msg The message that triggered this class. This is generally a message that results in the exeuction of the command. 
+	 * @param {TextBasedChannelFields} pChan The channel where messages should be sent to.
 	 * @example 
 	 * const gmc: GenericMessageCollector<boolean> = new GenericMessageCollector<boolean>(msg, { embed: embed }, 1, TimeUnit.MINUTE);
 	 * const response: boolean | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getYesNoPrompt(msg)); 
 	 */
-	public static getYesNoPrompt(msg: Message): (collectedMessage: Message) => Promise<void | boolean> {
+	public static getYesNoPrompt(pChan: TextBasedChannelFields): (collectedMessage: Message) => Promise<void | boolean> {
 		return async (m: Message): Promise<void | boolean> => {
 			if (m.content === null) {
-				MessageUtil.generateBuiltInEmbed(msg, "NO_INPUT", null);
+				MessageUtil.send({ content: `${m.author}, you did not provide any content. Try again. ` }, pChan);
 				return;
 			}
 

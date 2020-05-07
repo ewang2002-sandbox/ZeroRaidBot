@@ -326,7 +326,7 @@ export class ConfigureSectionCommand extends Command {
 			embed: nameOfSectionPrompt
 		}, 5, TimeUnit.MINUTE);
 
-		const nameOfSection: string | "CANCEL" | "TIME" = await col0.send(GenericMessageCollector.getStringPrompt(msg));
+		const nameOfSection: string | "CANCEL" | "TIME" = await col0.send(GenericMessageCollector.getStringPrompt(msg.channel));
 		if (nameOfSection === "CANCEL" || nameOfSection === "TIME") {
 			return;
 		}
@@ -1563,7 +1563,7 @@ export class ConfigureSectionCommand extends Command {
 							embed: promptEmbed.setTitle("**Edit Minimum Fame**").setDescription("Type the minimum amount of fame a person needs to meet the requirements.")
 						}, 2, TimeUnit.MINUTE);
 
-						const n: number | "TIME" | "CANCEL" = await gm0.send(GenericMessageCollector.getNumber(msg, msg.channel, 0));
+						const n: number | "TIME" | "CANCEL" = await gm0.send(GenericMessageCollector.getNumber(msg.channel, 0));
 						if (n === "TIME") {
 							return resolve("TIME");
 						}
@@ -1583,7 +1583,7 @@ export class ConfigureSectionCommand extends Command {
 							embed: promptEmbed.setTitle("**Edit Minimum Rank**").setDescription("Type the minimum rank a person needs to meet the requirements.")
 						}, 2, TimeUnit.MINUTE);
 
-						const n: number | "TIME" | "CANCEL" = await gm0.send(GenericMessageCollector.getNumber(msg, msg.channel, 0, 75));
+						const n: number | "TIME" | "CANCEL" = await gm0.send(GenericMessageCollector.getNumber(msg.channel, 0, 75));
 						if (n === "TIME") {
 							return resolve("TIME");
 						}
@@ -1602,7 +1602,7 @@ export class ConfigureSectionCommand extends Command {
 						const gmc2: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, {
 							embed: promptEmbed.setTitle("**Edit Required Character Stats**").setDescription("Please type the stats type that you want to modify. For example, to modify the amount of `7/8`s needed to verify, type `7`.")
 						}, 2, TimeUnit.MINUTE);
-						const n: number | "TIME" | "CANCEL" = await gmc2.send(GenericMessageCollector.getNumber(msg, msg.channel, 0, 8));
+						const n: number | "TIME" | "CANCEL" = await gmc2.send(GenericMessageCollector.getNumber(msg.channel, 0, 8));
 						if (n === "TIME") {
 							return resolve("TIME");
 						}
@@ -1616,7 +1616,7 @@ export class ConfigureSectionCommand extends Command {
 							embed: promptEmbed.setTitle("**Edit Required Character Stats**").setDescription(`You are currently modifying the required amount of ${n}/8 needed. Please type the amount of ${n}/8 characters needed.`)
 						}, 2, TimeUnit.MINUTE);
 
-						const m: number | "TIME" | "CANCEL" = await gmc3.send(GenericMessageCollector.getNumber(msg, msg.channel, 0, 15));
+						const m: number | "TIME" | "CANCEL" = await gmc3.send(GenericMessageCollector.getNumber(msg.channel, 0, 15));
 						if (m === "TIME") {
 							return resolve("TIME");
 						}
@@ -1676,7 +1676,7 @@ export class ConfigureSectionCommand extends Command {
 			TimeUnit.MINUTE
 		);
 
-		const result: string | "CANCEL" | "TIME" = await nameColl.send(GenericMessageCollector.getStringPrompt(msg));
+		const result: string | "CANCEL" | "TIME" = await nameColl.send(GenericMessageCollector.getStringPrompt(msg.channel));
 		if (result === "CANCEL") {
 			return guildData;
 		}

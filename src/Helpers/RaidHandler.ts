@@ -871,8 +871,6 @@ export module RaidHandler {
 
 	/**
 	 * Ends the raid.  
-	 * 
-	 * TODO remove `msg` param
 	 */
 	export async function endRun(
 		memberThatEnded: GuildMember,
@@ -1427,5 +1425,42 @@ export module RaidHandler {
 	 */
 	function vcEndsWithNumber(vc: VoiceChannel): boolean {
 		return !Number.isNaN(Number.parseInt(vc.name.split(" ")[vc.name.split(" ").length - 1]));
+	}
+
+	export async function logRuns(
+		member: GuildMember,
+		db: IRaidGuild,
+		rs: IRaidInfo
+	): Promise<void> {
+		let dmChannel: DMChannel;
+		try {
+			dmChannel = await member.createDM();
+		}
+		catch (e) {
+			return;
+		}
+
+		const promptEmbed: MessageEmbed = new MessageEmbed()
+			.setAuthor(member.guild.name, member.guild.iconURL() === null ? undefined : member.guild.iconURL() as string)
+			.setColor("GREEN")
+			.setTitle(`${rs.dungeonInfo.dungeonName} Raid Log`)
+			.setThumbnail(ArrayUtil.getRandomElement<string>(rs.dungeonInfo.bossLink))
+			.setDescription("Type the amount of runs you did. Please be honest; failure to be honest will result in demotion.")
+			.setFooter("Log Raids Command")
+			.setTimestamp();
+
+		const resp: number | "TIME" | "CANCEL" = await new GenericMessageCollector<number>(
+			member,
+			{ embed: promptEmbed },
+			2,
+			TimeUnit.MINUTE,
+			dmChannel
+		).send(GenericMessageCollector.getNumber(dmChannel, 1));
+
+		if (resp === "TIME" || resp === "CANCEL") {
+			return;
+		}
+
+		// get guild member next
 	}
 }

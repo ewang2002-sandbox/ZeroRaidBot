@@ -44,22 +44,9 @@ export class LogRaidCommand extends Command {
             return;
         }
 
-        const embed: MessageEmbed = new MessageEmbed()
-            .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
-            .setTitle("Logging Runs")
-            .setColor("GREEN")
-            .setDescription("Type the amount of runs you did. Please be honest; failure to be honest will result in demotion.")
-            .setFooter("Log Raids Command")
-            .setTimestamp();
-        const botMsg: Message = await dmChannel.send(embed);
 
-        const resp: number | "TIME" | "CANCEL" = await new GenericMessageCollector<number>(
-            msg.author, 
-            { embed: embed }, 
-            2, 
-            TimeUnit.MINUTE, 
-            dmChannel
-        ).send(GenericMessageCollector.getNumber(msg, dmChannel, 1));
 
-    }
+	}
+	
+	
 }

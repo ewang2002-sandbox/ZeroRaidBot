@@ -4,9 +4,6 @@
  */
 const PRODUCTION_BOT: boolean = false;
 
-/**
- * The bot token.
- */
 export const BotConfiguration: IConfigurationSettings = PRODUCTION_BOT
     ? {
         token: "",

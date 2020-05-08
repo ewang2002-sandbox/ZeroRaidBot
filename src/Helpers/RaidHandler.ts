@@ -593,7 +593,7 @@ export module RaidHandler {
 				controlPanelMsg.edit(controlPanelEmbed).catch(() => { });
 			}
 		});
-		
+
 		// react to control panel msgs
 		await controlPanelMsg.react("⏹️").catch(() => { });
 		await controlPanelMsg.react("🗑️").catch(() => { });
@@ -901,89 +901,127 @@ export module RaidHandler {
 
 		await cpMsg.edit(postAfkControlPanelEmbed).catch(() => { });
 
-		const postAfkEmbed: MessageEmbed = new MessageEmbed()
-			.setAuthor(`The ${rs.dungeonInfo.dungeonName} post-AFK Check has been initiated.`, rs.dungeonInfo.portalLink)
-			.setDescription(`Instructions: Join any available voice channel and then **react** with ${Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID)}.`)
-			.setColor(ArrayUtil.getRandomElement(rs.dungeonInfo.colors))
-			.setImage(ArrayUtil.getRandomElement(rs.dungeonInfo.bossLink))
-			.setFooter(`${guild.name}: Post AFK Check`);
-		raidMsg = await raidMsg.edit("This post-AFK check has 20 seconds remaining.", postAfkEmbed);
-		const mst: MessageSimpleTick = new MessageSimpleTick(raidMsg, `This post-AFK check has {s} seconds remaining.`, 20000);
-		// begin post afk check 
-		const postAFKReaction = (reaction: MessageReaction, user: User) => {
-			return reaction.emoji.id === portalEmoji.id
-				&& (Zero.RaidClient.user as ClientUser).id !== user.id;
-		}
+		const durationOfPostAfk: number = determineDurationForPostAfk(raidVc.members.size);
 
-		// begin collectors
-		const postAFKMoveIn: ReactionCollector = raidMsg.createReactionCollector(postAFKReaction, {
-			time: 20000
-		});
-		// unpin msg 
-		await raidMsg.unpin().catch(() => { });
-		await raidVC.edit({
-			name: `⌛ ${raidVC.name.replace("🚦", "").trim()}`
-		});
-
-		// events
-		postAFKMoveIn.on("collect", async (r) => {
-			for await (let [id] of r.users.cache) {
-				const member: GuildMember | null = guild.member(id);
-				// TODO fix post afk not working 
-				if (member !== null && member.voice.channel !== null) {
-					await member.voice.setChannel(raidVC).catch(console.error);
-				}
-			}
-		});
-
-		postAFKMoveIn.on("end", async () => {
-			mst.disableAutoTick();
-			// now we can end the afk fully
-			// do some calculations
-			const raidersPresent: number = raidVC.members.size;
-			const initiator: GuildMember | null = guild.member(rs.startedBy);
-
-			let descStr: string = `Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the raid.\nRaid Section: ${rs.section.nameOfSection}\nInitiator: ${initiator === null ? "Unknown" : initiator} (${initiator === null ? "Unknown" : initiator.displayName})\nDungeon: ${rs.dungeonInfo.dungeonName} ${Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID)}\nVoice Channel: Raiding ${rs.raidNum}`;
-
-			if (peopleThatGotLocEarly.length !== 0) {
-				descStr += `\n\nEarly Locations: ${peopleThatGotLocEarly.join(" ")}`;
-			}
-
-			if (getStringRepOfKeyCollection(peopleThatReactedToKey, rs).length !== 0) {
-				descStr += getStringRepOfKeyCollection(peopleThatReactedToKey, rs);
-			}
-
-			const startRunControlPanelEmbed: MessageEmbed = new MessageEmbed()
-				.setAuthor(`Control Panel: Raiding ${rs.raidNum}`, rs.dungeonInfo.portalLink)
-				.setDescription(descStr)
-				.addField("End Raid", "React with ⏹️ to end the raid. This will move members into the lounge voice channel, if applicable, and delete the voice channel.")
-				.addField("Set Location", "React with ✏️ to set a new location. You will be DMed. The new location will be sent to anyone that has the location (people that reacted with key, Nitro boosters, raid leaders, etc.)")
-				.addField("Get Location", "React with 🗺️ to get the current raid location.")
-				.addField("Lock Raiding Voice Channel", "React with 🔒 to __lock__ the raiding voice channel. This will prevent members from joining freely.")
-				.addField("Unlock Raiding Voice Channel", "React with 🔓 to __unlock__ the raiding voice channel. This will allow members to join freely.")
-				.setColor(ArrayUtil.getRandomElement<ColorResolvable>(rs.dungeonInfo.colors))
-				.setTimestamp()
-				.setFooter(`Control Panel • In Raid • R${rs.raidNum}`);
-			await cpMsg.edit(startRunControlPanelEmbed).catch(() => { });
-			await cpMsg.react("⏹️").catch(() => { });
-			await cpMsg.react("✏️").catch(() => { });
-			await cpMsg.react("🗺️").catch(() => { });
-			await cpMsg.react("🔒").catch(() => { });
-			await cpMsg.react("🔓").catch(() => { });
-
-			// set embed
-			const embed: MessageEmbed = new MessageEmbed()
-				.setAuthor(endedBy === "AUTO" ? `The ${rs.dungeonInfo.dungeonName} AFK Check has ended automatically.` : `${endedBy.displayName} has ended the ${rs.dungeonInfo.dungeonName} AFK Check.`, rs.dungeonInfo.portalLink)
-				.setDescription(`The AFK check is now over.\nWe are currently running a raid with ${raidersPresent} members.`)
-				.setFooter(`${guild.name}: Raid`)
+		if (durationOfPostAfk !== 0) {
+			const postAfkEmbed: MessageEmbed = new MessageEmbed()
+				.setAuthor(`The ${rs.dungeonInfo.dungeonName} post-AFK Check has been initiated.`, rs.dungeonInfo.portalLink)
+				.setDescription(`Instructions: Join any available voice channel and then **react** with ${Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID)}.`)
+				.setColor(ArrayUtil.getRandomElement(rs.dungeonInfo.colors))
 				.setImage(ArrayUtil.getRandomElement(rs.dungeonInfo.bossLink))
-				.setColor(ArrayUtil.getRandomElement(rs.dungeonInfo.colors));
-			await raidMsg.edit("This AFK check is now over.", embed).catch(() => { });
-			await raidVC.edit({
-				name: `🔴 ${raidVC.name.replace("⌛", "").replace("🚦", "").trim()}`
+				.setFooter(`${guild.name}: Post AFK Check`);
+			raidMsg = await raidMsg.edit(`This post-AFK check has ${durationOfPostAfk} seconds remaining.`, postAfkEmbed);
+			const mst: MessageSimpleTick = new MessageSimpleTick(raidMsg, `This post-AFK check has {s} seconds remaining.`, durationOfPostAfk * 1000);
+			// begin post afk check 
+			const postAFKReaction = (reaction: MessageReaction, user: User) => {
+				return reaction.emoji.id === portalEmoji.id
+					&& (Zero.RaidClient.user as ClientUser).id !== user.id;
+			}
+
+			// begin collectors
+			const postAFKMoveIn: ReactionCollector = raidMsg.createReactionCollector(postAFKReaction, {
+				time: durationOfPostAfk * 1000
 			});
-		});
+			// unpin msg 
+			await raidMsg.unpin().catch(() => { });
+			await raidVC.edit({
+				name: `⌛ ${raidVC.name.replace("🚦", "").trim()}`
+			});
+
+			// events
+			postAFKMoveIn.on("collect", async (r) => {
+				for await (let [id] of r.users.cache) {
+					const member: GuildMember | null = guild.member(id);
+					// TODO fix post afk not working 
+					if (member !== null && member.voice.channel !== null) {
+						await member.voice.setChannel(raidVC).catch(console.error);
+					}
+				}
+			});
+
+			postAFKMoveIn.on("end", async () => {
+				mst.disableAutoTick();
+				// now we can end the afk fully
+				// do some calculations
+				await endAfkDisplay(raidVC, endedBy, rs, guild, raidMsg, peopleThatGotLocEarly, peopleThatReactedToKey, cpMsg);
+			});
+		}
+		else {
+			await endAfkDisplay(raidVC, endedBy, rs, guild, raidMsg, peopleThatGotLocEarly, peopleThatReactedToKey, cpMsg);
+		}
 	} // end function
+
+	/**
+	 * Displays the end AFK check embed.
+	 * TODO optimize function so it uses LESS parameters.
+	 */
+	async function endAfkDisplay(
+		raidVC: VoiceChannel,
+		endedBy: string | GuildMember,
+		rs: IRaidInfo,
+		guild: Guild,
+		raidMsg: Message,
+		peopleThatGotLocEarly: (GuildMember | null)[],
+		peopleThatReactedToKey: Collection<string, GuildMember[]>,
+		cpMsg: Message
+	) {
+		const raidersPresent: number = raidVC.members.size;
+		// set embed
+		const embed: MessageEmbed = new MessageEmbed()
+			.setAuthor(typeof endedBy === "string" ? `The ${rs.dungeonInfo.dungeonName} AFK Check has ended automatically.` : `${endedBy.displayName} has ended the ${rs.dungeonInfo.dungeonName} AFK Check.`, rs.dungeonInfo.portalLink)
+			.setDescription(`The AFK check is now over.\nWe are currently running a raid with ${raidersPresent} members.`)
+			.setFooter(`${guild.name}: Raid`)
+			.setImage(ArrayUtil.getRandomElement(rs.dungeonInfo.bossLink))
+			.setColor(ArrayUtil.getRandomElement(rs.dungeonInfo.colors));
+		await raidMsg.edit("This AFK check is now over.", embed).catch(() => { });
+		await raidVC.edit({
+			name: `🔴 ${raidVC.name.replace("⌛", "").replace("🚦", "").trim()}`
+		});
+		// control panel 
+		const initiator: GuildMember | null = guild.member(rs.startedBy);
+		let descStr: string = `Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the raid.\nRaid Section: ${rs.section.nameOfSection}\nInitiator: ${initiator === null ? "Unknown" : initiator} (${initiator === null ? "Unknown" : initiator.displayName})\nDungeon: ${rs.dungeonInfo.dungeonName} ${Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID)}\nVoice Channel: Raiding ${rs.raidNum}`;
+		if (peopleThatGotLocEarly.length !== 0) {
+			descStr += `\n\nEarly Locations: ${peopleThatGotLocEarly.join(" ")}`;
+		}
+		if (getStringRepOfKeyCollection(peopleThatReactedToKey, rs).length !== 0) {
+			descStr += getStringRepOfKeyCollection(peopleThatReactedToKey, rs);
+		}
+		const startRunControlPanelEmbed: MessageEmbed = new MessageEmbed()
+			.setAuthor(`Control Panel: Raiding ${rs.raidNum}`, rs.dungeonInfo.portalLink)
+			.setDescription(descStr)
+			.addField("End Raid", "React with ⏹️ to end the raid. This will move members into the lounge voice channel, if applicable, and delete the voice channel.")
+			.addField("Set Location", "React with ✏️ to set a new location. You will be DMed. The new location will be sent to anyone that has the location (people that reacted with key, Nitro boosters, raid leaders, etc.)")
+			.addField("Get Location", "React with 🗺️ to get the current raid location.")
+			.addField("Lock Raiding Voice Channel", "React with 🔒 to __lock__ the raiding voice channel. This will prevent members from joining freely.")
+			.addField("Unlock Raiding Voice Channel", "React with 🔓 to __unlock__ the raiding voice channel. This will allow members to join freely.")
+			.setColor(ArrayUtil.getRandomElement<ColorResolvable>(rs.dungeonInfo.colors))
+			.setTimestamp()
+			.setFooter(`Control Panel • In Raid • R${rs.raidNum}`);
+		await cpMsg.edit(startRunControlPanelEmbed).catch(() => { });
+		await cpMsg.react("⏹️").catch(() => { });
+		await cpMsg.react("✏️").catch(() => { });
+		await cpMsg.react("🗺️").catch(() => { });
+		await cpMsg.react("🔒").catch(() => { });
+		await cpMsg.react("🔓").catch(() => { });
+	}
+
+	/**
+	 * Determines the duration of the post-AFK check.
+	 * @param {number} amtOfPeople The amount of people in the VC. 
+	 */
+	function determineDurationForPostAfk(amtOfPeople: number): number {
+		let dur: number;
+		if (amtOfPeople > 80) {
+			dur = -1 / 2 * amtOfPeople + 45;
+			if (dur < 0) {
+				dur = 0;
+			}
+		}
+		else {
+			dur = - Math.sqrt(8 * amtOfPeople) + 30;
+		}
+		return Math.round(dur);
+	}
 
 	/**
 	 * Ends the raid.  

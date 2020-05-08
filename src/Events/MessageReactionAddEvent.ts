@@ -352,7 +352,7 @@ export async function setNewLocationPrompt(
                 return resolve(guildDb);
             }
             // send location out to ppl
-            const curRaidDataArrElem = RaidHandler.CURRENT_RAID_DATA.find(x => x.vcId === raidInfo.vcID);
+            const curRaidDataArrElem = RaidHandler.CURRENT_RAID_DATA.get(raidInfo.vcID);
             if (typeof curRaidDataArrElem === "undefined") {
                 let hasMessaged: string[] = [];
                 for await (const person of raidInfo.earlyReacts) {

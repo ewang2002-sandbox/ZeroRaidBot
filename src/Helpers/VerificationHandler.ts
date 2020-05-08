@@ -1123,35 +1123,11 @@ export module VerificationHandler {
 			// that the id = the person.
 			await accountInDatabase(member, verificationInfo.name, nameHistoryInfo);
 		}
-		let zero: number = 0;
-		let one: number = 0;
-		let two: number = 0;
-		let three: number = 0;
-		let four: number = 0;
-		let five: number = 0;
-		let six: number = 0;
-		let seven: number = 0;
-		let eight: number = 0;
-
-		for (let character of verificationInfo.characters) {
-			const maxedStat: number = Number.parseInt(character.stats_maxed.split("/")[0]);
-			switch (maxedStat) {
-				case (0): zero++; break;
-				case (1): one++; break;
-				case (2): two++; break;
-				case (3): three++; break;
-				case (4): four++; break;
-				case (5): five++; break;
-				case (6): six++; break;
-				case (7): seven++; break;
-				case (8): eight++; break;
-			}
-		}
 
 		const manualVerifEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(member.user.tag, member.user.displayAvatarURL())
 			.setTitle(`Manual Verification Request: **${verificationInfo.name}**`)
-			.setDescription(`⇒ **Section:** ${section.nameOfSection}\n ⇒ **User:** ${member}\n⇒ **IGN:** ${verificationInfo.name}\n⇒ **RealmEye:** [Profile](https://www.realmeye.com/player/${verificationInfo.name})\n\nReact with ☑️ to manually verify this person; otherwise, react with ❌.`)
+			.setDescription(`⇒ **Section:** ${section.nameOfSection}\n ⇒ **User:** ${member}\n⇒ **IGN:** ${verificationInfo.name}\n⇒ **RealmEye:** [Profile](https://www.realmeye.com/player/${verificationInfo.name})\n\nReact with ☑️ to manually verify this person; otherwise, react with ❌.\n\nIf the bot doesn't respond after you react, un-react and re-react.`)
 			.addField("Unmet Requirements", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()), true)
 			.setColor("YELLOW")
 			.setFooter("Requested On")

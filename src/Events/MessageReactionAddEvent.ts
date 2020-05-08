@@ -59,11 +59,11 @@ export async function onMessageReactionAdd(
     // anyways, these are channels
     // that the bot will delete any reactions from
     const channelsWhereReactionsCanBeDeleted: string[] = [
-        guildDb.generalChannels.verificationChan,
+        //guildDb.generalChannels.verificationChan,
         guildDb.generalChannels.modMailChannel,
         guildDb.generalChannels.controlPanelChannel,
         guildDb.generalChannels.manualVerification,
-        ...guildDb.sections.map(x => x.channels.verificationChannel),
+        //...guildDb.sections.map(x => x.channels.verificationChannel),
         ...guildDb.sections.map(x => x.channels.controlPanelChannel),
         ...guildDb.sections.map(x => x.channels.manualVerification)
     ];

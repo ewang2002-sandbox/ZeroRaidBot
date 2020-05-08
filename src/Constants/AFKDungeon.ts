@@ -938,7 +938,8 @@ export const AFKDungeon: IDungeonData[] = [
 			Trickster,
 			Puri,
 			Daze,
-			ArmorBreak
+			ArmorBreak,
+			Trickster
 		],
 		portalLink: "https://i.imgur.com/nKKvJsv.png",
 		bossLink: [

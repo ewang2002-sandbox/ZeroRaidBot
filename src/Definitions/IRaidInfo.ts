@@ -46,7 +46,7 @@ export interface IRaidInfo {
 	/**
 	 * Key reactions.
 	 */
-	keyReacts: string[];
+	keyReacts: { keyId: string; userId: string; }[];
 	/**
 	 * Early reactions.
 	 */

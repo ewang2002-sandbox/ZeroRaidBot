@@ -908,4 +908,48 @@ export const AFKDungeon: IDungeonData[] = [
 			0x1dbfaa
 		]
 	},
+	{
+		id: 38,
+		dungeonName: "Oryx 3",
+		portalEmojiID: "708193196902973441",
+		keyEmojIDs: [
+			{
+				keyEmojID: "708191799750950962",
+				keyEmojiName: "Wine Cellar Incantation"
+			},
+			{
+				keyEmojID: "708191783405879378",
+				keyEmojiName: "Sword Rune"
+			},
+			{
+				keyEmojID: "708191783674314814",
+				keyEmojiName: "Shield Rune"
+			},
+			{
+				keyEmojID: "708191783825178674",
+				keyEmojiName: "Helmet Rune"
+			}
+		],
+		reactions: [
+			Paladin,
+			Knight,
+			Warrior,
+			Priest,
+			Trickster,
+			Puri,
+			Daze,
+			ArmorBreak
+		],
+		portalLink: "https://i.imgur.com/nKKvJsv.png",
+		bossLink: [
+			"https://media.discordapp.net/attachments/561246036870430770/708192230468485150/oryx_3_w.png",
+			"https://media.discordapp.net/attachments/561246036870430770/708192231449690172/oryx_3_b.png",
+			"https://media.discordapp.net/attachments/561246036870430770/708192325842763836/OryxUnknownAnim.gif",
+			"https://media.discordapp.net/attachments/561246036870430770/708192326320783410/oryxSanctuaryObjects16x16_5gif.gif"
+		],
+		colors: [
+			0xb5471b,
+			0x000000
+		]
+	}
 ];

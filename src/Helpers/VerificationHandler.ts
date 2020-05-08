@@ -440,12 +440,14 @@ export module VerificationHandler {
 
 						const reqsFailedToMeet: StringBuilder = new StringBuilder();
 						if (!prelimCheck.aliveFame.passed) {
-							reqsFailedToMeet.append(`Alive Fame: ${prelimCheck.aliveFame.amt}/${section.verification.aliveFame.minimum}`)
+							reqsFailedToMeet
+								.append(`Alive Fame: ${prelimCheck.aliveFame.amt}/${section.verification.aliveFame.minimum}`)
 								.appendLine();
 						}
 
 						if (!prelimCheck.rank.passed) {
-							reqsFailedToMeet.append(`Rank: ${prelimCheck.rank.amt}/${section.verification.stars.minimum}`)
+							reqsFailedToMeet
+								.append(`Rank: ${prelimCheck.rank.amt}/${section.verification.stars.minimum}`)
 								.appendLine();
 						}
 

@@ -1099,6 +1099,7 @@ export module RaidHandler {
 		if (typeof curRaidDataArrElem !== "undefined") {
 			curRaidDataArrElem.reactCollector.stop();
 			curRaidDataArrElem.mst.disableAutoTick();
+			clearInterval(curRaidDataArrElem.timeout);
 		}
 		await RaidDbHelper.removeRaidChannel(guild, raidVC.id);
 

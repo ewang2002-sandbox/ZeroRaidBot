@@ -131,7 +131,7 @@ export async function onMessageReactionAdd(
         }
         else {
             loggingMsg = `❌ ${loggingMsg}`;
-            loggingMsg += `${manualVerifMember} (${manualVerificationProfile.inGameName})'s manual verification review has been rejected by ${reaction.message.member} (${member.displayName})`;
+            loggingMsg += `${manualVerifMember} (${manualVerificationProfile.inGameName})'s manual verification review has been rejected by ${member} (${member.displayName})`;
             if (sectionForManualVerif.isMain) {
                 await manualVerifMember.send(`**\`[${guild.name}]\`**: After manually reviewing your profile, we have determined that you do not meet the requirements defined by server. This manual review was done by ${member} (${member.displayName}).`).catch(() => { });
             }

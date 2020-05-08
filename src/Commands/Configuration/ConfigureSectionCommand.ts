@@ -1416,7 +1416,7 @@ export class ConfigureSectionCommand extends Command {
 
 				const verifEmbed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", { authorType: "GUILD" })
 					.setTitle(`**${section.isMain ? "Server" : "Section"} Verification Channel**`)
-					.setDescription(`Welcome to ${section.isMain ? `**\`${guild.name}\`**` : `the **\`${section.nameOfSection}\`** section.`}! In order to join in on our raids, you will have to first verify your identity. The requirements for this server are listed below. ${StringUtil.applyCodeBlocks(reqs.toString())}\nIf you meet these requirements, then please react to the ✅ to get started. ${!section.isMain ? "To unverify from the section, simply react with ❌." : ""}`)
+					.setDescription(`Welcome to ${section.isMain ? `**\`${guild.name}\`**` : `the **\`${section.nameOfSection}\`** section`}! In order to join in on our raids, you will have to first verify your identity. The requirements for this server are listed below. ${StringUtil.applyCodeBlocks(reqs.toString())}\nIf you meet these requirements, then please react to the ✅ to get started. ${!section.isMain ? "To unverify from the section, simply react with ❌." : ""}`)
 					.setFooter(section.isMain ? "Server Verification" : "Section Verification")
 					.setColor("RANDOM");
 				const z: Message = await (verificationChannel as TextChannel).send(verifEmbed);

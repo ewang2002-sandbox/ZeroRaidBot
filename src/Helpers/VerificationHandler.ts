@@ -610,8 +610,16 @@ export module VerificationHandler {
 			}
 			// SECTION
 			// VERIFICATION
+			// THIS PART
+			// WILL NOT
+			// BE TOUCHING
+			// THE DB
+			// AT ALL
 			else {
-				const name: string = member.displayName.split("|").map(x => x.trim())[0];
+				const name: string = member.displayName
+					.split("|")
+					.map(x => x.trim())[0]
+					.replace(/[^A-Za-z]/g, "");
 				if (typeof verificationAttemptsChannel !== "undefined") {
 					verificationAttemptsChannel.send(`▶️ **\`[${section.nameOfSection}]\`** ${member} has started the verification process.`).catch(() => { });
 				}
@@ -631,7 +639,7 @@ export module VerificationHandler {
 					.get<ITiffitNoUser | ITiffitRealmEyeProfile>(TiffitRealmEyeAPI + name);
 				if ("error" in requestData.data) {
 					if (typeof verificationAttemptsChannel !== "undefined") {
-						verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the name could not be found on RealmEye.`).catch(() => { });
+						verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${name}\`, but the name could not be found on RealmEye.`).catch(() => { });
 					}
 					await member.send(`I could not find your profile for **\`${name}\`** on RealmEye. Make sure your profile is public first!`);
 					return;
@@ -642,7 +650,7 @@ export module VerificationHandler {
 				if (!prelimCheck.passedAll) {
 					if (section.verification.maxedStats.required && prelimCheck.characters.hidden) {
 						if (typeof verificationAttemptsChannel !== "undefined") {
-							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her characters are hidden and needs to be available to the public.`).catch(() => { });
+							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${name}\`, but his/her characters are hidden and needs to be available to the public.`).catch(() => { });
 						}
 						await member.send("Your characters are currently hidden. Please make sure everyone can see your characters.");
 						return;
@@ -672,7 +680,7 @@ export module VerificationHandler {
 					}
 
 					// MANUAL VERIF
-					let outputLogs: string = `⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her RotMG profile has failed to meet one or more requirement(s). The requirements that were not met are listed below.${StringUtil.applyCodeBlocks(reqsFailedToMeet.toString())}`;
+					let outputLogs: string = `⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${name}\`, but his/her RotMG profile has failed to meet one or more requirement(s). The requirements that were not met are listed below.${StringUtil.applyCodeBlocks(reqsFailedToMeet.toString())}`;
 
 
 					const failedEmbed: MessageEmbed = new MessageEmbed()
@@ -1140,17 +1148,6 @@ export module VerificationHandler {
 			}
 		}
 
-		const characterStats: string = `
-		⇒ 0/8: ${zero}
-		⇒ 1/8: ${one}
-		⇒ 2/8: ${two}
-		⇒ 3/8: ${three}
-		⇒ 4/8: ${four}
-		⇒ 5/8: ${five}
-		⇒ 6/8: ${six}
-		⇒ 7/8: ${seven}
-		⇒ 8/8: ${eight}`;
-
 		const manualVerifEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(member.user.tag, member.user.displayAvatarURL())
 			.setTitle(`Manual Verification Request: **${verificationInfo.name}**`)
@@ -1189,6 +1186,12 @@ export module VerificationHandler {
 		});
 	}
 
+	/**
+	 * Looks for another member with the same name and UNVERIFIES them. 
+	 * @param member The member to VERIFY. 
+	 * @param guild The guild.
+	 * @param guildDb The guild doc.
+	 */
 	export async function findOtherUserAndRemoveVerifiedRole(
 		member: GuildMember, 
 		guild: Guild, 

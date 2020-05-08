@@ -100,6 +100,7 @@ export async function onMessageReactionAdd(
         }
 
         let loggingMsg: string = `**\`[${sectionForManualVerif.nameOfSection}]\`** `;
+        
         if (reaction.emoji.name === "☑️") {
             await manualVerifMember.roles.add(sectionVerifiedRole).catch(e => { });
             if (sectionForManualVerif.isMain) {

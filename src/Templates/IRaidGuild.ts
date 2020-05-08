@@ -6,6 +6,7 @@ import { IVerification } from "../Definitions/IVerification";
 import { IPunishment } from "../Definitions/IPunishment";
 import { IHeadCountInfo } from "../Definitions/IHeadCountInfo";
 import { IMutedData, ISuspendedData } from "../Definitions/IPunishmentObject";
+import { IManualVerification } from "../Definitions/IManualVerification";
 
 /**
  * Everything here (excluding "sections") represents ESSENTIALS needed for the core bot functions to work properly.
@@ -106,6 +107,11 @@ export interface IRaidGuild {
 		 * People with these roles will be able to talk during raids. Do note that Support/TRL/RL/HRL/Moderator will already be able to talk in raids. 
 		 */
 		talkingRoles: string[];
+
+		/**
+		 * People with these roles will be able to get location early.
+		 */
+		earlyLocationRoles: string[];
 
 		/**
 		 * Optional roles, not necessarily needed.
@@ -215,6 +221,11 @@ export interface IRaidGuild {
 		 * Raid requests
 		 */
 		raidRequestChannel: string;
+
+		/**
+		 * Any messages from Network Admins will be sent to this channel.
+		 */
+		networkAnnouncementsChannel: string;
 	},
 
 	/**
@@ -227,6 +238,11 @@ export interface IRaidGuild {
 		successfulVerificationMessage: string;
 
 		/**
+		 * Shows verification requirements.
+		 */
+		showVerificationRequirements: boolean;
+
+		/**
 		 * An array of current modmail users. 
 		 */
 		modMail: IModMail[];
@@ -235,6 +251,11 @@ export interface IRaidGuild {
 		 * The dungeons to allow. 
 		 */
 		dungeons: number[];
+
+		/**
+		 * All ongoing manual verification.
+		 */
+		manualVerificationEntries: IManualVerification[];
 	};
 
 	/**

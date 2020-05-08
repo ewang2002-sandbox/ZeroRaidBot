@@ -48,8 +48,33 @@ export module RaidDbHelper {
 	 * @param {Guild} guild The guild. 
 	 * @param {string} vcID The voice channel ID.
 	 * @param {(GuildMember | string | User)} member The guild member that reacted with key. 
+	 * @param {string} keyId The key ID.
 	 */
 	export function addKeyReaction(
+		guild: Guild,
+		vcID: string,
+		member: GuildMember | string | User,
+		keyId: string
+	): Promise<IRaidGuild> {
+		return new Promise(async (resolve, reject) => {
+			const data: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "activeRaidsAndHeadcounts.raidChannels.vcID": vcID }, {
+				$push: {
+					"activeRaidsAndHeadcounts.raidChannels.$.keyReacts": typeof member === "object" 
+						? { keyId: keyId, userId: member.id } 
+						: { keyId: keyId, userId: member }
+				}
+			}, { returnOriginal: false });
+			resolve(data.value);
+		});
+	}
+
+	/**
+	 * Adds a person that has indicated that he/she wants the location early to the guild doc.
+	 * @param {Guild} guild The guild. 
+	 * @param {string} vcID The voice channel ID.
+	 * @param {(GuildMember | string | User)} member The guild member that reacted with the early reaction emoji.
+	 */
+	export function addEarlyReaction(
 		guild: Guild,
 		vcID: string,
 		member: GuildMember | string | User
@@ -57,7 +82,7 @@ export module RaidDbHelper {
 		return new Promise(async (resolve, reject) => {
 			const data: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "activeRaidsAndHeadcounts.raidChannels.vcID": vcID }, {
 				$push: {
-					"activeRaidsAndHeadcounts.raidChannels.$.keyReacts": typeof member === "object" ? member.id : member
+					"activeRaidsAndHeadcounts.raidChannels.$.earlyReacts": typeof member === "object" ? member.id : member
 				}
 			}, { returnOriginal: false });
 			resolve(data.value);

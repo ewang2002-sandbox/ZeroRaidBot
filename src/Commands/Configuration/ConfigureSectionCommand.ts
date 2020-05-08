@@ -48,6 +48,7 @@ export class ConfigureSectionCommand extends Command {
 	];
 
 	private static MAX_SECTIONS: number = 8;
+	private static MAX_ARRAY_LENGTH_ROLES: number = 8;
 
 	/**
 	 * q = question/title
@@ -147,6 +148,13 @@ export class ConfigureSectionCommand extends Command {
 			d: "Mention, or type the ID of, the channel that you want to make the raid requests channel. When a Trial Leader want to start their own raid, a message will be sent to this channel with the following information: location, section, dungeon, time/date. The request will expire in 5 minutes.",
 			m: true,
 			mainMongo: "generalChannels.raidRequestChannel",
+			sectMongo: ""
+		},
+		{
+			q: "Configure Network Announcements Channel",
+			d: "Mention, or type the ID of, the channel that you want to make the network announcements channel. When a message is sent in the Network Announcements channel in the Network Administrator's server, the message will be forwarded to all servers.",
+			m: true,
+			mainMongo: "generalChannels.networkAnnouncementsChannel",
 			sectMongo: ""
 		}
 	];
@@ -248,6 +256,7 @@ export class ConfigureSectionCommand extends Command {
 			),
 			new CommandPermission(
 				["ADMINISTRATOR"],
+				["ADD_REACTIONS", "MANAGE_MESSAGES", "EMBED_LINKS"],
 				[],
 				false
 			),
@@ -317,7 +326,7 @@ export class ConfigureSectionCommand extends Command {
 			embed: nameOfSectionPrompt
 		}, 5, TimeUnit.MINUTE);
 
-		const nameOfSection: string | "CANCEL" | "TIME" = await col0.send(GenericMessageCollector.getStringPrompt(msg));
+		const nameOfSection: string | "CANCEL" | "TIME" = await col0.send(GenericMessageCollector.getStringPrompt(msg.channel));
 		if (nameOfSection === "CANCEL" || nameOfSection === "TIME") {
 			return;
 		}
@@ -382,7 +391,9 @@ export class ConfigureSectionCommand extends Command {
 				TimeUnit.MINUTE
 			);
 
-			const controlPanelChannel: TextChannel | "CANCEL" | "TIME" = await col4.send(GenericMessageCollector.getChannelPrompt(msg));
+			const controlPanelChannel: TextChannel | "CANCEL" | "TIME" = await col4.send(
+				GenericMessageCollector.getChannelPrompt(msg, msg.channel)
+			);
 
 			if (controlPanelChannel === "CANCEL" || controlPanelChannel === "TIME") {
 				return;
@@ -411,7 +422,9 @@ export class ConfigureSectionCommand extends Command {
 			TimeUnit.MINUTE
 		);
 
-		const verifiedRole: Role | "CANCEL" | "TIME" = await col3.send(GenericMessageCollector.getRolePrompt(msg));
+		const verifiedRole: Role | "CANCEL" | "TIME" = await col3.send(
+			GenericMessageCollector.getRolePrompt(msg, msg.channel)
+		);
 
 		if (verifiedRole === "CANCEL" || verifiedRole === "TIME") {
 			return;
@@ -450,7 +463,9 @@ export class ConfigureSectionCommand extends Command {
 						}
 					},
 					properties: {
-						dungeons: AFKDungeon.map(x => x.id)
+						dungeons: AFKDungeon.map(x => x.id),
+						manualVerificationEntries: [],
+						showVerificationRequirements: true
 					}
 				}
 			}
@@ -686,9 +701,10 @@ export class ConfigureSectionCommand extends Command {
 				.addField("Configure Join & Leave Logging Channel", "React with 📥 to configure join & leave logs.")
 				.addField("Configure Bot Updates Channel", "React with 🤖 to configure the bot updates channel. Any bot changelog information will be forwarded to this channel.")
 				.addField("Configure Moderation Mail Channel", "React with 📬 to configure the moderation mail channel.")
-				.addField("Configure Raid Requests Channel", "React with ❓ to configure the raid requests channel.");
+				.addField("Configure Raid Requests Channel", "React with ❓ to configure the raid requests channel.")
+				.addField("Configure Network Announcements Channel", "React with to configure the network announcements channel.");
 
-			reactions.push("⚒️", "⚠️", "📥", "🤖", "📬", "❓");
+			reactions.push("⚒️", "⚠️", "📥", "🤖", "📬", "❓", "📢");
 		}
 
 		embed
@@ -884,6 +900,16 @@ export class ConfigureSectionCommand extends Command {
 					"generalChannels.raidRequestChannel"
 				);
 			}
+			else if (r.emoji.name === "📢") {
+				await this.resetBotEmbed(botSentMsg).catch(() => { });
+				res = await this.updateChannelCommand(
+					msg,
+					"Network Announcements Channel",
+					section,
+					guild.channels.cache.get(guildData.generalChannels.networkAnnouncementsChannel),
+					"generalChannels.networkAnnouncementsChannel"
+				);
+			}
 			// configuration wizard
 			else if (r.emoji.name === "💾") {
 				res = await this.startWizard(msg, section, botSentMsg, this._channelQs, "CHANNEL");
@@ -965,12 +991,14 @@ export class ConfigureSectionCommand extends Command {
 				.addField("Configure Support Role", "React with 📛 to configure the Support/Helper role.")
 				.addField("Configure Pardoned Leader Role", "React with 💤 to configure the Pardoned Leader role.")
 				.addField("Configure Suspended Role", "React with ⛔ to configure the Suspended role.")
-			//.addField("Configure Talking Roles", "React to 🔈 to configure talking roles.")
+				.addField("Configure Talking Roles", "React with 🔈 to configure talking roles.")
+				.addField("Configure Early Location Roles", "React with 🗺️ to configure early location roles.");
 			//.addField("Configure Tier I Key Role", "React with 🗝️ to configure the Tier 1 Key Donator role.")
 			//.addField("Configure Tier II Key Role", "React with 🔑 to configure the Tier 2 Key Donator role.")
 			//.addField("Configure Tier III Key Role", "React with 🍀 to configure the Tier 3 Key Donator role.");
 
-			reactions.push("👪", "⚒️", "🥇", "🥈", "🥉", "🚩", "📛", "💤", "⛔"); // , "🔈", "🗝️", "🔑", "🍀"
+			reactions.push("👪", "⚒️", "🥇", "🥈", "🥉", "🚩", "📛", "💤", "⛔", "🔈", "🗺️"); 
+				// , "🔈", "🗝️", "🔑", "🍀"
 		}
 
 		embed
@@ -1122,6 +1150,28 @@ export class ConfigureSectionCommand extends Command {
 					"roles.suspended"
 				);
 			}
+			// talking roles
+			else if (r.emoji.name === "🔈") {
+				await this.resetBotEmbed(botSentMsg).catch(() => { });
+				res = await this.updateArrayRoleCommand(
+					msg,
+					"Talking Roles",
+					guildData,
+					"roles.talkingRoles",
+					guildData.roles.talkingRoles
+				);
+			}
+			// early loc roles
+			else if (r.emoji.name === "🗺️") {
+				await this.resetBotEmbed(botSentMsg).catch(() => { });
+				res = await this.updateArrayRoleCommand(
+					msg,
+					"Early Location Roles",
+					guildData,
+					"roles.earlyLocationRoles",
+					guildData.roles.earlyLocationRoles
+				);
+			}
 			// configuration wizard
 			else if (r.emoji.name === "💾") {
 				res = await this.startWizard(msg, section, botSentMsg, this._roleQs, "ROLE");
@@ -1152,6 +1202,57 @@ export class ConfigureSectionCommand extends Command {
 
 			this.sectionRoleMenuCommand(msg, res, section, botSentMsg, false, this.getStringRepOfGuildDoc(msg, section, res).roleSB.toString());
 		});
+	}
+
+	private async updateArrayRoleCommand(
+		msg: Message,
+		roleName: string,
+		guildData: IRaidGuild, 
+		mongoPath: string,
+		currRoles: string[]
+	): Promise<IRaidGuild | "CANCEL" | "TIME"> {
+		const guild: Guild = msg.guild as Guild;
+		guildData = await this.removeDeadElements(guildData, currRoles, mongoPath, guild);
+
+		const roles: (Role | undefined)[] = currRoles.map(x => guild.roles.cache.get(x));
+		
+		const resolvedRole: Role[] = [];
+		for (const role of roles) {
+			if (typeof role !== "undefined") {
+				resolvedRole.push(role);
+			}
+		}
+
+		const embed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", { authorType: "GUILD" })
+			.setTitle(`Changing **${roleName}**`)
+			.setDescription(`Current Roles Inputted: ${resolvedRole.length === 0 ? "None" : resolvedRole}.\n Please mention, or type the ID of, the role now. If you select a role that is listed above, the role will be removed; otherwise, it will be added.`);
+
+		const targetRole: Role | "CANCEL" | "TIME" = await (new GenericMessageCollector<Role>(msg, {
+			embed: embed
+		}, 3, TimeUnit.MINUTE)).send(GenericMessageCollector.getRolePrompt(msg, msg.channel));
+
+		if (targetRole === "CANCEL") {
+			return "CANCEL";
+		}
+
+		if (targetRole === "TIME") {
+			return "TIME";
+		}
+
+		if (resolvedRole.some(x => x.id === targetRole.id)) {
+			return (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id }, {
+				$pull: {
+					[mongoPath]: targetRole.id
+				}
+			}, { returnOriginal: false })).value as IRaidGuild;
+		}
+		else {
+			return (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id }, {
+				$push: {
+					[mongoPath]: targetRole.id
+				}
+			}, { returnOriginal: false })).value as IRaidGuild;
+		}
 	}
 
 	/**
@@ -1189,9 +1290,10 @@ export class ConfigureSectionCommand extends Command {
 			.addField("Go Back", "React with ⬅️ to go back to the Main Menu.")
 			.addField("Configure Rank Requirements", "React with ⭐ to configure rank requirements.")
 			.addField("Configure Fame Requirements", "React with 📛 to configure fame requirements.")
-			.addField("Configure Maxed Stats Requirements", "React with ➕ to configure maxed stats requirements.");
+			.addField("Configure Maxed Stats Requirements", "React with ➕ to configure maxed stats requirements.")
+			.addField(`${!section.properties.showVerificationRequirements ? "Show" : "Hide"} Verification Requirements`, `React with 🛡️ to ${!section.properties.showVerificationRequirements ? "show" : "hide"} the verification requirements. This will affect both the verification requirement embed *and* the direct message verification.`);
 
-		reactions.push("⬅️", "⭐", "📛", "➕");
+		reactions.push("⬅️", "⭐", "📛", "➕", "🛡️");
 
 		if (typeof verificationChannel !== "undefined") {
 			embed.addField("Send Verification Embed", "React with 📧 to send the embed containing verification instructions out.");
@@ -1266,6 +1368,18 @@ export class ConfigureSectionCommand extends Command {
 					["sections.$.verification.maxedStats.required", "sections.$.verification.maxedStats.statsReq"]
 				);
 			}
+			// show/hide reqs
+			else if (r.emoji.name === "🛡️") {
+				const filterQuery: FilterQuery<IRaidGuild> = section.isMain
+					? { guildID: guild.id }
+					: { guildID: guild.id, "sections.verifiedRole": section.verifiedRole };
+				const updateQuery: UpdateQuery<IRaidGuild> = section.isMain
+					? { $set: { "properties.showVerificationRequirements": !section.properties.showVerificationRequirements } }
+					: { $set: { "sections.$.properties.showVerificationRequirements": !section.properties.showVerificationRequirements } };
+				res = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(filterQuery, updateQuery, {
+					returnOriginal: false
+				})).value as IRaidGuild;
+			}
 			// send embed
 			else if (r.emoji.name === "📧") {
 				let reqs: StringBuilder = new StringBuilder()
@@ -1273,33 +1387,36 @@ export class ConfigureSectionCommand extends Command {
 					.appendLine()
 					.append("• Private \"Last Seen\" Location.")
 					.appendLine();
+
 				if (section.isMain) {
 					reqs.append("• Public Name History.")
 						.appendLine();
 				}
 
-				if (section.verification.aliveFame.required) {
-					reqs.append(`• ${section.verification.aliveFame.minimum} Alive Fame.`)
-						.appendLine();
-				}
+				if (section.properties.showVerificationRequirements) {
+					if (section.verification.aliveFame.required) {
+						reqs.append(`• ${section.verification.aliveFame.minimum} Alive Fame.`)
+							.appendLine();
+					}
 
-				if (section.verification.stars.required) {
-					reqs.append(`• ${section.verification.stars.minimum} Stars.`)
-						.appendLine();
-				}
+					if (section.verification.stars.required) {
+						reqs.append(`• ${section.verification.stars.minimum} Stars.`)
+							.appendLine();
+					}
 
-				if (section.verification.maxedStats.required) {
-					for (let i = 0; i < section.verification.maxedStats.statsReq.length; i++) {
-						if (section.verification.maxedStats.statsReq[i] !== 0) {
-							reqs.append(`• ${section.verification.maxedStats.statsReq[i]} ${i}/8 Character(s).`)
-								.appendLine();
+					if (section.verification.maxedStats.required) {
+						for (let i = 0; i < section.verification.maxedStats.statsReq.length; i++) {
+							if (section.verification.maxedStats.statsReq[i] !== 0) {
+								reqs.append(`• ${section.verification.maxedStats.statsReq[i]} ${i}/8 Character(s).`)
+									.appendLine();
+							}
 						}
 					}
 				}
 
 				const verifEmbed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", { authorType: "GUILD" })
 					.setTitle(`**${section.isMain ? "Server" : "Section"} Verification Channel**`)
-					.setDescription(`Welcome to ${section.isMain ? `**\`${guild.name}\`**` : `the **\`${section.nameOfSection}\`** section.`}! In order to join in on our raids, you will have to first verify your identity. The requirements for this server are listed below. ${StringUtil.applyCodeBlocks(reqs.toString())}\n\nIf you meet these requirements, then please react to the ✅ to get started. ${!section.isMain ? "To unverify from the section, simply react with ❌." : ""}`)
+					.setDescription(`Welcome to ${section.isMain ? `**\`${guild.name}\`**` : `the **\`${section.nameOfSection}\`** section`}! In order to join in on our raids, you will have to first verify your identity. The requirements for this server are listed below. ${StringUtil.applyCodeBlocks(reqs.toString())}\nIf you meet these requirements, then please react to the ✅ to get started. ${!section.isMain ? "To unverify from the section, simply react with ❌." : ""}`)
 					.setFooter(section.isMain ? "Server Verification" : "Section Verification")
 					.setColor("RANDOM");
 				const z: Message = await (verificationChannel as TextChannel).send(verifEmbed);
@@ -1446,7 +1563,7 @@ export class ConfigureSectionCommand extends Command {
 							embed: promptEmbed.setTitle("**Edit Minimum Fame**").setDescription("Type the minimum amount of fame a person needs to meet the requirements.")
 						}, 2, TimeUnit.MINUTE);
 
-						const n: number | "TIME" | "CANCEL" = await gm0.send(GenericMessageCollector.getNumber(msg, 0));
+						const n: number | "TIME" | "CANCEL" = await gm0.send(GenericMessageCollector.getNumber(msg.channel, 0));
 						if (n === "TIME") {
 							return resolve("TIME");
 						}
@@ -1466,7 +1583,7 @@ export class ConfigureSectionCommand extends Command {
 							embed: promptEmbed.setTitle("**Edit Minimum Rank**").setDescription("Type the minimum rank a person needs to meet the requirements.")
 						}, 2, TimeUnit.MINUTE);
 
-						const n: number | "TIME" | "CANCEL" = await gm0.send(GenericMessageCollector.getNumber(msg, 0, 75));
+						const n: number | "TIME" | "CANCEL" = await gm0.send(GenericMessageCollector.getNumber(msg.channel, 0, 75));
 						if (n === "TIME") {
 							return resolve("TIME");
 						}
@@ -1485,7 +1602,7 @@ export class ConfigureSectionCommand extends Command {
 						const gmc2: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, {
 							embed: promptEmbed.setTitle("**Edit Required Character Stats**").setDescription("Please type the stats type that you want to modify. For example, to modify the amount of `7/8`s needed to verify, type `7`.")
 						}, 2, TimeUnit.MINUTE);
-						const n: number | "TIME" | "CANCEL" = await gmc2.send(GenericMessageCollector.getNumber(msg, 0, 8));
+						const n: number | "TIME" | "CANCEL" = await gmc2.send(GenericMessageCollector.getNumber(msg.channel, 0, 8));
 						if (n === "TIME") {
 							return resolve("TIME");
 						}
@@ -1499,7 +1616,7 @@ export class ConfigureSectionCommand extends Command {
 							embed: promptEmbed.setTitle("**Edit Required Character Stats**").setDescription(`You are currently modifying the required amount of ${n}/8 needed. Please type the amount of ${n}/8 characters needed.`)
 						}, 2, TimeUnit.MINUTE);
 
-						const m: number | "TIME" | "CANCEL" = await gmc3.send(GenericMessageCollector.getNumber(msg, 0, 15));
+						const m: number | "TIME" | "CANCEL" = await gmc3.send(GenericMessageCollector.getNumber(msg.channel, 0, 15));
 						if (m === "TIME") {
 							return resolve("TIME");
 						}
@@ -1559,7 +1676,7 @@ export class ConfigureSectionCommand extends Command {
 			TimeUnit.MINUTE
 		);
 
-		const result: string | "CANCEL" | "TIME" = await nameColl.send(GenericMessageCollector.getStringPrompt(msg));
+		const result: string | "CANCEL" | "TIME" = await nameColl.send(GenericMessageCollector.getStringPrompt(msg.channel));
 		if (result === "CANCEL") {
 			return guildData;
 		}
@@ -1658,7 +1775,7 @@ export class ConfigureSectionCommand extends Command {
 
 		const chan: TextChannel | "CANCEL" | "TIME" = await (new GenericMessageCollector<TextChannel>(msg, {
 			embed: embed
-		}, 3, TimeUnit.MINUTE)).send(GenericMessageCollector.getChannelPrompt(msg));
+		}, 3, TimeUnit.MINUTE)).send(GenericMessageCollector.getChannelPrompt(msg, msg.channel));
 
 		if (chan === "CANCEL") {
 			return "CANCEL";
@@ -1701,7 +1818,7 @@ export class ConfigureSectionCommand extends Command {
 
 		const chan: Role | "CANCEL" | "TIME" = await (new GenericMessageCollector<Role>(msg, {
 			embed: embed
-		}, 3, TimeUnit.MINUTE)).send(GenericMessageCollector.getRolePrompt(msg));
+		}, 3, TimeUnit.MINUTE)).send(GenericMessageCollector.getRolePrompt(msg, msg.channel));
 
 		if (chan === "CANCEL") {
 			return "CANCEL";
@@ -1960,7 +2077,23 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 		const supportRole: Role | undefined = guild.roles.cache.get(guildData.roles.support);
 		const pardonedLeaderRole: Role | undefined = guild.roles.cache.get(guildData.roles.pardonedRaidLeader);
 		const suspendedRole: Role | undefined = guild.roles.cache.get(guildData.roles.suspended);
-		// TODO: talking roles
+		const allTalkingRoles: (Role | undefined)[] = guildData.roles.talkingRoles.map(x => guild.roles.cache.get(x));
+		const allEarlyLocRoles: (Role | undefined)[] = guildData.roles.earlyLocationRoles.map(x => guild.roles.cache.get(x));
+
+		const talkingRoles: Role[] = [];
+		for (const role of allTalkingRoles) {
+			if (typeof role !== "undefined") {
+				talkingRoles.push(role);
+			}
+		}
+
+		const earlyReactionRoles: Role[] = [];
+		for (const role of allEarlyLocRoles) {
+			if (typeof role !== "undefined") {
+				earlyReactionRoles.push(role);
+			}
+		}
+
 		const mutedRole: Role | undefined = guild.roles.cache.get(guildData.roles.optRoles.mutedRole);
 		const keyTier1: Role | undefined = guild.roles.cache.get(guildData.roles.optRoles.keyTier1.role);
 		const keyTier2: Role | undefined = guild.roles.cache.get(guildData.roles.optRoles.keyTier2.role);
@@ -1992,6 +2125,8 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 			.append(`Verified Role: ${typeof verifiedRole === "undefined" ? "N/A" : verifiedRole}`)
 
 		const verificationSB: StringBuilder = new StringBuilder("__Verification__")
+			.appendLine()
+			.append(`Show Requirements: ${section.properties.showVerificationRequirements ? "Yes" : "No"}`)
 			.appendLine()
 			.append(`Stars: ${section.verification.stars.minimum} (${starReq})`)
 			.appendLine()
@@ -2052,6 +2187,10 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 				.appendLine()
 				.append(`Suspended Role: ${typeof suspendedRole === "undefined" ? "N/A" : suspendedRole}`)
 				.appendLine()
+				.append(`Talking Roles: ${talkingRoles.length === 0 ? "None" : talkingRoles.join(", ")}`)
+				.appendLine()
+				.append(`Early Location Role: ${earlyReactionRoles.length === 0 ? "None" : earlyReactionRoles.join(", ")}`)
+				.appendLine()
 				.append(`Muted Role: ${typeof mutedRole === "undefined" ? "N/A" : mutedRole}`)
 				.appendLine()
 				.append(`Key Tier I Role: ${typeof keyTier1 === "undefined" ? "N/A" : keyTier1}`)
@@ -2088,7 +2227,6 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 			return reactions.includes(reaction.emoji.name) && user.id === msg.author.id && !user.bot;
 		}
 	}
-
 
 	/**
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with either a TextChannel mention or ID, or simply the "skip" message.
@@ -2149,5 +2287,42 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 			}
 			return resolvedRole;
 		};
+	}
+
+	/**
+	 * Removes any dead roles. Dead roles are roles that exist in the db but not in the server.
+	 * @param {IRaidGuild} guildDb The document.
+	 * @param {string[]} roleArray The array of roles to check. 
+	 * @param {string} field The Mongo path to the array specified above. 
+	 * @param {Guild} guild The guild. 
+	 */
+	private async removeDeadElements(
+		guildDb: IRaidGuild, 
+		roleArray: string[],
+		field: string,
+		guild: Guild
+	): Promise<IRaidGuild> {
+		const promises: Promise<unknown>[] = roleArray.map(role => {
+			return new Promise((resolve, reject) => {
+				if (!guild.roles.cache.has(role)) {
+					MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
+						$pull: {
+							[field]: role
+						}
+					}, (err, raw) => {
+						if (err) {
+							reject(err);
+						}
+						resolve();
+					});
+				} else {
+					resolve();
+				}
+			});
+		});
+
+		await Promise.all(promises);
+
+		return new MongoDbHelper.MongoDbGuildManager(guild.id).findOrCreateGuildDb();
 	}
 }

@@ -1,7 +1,8 @@
 import { CommandDetail } from "./CommandDetail";
 import { CommandPermission } from "./CommandPermission";
-import { Client, Message } from "discord.js";
+import { Message, PermissionResolvable } from "discord.js";
 import { IRaidGuild } from "../IRaidGuild";
+import { RoleNames } from "../../Definitions/Types";
 
 export abstract class Command {
 	/**
@@ -52,19 +53,91 @@ export abstract class Command {
 	}
 
 	/**
-	 * Returns the details of the command. This is the "backbone" of the `Command` structure.
-	 * @returns {CommandDetail} The details of the command.
+	 * Gets the main command name (in other words, how a user should primarily call this command).
+	 * @returns {string} The main command name.
 	 */
-	public getCommandDetails(): CommandDetail {
-		return this._commandDetails;
+	public getMainCommandName(): string {
+		return this._commandDetails.getMainCommandName();
 	}
 
 	/**
-	 * Returns the permissions required to execute this command.
-	 * @returns {CommandPermission} The permissions required to execute this command.
+	 * Gets the command aliases. If no aliases are defined, this will return an empty array.
+	 * @returns {string[]} The aliases for this command.
 	 */
-	public getCommandPermissions(): CommandPermission {
-		return this._commandPermissions;
+	public getAliases(): string[] {
+		return this._commandDetails.getAliases();
+	}
+
+	/**
+	 * Gets the description of the command (information about the command).
+	 * @returns {string} The description of the command. 
+	 */
+	public getDescription(): string {
+		return this._commandDetails.getDescription();
+	}
+
+	/**
+	 * Gets the usages for the command.
+	 * @returns {string[]} The command usages. 
+	 */
+	public getUsage(): string[] {
+		return this._commandDetails.getUsage();
+	}
+
+	/**
+	 * Gets the examples of how to use the command.
+	 * @returns {string[]} Examples of command usage. 
+	 */
+	public getExamples(): string[] {
+		return this._commandDetails.getExamples();
+	}
+
+	/**
+	 * Gets the number of required arguments.
+	 * @returns {number} The number of required arguments. 
+	 */
+	public getArgumentLength(): number {
+		return this._commandDetails.getArgumentLength();
+	}
+
+	/**
+	 * Returns the formal, human-readable, command name.
+	 * @returns {string} The formal, human-readable, command name.
+	 */
+	public getFormalCommandName(): string {
+		return this._commandDetails.getFormalCommandName();
+	}
+
+	/**
+	 * Returns the general permissions that the user has to have in order to execute the command. This will take priority over `rolePermissions`. 
+	 * @returns {PermissionResolvable[]} The general permissions that the user has to have in order to execute the command. 
+	 */
+	public getGeneralPermissions(): PermissionResolvable[] {
+		return this._commandPermissions.getGeneralPermissions();
+	}
+
+	/**
+	 * Returns the permissions that the bot must have in order to execute the command. 
+	 * @returns {PermissionResolvable[]} The permissions that the bot must have in order to execute the command. 
+	 */
+	public getBotPermissions(): PermissionResolvable[] {
+		return this._commandPermissions.getBotPermissions();
+	}
+
+	/**
+	 * Returns the list of roles that can use this command.
+	 * @returns {RoleNames[]} The list of roles that can use this command.
+	 */
+	public getRolePermissions(): RoleNames[] {
+		return this._commandPermissions.getRolePermissions();
+	}
+
+	/**
+	 * Returns whether the command can be used by higher roles (higher than the highest listed role in `rolePermissions`).
+	 * @returns {boolean} Whether the command can be used by higher roles (higher than the highest listed role in `rolePermissions`).
+	 */
+	public isRoleInclusive(): boolean {
+		return this._commandPermissions.isRoleInclusive();
 	}
 
 	/**

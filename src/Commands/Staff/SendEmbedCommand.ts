@@ -36,6 +36,7 @@ export class SendEmbedCommand extends Command {
 			),
 			new CommandPermission(
 				[],
+				["ADD_REACTIONS", "EMBED_LINKS"],
 				["headRaidLeader"],
 				true
 			),

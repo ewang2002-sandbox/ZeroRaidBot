@@ -3,7 +3,7 @@ import { CommandPermission } from "../../Templates/Command/CommandPermission";
 import { Command } from "../../Templates/Command/Command";
 import { Message, Guild } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
-import { RaidHandler } from "../../Handlers/RaidHandler";
+import { RaidHandler } from "../../Helpers/RaidHandler";
 
 export class StartAfkCheckCommand extends Command {
 	public constructor() {
@@ -19,6 +19,7 @@ export class StartAfkCheckCommand extends Command {
 			),
 			new CommandPermission(
 				[],
+				["MANAGE_CHANNELS", "ADD_REACTIONS", "EMBED_LINKS"],
 				["headRaidLeader", "raidLeader", "almostRaidLeader", "trialRaidLeader"],
 				false
 			),

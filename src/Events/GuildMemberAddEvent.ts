@@ -1,18 +1,33 @@
-import { GuildMember, Role, PartialGuildMember } from "discord.js";
+import { GuildMember, Role, PartialGuildMember, TextChannel, MessageEmbed } from "discord.js";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
 import { IMutedData, ISuspendedData } from "../Definitions/IPunishmentObject";
-import { MuteCommand } from "../Modules/Moderator/MuteCommand";
+import { MuteCommand } from "../Commands/Moderator/MuteCommand";
+import { StringUtil } from "../Utility/StringUtil";
+import { DateUtil } from "../Utility/DateUtil";
 
 export async function onGuildMemberAdd(
     member: GuildMember | PartialGuildMember
 ): Promise<void> {
-    const guildMember: GuildMember | null = member.guild.member(member.id);
-    if (guildMember === null) {
-        return;
-    }
+    const guildMember: GuildMember = await member.fetch();
 
     const db: IRaidGuild = await new MongoDbHelper.MongoDbGuildManager(guildMember.guild.id).findOrCreateGuildDb();
+    const joinLeaveChannel: TextChannel | undefined = guildMember.guild.channels.cache
+        .get(db.generalChannels.logging.joinLeaveChannel) as TextChannel | undefined;
+    if (typeof joinLeaveChannel !== "undefined") {
+        const joinEmbed: MessageEmbed = new MessageEmbed()
+            .setAuthor(guildMember.user.tag, guildMember.user.displayAvatarURL())
+            .setTitle("📥 New Member Joined")
+            .setDescription(`${member} has joined **\`${member.guild.name}\`**.`)
+            .addField("Joined Server", StringUtil.applyCodeBlocks(DateUtil.getTime(new Date())))
+            .addField("Registered Account", StringUtil.applyCodeBlocks(DateUtil.getTime(guildMember.user.createdAt)))
+            .addField("User ID", StringUtil.applyCodeBlocks(member.id))
+            .setThumbnail(guildMember.user.displayAvatarURL())
+            .setTimestamp()
+            .setColor("RANDOM")
+            .setFooter(member.guild.name);
+        await joinLeaveChannel.send(joinEmbed).catch(e => { });
+    }
 
     // check if muted
     const mutedRole: Role | undefined = guildMember.guild.roles.cache.get(db.roles.optRoles.mutedRole) as Role | undefined;

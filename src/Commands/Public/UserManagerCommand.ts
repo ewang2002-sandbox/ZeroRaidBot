@@ -14,9 +14,12 @@ import { ITiffitNoUser, ITiffitRealmEyeProfile } from "../../Definitions/ITiffit
 import { Zero } from "../../Zero";
 import { TiffitRealmEyeAPI } from "../../Constants/ConstantVars";
 import { FilterQuery, UpdateQuery } from "mongodb";
-import { VerificationHandler } from "../../Handlers/VerificationHandler";
+import { VerificationHandler } from "../../Helpers/VerificationHandler";
+import { INameHistory, IAPIError } from "../../Definitions/ICustomREVerification";
 
 export class UserManagerCommand extends Command {
+	public static readonly MAX_ALTS_ALLOWED: number = 8;
+
 	public constructor() {
 		super(
 			new CommandDetail(
@@ -31,7 +34,8 @@ export class UserManagerCommand extends Command {
 			new CommandPermission(
 				[],
 				[],
-				false
+				["suspended"],
+				true
 			),
 			false, // guild-only command. 
 			false,
@@ -107,9 +111,11 @@ export class UserManagerCommand extends Command {
 			.setTimestamp();
 		//.setDescription("⇒ React with ➕ to add an alternative account.\n⇒ React with ➖ remove an alternative account.\n⇒ React with 🔄 to switch your main account with one of your alternative account.\n⇒ React with ❌ to cancel this process.");
 
-		sbDesc.append("⇒ React with ➕ to verify an alternative account. Use this command if you recently got a name change.")
-			.appendLine();
-		reactions.push("➕");
+		if (userDb.otherAccountNames.length + 1 <= 8) {
+			sbDesc.append("⇒ React with ➕ to verify an alternative account. Use this command if you recently got a name change.")
+				.appendLine();
+			reactions.push("➕");
+		}
 
 		if (userDb.otherAccountNames.length !== 0) {
 			sbDesc.append("⇒ React with ➖ to remove an alternative account.")
@@ -143,7 +149,7 @@ export class UserManagerCommand extends Command {
 			await m.delete().catch(e => { });
 			// add account or deal with name change
 			if (r.emoji.name === "➕") {
-
+				this.addAccount(msg, dmChannel, userDb);
 			}
 			// remove account
 			else if (r.emoji.name === "➖") {
@@ -161,11 +167,13 @@ export class UserManagerCommand extends Command {
 	}
 
 	/**
+	 * Precondition: The current amount of alternative accounts + LIMIT <= 8 
+	 * If adding an extra account exceeds the limit, do not run.
 	 * @param {Message} msg The author's message. 
 	 * @param {DMChannel} dmChannel The DM Channel. 
 	 * @param {IRaidUser} userDb The user db. 
 	 */
-	public async addAccount(msg: Message, dmChannel: DMChannel, userDb: IRaidUser): Promise<void> {
+	private async addAccount(msg: Message, dmChannel: DMChannel, userDb: IRaidUser): Promise<void> {
 		const inGameName: string | "CANCEL_" | "TIME_" = await new Promise(async (resolve) => {
 			const nameEmbed: MessageEmbed = new MessageEmbed()
 				.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
@@ -248,14 +256,16 @@ export class UserManagerCommand extends Command {
 			return;
 		}
 
+		const code: string = VerificationHandler.getRandomizedString(8);
+
 		const embed: MessageEmbed = new MessageEmbed()
 			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 			.setTitle("Verification For Profile")
 			.setDescription(`You have selected the in-game name: **\`${inGameName}\`**. To access your RealmEye profile, click [here](https://www.realmeye.com/player/${inGameName}).\n\nYou are almost done verifying; however, you need to do a few more things.\n\nTo stop the verification process, react with ❌.`)
 			.setColor("RANDOM")
 			.setFooter("⏳ Time Remaining: 15 Minutes and 0 Seconds.")
-			.addField("1. Get Your Verification Code", `Your verification code is: ${StringUtil.applyCodeBlocks(msg.author.id)}Please put this verification code in one of your three lines of your RealmEye profile's description.`)
-			.addField("2. Check Profile Settings", `Ensure __anyone__ can view your name history. You can access your profile settings [here](https://www.realmeye.com/settings-of/${inGameName}). If you don't have your RealmEye account password, you can learn to get one [here](https://www.realmeye.com/mreyeball#password).`)
+			.addField("1. Get Your Verification Code", `Your verification code is: ${StringUtil.applyCodeBlocks(code)}Please put this verification code in one of your three lines of your RealmEye profile's description.`)
+			.addField("2. Check Profile Settings", `Ensure __anyone__ can view your name history. You can access your profile settings [here](https://www.realmeye.com/settings-of/${inGameName}). If you don't have your RealmEye account password, you can learn how to get one [here](https://www.realmeye.com/mreyeball#password).`)
 			.addField("3. Wait", "Before you react with the check, make sure you wait. RealmEye may sometimes take up to 30 seconds to fully register your changes!")
 			.addField("4. Confirm", "React with ✅ to begin the verification check. If you have already reacted, un-react and react again.");
 		const verifMessage: Message = await dmChannel.send(embed);
@@ -301,23 +311,33 @@ export class UserManagerCommand extends Command {
 			canReact = false;
 			// begin verification time
 
-			const requestData: AxiosResponse<ITiffitNoUser | ITiffitRealmEyeProfile> = await Zero.AxiosClient
-				.get<ITiffitNoUser | ITiffitRealmEyeProfile>(TiffitRealmEyeAPI + inGameName);
+			let requestData: AxiosResponse<ITiffitNoUser | ITiffitRealmEyeProfile>;
+			try {
+				requestData = await Zero.AxiosClient
+					.get<ITiffitNoUser | ITiffitRealmEyeProfile>(TiffitRealmEyeAPI + inGameName);
+			}
+			catch (e) {
+				reactCollector.stop();
+				await msg.author.send(`An error occurred when trying to connect to your RealmEye profile.\n\tError: ${e}`);
+				return;
+			}
+
 			if ("error" in requestData.data) {
 				await msg.author.send("I could not find your RealmEye profile; you probably made your profile private. Ensure your profile's visibility is set to public and try again.");
 				canReact = true;
 				return;
 			}
 
+			const nameFromProfile: string = requestData.data.name;
 			let codeFound: boolean = false;
 			for (let i = 0; i < requestData.data.description.length; i++) {
-				if (requestData.data.description[i].includes(msg.author.id)) {
+				if (requestData.data.description[i].includes(code)) {
 					codeFound = true;
 				}
 			}
 
 			if (!codeFound) {
-				await msg.author.send("Your verification code wasn't found in your RealmEye description! Make sure the code is on your description and then try again.");
+				await msg.author.send(`Your verification code, \`${code}\`, wasn't found in your RealmEye description! Make sure the code is on your description and then try again.`);
 				canReact = true;
 				return;
 			}
@@ -328,8 +348,14 @@ export class UserManagerCommand extends Command {
 				return;
 			}
 
-			const nameHistory: VerificationHandler.INameHistory[] | VerificationHandler.IAPIError = await VerificationHandler
-				.getRealmEyeNameHistory(requestData.data.name);
+			let nameHistory: INameHistory[] | IAPIError;
+			try {
+				nameHistory = await VerificationHandler.getRealmEyeNameHistory(requestData.data.name);
+			} catch (e) {
+				reactCollector.stop();
+				await msg.author.send(`An error occurred when trying to connect to your RealmEye profile.\n\tError: ${e}`);
+				return;
+			}
 
 			if ("errorMessage" in nameHistory) {
 				await msg.author.send("Your Name History is not public! Set your name history to public first and then try again.");
@@ -346,71 +372,94 @@ export class UserManagerCommand extends Command {
 				}
 			}
 
-			// we're replacing an entry
-			if (nameToReplaceWith === "") {
-				await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne({ discordUserId: msg.author.id }, {
-					$push: {
-						otherAccountNames: {
-							lowercase:  requestData.data.name.toLowerCase(),
-							displayName: requestData.data.name
+			// TODO might want to use VerificationHandler.accountInDatabase(...)
+			//#region db
+			const resolvedUserDbDiscord: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient
+				.findOne({ discordUserId: msg.author.id });
+
+			const ignFilterQuery: FilterQuery<IRaidUser> = {
+				$or: [
+					{
+						rotmgLowercaseName: nameFromProfile.toLowerCase()
+					},
+					{
+						"otherAccountNames.lowercase": nameFromProfile.toLowerCase()
+					}
+				]
+			};
+			const resolvedUserDbIGN: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient
+				.findOne(ignFilterQuery);
+
+			const statusSb: StringBuilder = new StringBuilder();
+
+			// discord id found; ign NOT found in db
+			// if we're adding an alt account
+			// this should be the only boolean condition
+			// that is true
+			if (resolvedUserDbDiscord !== null && resolvedUserDbIGN === null) {
+				let names: string[] = [
+					resolvedUserDbDiscord.rotmgLowercaseName
+					, ...resolvedUserDbDiscord.otherAccountNames.map(x => x.lowercase)
+				];
+
+				let isMainIGN: boolean = false;
+				let nameToReplace: string | undefined;
+				nameHistory.shift();
+				if (nameHistory.length !== 0) {
+					for (let i = 0; i < names.length; i++) {
+						for (let j = 0; j < nameHistory.length; j++) {
+							if (names[i] === nameHistory[j].name.toLowerCase()) {
+								nameToReplace = nameHistory[j].name;
+								if (i === 0) {
+									isMainIGN = true;
+								}
+							}
 						}
 					}
-				});
-			}
-			else {
-				let updateQuery: UpdateQuery<IRaidUser>;
-				let filterQuery: FilterQuery<IRaidUser>;
 
-				// main account
-				if (userDb.rotmgLowercaseName === nameToReplaceWith.toLowerCase()) {
-					filterQuery = {
-						$and: [ // both conditions must be met
-							{
-								discordUserId: msg.author.id
-							},
-							{
-								rotmgLowercaseName: nameToReplaceWith.toLowerCase()
-							}
-						]
-					};
-
-					updateQuery = {
-						$set: {
-							rotmgDisplayName: requestData.data.name,
-							rotmgLowercaseName: requestData.data.name.toLowerCase()
+					if (typeof nameToReplace === "undefined") {
+						await VerificationHandler.newNameEntry(resolvedUserDbDiscord, msg.author, nameFromProfile);
+						statusSb.append(`The name, \`${nameFromProfile}\`, has been added as an alternative account.`).appendLine();
+					}
+					else {
+						if (isMainIGN) {
+							await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne({ discordUserId: msg.author.id }, {
+								$set: {
+									rotmgDisplayName: nameFromProfile,
+									rotmgLowercaseName: nameFromProfile.toLowerCase()
+								}
+							});
+							statusSb.append(`Your old main account name, \`${nameToReplace}\`, has been replaced with your new name, \`${nameFromProfile}\`.`).appendLine();
 						}
-					};
+						else {
+							await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne({
+								discordUserId: msg.author.id,
+								"otherAccountNames.lowercase": nameToReplace.toLowerCase()
+							}, {
+								$set: {
+									"otherAccountNames.$.lowercase": nameFromProfile.toLowerCase(),
+									"otherAccountNames.$.displayName": nameFromProfile
+								}
+							});
+							statusSb.append(`Your old alternative account name, \`${nameToReplace}\`, has been replaced with your new name, \`${nameFromProfile}\`.`).appendLine();
+						}
+					}
 				}
-				// alt account
 				else {
-					filterQuery = {
-						$and: [ // both conditions must be met
-							{
-								discordUserId: msg.author.id
-							},
-							{
-								"otherAccountNames.lowercase": nameToReplaceWith.toLowerCase()
-							}
-						]
-					};
-
-					updateQuery = {
-						$set: {
-							"otherAccountNames.$.displayName": requestData.data.name,
-							"otherAccountNames.$.lowercase": requestData.data.name.toLowerCase()
-						}
-					};
+					// array length is 0
+					// meaning no name history at all
+					await VerificationHandler.newNameEntry(resolvedUserDbDiscord, msg.author, nameFromProfile);
+					statusSb.append(`The name, \`${nameFromProfile}\`, has been added as an alternative account.`).appendLine();
 				}
-
-				await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne(filterQuery, updateQuery).catch(e => { });
 			}
+			//#endregion
 
 			// success!
 			reactCollector.stop();
 			const successEmbed: MessageEmbed = new MessageEmbed()
 				.setTitle("Profile Manager: Successful Verification")
 				.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
-				.setDescription(nameToReplaceWith === "" ? `The name, **\`${requestData.data.name}\`**, has been added as an alternative account.` : `The name, **\`${nameToReplaceWith}\`**, has been replaced with the name, **\`${requestData.data.name}\`**.`)
+				.setDescription(statusSb.toString())
 				.setColor("GREEN")
 				.setFooter("Verification Process: Stopped.");
 			await verifMessage.edit(successEmbed);
@@ -419,21 +468,52 @@ export class UserManagerCommand extends Command {
 			// to see if we can replace the old
 			// name with the new name
 			if (nameToReplaceWith !== "") {
-				const guildDocuments: IRaidGuild[] = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.find({ }).toArray();
+				// TODO make sure this works!
+				const guildDocuments: IRaidGuild[] = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.find({}).toArray();
 				for (const doc of guildDocuments) {
 					const guild: Guild | undefined = Zero.RaidClient.guilds.cache.get(doc.guildID);
 					if (typeof guild !== "undefined") {
 						const member: GuildMember | undefined = guild.members.cache.get(msg.author.id);
 						if (typeof member !== "undefined" && member.roles.cache.has(doc.roles.raider)) {
 							const name: string = member.displayName;
-							if (name.toLowerCase().includes(nameToReplaceWith.toLowerCase())) {
-								
+
+							let allNames: string[] = name.split("|");
+							let symbols: string = this.getSymbolsFromName(allNames[0]);
+							allNames = allNames.map(x => x.trim().replace(/[^A-Za-z]/g, ""));
+							for (let i = 0; i < allNames.length; i++) {
+								if (allNames[i].toLowerCase() === nameToReplaceWith.toLowerCase()) {
+									allNames[i] = nameToReplaceWith;
+								}
 							}
+
+							// remove duplicates. 
+							allNames = allNames
+								.filter((item: string, index: number) => allNames.indexOf(item) === index);
+
+							await member.setNickname(`${symbols}${allNames.join(" | ")}`)
+								.catch(e => { });
 						}
 					}
 				}
 			}
 		});
+	}
+
+	/**
+	 * Precondition: There is at least 1 alt account.
+	 * @param {Message} msg The author's message. 
+	 * @param {DMChannel} dmChannel The DM Channel. 
+	 * @param {IRaidUser} userDb The user db. 
+	 */
+	private async removeAccount(msg: Message, dmChannel: DMChannel, userDb: IRaidUser): Promise<void> {
+		const altNames: string[] = userDb.otherAccountNames.map(x => x.lowercase);
+		const currentAlts: StringBuilder = new StringBuilder();
+		for (let i = 0; i < altNames.length; i++) {
+			currentAlts.append(`**\`[${i}]\`** ${altNames[i]}`);
+		}
+
+		const removeAccEmbed: MessageEmbed = new MessageEmbed();
+
 	}
 
 	/**
@@ -445,5 +525,24 @@ export class UserManagerCommand extends Command {
 		return (reaction: MessageReaction, user: User) => {
 			return reactions.includes(reaction.emoji.name) && user.id === msg.author.id && !user.bot;
 		}
+	}
+
+	/**
+	 * Returns a string consisting of all symbols BEFORE any letters.
+	 * @param {string} name The name. 
+	 */
+	private getSymbolsFromName(name: string): string {
+		let symbols: string = "";
+		for (let i = 0; i < name.length; i++) {
+			if (!/^[A-Za-z]+$/.test(name[i])) {
+				symbols += name[i];
+				continue;
+			}
+			else {
+				break;
+			}
+		}
+
+		return symbols;
 	}
 }

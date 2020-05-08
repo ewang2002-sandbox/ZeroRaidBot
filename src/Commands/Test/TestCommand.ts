@@ -1,27 +1,30 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message } from "discord.js";
+import { Message, TextChannel, GuildMember } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
+import { GenericMessageCollector } from "../../Classes/Message/GenericMessageCollector";
+import { UserHandler } from "../../Helpers/UserHandler";
 
-export class CheckBlacklistCommand extends Command {
+export class TestCommand extends Command {
 	public constructor() {
 		super(
 			new CommandDetail(
-				"Check Blacklist.",
-				"checkblacklist",
-				["cbl", "sbl", "scanblacklist"],
-				"Checks the server's blacklist for a target user.",
-				["checkblacklist <Name>"],
-				["checkblacklist ConsoleMC"],
-				1
+				"Test",
+				"test",
+				[],
+				"A developer-only command.",
+				["test"],
+				["test"],
+				0
 			),
 			new CommandPermission(
 				[],
-				["support"],
-				true
+				[],
+				[],
+				false
 			),
-			true, // guild-only command. 
+			false, // guild-only command. 
 			false,
 			false
 		);
@@ -31,6 +34,5 @@ export class CheckBlacklistCommand extends Command {
 	 * @inheritdoc
 	 */
 	public async executeCommand(msg: Message, args: string[], guildData: IRaidGuild): Promise<void> {
-		
 	}
 }

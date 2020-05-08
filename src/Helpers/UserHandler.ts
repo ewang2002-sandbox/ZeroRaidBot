@@ -1,13 +1,55 @@
-import { User, GuildMember, Guild, Role, Message, MessageEmbed, TextChannel, SnowflakeUtil } from "discord.js";
+import { User, GuildMember, Guild, Role, Message } from "discord.js";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import Collection from "@discordjs/collection";
 import { StringUtil } from "../Utility/StringUtil";
 import { Zero } from "../Zero";
-import { MessageUtil } from "../Utility/MessageUtil";
-import { MongoDbHelper } from "../Helpers/MongoDbHelper";
-import { IPunishment } from "../Definitions/IPunishment";
 
 export namespace UserHandler {
+	/**
+     * Checks to see if a member can get the "staff" role. The "staff" role is a role that all staff members will have.
+     * @param {GuildMember} member The member.  
+     * @param {IRaidGuild} guildData The guild data.
+     * @returns {Promise<boolean>} Whether any changes were made. 
+     */
+    export async function manageStaffRole(member: GuildMember, guildData: IRaidGuild): Promise<boolean> { 
+		const teamRole: Role | undefined = member.guild.roles.cache.get(guildData.roles.teamRole);
+
+		if (typeof teamRole === "undefined") {
+			return false;
+		}
+
+        let staffRoles: string[] = [
+            guildData.roles.moderator,
+            guildData.roles.headRaidLeader,
+			guildData.roles.raidLeader,
+			guildData.roles.trialRaidLeader,
+            guildData.roles.support,
+			guildData.roles.almostRaidLeader,
+			guildData.roles.officer
+		];
+		
+		const allStaffRoles: Role[] = [];
+		for (const role of staffRoles) {
+			if (member.guild.roles.cache.has(role)) {
+				allStaffRoles.push(member.guild.roles.cache.get(role) as Role);
+			}
+		}
+
+        for await (let role of allStaffRoles) {
+            if (member.roles.cache.has(role.id)) {
+                // they have the role, add and return 
+                // ? operator used here because "role" has to be defined
+                // or else it wouldn't run here. 
+				await member.roles.add(teamRole, `Has ${role.name} role.`)
+					.catch(() => { });
+                return true;
+            }
+        }
+
+        await member.roles.remove(guildData.roles.teamRole, "No longer a staff member").catch(() => { });
+        return true;
+	}
+	
 	/**
 	 * Fetches a user using the `<User>.fetch()` method, optionally fetching the member using the `<GuildMember>.fetch()` method if in a guild.
 	 * @param {Guild | null} guild The guild, if applicable. 

@@ -1,4 +1,4 @@
-import { Client, Message, MessageReaction, User, PartialUser, GuildMember, PartialGuildMember, Guild, TextChannel } from "discord.js";
+import { Client, Message, MessageReaction, User, PartialUser, GuildMember, PartialGuildMember, Guild, TextChannel, ClientUser } from "discord.js";
 import { MongoDbHelper } from "./Helpers/MongoDbHelper";
 import { CommandManager } from "./Classes/CommandManager";
 import axios, { AxiosInstance } from "axios";
@@ -8,6 +8,9 @@ import { onMessageReactionAdd } from "./Events/MessageReactionAddEvent";
 import { onMessageReactionRemove } from "./Events/MessageReactionRemoveEvent";
 import { onGuildMemberAdd } from "./Events/GuildMemberAddEvent";
 import { onGuildCreate } from "./Events/GuildCreateEvent";
+import { onGuildMemberUpdate } from "./Events/GuildMemberUpdate";
+import { Collection } from "mongodb";
+import { IRaidBot } from "./Templates/IRaidBot";
 
 export class Zero {
 	/** 
@@ -30,8 +33,6 @@ export class Zero {
 	 */
 	public static readonly AxiosClient: AxiosInstance = axios.create();
 
-	public static errorLogChannel: TextChannel;
-
 	/**
 	 * The contructor for this method.
 	 * 
@@ -52,6 +53,7 @@ export class Zero {
 		Zero.RaidClient.on("messageReactionRemove", async (reaction: MessageReaction, user: User | PartialUser) => await onMessageReactionRemove(reaction, user));
 		Zero.RaidClient.on("guildMemberAdd", async (member: GuildMember | PartialGuildMember) => await onGuildMemberAdd(member));
 		Zero.RaidClient.on("guildCreate", async (guild: Guild) => await onGuildCreate(guild));
+		Zero.RaidClient.on("guildMemberUpdate", async (oldMember: GuildMember | PartialGuildMember, newMember: GuildMember | PartialGuildMember) => await onGuildMemberUpdate(oldMember, newMember));
 	}
 
 	/**
@@ -59,11 +61,10 @@ export class Zero {
 	 */
 	public async login(): Promise<void> {
 		try {
-			const mdm: MongoDbHelper.MongoDbHelper = new MongoDbHelper.MongoDbHelper();
+			const mdm: MongoDbHelper.MongoDbBase = new MongoDbHelper.MongoDbBase();
 			await mdm.connect();
 			await Zero.RaidClient.login(this._token);
-
-			Zero.errorLogChannel = Zero.RaidClient.channels.cache.get("704955466060660786") as TextChannel;
+			(Zero.RaidClient.user as ClientUser).setActivity("my soul dying.", { type: "WATCHING" });
 		}
 		catch (e) {
 			throw new ReferenceError(e);

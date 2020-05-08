@@ -117,5 +117,4 @@ export class CommandDetail {
 	public getFormalCommandName(): string {
 		return this.formalCommandName;
 	}
-
 }

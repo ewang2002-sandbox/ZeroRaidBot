@@ -6,7 +6,7 @@ import { MessageUtil } from "../../Utility/MessageUtil";
 import { StringUtil } from "../../Utility/StringUtil";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
-import { UserHandler } from "../../Handlers/UserHandler";
+import { UserHandler } from "../../Helpers/UserHandler";
 import { StringBuilder } from "../../Classes/String/StringBuilder";
 import { IRaidUser } from "../../Templates/IRaidUser";
 
@@ -23,7 +23,8 @@ export class UnblacklistCommand extends Command {
                 2
             ),
             new CommandPermission(
-                [],
+				["BAN_MEMBERS", "MANAGE_GUILD"],
+                ["BAN_MEMBERS", "EMBED_LINKS"],
                 ["officer", "moderator"],
                 false
             ),

@@ -6,7 +6,7 @@ import { MessageUtil } from "../../Utility/MessageUtil";
 import { StringUtil } from "../../Utility/StringUtil";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
-import { UserHandler } from "../../Handlers/UserHandler";
+import { UserHandler } from "../../Helpers/UserHandler";
 import { ISuspendedData } from "../../Definitions/IPunishmentObject";
 
 export class UnsuspendCommand extends Command {
@@ -22,7 +22,8 @@ export class UnsuspendCommand extends Command {
 				2
 			),
 			new CommandPermission(
-				[],
+                ["KICK_MEMBERS"],
+                ["MANAGE_ROLES", "EMBED_LINKS"],
 				["raidLeader", "headRaidLeader", "officer", "moderator"],
 				false
 			),

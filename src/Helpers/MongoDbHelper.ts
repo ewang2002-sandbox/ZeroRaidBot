@@ -1,14 +1,20 @@
 import { MongoClient, Db, Collection, Cursor } from "mongodb";
-import { Credentials } from "../Configuration/Config";
+import { BotConfiguration } from "../Configuration/Config";
 import { IRaidUser } from "../Templates/IRaidUser";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { AFKDungeon } from "../Constants/AFKDungeon";
+import { IRaidBot } from "../Templates/IRaidBot";
+import { Zero } from "../Zero";
+import { ClientUser } from "discord.js";
 
 export module MongoDbHelper {
+	export let MongoBotSettingsClient: Collection<IRaidBot>;
+
+
 	/**
 	 * The base class for MongoDb. This class should be instantiated once at the beginning. 
 	 */
-	export class MongoDbHelper {
+	export class MongoDbBase {
 		public static MongoClient: MongoClient;
 
 		/**
@@ -23,15 +29,23 @@ export module MongoDbHelper {
 		 * Connects to the database.
 		 */
 		public async connect(): Promise<void> {
-			const mongoDbClient: MongoClient = new MongoClient(Credentials.dbURL, {
-				useNewUrlParser: true
+			const mongoDbClient: MongoClient = new MongoClient(BotConfiguration.dbURL, {
+				useNewUrlParser: true,
+				autoReconnect: true
 			});
-			MongoDbHelper.MongoClient = await mongoDbClient.connect();
 
-			MongoDbUserManager.MongoUserClient = MongoDbHelper.MongoClient.db(Credentials.dbName)
-				.collection<IRaidUser>(Credentials.userCollectionName);
-			MongoDbGuildManager.MongoGuildClient = MongoDbHelper.MongoClient.db(Credentials.dbName)
-				.collection<IRaidGuild>(Credentials.guildCollectionName);
+			MongoDbHelper.MongoDbBase.MongoClient = await mongoDbClient.connect();
+
+			MongoDbUserManager.MongoUserClient = MongoDbHelper.MongoDbBase.MongoClient
+				.db(BotConfiguration.dbName)
+				.collection<IRaidUser>(BotConfiguration.userCollectionName);
+			MongoDbGuildManager.MongoGuildClient = MongoDbHelper.MongoDbBase.MongoClient
+				.db(BotConfiguration.dbName)
+				.collection<IRaidGuild>(BotConfiguration.guildCollectionName);
+			MongoBotSettingsClient = MongoDbHelper.MongoDbBase.MongoClient
+				.db(BotConfiguration.dbName)
+				.collection<IRaidBot>(BotConfiguration.botCollectionName);
+			Object.freeze(MongoBotSettingsClient); // will this work? 
 		}
 	}
 
@@ -86,7 +100,7 @@ export module MongoDbHelper {
 
 
 		/**
-		 * Creates a new user DB and returns the resulting data. This will first check `CheckIfNameExist`. 
+		 * Creates a new user DB and returns the resulting data. This will first call `getUserDB`. 
 		 * @param {string} [userID] The Discord user ID associated with the in-game name. 
 		 * @returns {Promise<IRaidUser>} The resulting user data.
 		 */
@@ -202,7 +216,8 @@ export module MongoDbHelper {
 						generalRaidAfkCheckChannel: "",
 						verificationChan: "",
 						controlPanelChannel: "",
-						raidRequestChannel: ""
+						raidRequestChannel: "",
+						networkAnnouncementsChannel: ""
 					},
 					roles: {
 						teamRole: "",
@@ -217,6 +232,7 @@ export module MongoDbHelper {
 						raider: "",
 						suspended: "",
 						talkingRoles: [],
+						earlyLocationRoles: [],
 						optRoles: {
 							mutedRole: "",
 							keyTier1: {
@@ -236,7 +252,9 @@ export module MongoDbHelper {
 					properties: {
 						successfulVerificationMessage: "",
 						modMail: [],
+						manualVerificationEntries: [],
 						dungeons: AFKDungeon.map(x => x.id),
+						showVerificationRequirements: true
 					},
 					moderation: {
 						blacklistedUsers: [],
@@ -271,5 +289,13 @@ export module MongoDbHelper {
 				});
 			});
 		}
+	}
+
+	/**
+	 * Gets the bot settings.
+	 */
+	export async function getBotSettingsDb(): Promise<IRaidBot> {
+		const bot: ClientUser = (Zero.RaidClient.user as ClientUser);
+		return await MongoBotSettingsClient.findOne({ botId: bot.id }) as IRaidBot;
 	}
 }

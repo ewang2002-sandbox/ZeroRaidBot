@@ -1,6 +1,6 @@
 {
 	"name": "raidbot",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "Zero is a Discord bot written in TypeScript, designed for raid management, moderation, and fun.",
 	"main": "index.js",
 	"dependencies": {

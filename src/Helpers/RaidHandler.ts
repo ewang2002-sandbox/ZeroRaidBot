@@ -1581,6 +1581,12 @@ export module RaidHandler {
 		return !Number.isNaN(Number.parseInt(vc.name.split(" ")[vc.name.split(" ").length - 1]));
 	}
 
+	/**
+	 * 
+	 * @param member The member that initiated the command (usually, the person that ended the run) 
+	 * @param db The db. 
+	 * @param rs The raid info.
+	 */
 	export async function logRuns(
 		member: GuildMember,
 		db: IRaidGuild,

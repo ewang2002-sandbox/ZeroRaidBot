@@ -31,9 +31,9 @@ export module RaidHandler {
 	 * An interface defining each pending AFK check. Each AFK check has its own ReactionCollector (for )
 	 */
 	interface IStoredRaidData {
-		reactCollector: ReactionCollector,
-		mst: MessageSimpleTick,
-		vcId: string;
+		reactCollector: ReactionCollector;
+		mst: MessageSimpleTick;
+		timeout: NodeJS.Timeout;
 		keyReacts: Collection<string, GuildMember[]>; // string = key emoji, GuildMember[] = members that have said key
 		earlyReacts: GuildMember[];
 	}
@@ -42,19 +42,19 @@ export module RaidHandler {
 	 * Information for stored headcounts. 
 	 */
 	interface IStoredHeadcountData {
-		mst: MessageSimpleTick,
-		msgId: string;
+		mst: MessageSimpleTick;
+		timeout: NodeJS.Timeout;
 	}
 
 	/**
 	 * Consists of all currently running AFK checks. This stores only the voice channel ID, the MessageSimpleTick, and the ReactionCollector associated with the pending AFK check, and should be cleared after the AFK check is over. 
 	 */
-	export const CURRENT_RAID_DATA: IStoredRaidData[] = [];
+	export const CURRENT_RAID_DATA: Collection<string, IStoredRaidData> = new Collection<string, IStoredRaidData>();
 
 	/**
 	 * Consists of all currently running headcounts. This stores only the message (of the headcount) ID, the MessageSimpleTick, and the ReactionCollector associated with the pending headcount, and should be cleared after the headcount is over. 
 	 */
-	export const CURRENT_HEADCOUNT_DATA: IStoredHeadcountData[] = [];
+	export const CURRENT_HEADCOUNT_DATA: Collection<string, IStoredHeadcountData> = new Collection<string, IStoredHeadcountData>();
 
     /**
      * Starts an AFK check. This function should be called only from the `StartAfkCheckCommand` file.
@@ -435,7 +435,7 @@ export module RaidHandler {
 
 		// timeout in case we reach the 5 min mark
 		// TODO find a way to stop timeout if rl ends afk check early.
-		setTimeout(async () => {
+		const timeout: NodeJS.Timeout = setTimeout(async () => {
 			mst.disableAutoTick();
 			guildDb = await (new MongoDbHelper.MongoDbGuildManager(guild.id).findOrCreateGuildDb());
 			endAfkCheck(guildDb, guild, rs, NEW_RAID_VC, "AUTO");
@@ -504,12 +504,12 @@ export module RaidHandler {
 		// add to db 
 		guildDb = await RaidDbHelper.addRaidChannel(guild, rs);
 
-		CURRENT_RAID_DATA.push({
-			vcId: NEW_RAID_VC.id,
+		CURRENT_RAID_DATA.set(NEW_RAID_VC.id, {
 			reactCollector: reactCollector,
 			mst: mst,
 			keyReacts: new Collection<string, GuildMember[]>(),
-			earlyReacts: []
+			earlyReacts: [],
+			timeout: timeout
 		});
 
 		// collector events
@@ -535,7 +535,7 @@ export module RaidHandler {
 				// key react 
 				let hasAccepted: boolean = await keyReact(user, guild, NEW_RAID_VC, rs, reaction);
 				if (hasAccepted) {
-					const currData: IStoredRaidData | undefined = CURRENT_RAID_DATA.find(x => x.vcId === rs.vcID);
+					const currData: IStoredRaidData | undefined = CURRENT_RAID_DATA.get(rs.vcID);
 					if (typeof currData === "undefined") {
 						reactCollector.stop();
 						return;
@@ -572,7 +572,7 @@ export module RaidHandler {
 				await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** The location for this raid is ${StringUtil.applyCodeBlocks(rs.location)}Do not tell anyone this location.`);
 
 				earlyReactions.push(member);
-				const currData: IStoredRaidData | undefined = CURRENT_RAID_DATA.find(x => x.vcId === rs.vcID);
+				const currData: IStoredRaidData | undefined = CURRENT_RAID_DATA.get(rs.vcID);
 				if (typeof currData === "undefined") {
 					reactCollector.stop();
 					return;
@@ -799,7 +799,7 @@ export module RaidHandler {
 		// update raid status so we're in raid mode
 		// and remove entry from array with react collector & 
 		// mst info
-		const curRaidDataArrElem: IStoredRaidData | undefined = RaidHandler.CURRENT_RAID_DATA.find(x => x.vcId === raidVC.id);
+		const curRaidDataArrElem: IStoredRaidData | undefined = RaidHandler.CURRENT_RAID_DATA.get(rs.vcID)
 
 		// if the timer ends but we already ended the afk check
 		// then return as to not start another one 
@@ -835,6 +835,7 @@ export module RaidHandler {
 			}
 		}
 		else {
+			clearInterval(curRaidDataArrElem.timeout);
 			curRaidDataArrElem.reactCollector.stop();
 			curRaidDataArrElem.mst.disableAutoTick();
 			peopleThatReactedToKey = curRaidDataArrElem.keyReacts;
@@ -845,7 +846,7 @@ export module RaidHandler {
 		await raidVc.updateOverwrite(guild.roles.everyone, { CONNECT: false }).catch(() => { });
 
 		// remove 
-		CURRENT_RAID_DATA.splice(CURRENT_RAID_DATA.findIndex(x => x.vcId === raidVC.id), 1);
+		CURRENT_RAID_DATA.delete(rs.vcID);
 
 		// get all reactions
 		let reactionSummary: { [emojiName: string]: Collection<string, User> } = {};
@@ -1094,10 +1095,11 @@ export module RaidHandler {
 
 		// and remove entry from array with react collector & 
 		// mst info
-		const curRaidDataArrElem: IStoredRaidData | void = RaidHandler.CURRENT_RAID_DATA.find(x => x.vcId === raidVC.id);
+		const curRaidDataArrElem: IStoredRaidData | void = RaidHandler.CURRENT_RAID_DATA.get(rs.vcID);
 		if (typeof curRaidDataArrElem !== "undefined") {
 			curRaidDataArrElem.reactCollector.stop();
 			curRaidDataArrElem.mst.disableAutoTick();
+			clearInterval(curRaidDataArrElem.timeout);
 		}
 		await RaidDbHelper.removeRaidChannel(guild, raidVC.id);
 
@@ -1298,14 +1300,14 @@ export module RaidHandler {
 		await RaidDbHelper.addHeadcount(guild, hcInfo);
 
 		// TODO see if if there is a way to stop the timeout in case the headcount ends early.
-		setTimeout(async () => {
+		const timeout: NodeJS.Timeout = setTimeout(async () => {
 			mst.disableAutoTick();
 			guildDb = await (new MongoDbHelper.MongoDbGuildManager(guild.id).findOrCreateGuildDb());
 			endHeadcount(guild, guildDb, dungeonsForHc, "AUTO", hcInfo);
 		}, MAX_TIME_LEFT * 2);
 
-		CURRENT_HEADCOUNT_DATA.push({
-			msgId: hcMessage.id,
+		CURRENT_HEADCOUNT_DATA.set(hcMessage.id, {
+			timeout: timeout,
 			mst: mst
 		});
 	}
@@ -1334,7 +1336,7 @@ export module RaidHandler {
 		const HEADCOUNT_CHANNEL: TextChannel = guild.channels.cache.get(hcInfo.section.channels.afkCheckChannel) as TextChannel;
 		const hcMsg: Message = await HEADCOUNT_CHANNEL.messages.fetch(hcInfo.msgID);
 
-		const headcountArrElemData: IStoredHeadcountData | undefined = RaidHandler.CURRENT_HEADCOUNT_DATA.find(x => x.msgId === hcInfo.msgID);
+		const headcountArrElemData: IStoredHeadcountData | undefined = RaidHandler.CURRENT_HEADCOUNT_DATA.get(hcInfo.msgID);
 
 		// get control panel
 		const CONTROL_PANEL_CHANNEL: TextChannel = guild.channels.cache
@@ -1358,13 +1360,14 @@ export module RaidHandler {
 		}
 		else {
 			headcountArrElemData.mst.disableAutoTick();
+			clearInterval(headcountArrElemData.timeout);
 		}
 		// remove from db
 		await RaidDbHelper.removeHeadcount(guild, hcMsg.id);
 		await hcMsg.unpin().catch(() => { });
 
 		// remove from array
-		CURRENT_HEADCOUNT_DATA.splice(CURRENT_HEADCOUNT_DATA.findIndex(x => x.msgId === hcMsg.id), 1);
+		CURRENT_HEADCOUNT_DATA.delete(hcInfo.msgID);
 
 		// let's now get the data, if any 
 		const reactionsFromHeadcount: Collection<string, MessageReaction> = hcMsg.reactions.cache;

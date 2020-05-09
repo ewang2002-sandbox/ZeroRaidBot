@@ -32,6 +32,7 @@ export async function onGuildMemberRemove(
         await joinLeaveChannel.send(joinEmbed).catch(e => { });
     }
 
+    // TODO figure out why this isnt working
     // check and see if they were under manual verif
     const allSections: ISection[] = [GuildUtil.getDefaultSection(db), ...db.sections];
     for (const section of allSections) {
@@ -68,7 +69,7 @@ export async function onGuildMemberRemove(
                     m = await manualVerifyChannel.messages.fetch(manualVerifEntry.msgId);
                 }
                 catch (e) {
-                    return;
+                    continue;
                 }
                 await m.delete().catch(e => { });
             }

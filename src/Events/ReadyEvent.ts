@@ -6,6 +6,7 @@ import { MuteCommand } from "../Commands/Moderator/MuteCommand";
 import { SuspendCommand } from "../Commands/Moderator/SuspendCommand";
 import { IRaidBot } from "../Templates/IRaidBot";
 import { InsertOneWriteOpResult, WithId } from "mongodb";
+import { DateUtil } from "../Utility/DateUtil";
 
 export async function onReadyEvent() {
 	const guildBots: string[] = [];
@@ -72,5 +73,5 @@ export async function onReadyEvent() {
 	// get info
 	let app: ClientApplication = await Zero.RaidClient.fetchApplication();
 	let owner: User = await Zero.RaidClient.users.fetch((app.owner as User).id);
-	console.log('\x1b[36m%s\x1b[0m', `${(Zero.RaidClient.user as ClientUser).tag} has started.\nBOT TAG: ${(Zero.RaidClient.user as ClientUser).tag}\nBOT ID: ${(Zero.RaidClient.user as ClientUser).id}\nOWNER TAG: ${owner.tag}\nOWNER ID: ${owner.id}`);
+	console.log('\x1b[36m%s\x1b[0m', `${(Zero.RaidClient.user as ClientUser).tag} has started.\nBOT TAG: ${(Zero.RaidClient.user as ClientUser).tag}\nBOT ID: ${(Zero.RaidClient.user as ClientUser).id}\nOWNER TAG: ${owner.tag}\nOWNER ID: ${owner.id}\nTIME: ${DateUtil.getTime()}`);
 }

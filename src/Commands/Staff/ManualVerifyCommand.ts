@@ -16,6 +16,8 @@ import { ITiffitRealmEyeProfile, ITiffitNoUser } from "../../Definitions/ITiffit
 import { Zero } from "../../Zero";
 import { TiffitRealmEyeAPI } from "../../Constants/ConstantVars";
 import { INameHistory, IAPIError } from "../../Definitions/ICustomREVerification";
+import { FilterQuery } from "mongodb";
+import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
 
 export class ManualVerifyCommand extends Command {
     private readonly _emojis: EmojiResolvable[] = [
@@ -29,9 +31,9 @@ export class ManualVerifyCommand extends Command {
                 "manualverify",
                 [],
                 "Manually verifies a person. If they are currently pending manual verification, you will be given the details.",
-                ["manualverify <@Mention | ID>"],
-                ["manualverify @Console#8939"],
-                1
+                ["manualverify [@Mention | ID]"],
+                ["manualverify", "manualverify @Console#8939"],
+                0
             ),
             new CommandPermission(
                 [],
@@ -49,8 +51,142 @@ export class ManualVerifyCommand extends Command {
 	 * @inheritdoc
 	 */
     public async executeCommand(msg: Message, args: string[], guildData: IRaidGuild): Promise<void> {
-        const mention: GuildMember | null = await UserHandler.resolveMember(msg, guildData);
         const guild: Guild = msg.guild as Guild;
+
+        if (args.length === 0) {
+            let hasDone: boolean = false;
+            const allSections: ISection[] = [GuildUtil.getDefaultSection(guildData), ...guildData.sections];
+            for (const section of allSections) {
+                const verifiedRole: Role | undefined = guild.roles.cache
+                    .get(section.verifiedRole);
+
+                if (typeof verifiedRole === "undefined") {
+                    continue;
+                }
+
+                const manualVerifyChannel: TextChannel | undefined = guild.channels.cache
+                    .get(section.channels.manualVerification) as TextChannel | undefined;
+
+                if (typeof manualVerifyChannel === "undefined") {
+                    continue;
+                }
+
+                for (const manualVerifEntry of section.properties.manualVerificationEntries) {
+                    const member: GuildMember | null = guild.member(manualVerifEntry.userId);
+                    if (member === null) {
+                        // remove entry
+                        // TODO make this a function.
+                        const filterQuery: FilterQuery<IRaidGuild> = section.isMain
+                            ? { guildID: guild.id }
+                            : {
+                                guildID: guild.id,
+                                "sections.channels.manualVerification": section.channels.manualVerification
+                            };
+                        const updateKey: string = section.isMain
+                            ? "properties.manualVerificationEntries"
+                            : "sections.$.properties.manualVerificationEntries";
+
+                        await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne(filterQuery, {
+                            $pull: {
+                                [updateKey]: {
+                                    userId: manualVerifEntry.userId
+                                }
+                            }
+                        });
+
+                        continue;
+                    }
+
+                    hasDone = true;
+
+                    const verifEmbed: MessageEmbed = new MessageEmbed()
+                        .setAuthor(member.user.tag, member.user.displayAvatarURL())
+                        .setTitle(`Manual Verification: **${section.nameOfSection}**`)
+                        .setColor("YELLOW")
+                        .setDescription(`⇒ **Section:** ${section.nameOfSection}\n ⇒ **User:** ${member}\n⇒ **IGN:** ${manualVerifEntry.inGameName}\n⇒ **RealmEye:** [Profile](https://www.realmeye.com/player/${manualVerifEntry.inGameName})\n\nReact with ☑️ to manually verify this person.\nReact with 🔇 to ignore this entry.\nReact with ❌ to deny this person entry.\n\nIf the bot doesn't respond after you react, wait 5 seconds and then un-react & re-react.`)
+                        .setFooter(`ID: ${member.id}`);
+
+                    const m: Message = await msg.channel.send(verifEmbed);
+                    for await (const emoji of this._emojis) {
+                        await m.react(emoji).catch(() => { });
+                    }
+
+                    const response: "yes" | "no" | "ignore" | "time" = await new Promise(async (resolve) => {
+                        const reactFilter: ((r: MessageReaction, u: User) => boolean) = (reaction: MessageReaction, user: User) => {
+                            return this._emojis.includes(reaction.emoji.name) && user.id === msg.author.id;
+                        }
+
+                        const reactCollector: ReactionCollector = m.createReactionCollector(reactFilter, {
+                            time: 1 * 60 * 1000,
+                            max: 1
+                        });
+
+                        reactCollector.on("end", (collected: Collection<string, MessageReaction>, reason: string) => {
+                            if (reason === "time") {
+                                return resolve("time");
+                            }
+                        });
+
+                        reactCollector.on("collect", (reaction: MessageReaction) => {
+                            reactCollector.stop();
+                            if (reaction.emoji.name === "❌") {
+                                return resolve("no");
+                            }
+                            else if (reaction.emoji.name === "☑️") {
+                                return resolve("yes");
+                            }
+                            else if (reaction.emoji.name === "🔇") {
+                                return resolve("ignore");
+                            }
+                        });
+                    });
+
+                    await m.delete().catch(e => { });
+
+                    if (response === "time") {
+                        return;
+                    }
+
+                    if (response === "ignore") {
+                        continue;
+                    }
+
+
+                    let verifM: Message;
+                    try {
+                        verifM = await manualVerifyChannel.messages.fetch(manualVerifEntry.msgId);
+                        await verifM.delete().catch(e => { });
+                    }
+                    catch (e) { }
+
+
+                    if (response === "no") {
+                        VerificationHandler.denyManualVerification(
+                            member,
+                            msg.member as GuildMember,
+                            section,
+                            manualVerifEntry
+                        );
+                    }
+                    else {
+                        VerificationHandler.acceptManualVerification(
+                            member,
+                            msg.member as GuildMember,
+                            section,
+                            manualVerifEntry,
+                            guildData
+                        );
+                    }
+                }
+            }
+
+            if (!hasDone) {
+                MessageUtil.send({ content: "There are no pending manual verifications." }, msg.channel);
+            }
+            return;
+        }
+
+        const mention: GuildMember | null = await UserHandler.resolveMember(msg, guildData);
         if (mention === null) {
             MessageUtil.send({ content: "The member you have selected does not exist. Try again. " }, msg.channel);
             return;
@@ -157,7 +293,7 @@ export class ManualVerifyCommand extends Command {
                     verifM = await manualVerifyChannel.messages.fetch(manualVerifEntry.msgId);
                     await verifM.delete().catch(e => { });
                 }
-                catch (e) {}
+                catch (e) { }
 
 
                 if (response === "no") {
@@ -189,12 +325,12 @@ export class ManualVerifyCommand extends Command {
                 .get(guildData.generalChannels.logging.verificationSuccessChannel) as TextChannel | undefined;
 
             if (!guild.roles.cache.has(guildData.roles.raider)) {
-                MessageUtil.send({ content: "A member role was not set for this server."}, msg.channel);
+                MessageUtil.send({ content: "A member role was not set for this server." }, msg.channel);
                 return;
             }
 
             if (mention.roles.cache.has(guildData.roles.raider) || mention.roles.cache.has(guildData.roles.suspended)) {
-                MessageUtil.send({ content: `${mention} is already verified. `}, msg.channel);
+                MessageUtil.send({ content: `${mention} is already verified. ` }, msg.channel);
                 return;
             }
 

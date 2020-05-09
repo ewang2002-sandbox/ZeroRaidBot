@@ -15,6 +15,7 @@ import { BlacklistCommand } from "../Commands/Moderator/BlacklistCommand";
 import { UnblacklistCommand } from "../Commands/Moderator/UnblacklistCommand";
 import { PollCommand } from "../Commands/Staff/PollCommand";
 import { HelpCommand } from "../Commands/Public/HelpCommand";
+import { ManualVerifyCommand } from "../Commands/Staff/ManualVerifyCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -67,7 +68,8 @@ export class CommandManager {
 			new SendEmbedCommand(), 
 			new FindUserCommand(),
 			new PollCommand(),
-			new CheckBlacklistCommand()
+			new CheckBlacklistCommand(),
+			new ManualVerifyCommand()
 		]);
 
 		this.commands.set("Moderation", [

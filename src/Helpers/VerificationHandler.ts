@@ -1,4 +1,4 @@
-import { Message, MessageCollector, MessageEmbed, GuildMember, Guild, MessageReaction, User, ReactionCollector, TextChannel, EmbedFieldData, Collection, DMChannel, Role, GuildChannel, MessageManager } from "discord.js";
+import { Message, MessageCollector, MessageEmbed, GuildMember, Guild, MessageReaction, User, ReactionCollector, TextChannel, EmbedFieldData, Collection, DMChannel, Role, GuildChannel, MessageManager, GuildMemberEditData } from "discord.js";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { IRaidUser } from "../Templates/IRaidUser";
 import { MessageAutoTick } from "../Classes/Message/MessageAutoTick";
@@ -418,6 +418,29 @@ export module VerificationHandler {
 						}
 					}
 
+					// we know this is the right person.
+					// BLACKLIST CHECK
+					for (const blacklistEntry of guildDb.moderation.blacklistedUsers) {
+						for (const nameEntry of nameHistory.map(x => x.name)) {
+							if (blacklistEntry.inGameName.toLowerCase() === nameEntry.toLowerCase()) {
+								reactCollector.stop();
+								if (typeof verificationAttemptsChannel !== "undefined") {
+									verificationAttemptsChannel.send(`⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the in-game name, \`${nameEntry}\`${nameEntry.toLowerCase() === inGameName.toLowerCase() ? "" : " (found in Name History)"}, has been blacklisted due to the following reason: ${blacklistEntry.reason}`).catch(() => { });
+								}
+								const failedEmbed: MessageEmbed = new MessageEmbed()
+									.setTitle(`Verification For: **${guild.name}**`)
+									.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+									.setDescription("You have been blacklisted from the server.")
+									.setColor("RANDOM")
+									.addField("Reason", blacklistEntry.reason)
+									.setFooter("Verification Process: Stopped.");
+								await botMsg.edit(failedEmbed).catch(() => { });
+								return;
+							}
+						}
+					}
+
+					// now back to regular checking
 					if (requestData.data.last_seen !== "hidden") {
 						if (typeof verificationAttemptsChannel !== "undefined") {
 							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her last-seen location is not hidden.`).catch(() => { });
@@ -567,27 +590,6 @@ export module VerificationHandler {
 							verificationAttemptsChannel.send(outputLogs).catch(() => { });
 						}
 						return;
-					}
-
-					// BLACKLIST CHECK
-					for (const blacklistEntry of guildDb.moderation.blacklistedUsers) {
-						for (const nameEntry of nameHistory.map(x => x.name)) {
-							if (blacklistEntry.inGameName.toLowerCase() === nameEntry.toLowerCase()) {
-								reactCollector.stop();
-								if (typeof verificationAttemptsChannel !== "undefined") {
-									verificationAttemptsChannel.send(`⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the in-game name, \`${nameEntry}\`${nameEntry.toLowerCase() === inGameName.toLowerCase() ? "" : " (found in Name History)"}, has been blacklisted due to the following reason: ${blacklistEntry.reason}`).catch(() => { });
-								}
-								const failedEmbed: MessageEmbed = new MessageEmbed()
-									.setTitle(`Verification For: **${guild.name}**`)
-									.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
-									.setDescription("You have been blacklisted from the server.")
-									.setColor("RANDOM")
-									.addField("Reason", blacklistEntry.reason)
-									.setFooter("Verification Process: Stopped.");
-								await botMsg.edit(failedEmbed).catch(() => { });
-								return;
-							}
-						}
 					}
 
 					// success!
@@ -1129,10 +1131,10 @@ export module VerificationHandler {
 		const manualVerifEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(member.user.tag, member.user.displayAvatarURL())
 			.setTitle(`Manual Verification Request: **${verificationInfo.name}**`)
-			.setDescription(`⇒ **Section:** ${section.nameOfSection}\n ⇒ **User:** ${member}\n⇒ **IGN:** ${verificationInfo.name}\n⇒ **RealmEye:** [Profile](https://www.realmeye.com/player/${verificationInfo.name})\n\nReact with ☑️ to manually verify this person; otherwise, react with ❌.\n\nIf the bot doesn't respond after you react, un-react and re-react.`)
+			.setDescription(`⇒ **Section:** ${section.nameOfSection}\n ⇒ **User:** ${member}\n⇒ **IGN:** ${verificationInfo.name}\n⇒ **RealmEye:** [Profile](https://www.realmeye.com/player/${verificationInfo.name})\n\nReact with ☑️ to manually verify this person; otherwise, react with ❌.\n\nIf the bot doesn't respond after you react, wait 5 seconds and then un-react & re-react.`)
 			.addField("Unmet Requirements", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()), true)
 			.setColor("YELLOW")
-			.setFooter("Requested On")
+			.setFooter(member.id)
 			.setTimestamp();
 		const m: Message = await manualVerificationChannel.send(manualVerifEmbed);
 		await m.react("☑️").catch(e => { });
@@ -1171,8 +1173,8 @@ export module VerificationHandler {
 	 * @param guildDb The guild doc.
 	 */
 	export async function findOtherUserAndRemoveVerifiedRole(
-		member: GuildMember, 
-		guild: Guild, 
+		member: GuildMember,
+		guild: Guild,
 		guildDb: IRaidGuild
 	): Promise<void> {
 		// now let's check to see if anyone else verified as the same name
@@ -1198,5 +1200,94 @@ export module VerificationHandler {
 				}
 			}
 		}
+	}
+
+	export async function acceptManualVerification(
+		manualVerifMember: GuildMember,
+		responsibleMember: GuildMember,
+		sectionForManualVerif: ISection,
+		manualVerificationProfile: IManualVerification,
+		guildDb: IRaidGuild
+	): Promise<void> {
+		const guild: Guild = manualVerifMember.guild;
+		let loggingMsg: string = `✅ **\`[${sectionForManualVerif.nameOfSection}]\`** ${manualVerifMember} has been manually verified as ${manualVerificationProfile.inGameName}. This manual verification was done by ${responsibleMember} (${responsibleMember.displayName})`;
+
+		await manualVerifMember.roles.add(sectionForManualVerif.verifiedRole).catch(e => { });
+		if (sectionForManualVerif.isMain) {
+			await manualVerifMember.setNickname(manualVerificationProfile.inGameName).catch(e => { });
+			await VerificationHandler.accountInDatabase(
+				manualVerifMember,
+				manualVerificationProfile.inGameName,
+				manualVerificationProfile.nameHistory
+			);
+			await VerificationHandler.findOtherUserAndRemoveVerifiedRole(
+				responsibleMember,
+				guild,
+				guildDb
+			);
+			const successEmbed: MessageEmbed = new MessageEmbed()
+				.setTitle(`Successful Verification: **${guild.name}**`)
+				.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+				.setDescription(guildDb.properties.successfulVerificationMessage.length === 0 ? "You have been successfully verified. Please make sure you read the rules posted in the server, if any, and any other regulations/guidelines. Good luck and have fun!" : guildDb.properties.successfulVerificationMessage)
+				.setColor("GREEN")
+				.setFooter("Verification Process: Stopped.");
+			await manualVerifMember.send(successEmbed).catch(e => { });
+		}
+		else {
+			await manualVerifMember.send(`**\`[${guild.name}]\`** You have successfully been verified in the **\`${sectionForManualVerif.nameOfSection}\`** section!`).catch(() => { });
+		}
+
+		sendLogAndUpdateDb(loggingMsg, sectionForManualVerif, manualVerifMember);
+	}
+
+	export async function denyManualVerification(
+		manualVerifMember: GuildMember,
+		responsibleMember: GuildMember,
+		sectionForManualVerif: ISection,
+		manualVerificationProfile: IManualVerification
+	): Promise<void> {
+		const guild: Guild = manualVerifMember.guild;
+		let loggingMsg: string = `❌ **\`[${sectionForManualVerif.nameOfSection}]\`** ${manualVerifMember} (${manualVerificationProfile.inGameName})'s manual verification review has been rejected by ${responsibleMember} (${responsibleMember.displayName})`;
+
+		if (sectionForManualVerif.isMain) {
+			await manualVerifMember.send(`**\`[${guild.name}]\`**: After manually reviewing your profile, we have determined that you do not meet the requirements defined by server. This manual review was done by ${responsibleMember} (${responsibleMember.displayName}).`).catch(() => { });
+		}
+		else {
+			await manualVerifMember.send(`**\`[${guild.name}]\`**: After reviewing your profile, we have determined that your profile does not meet the minimum requirements for the **\`${sectionForManualVerif.nameOfSection}\`** section . This manual review was done by ${responsibleMember} (${responsibleMember.displayName}).`).catch(() => { });
+		}
+
+		sendLogAndUpdateDb(loggingMsg, sectionForManualVerif, manualVerifMember);
+	}
+
+	async function sendLogAndUpdateDb(
+		logging: string,
+		sectionForManualVerif: ISection,
+		manualVerifMember: GuildMember
+	): Promise<void> {
+		const guild: Guild = manualVerifMember.guild as Guild;
+
+		const verificationLoggingChannel: TextChannel | undefined = guild.channels.cache
+			.get(sectionForManualVerif.channels.logging.verificationSuccessChannel) as TextChannel | undefined;
+		if (typeof verificationLoggingChannel !== "undefined") {
+			await verificationLoggingChannel.send(logging).catch(e => { });
+		}
+
+		const filterQuery: FilterQuery<IRaidGuild> = sectionForManualVerif.isMain
+			? { guildID: guild.id }
+			: {
+				guildID: guild.id,
+				"sections.channels.manualVerification": sectionForManualVerif.channels.manualVerification
+			};
+		const updateKey: string = sectionForManualVerif.isMain
+			? "properties.manualVerificationEntries"
+			: "sections.$.properties.manualVerificationEntries";
+
+		await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne(filterQuery, {
+			$pull: {
+				[updateKey]: {
+					userId: manualVerifMember.id
+				}
+			}
+		});
 	}
 }

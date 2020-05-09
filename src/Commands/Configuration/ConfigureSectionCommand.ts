@@ -602,7 +602,7 @@ export class ConfigureSectionCommand extends Command {
 		});
 
 		reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
-			console.log(reason); // => limit
+			//console.log(reason); // => limit
 		});
 
 		reactCollector.on("collect", async (r: MessageReaction) => {
@@ -732,7 +732,7 @@ export class ConfigureSectionCommand extends Command {
 		});
 
 		reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
-			console.log(reason);
+			//console.log(reason);
 		});
 
 		reactCollector.on("collect", async (r: MessageReaction) => {
@@ -1026,7 +1026,7 @@ export class ConfigureSectionCommand extends Command {
 		});
 
 		reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
-			console.log(reason);
+			//console.log(reason);
 		});
 
 		reactCollector.on("collect", async (r: MessageReaction) => {
@@ -1319,7 +1319,7 @@ export class ConfigureSectionCommand extends Command {
 		});
 
 		reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
-			console.log(reason);
+			//console.log(reason);
 		});
 
 		reactCollector.on("collect", async (r: MessageReaction) => {
@@ -1525,7 +1525,7 @@ export class ConfigureSectionCommand extends Command {
 			});
 
 			reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
-				console.log(reason);
+				//console.log(reason);
 			});
 
 			reactCollector.on("collect", async (r: MessageReaction) => {

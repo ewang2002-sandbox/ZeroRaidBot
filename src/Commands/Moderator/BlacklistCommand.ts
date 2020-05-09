@@ -36,6 +36,7 @@ export class BlacklistCommand extends Command {
 		);
 	}
 
+	// TODO only accept ign
 	public async executeCommand(
 		msg: Message,
 		args: string[],

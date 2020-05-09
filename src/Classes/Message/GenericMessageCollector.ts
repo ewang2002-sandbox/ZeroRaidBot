@@ -104,11 +104,13 @@ export class GenericMessageCollector<T> {
 	/**
 	 * An automatic message collector that will return one thing. 
 	 * @param {MsgCollectorFunc} func The function to use. This function will be executed and the resultant (return type `T`) will be resolved. Bear in mind that the `send` method takes care of both time management and user cancellation requests; in other words, you just need to implement the actual message response system.
-	 * @param {boolean} deleteResponseMessages Whether to delete the person's message after he/she responds. 
+	 * @param {string} [cancelFlag = "cancel"] The string content that will result in the cancellation of the event.
+	 * @param {boolean} [deleteResponseMessages = true] Whether to delete the person's message after he/she responds. 
 	 * @returns {Promise<T | "CANCEL" | "TIME">} The resolved object, or one of two flags: "CANCEL" if the user canceled their request, or "TIME" if the time ran out.
 	 */
 	public async send(
 		func: (collectedMessage: Message, ...otherArgs: any) => Promise<T | void>,
+		cancelFlag: string = "cancel",
 		deleteResponseMessages: boolean = true
 	): Promise<T | "CANCEL" | "TIME"> {
 		return new Promise(async (resolve) => {
@@ -124,14 +126,14 @@ export class GenericMessageCollector<T> {
 					await collectedMsg.delete().catch(() => { });
 				}
 
-				if (collectedMsg.content.toLowerCase() === "cancel") {
+				if (collectedMsg.content.toLowerCase() === cancelFlag.toLowerCase()) {
 					resolve("CANCEL");
 					msgCollector.stop();
 					return;
 				}
 
 				let resolvedInfo: T = await new Promise(async (resolve) => {
-					const response: void | T = await func(collectedMsg);
+					const response: void | T = await func(collectedMsg, cancelFlag);
 					if (typeof response !== "undefined") {
 						resolve(response);
 					}

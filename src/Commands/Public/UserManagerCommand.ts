@@ -76,7 +76,7 @@ export class UserManagerCommand extends Command {
 		});
 
 		reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
-			console.log(reason); // => limit
+			//console.log(reason); // => limit
 		});
 
 		reactCollector.on("collect", async (r: MessageReaction, u: User) => {
@@ -142,7 +142,7 @@ export class UserManagerCommand extends Command {
 		});
 
 		reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
-			console.log(reason); // => limit
+			//console.log(reason); // => limit
 		});
 
 		reactCollector.on("collect", async (r: MessageReaction, u: User) => {

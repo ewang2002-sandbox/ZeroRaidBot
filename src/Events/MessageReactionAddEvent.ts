@@ -19,22 +19,6 @@ export async function onMessageReactionAdd(
     reaction: MessageReaction,
     user: User | PartialUser
 ): Promise<void> {
-    if (reaction.message.guild === null) {
-        return;
-    }
-
-    if (user.bot) {
-        return;
-    }
-
-    const guild: Guild = reaction.message.guild;
-    const guildDb: IRaidGuild = await (new MongoDbHelper.MongoDbGuildManager(guild.id)).findOrCreateGuildDb();
-    const allSections: ISection[] = [GuildUtil.getDefaultSection(guildDb), ...guildDb.sections];
-    const member: GuildMember | null = guild.member(user.id);
-    if (member === null) {
-        return;
-    }
-
     if (reaction.partial) {
         let fetchedReaction: MessageReaction | void = await reaction.fetch().catch(e => { });
         if (typeof fetchedReaction === "undefined") {
@@ -49,6 +33,26 @@ export async function onMessageReactionAdd(
             return;
         }
         reaction.message = fetchedMessage;
+    }
+
+    if (reaction.message.guild === null) {
+        return;
+    }
+
+    if (user.bot) {
+        return;
+    }
+
+    const guild: Guild = reaction.message.guild;
+    const guildDb: IRaidGuild = await (new MongoDbHelper.MongoDbGuildManager(guild.id)).findOrCreateGuildDb();
+    const allSections: ISection[] = [GuildUtil.getDefaultSection(guildDb), ...guildDb.sections];
+
+    /**
+     * the member that reacted
+     */
+    const member: GuildMember | null = guild.member(user.id);
+    if (member === null) {
+        return;
     }
 
     if (reaction.message.type !== "DEFAULT") {
@@ -72,97 +76,46 @@ export async function onMessageReactionAdd(
         await reaction.users.remove(user.id).catch(e => { });
     }
 
-    //#region MANUAL VERIFICATION
-    let manualVerificationProfile: IManualVerification | undefined;
-    let sectionForManualVerif: ISection | undefined;
-    for (const sec of allSections) {
-        for (const manualVerifEntry of sec.properties.manualVerificationEntries) {
-            if (manualVerifEntry.manualVerificationChannel === reaction.message.channel.id) {
-                manualVerificationProfile = manualVerifEntry;
-                sectionForManualVerif = sec;
-                break;
-            }
-        }
-    }
-
-    if (typeof manualVerificationProfile !== "undefined"
-        && typeof sectionForManualVerif !== "undefined"
-        && ["☑️", "❌"].includes(reaction.emoji.name)) {
-        const manualVerifMember: GuildMember | undefined = guild.members.cache
-            .get(manualVerificationProfile.userId);
-        const sectionVerifiedRole: Role | undefined = guild.roles.cache
-            .get(sectionForManualVerif.verifiedRole);
-        const verificationLoggingChannel: TextChannel | undefined = guild.channels.cache
-            .get(sectionForManualVerif.channels.logging.verificationSuccessChannel) as TextChannel | undefined;
-
-        if (typeof manualVerifMember === "undefined" || typeof sectionVerifiedRole === "undefined") {
-            return; // GuildMemberRemove should auto take care of this
-        }
-
-        let loggingMsg: string = `**\`[${sectionForManualVerif.nameOfSection}]\`** `;
-        
-        if (reaction.emoji.name === "☑️") {
-            await manualVerifMember.roles.add(sectionVerifiedRole).catch(e => { });
-            if (sectionForManualVerif.isMain) {
-                await manualVerifMember.setNickname(manualVerificationProfile.inGameName).catch(e => { });
-                await VerificationHandler.accountInDatabase(
-                    manualVerifMember, 
-                    manualVerificationProfile.inGameName, 
-                    manualVerificationProfile.nameHistory
-                );
-                await VerificationHandler.findOtherUserAndRemoveVerifiedRole(
-                    member, 
-                    guild, 
-                    guildDb
-                );
-                const successEmbed: MessageEmbed = new MessageEmbed()
-                    .setTitle(`Successful Verification: **${guild.name}**`)
-                    .setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
-                    .setDescription(guildDb.properties.successfulVerificationMessage.length === 0 ? "You have been successfully verified. Please make sure you read the rules posted in the server, if any, and any other regulations/guidelines. Good luck and have fun!" : guildDb.properties.successfulVerificationMessage)
-                    .setColor("GREEN")
-                    .setFooter("Verification Process: Stopped.");
-                await manualVerifMember.send(successEmbed).catch(e => { });
-            }
-            else {
-                await manualVerifMember.send(`**\`[${guild.name}]\`** You have successfully been verified in the **\`${sectionForManualVerif.nameOfSection}\`** section!`).catch(() => { });
-            }
-            loggingMsg = `✅ ${loggingMsg}`;
-            loggingMsg += `${manualVerifMember} has been manually verified as ${manualVerificationProfile.inGameName}. This manual verification was done by ${member} (${member.displayName})`;
-        }
-        else {
-            loggingMsg = `❌ ${loggingMsg}`;
-            loggingMsg += `${manualVerifMember} (${manualVerificationProfile.inGameName})'s manual verification review has been rejected by ${member} (${member.displayName})`;
-            if (sectionForManualVerif.isMain) {
-                await manualVerifMember.send(`**\`[${guild.name}]\`**: After manually reviewing your profile, we have determined that you do not meet the requirements defined by server. This manual review was done by ${member} (${member.displayName}).`).catch(() => { });
-            }
-            else {
-                await manualVerifMember.send(`**\`[${guild.name}]\`**: After reviewing your profile, we have determined that your profile does not meet the minimum requirements for the **\`${sectionForManualVerif.nameOfSection}\`** section . This manual review was done by ${member} (${member.displayName}).`).catch(() => { });
-            }
-        }
-
-        if (typeof verificationLoggingChannel !== "undefined") {
-            await verificationLoggingChannel.send(loggingMsg).catch(e => { });
-        }
-
-        const filterQuery: FilterQuery<IRaidGuild> = sectionForManualVerif.isMain
-            ? { guildID: member.guild.id }
-            : {
-                guildID: member.guild.id,
-                "sections.channels.manualVerification": sectionForManualVerif.channels.manualVerification
-            };
-        const updateKey: string = sectionForManualVerif.isMain
-            ? "properties.manualVerificationEntries"
-            : "sections.$.properties.manualVerificationEntries";
-
-        await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne(filterQuery, {
-            $pull: {
-                [updateKey]: {
-                    userId: manualVerifMember.id
+    let idOfPerson: string | undefined = reaction.message.embeds.length > 0 // has embed
+        && reaction.message.embeds[0].footer !== null // embed footer isnt null
+        && typeof reaction.message.embeds[0].footer.text !== "undefined"
+        && /^\d+$/.test(reaction.message.embeds[0].footer.text)
+        ? reaction.message.embeds[0].footer.text
+        : undefined; // embed footer text exists
+    if (typeof idOfPerson !== "undefined") {
+        //#region MANUAL VERIFICATION
+        let manualVerificationProfile: IManualVerification | undefined;
+        let sectionForManualVerif: ISection | undefined;
+        for (const sec of allSections) {
+            for (const manualVerifEntry of sec.properties.manualVerificationEntries) {
+                if (manualVerifEntry.userId === idOfPerson) {
+                    manualVerificationProfile = manualVerifEntry;
+                    sectionForManualVerif = sec;
+                    break;
                 }
             }
-        });
-        await reaction.message.delete().catch(e => { });
-        return;
+        }
+
+        if (typeof manualVerificationProfile !== "undefined"
+            && typeof sectionForManualVerif !== "undefined"
+            && ["☑️", "❌"].includes(reaction.emoji.name)) {
+            const manualVerifMember: GuildMember | undefined = guild.members.cache
+                .get(manualVerificationProfile.userId);
+            const sectionVerifiedRole: Role | undefined = guild.roles.cache
+                .get(sectionForManualVerif.verifiedRole);
+
+            if (typeof manualVerifMember === "undefined" || typeof sectionVerifiedRole === "undefined") {
+                return; // GuildMemberRemove should auto take care of this
+            }
+
+            await reaction.message.delete().catch(e => { });
+            if (reaction.emoji.name === "☑️") {
+                VerificationHandler.acceptManualVerification(manualVerifMember, member, sectionForManualVerif, manualVerificationProfile, guildDb);
+            }
+            else {
+                VerificationHandler.denyManualVerification(manualVerifMember, member, sectionForManualVerif, manualVerificationProfile);
+            }
+        }
     }
     //#endregion
 
@@ -382,7 +335,7 @@ export async function setNewLocationPrompt(
                     await person.send(`**\`[${guild.name} ⇒ ${raidInfo.section.nameOfSection}]\`** A __new__ location for this raid has been set by a leader. The location is: ${StringUtil.applyCodeBlocks(m.content)}Do not tell anyone this location.`).catch(e => { });
                     hasMessaged.push(person.id);
                 }
-                
+
                 for await (const [id, members] of curRaidDataArrElem.keyReacts) {
                     for (const member of members) {
                         if (hasMessaged.includes(member.id)) {

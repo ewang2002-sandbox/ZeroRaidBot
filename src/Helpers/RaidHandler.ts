@@ -982,10 +982,10 @@ export module RaidHandler {
 		const initiator: GuildMember | null = guild.member(rs.startedBy);
 		let descStr: string = `Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the raid.\nRaid Section: ${rs.section.nameOfSection}\nInitiator: ${initiator === null ? "Unknown" : initiator} (${initiator === null ? "Unknown" : initiator.displayName})\nDungeon: ${rs.dungeonInfo.dungeonName} ${Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID)}\nVoice Channel: Raiding ${rs.raidNum}`;
 		if (peopleThatGotLocEarly.length !== 0) {
-			descStr += `\n\nEarly Locations: ${peopleThatGotLocEarly.join(" ")}`;
+			descStr += `\n\n__**Early Locations**__\n${peopleThatGotLocEarly.join(" ")}`;
 		}
 		if (getStringRepOfKeyCollection(peopleThatReactedToKey, rs).length !== 0) {
-			descStr += getStringRepOfKeyCollection(peopleThatReactedToKey, rs);
+			descStr += `\n\n__**Key Reacts**__\n${getStringRepOfKeyCollection(peopleThatReactedToKey, rs)}`;
 		}
 		const startRunControlPanelEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(`Control Panel: Raiding ${rs.raidNum}`, rs.dungeonInfo.portalLink)
@@ -1418,7 +1418,7 @@ export module RaidHandler {
 
 		await hcMsg.edit(newEmbed).catch(() => { });
 		await hcMsg.unpin().catch(() => { });
-		await hcMsg.reactions.removeAll().catch(() => { });
+		await controlPanelMessage.reactions.removeAll().catch(() => { });
 		await controlPanelMessage.edit(newControlPanelEmbed).catch(() => { });
 		await controlPanelMessage.react("🗑️").catch(() => { });
 		setTimeout(async () => {

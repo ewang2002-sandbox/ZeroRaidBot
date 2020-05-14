@@ -7,6 +7,8 @@ import { RoleNames } from "../Definitions/Types";
 import { StringUtil } from "../Utility/StringUtil";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
 import { MessageUtil } from "../Utility/MessageUtil";
+import { ISection } from "../Definitions/ISection";
+import { GuildUtil } from "../Utility/GuildUtil";
 
 export async function onMessageEvent(msg: Message) {
 	// make sure we have a regular message to handle
@@ -132,6 +134,9 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 		// check to see if the member has role perms
 		if (command.getRolePermissions().length !== 0
 			&& !member.permissions.has("ADMINISTRATOR")) {
+			const allSections: ISection[] = [GuildUtil.getDefaultSection(guildHandler), ...guildHandler.sections];
+
+			// role define
 			const raider: string = guildHandler.roles.raider;
 			const universalAlmostRaidLeader: string = guildHandler.roles.universalAlmostRaidLeader;
 			const universalRaidLeader: string = guildHandler.roles.universalRaidLeader;
@@ -140,16 +145,45 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 			const moderator: string = guildHandler.roles.moderator;
 			const support: string = guildHandler.roles.support;
 			const suspended: string = guildHandler.roles.suspended;
+			// rl
 			const roleOrder: [string, RoleNames][] = [
 				[moderator, "moderator"],
 				[headRaidLeader, "headRaidLeader"],
 				[officer, "officer"],
 				[universalRaidLeader, "universalRaidLeader"],
-				[universalAlmostRaidLeader, "universalAlmostRaidLeader"],
+			];
+
+			if (command.getSecRLAccountType().includes("ALL_RL_TYPE")
+				|| command.getSecRLAccountType().includes("SECTION_RL")) {
+				// rl
+				for (const sec of allSections) {
+					roleOrder.push([sec.roles.raidLeaderRole, "universalRaidLeader"]);
+				}
+			}
+
+			roleOrder.push([universalAlmostRaidLeader, "universalAlmostRaidLeader"]);
+			if (command.getSecRLAccountType().includes("ALL_RL_TYPE")
+				|| command.getSecRLAccountType().includes("SECTION_ARL")) {
+				// arl
+				for (const sec of allSections) {
+					roleOrder.push([sec.roles.almostLeaderRole, "universalAlmostRaidLeader"]);
+				}
+			}
+
+			if (command.getSecRLAccountType().includes("ALL_RL_TYPE")
+				|| command.getSecRLAccountType().includes("SECTION_TRL")) {
+				// trl
+				for (const sec of allSections) {
+					roleOrder.push([sec.roles.trialLeaderRole, "trialLeader"]);
+				}
+			}
+
+			// add the rest of the roles.
+			roleOrder.push(
 				[support, "support"],
 				[raider, "raider"],
 				[suspended, "suspended"]
-			];
+			);
 
 			let canRunCommand: boolean = false;
 

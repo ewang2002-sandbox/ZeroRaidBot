@@ -1,10 +1,5 @@
-import { RoleNames } from "../../Definitions/Types";
+import { RoleNames, LeaderPermType } from "../../Definitions/Types";
 import { PermissionResolvable } from "discord.js";
-
-export type LeaderPermType = "SECTION_RL"
-	| "SECTION_ARL"
-	| "SECTION_TRL"
-	| "ALL_RL_TYPE";
 
 export class CommandPermission {
 	/**

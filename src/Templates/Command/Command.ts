@@ -1,8 +1,8 @@
 import { CommandDetail } from "./CommandDetail";
-import { CommandPermission, LeaderPermType } from "./CommandPermission";
+import { CommandPermission } from "./CommandPermission";
 import { Message, PermissionResolvable } from "discord.js";
 import { IRaidGuild } from "../IRaidGuild";
-import { RoleNames } from "../../Definitions/Types";
+import { RoleNames, LeaderPermType } from "../../Definitions/Types";
 
 export abstract class Command {
 	/**

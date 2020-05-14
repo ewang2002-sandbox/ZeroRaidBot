@@ -107,6 +107,13 @@ export module RaidHandler {
 			MessageUtil.send({ content: "An AFK check could not be started because the control panel channel is not configured." }, msg.channel as TextChannel);
 			return;
 		}
+
+		const rlInfo: GuildUtil.RaidLeaderStatus = GuildUtil.getRaidLeaderStatus(member, guildDb, SECTION);
+		if (rlInfo.roleType === null && !rlInfo.isUniversal) {
+			MessageUtil.send({ content: "An AFK check could not be started because you are not authorized to start AFK checks in this section." }, msg.channel as TextChannel);
+			return;
+		}
+
 		const dungeons: IDungeonData[] = getDungeonsAllowedInSection(SECTION);
 
 		if (dungeons.length === 0) {
@@ -171,9 +178,11 @@ export module RaidHandler {
 		const SELECTED_DUNGEON: IDungeonData = dungeons[result - 1];
 
 		// if trial raid leader
+		// and not universal role
 		// we need to make sure 
 		// they have authorization
-		if (member.roles.cache.has(guildDb.roles.trialRaidLeader)
+		if (rlInfo.roleType === "TRL"
+			&& !rlInfo.isUniversal
 			&& typeof RAID_REQUEST_CHANNEL !== "undefined") {
 			const responseRequesterEmbed: MessageEmbed = new MessageEmbed()
 				.addField("Dungeon", StringUtil.applyCodeBlocks(SELECTED_DUNGEON.dungeonName), true)
@@ -335,6 +344,7 @@ export module RaidHandler {
 			newRaidNum = ++allNums[allNums.length - 1];
 		}
 
+		const sectionRLRoles: string[] = GuildUtil.getSectionRaidLeaderRoles(SECTION);
 		const permissions: ChannelCreationOverwrites[] = [
 			{
 				id: guild.roles.everyone.id, // TODO: need @everyone ID
@@ -349,8 +359,20 @@ export module RaidHandler {
 				allow: ["VIEW_CHANNEL", "CONNECT", "MOVE_MEMBERS"]
 			},
 			{
-				id: guildDb.roles.universalAlmostRaidLeader,
+				id: sectionRLRoles[0],
 				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK"]
+			},
+			{
+				id: sectionRLRoles[1],
+				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MOVE_MEMBERS"]
+			},
+			{
+				id: guildDb.roles.universalAlmostRaidLeader,
+				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MOVE_MEMBERS"]
+			},
+			{
+				id: sectionRLRoles[2],
+				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MUTE_MEMBERS", "MOVE_MEMBERS"]
 			},
 			{
 				id: guildDb.roles.universalRaidLeader,
@@ -387,6 +409,7 @@ export module RaidHandler {
 				});
 			}
 		}
+
 		const NEW_RAID_VC: VoiceChannel = await guild.channels.create(`🚦 Raiding ${newRaidNum}`, {
 			type: "voice",
 			permissionOverwrites: realPermissions,
@@ -407,7 +430,12 @@ export module RaidHandler {
 		let optionalReactsField: string = "";
 		let reactWithNitroBoosterEmoji: boolean = false;
 		if (existingEarlyLocRoles.length !== 0) {
-			optionalReactsField += `⇒ If you have one of the following roles, ${existingEarlyLocRoles.join(" ")}, react with ${earlyLocationEmoji} to get the raid location early.\n`;
+			if (existingEarlyLocRoles.length === 1) {
+				optionalReactsField += `⇒ If you have the ${existingEarlyLocRoles[0]} role, react with ${earlyLocationEmoji} to get the raid location early.\n`;
+			}
+			else {
+				optionalReactsField += `⇒ If you have one of the following roles, ${existingEarlyLocRoles.join(" ")}, react with ${earlyLocationEmoji} to get the raid location early.\n`;
+			}
 			reactWithNitroBoosterEmoji = true;
 		}
 
@@ -443,6 +471,8 @@ export module RaidHandler {
 		if (reactWithNitroBoosterEmoji) {
 			await afkCheckMessage.react(earlyLocationEmoji).catch(e => { });
 		}
+		// TODO make it so when ppl react to key while bot is still reacting
+		// it still works 
 		for await (const keyId of SELECTED_DUNGEON.keyEmojIDs) {
 			await afkCheckMessage.react(keyId.keyEmojID).catch(() => { });
 		}
@@ -870,10 +900,13 @@ export module RaidHandler {
 					}
 				}
 
+				const data: GuildUtil.RaidLeaderStatus = GuildUtil.getRaidLeaderStatus(member, guildDb, rs.section);
+
 				// if they were not found in the list of reactions
 				// AND they are not a staff member 
-				if (!(isFound
-					|| member.roles.cache.some(x => [guildDb.roles.universalRaidLeader, guildDb.roles.headRaidLeader, guildDb.roles.moderator, guildDb.roles.universalAlmostRaidLeader, guildDb.roles.officer].includes(x.id)))) {
+				let shouldBeMovedOut: boolean = !isFound && !data.isUniversal && data.roleType === null
+
+				if (shouldBeMovedOut) {
 					member.voice.setChannel(loungeVC).catch(() => { });
 				}
 			}
@@ -1009,13 +1042,13 @@ export module RaidHandler {
 	function determineDurationForPostAfk(amtOfPeople: number): number {
 		let dur: number;
 		if (amtOfPeople > 80) {
-			dur = -1 / 2 * amtOfPeople + 45;
+			dur = -0.5 * amtOfPeople + 45;
 			if (dur < 0) {
 				dur = 0;
 			}
 		}
 		else {
-			dur = - Math.sqrt(8 * amtOfPeople) + 30;
+			dur = -Math.sqrt(8 * amtOfPeople) + 30;
 		}
 		return Math.round(dur);
 	}

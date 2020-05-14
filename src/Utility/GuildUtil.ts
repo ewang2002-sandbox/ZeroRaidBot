@@ -49,4 +49,18 @@ export namespace GuildUtil {
 			}
 		}
 	}
+
+	/**
+	 * Returns all raid leader roles from a SPECIFIC section.
+	 * 
+	 * INDEX of `getSectionRaidLeaderRoles(ISection);`
+	 * - 0 => TRL
+	 * - 1 => ARL
+	 * - 2 => RL
+	 * 
+	 * @param section The section.
+	 */
+	export function getSectionRaidLeaderRoles(section: ISection): string[] {
+		return [section.roles.trialLeaderRole, section.roles.almostLeaderRole, section.roles.raidLeaderRole];
+	}
 }

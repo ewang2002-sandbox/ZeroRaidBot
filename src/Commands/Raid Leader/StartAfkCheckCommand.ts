@@ -21,6 +21,7 @@ export class StartAfkCheckCommand extends Command {
 				[],
 				["MANAGE_CHANNELS", "ADD_REACTIONS", "EMBED_LINKS"],
 				["headRaidLeader", "universalRaidLeader", "universalAlmostRaidLeader"],
+				["ALL_RL_TYPE"],
 				false
 			),
 			true,

@@ -38,6 +38,7 @@ export class SendEmbedCommand extends Command {
 				[],
 				["ADD_REACTIONS", "EMBED_LINKS"],
 				["headRaidLeader"],
+				[],
 				true
 			),
 			true, // guild-only command. 

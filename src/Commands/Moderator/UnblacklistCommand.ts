@@ -26,6 +26,7 @@ export class UnblacklistCommand extends Command {
 				["BAN_MEMBERS", "MANAGE_GUILD"],
                 ["BAN_MEMBERS", "EMBED_LINKS"],
                 ["officer", "moderator"],
+                [],
                 false
             ),
             true,

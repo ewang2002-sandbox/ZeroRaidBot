@@ -22,6 +22,7 @@ export class TestCommand extends Command {
 				[],
 				[],
 				[],
+				[],
 				false
 			),
 			false, // guild-only command. 

@@ -7,7 +7,6 @@ export async function onGuildMemberUpdate(
     oldMember: GuildMember | PartialGuildMember,
     newMember: GuildMember | PartialGuildMember
 ): Promise<void> {
-    const resolvedOldMember: GuildMember = await oldMember.fetch();
     const resolvedNewMember: GuildMember = await newMember.fetch();
 
     const guild: Guild = oldMember.guild;

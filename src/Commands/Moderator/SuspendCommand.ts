@@ -25,6 +25,7 @@ export class SuspendCommand extends Command {
 				["KICK_MEMBERS"],
 				["MANAGE_ROLES", "EMBED_LINKS"],
 				["universalRaidLeader", "headRaidLeader", "officer", "moderator"],
+				["SECTION_RL"],
 				false
 			),
 			true,

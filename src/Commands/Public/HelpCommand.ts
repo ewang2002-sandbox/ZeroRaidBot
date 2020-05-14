@@ -23,6 +23,7 @@ export class HelpCommand extends Command {
                 [],
                 [],
                 ["raider"],
+                [],
                 true
             ),
             false, // guild-only command. 

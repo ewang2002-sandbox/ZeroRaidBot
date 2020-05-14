@@ -26,6 +26,7 @@ export class FindUserCommand extends Command {
 				[],
 				["EMBED_LINKS"],
 				["support"],
+				[],
 				true
 			),
 			true, // guild-only command. 

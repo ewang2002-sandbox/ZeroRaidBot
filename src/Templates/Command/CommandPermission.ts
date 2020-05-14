@@ -1,6 +1,11 @@
 import { RoleNames } from "../../Definitions/Types";
 import { PermissionResolvable } from "discord.js";
 
+export type LeaderPermType = "SECTION_RL"
+	| "SECTION_ARL"
+	| "SECTION_TRL"
+	| "ALL_RL_TYPE";
+
 export class CommandPermission {
 	/**
 	 * Any general permissions that the user has to have in order to execute the command. This will take priority over `rolePermissions`. 
@@ -25,21 +30,29 @@ export class CommandPermission {
 	private roleInclusive: boolean;
 
 	/**
+	 * Which other non-universal RLs can use this command.
+	 */
+	private secRLType: LeaderPermType[];
+
+	/**
 	 * The constructor for this class.
 	 * @param {PermissionResolvable[]} generalPermissions Any general permissions that the user has to have in order to execute the command.
 	 * @param {RoleNames[]} rolePermissions The list of roles that can use this command.
+	 * @param {LeaderPermType} accountForSectionLeaderRoles Which other non-universal RLs can use this command.
 	 * @param {boolean} roleInclusive  Whether the command can be used by higher roles (higher than the highest listed role in `rolePermissions`).
 	 */
 	public constructor(
 		generalPermissions: PermissionResolvable[],
 		botPermissions: PermissionResolvable[],
 		rolePermissions: RoleNames[],
+		secRLType: LeaderPermType[],
 		roleInclusive: boolean
 	) {
 		this.generalPermissions = generalPermissions;
 		this.botPermissions = botPermissions;
 		this.rolePermissions = rolePermissions;
 		this.roleInclusive = roleInclusive;
+		this.secRLType = secRLType;
 	}
 	
 	/**
@@ -72,5 +85,13 @@ export class CommandPermission {
 	 */
 	public getBotPermissions(): PermissionResolvable[] {
 		return this.botPermissions;
+	}
+
+	/**
+	 * Which other non-universal RLs can use this command.
+	 * @returns {LeaderType} 
+	 */
+	public sectionRLAccountType(): LeaderPermType[] {
+		return this.secRLType;
 	}
 }

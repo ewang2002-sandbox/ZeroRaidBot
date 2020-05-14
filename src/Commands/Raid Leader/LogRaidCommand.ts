@@ -23,6 +23,7 @@ export class LogRaidCommand extends Command {
 				[],
 				["EMBED_LINKS"],
 				[],
+				[],
 				true
 			),
 			true, // guild-only command. 

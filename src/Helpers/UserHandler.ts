@@ -3,6 +3,7 @@ import { IRaidGuild } from "../Templates/IRaidGuild";
 import Collection from "@discordjs/collection";
 import { StringUtil } from "../Utility/StringUtil";
 import { Zero } from "../Zero";
+import { GuildUtil } from "../Utility/GuildUtil";
 
 export namespace UserHandler {
 	/**
@@ -26,6 +27,11 @@ export namespace UserHandler {
 			guildData.roles.universalAlmostRaidLeader,
 			guildData.roles.officer
 		];
+
+		// get each individual section rl roles
+		for (const section of [GuildUtil.getDefaultSection(guildData), ...guildData.sections]) {
+			staffRoles.push(section.roles.almostLeaderRole, section.roles.raidLeaderRole, section.roles.trialLeaderRole);
+		}
 		
 		const allStaffRoles: Role[] = [];
 		for (const role of staffRoles) {

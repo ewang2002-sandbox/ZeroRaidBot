@@ -35,6 +35,7 @@ export class UserManagerCommand extends Command {
 				[],
 				[],
 				["suspended"],
+				[],
 				true
 			),
 			false, // guild-only command. 

@@ -258,6 +258,7 @@ export class ConfigureSectionCommand extends Command {
 				["ADMINISTRATOR"],
 				["ADD_REACTIONS", "MANAGE_MESSAGES", "EMBED_LINKS"],
 				[],
+				[],
 				false
 			),
 			true,

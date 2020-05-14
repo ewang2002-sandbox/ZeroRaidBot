@@ -207,7 +207,7 @@ export class ConfigureSectionCommand extends Command {
 			q: "Configure Section Leader Role",
 			d: "Mention, or type the ID of, the role that you want to make the Section Leader role. Section Leaders will have the ability to suspend members. **NOTE:** Unlike universal leaders, section leaders can only start AFK checks and headcounts in their designated sections.",
 			m: false,
-			mainMongo: "roles.sectionLeaderRole",
+			mainMongo: "roles.mainSectionLeaderRole.sectionLeaderRole",
 			sectMongo: "sections.$.roles.raidLeaderRole"
 		},
 		{
@@ -222,13 +222,13 @@ export class ConfigureSectionCommand extends Command {
 			d: "Mention, or type the ID of, the role that you want to make the Section Almost Leader role. Section Almost Leaders are leaders that have more experience than a Section Trial Leader but are not quite ready for the full responsibilities associated with being a full-on Section Leader. **NOTE:** Unlike universal almost leaders, section almost leaders can only start AFK checks and headcounts in their designated sections.", // this sounds awkward to say out loud, doesn't it? 
 			m: false,
 			mainMongo: "roles.sectionAlmostLeader",
-			sectMongo: "sections.$.roles.sectionAlmostLeaderRole"
+			sectMongo: "sections.$.roles.mainSectionLeaderRole.sectionAlmostLeaderRole"
 		},
 		{
 			q: "Configure Section Trial Leader Role",
 			d: "Mention, or type the ID of, the role that you want to make the Section Leader role. Section Trial Leaders will be able to start AFK checks in their designated sections with approval from a Raid Leader. **NOTE:** Sction trial leaders can only start AFK checks and headcounts in their designated sections.",
 			m: false,
-			mainMongo: "roles.sectionTrialLeaderRole",
+			mainMongo: "roles.mainSectionLeaderRole.sectionTrialLeaderRole",
 			sectMongo: "section.$.roles.trialLeaderRole"
 		},
 		{
@@ -1190,7 +1190,7 @@ export class ConfigureSectionCommand extends Command {
 					section,
 					guild.roles.cache.get(section.roles.raidLeaderRole),
 					section.isMain
-						? "roles.sectionLeaderRole"
+						? "roles.mainSectionLeaderRole.sectionLeaderRole"
 						: "sections.$.roles.raidLeaderRole"
 				);
 			}
@@ -1203,7 +1203,7 @@ export class ConfigureSectionCommand extends Command {
 					section,
 					guild.roles.cache.get(section.roles.almostLeaderRole),
 					section.isMain
-						? "roles.sectionAlmostLeaderRole"
+						? "roles.mainSectionLeaderRole.sectionAlmostLeaderRole"
 						: "sections.$.roles.almostLeaderRole"
 				);
 			}
@@ -1216,7 +1216,7 @@ export class ConfigureSectionCommand extends Command {
 					section,
 					guild.roles.cache.get(section.roles.trialLeaderRole),
 					section.isMain
-						? "roles.sectionTrialLeaderRole"
+						? "roles.mainSectionLeaderRole.sectionTrialLeaderRole"
 						: "sections.$.roles.trialLeaderRole"
 				);
 			}

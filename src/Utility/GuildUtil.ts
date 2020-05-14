@@ -107,9 +107,9 @@ export namespace GuildUtil {
 			isMain: true,
 			roles: {
 				verifiedRole: guildData.roles.raider,
-				trialLeaderRole: guildData.roles.sectionTrialLeaderRole,
-				almostLeaderRole: guildData.roles.sectionAlmostLeaderRole,
-				raidLeaderRole: guildData.roles.sectionLeaderRole
+				trialLeaderRole: guildData.roles.mainSectionLeaderRole.sectionTrialLeaderRole,
+				almostLeaderRole: guildData.roles.mainSectionLeaderRole.sectionAlmostLeaderRole,
+				raidLeaderRole: guildData.roles.mainSectionLeaderRole.sectionLeaderRole
 			},
 			channels: {
 				verificationChannel: guildData.generalChannels.verificationChan,

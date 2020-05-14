@@ -247,9 +247,11 @@ export module MongoDbHelper {
 								min: 0
 							}
 						},
-						sectionAlmostLeaderRole: "",
-						sectionLeaderRole: "",
-						sectionTrialLeaderRole: ""
+						mainSectionLeaderRole: {
+							sectionAlmostLeaderRole: "",
+							sectionLeaderRole: "",
+							sectionTrialLeaderRole: ""
+						}
 					},
 					properties: {
 						successfulVerificationMessage: "",

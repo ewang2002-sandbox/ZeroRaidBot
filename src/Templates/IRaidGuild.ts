@@ -140,9 +140,14 @@ export interface IRaidGuild {
 			}
 		};
 
-		sectionLeaderRole: string;
-		sectionAlmostLeaderRole: string; 
-		sectionTrialLeaderRole: string;
+		/**
+		 * Section leader roles.
+		 */
+		mainSectionLeaderRole: {
+			sectionLeaderRole: string;
+			sectionAlmostLeaderRole: string; 
+			sectionTrialLeaderRole: string;
+		}
 	};
 
 	/**

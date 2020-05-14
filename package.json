@@ -11,9 +11,9 @@
 	"devDependencies": {
 		"@types/axios": "^0.14.0",
 		"@types/mongodb": "^3.5.16",
-		"@types/node": "^12.12.38",
+		"@types/node": "^12.12.39",
 		"@types/ws": "^6.0.4",
-		"typescript": "^3.8.3"
+		"typescript": "^3.9.2"
 	},
 	"scripts": {
 		"compile": "tsc -p .",

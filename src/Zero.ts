@@ -11,6 +11,7 @@ import { onGuildCreate } from "./Events/GuildCreateEvent";
 import { onGuildMemberUpdate } from "./Events/GuildMemberUpdate";
 import { Collection } from "mongodb";
 import { IRaidBot } from "./Templates/IRaidBot";
+import { onError } from "./Events/Error";
 
 export class Zero {
 	/** 
@@ -54,6 +55,7 @@ export class Zero {
 		Zero.RaidClient.on("guildMemberAdd", async (member: GuildMember | PartialGuildMember) => await onGuildMemberAdd(member));
 		Zero.RaidClient.on("guildCreate", async (guild: Guild) => await onGuildCreate(guild));
 		Zero.RaidClient.on("guildMemberUpdate", async (oldMember: GuildMember | PartialGuildMember, newMember: GuildMember | PartialGuildMember) => await onGuildMemberUpdate(oldMember, newMember));
+		Zero.RaidClient.on("error", async (error: Error) => onError(error));
 	}
 
 	/**

@@ -351,7 +351,7 @@ export module RaidHandler {
 				deny: ["VIEW_CHANNEL", "SPEAK"]
 			},
 			{
-				id: SECTION.roles.verifiedRole,
+				id: SECTION.verifiedRole,
 				allow: ["VIEW_CHANNEL"]
 			},
 			{

@@ -80,13 +80,5 @@ export async function onReadyEvent() {
  * Preloads any new data. Make sure to update this before running! :) 
  */
 async function mongoPreloader(): Promise<void> {
-	await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateMany({}, {
-		$set: {
-			"roles.mainSectionLeaderRole": {
-				sectionLeaderRole: "",
-				sectionAlmostLeaderRole: "", 
-				sectionTrialLeaderRole: ""
-			}
-		}
-	});
+	
 }

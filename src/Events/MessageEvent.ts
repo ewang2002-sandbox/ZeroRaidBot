@@ -174,7 +174,7 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 				|| command.getSecRLAccountType().includes("SECTION_TRL")) {
 				// trl
 				for (const sec of allSections) {
-					roleOrder.push([sec.roles.trialLeaderRole, "trialLeader"]);
+					roleOrder.push([sec.roles.trialLeaderRole, "universalAlmostRaidLeader"]); // for now
 				}
 			}
 

@@ -173,7 +173,7 @@ export class ConfigureSectionCommand extends Command {
 			d: "Mention, or type the ID of, the role that you want to make the Member role. Members will need this role to access the section (or the server).",
 			m: false,
 			mainMongo: "roles.raider",
-			sectMongo: "sections.$.roles.verifiedRole"
+			sectMongo: "sections.$.verifiedRole"
 		},
 		{
 			q: "Configure Team Role",
@@ -229,7 +229,7 @@ export class ConfigureSectionCommand extends Command {
 			d: "Mention, or type the ID of, the role that you want to make the Section Leader role. Section Trial Leaders will be able to start AFK checks in their designated sections with approval from a Raid Leader. **NOTE:** Sction trial leaders can only start AFK checks and headcounts in their designated sections.",
 			m: false,
 			mainMongo: "roles.mainSectionLeaderRole.sectionTrialLeaderRole",
-			sectMongo: "section.$.roles.trialLeaderRole"
+			sectMongo: "sections.$.roles.trialLeaderRole"
 		},
 		{
 			q: "Configure Support Role",
@@ -450,8 +450,8 @@ export class ConfigureSectionCommand extends Command {
 			$push: {
 				sections: {
 					nameOfSection: nameOfSection,
+					verifiedRole: verifiedRole.id,
 					roles: {
-						verifiedRole: verifiedRole.id,
 						trialLeaderRole: "",
 						raidLeaderRole: "",
 						almostLeaderRole: ""
@@ -511,7 +511,7 @@ export class ConfigureSectionCommand extends Command {
 
 		return (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: (msg.guild as Guild).id }, {
 			$pull: {
-				"sections.verifiedRole": resp.roles.verifiedRole
+				"sections.verifiedRole": resp.verifiedRole
 			}
 		}, { returnOriginal: false })).value as IRaidGuild
 	}
@@ -637,7 +637,7 @@ export class ConfigureSectionCommand extends Command {
 				else {
 					// this part only handles channel modifications, not role modifications
 					// so we know that the role should be constant 
-					section = guildData.sections.find(x => x.roles.verifiedRole === section.roles.verifiedRole) as ISection;
+					section = guildData.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
 				}
 				this.modifyMainMenu(msg, guildData, section, m, false);
 				return;
@@ -954,7 +954,7 @@ export class ConfigureSectionCommand extends Command {
 			else {
 				// this part only handles channel modifications, not role modifications
 				// so we know that the role should be constant 
-				section = res.sections.find(x => x.roles.verifiedRole === section.roles.verifiedRole) as ISection;
+				section = res.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
 			}
 
 			this.sectionChannelMenuCommand(msg, res, section, botSentMsg, false, this.getStringRepOfGuildDoc(msg, section, res).channelSB.toString());
@@ -999,7 +999,7 @@ export class ConfigureSectionCommand extends Command {
 			.addField("Configure __Section__ Almost Leader Role", "React with 🏴 to configure the section almost leader role. Section almost leaders will be able to start AFK checks and headcounts in their respective sections only.")
 			.addField("Configure __Section__ Trial Leader Role", "React with 🚩 to configure the section trial leader role. Section trial leaders will be able to start AFK checks (after getting approval from a leader) in their respective section only.");
 
-		reactions.push("⬅️", "💳", "🏳️", "🏴", "‍🚩");
+		reactions.push("⬅️", "💳", "🏳️", "🏴", "🚩");
 
 		if (section.isMain) {
 			embed
@@ -1024,7 +1024,6 @@ export class ConfigureSectionCommand extends Command {
 		embed
 			.addField("Role Wizard", "React with 💾 to begin the role wizard. This is ideal if this is your first time fully customizing the section's roles.")
 		reactions.push("💾");
-
 		//#endregion
 
 		try {
@@ -1076,10 +1075,10 @@ export class ConfigureSectionCommand extends Command {
 					msg,
 					"Raider Role",
 					section,
-					guild.roles.cache.get(section.roles.verifiedRole),
+					guild.roles.cache.get(section.verifiedRole),
 					section.isMain
 						? "roles.raider"
-						: "sections.$.roles.verifiedRole"
+						: "sections.$.verifiedRole"
 				);
 			}
 			// moderator role
@@ -1420,7 +1419,7 @@ export class ConfigureSectionCommand extends Command {
 			else if (r.emoji.name === "🛡️") {
 				const filterQuery: FilterQuery<IRaidGuild> = section.isMain
 					? { guildID: guild.id }
-					: { guildID: guild.id, "sections.roles.verifiedRole": section.roles.verifiedRole };
+					: { guildID: guild.id, "sections.verifiedRole": section.verifiedRole };
 				const updateQuery: UpdateQuery<IRaidGuild> = section.isMain
 					? { $set: { "properties.showVerificationRequirements": !section.properties.showVerificationRequirements } }
 					: { $set: { "sections.$.properties.showVerificationRequirements": !section.properties.showVerificationRequirements } };
@@ -1498,7 +1497,7 @@ export class ConfigureSectionCommand extends Command {
 			else {
 				// this part only handles channel modifications, not role modifications
 				// so we know that the role should be constant 
-				section = res.sections.find(x => x.roles.verifiedRole === section.roles.verifiedRole) as ISection;
+				section = res.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
 			}
 
 			this.sectionVerificationMenuCommand(msg, res, section, botSentMsg, false, this.getStringRepOfGuildDoc(msg, section, res).verifSB.toString());
@@ -1548,7 +1547,7 @@ export class ConfigureSectionCommand extends Command {
 					: section.verification.maxedStats.required;
 			const filterQuery: FilterQuery<IRaidGuild> = section.isMain
 				? { guildID: guild.id }
-				: { guildID: guild.id, "sections.roles.verifiedRole": section.roles.verifiedRole };
+				: { guildID: guild.id, "sections.verifiedRole": section.verifiedRole };
 			const updateQueryOnOff: UpdateQuery<IRaidGuild> = section.isMain
 				? { $set: { [mainMongoPath[0]]: !currentStatus } }
 				: { $set: { [sectMongoPath[0]]: !currentStatus } };
@@ -1597,7 +1596,7 @@ export class ConfigureSectionCommand extends Command {
 					else {
 						// this part only handles channel modifications, not role modifications
 						// so we know that the role should be constant 
-						section = guildData.sections.find(x => x.roles.verifiedRole === section.roles.verifiedRole) as ISection;
+						section = guildData.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
 					}
 
 					this.sectionVerificationMenuCommand(msg, guildData, section, botMsg, false, this.getStringRepOfGuildDoc(msg, section, guildData).verifSB.toString());
@@ -1686,7 +1685,7 @@ export class ConfigureSectionCommand extends Command {
 					else {
 						// this part only handles channel modifications, not role modifications
 						// so we know that the role should be constant 
-						section = guildData.sections.find(x => x.roles.verifiedRole === section.roles.verifiedRole) as ISection;
+						section = guildData.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
 					}
 
 					this.sectionVerificationMenuCommand(msg, guildData, section, botMsg, false, this.getStringRepOfGuildDoc(msg, section, guildData).verifSB.toString());
@@ -1733,7 +1732,7 @@ export class ConfigureSectionCommand extends Command {
 			return guildData;
 		}
 
-		guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "sections.roles.verifiedRole": section.roles.verifiedRole }, {
+		guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "sections.verifiedRole": section.verifiedRole }, {
 			$set: {
 				"sections.$.nameOfSection": result
 			}
@@ -1765,7 +1764,7 @@ export class ConfigureSectionCommand extends Command {
 
 		let query: FilterQuery<IRaidGuild> = section.isMain
 			? { guildID: guild.id }
-			: { guildID: guild.id, "sections.roles.verifiedRole": section.roles.verifiedRole }
+			: { guildID: guild.id, "sections.verifiedRole": section.verifiedRole }
 
 		let updateQuery: UpdateQuery<IRaidGuild> = {};
 		let update$set: { [key: string]: string } = {};
@@ -1835,7 +1834,7 @@ export class ConfigureSectionCommand extends Command {
 
 		let query: FilterQuery<IRaidGuild> = section.isMain
 			? { guildID: guild.id }
-			: { guildID: guild.id, "sections.roles.verifiedRole": section.roles.verifiedRole };
+			: { guildID: guild.id, "sections.verifiedRole": section.verifiedRole };
 
 		return (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(query, {
 			$set: {
@@ -1878,7 +1877,7 @@ export class ConfigureSectionCommand extends Command {
 
 		let query: FilterQuery<IRaidGuild> = section.isMain
 			? { guildID: guild.id }
-			: { guildID: guild.id, "sections.roles.verifiedRole": section.roles.verifiedRole };
+			: { guildID: guild.id, "sections.verifiedRole": section.verifiedRole };
 
 		return (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(query, {
 			$set: {
@@ -1921,7 +1920,7 @@ export class ConfigureSectionCommand extends Command {
 		for (let i = 0; i < configuredSections.length; i++) {
 			const afkCheckChannel: GuildChannel | undefined = guild.channels.cache.get(configuredSections[i].channels.afkCheckChannel);
 			const verificationChannel: GuildChannel | undefined = guild.channels.cache.get(configuredSections[i].channels.verificationChannel);
-			const verifiedRole: Role | undefined = guild.roles.cache.get(configuredSections[i].roles.verifiedRole);
+			const verifiedRole: Role | undefined = guild.roles.cache.get(configuredSections[i].verifiedRole);
 
 			removeEmbed.addField(`[${i + 1}] Section: ${configuredSections[i].nameOfSection}`, `Verified Role: ${typeof verifiedRole !== "undefined" ? verifiedRole : "Not Set."}
 AFK Check Channel: ${typeof afkCheckChannel !== "undefined" ? afkCheckChannel : "Not Set."}
@@ -1975,7 +1974,7 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 				if (reason === "SAVE") {
 					const filterQuery: FilterQuery<IRaidGuild> = section.isMain
 						? { guildID: guild.id }
-						: { guildID: guild.id, "sections.roles.verifiedRole": section.roles.verifiedRole };
+						: { guildID: guild.id, "sections.verifiedRole": section.verifiedRole };
 					const updateQuery: UpdateQuery<IRaidGuild> = section.isMain
 						? { $set: { "properties.dungeons": d.filter(x => x.isIncluded).map(x => x.data.id) } }
 						: { $set: { "sections.$.properties.dungeons": d.filter(x => x.isIncluded).map(x => x.data.id) } };
@@ -2113,7 +2112,7 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 		const raidRequestsChannel: GuildChannel | undefined = guild.channels.cache.get(guildData.generalChannels.raidRequestChannel);
 
 		// roles for section (only 1)
-		const verifiedRole: Role | undefined = guild.roles.cache.get(section.roles.verifiedRole);
+		const verifiedRole: Role | undefined = guild.roles.cache.get(section.verifiedRole);
 		const secRaidLeaderRole: Role | undefined = guild.roles.cache.get(section.roles.raidLeaderRole);
 		const secAlmostRaidLeaderRole: Role | undefined = guild.roles.cache.get(section.roles.almostLeaderRole);
 		const secTrialLeaderRole: Role | undefined = guild.roles.cache.get(section.roles.trialLeaderRole);

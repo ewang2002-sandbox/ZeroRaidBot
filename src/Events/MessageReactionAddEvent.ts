@@ -100,7 +100,7 @@ export async function onMessageReactionAdd(
             const manualVerifMember: GuildMember | undefined = guild.members.cache
                 .get(manualVerificationProfile.userId);
             const sectionVerifiedRole: Role | undefined = guild.roles.cache
-                .get(sectionForManualVerif.roles.verifiedRole);
+                .get(sectionForManualVerif.verifiedRole);
 
             if (typeof manualVerifMember === "undefined" || typeof sectionVerifiedRole === "undefined") {
                 return; // GuildMemberRemove should auto take care of this
@@ -142,10 +142,10 @@ export async function onMessageReactionAdd(
             return;
         }
         else {
-            if (!member.roles.cache.has(sectionForVerification.roles.verifiedRole)) {
+            if (!member.roles.cache.has(sectionForVerification.verifiedRole)) {
                 return;
             }
-            await member.roles.remove(sectionForVerification.roles.verifiedRole).catch(() => { });
+            await member.roles.remove(sectionForVerification.verifiedRole).catch(() => { });
             await member.send(`**\`[${guild.name}]\`**: You have successfully been unverified from the **\`${sectionForVerification.nameOfSection}\`** section!`);
             if (typeof verificationSuccessChannel !== "undefined") {
                 verificationSuccessChannel.send(`📤 **\`[${sectionForVerification.nameOfSection}]\`** ${member} has been unverified from the section.`).catch(() => { });

@@ -59,7 +59,7 @@ export class ManualVerifyCommand extends Command {
             const allSections: ISection[] = [GuildUtil.getDefaultSection(guildData), ...guildData.sections];
             for (const section of allSections) {
                 const verifiedRole: Role | undefined = guild.roles.cache
-                    .get(section.roles.verifiedRole);
+                    .get(section.verifiedRole);
 
                 if (typeof verifiedRole === "undefined") {
                     continue;
@@ -214,7 +214,7 @@ export class ManualVerifyCommand extends Command {
             const allSections: ISection[] = [GuildUtil.getDefaultSection(guildData), ...guildData.sections];
             for (const section of allSections) {
                 const verifiedRole: Role | undefined = guild.roles.cache
-                    .get(section.roles.verifiedRole);
+                    .get(section.verifiedRole);
 
                 if (typeof verifiedRole === "undefined") {
                     continue;

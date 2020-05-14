@@ -15,13 +15,16 @@ export interface ISection {
 	 */
 	isMain: boolean;
 
+	/**
+	 * The role needed for access to this section.
+	 * Also the way to search for this section.
+	 */
+	verifiedRole: string;
 
+	/**
+	 * Other roles
+	 */
 	roles: {
-		/**
-		 * The role needed for access to this section.
-		 */
-		verifiedRole: string;
-
 		/**
 		 * Raid leader role.
 		 */
@@ -30,12 +33,12 @@ export interface ISection {
 		/**
 		 * Almost leader role.
 		 */
-		almostLeaderRole: string; 
+		almostLeaderRole: string;
 
 		/**
 		 * Trial leader role.
 		 */
-		trialLeaderRole: string; 
+		trialLeaderRole: string;
 	}
 
 	/**

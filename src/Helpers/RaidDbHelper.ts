@@ -209,11 +209,11 @@ export module RaidDbHelper {
 			return new Promise((resolve, reject) => {
 				if (!guild.channels.cache.has(section.channels.afkCheckChannel)
 					|| !guild.channels.cache.has(section.channels.verificationChannel)
-					|| !guild.roles.cache.has(section.roles.verifiedRole)
+					|| !guild.roles.cache.has(section.verifiedRole)
 				) {
 					MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
 						$pull: {
-							"sections.roles": section.roles.verifiedRole
+							"sections.roles": section.verifiedRole
 						}
 					}, (err: any, raw: any) => {
 						if (err) {

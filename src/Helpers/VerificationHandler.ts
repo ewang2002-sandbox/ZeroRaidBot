@@ -55,11 +55,11 @@ export module VerificationHandler {
 	): Promise<void> {
 		try {
 			// already verified or no role
-			if (!guild.roles.cache.has(section.roles.verifiedRole) || member.roles.cache.has(section.roles.verifiedRole)) {
+			if (!guild.roles.cache.has(section.verifiedRole) || member.roles.cache.has(section.verifiedRole)) {
 				return;
 			}
 
-			const verifiedRole: Role = guild.roles.cache.get(section.roles.verifiedRole) as Role;
+			const verifiedRole: Role = guild.roles.cache.get(section.verifiedRole) as Role;
 			const dmChannel: DMChannel = await member.user.createDM();
 
 			// channel declaration
@@ -1236,7 +1236,7 @@ export module VerificationHandler {
 		const guild: Guild = manualVerifMember.guild;
 		let loggingMsg: string = `✅ **\`[${sectionForManualVerif.nameOfSection}]\`** ${manualVerifMember} has been manually verified as \`${manualVerificationProfile.inGameName}\`. This manual verification was done by ${responsibleMember} (${responsibleMember.displayName})`;
 
-		await manualVerifMember.roles.add(sectionForManualVerif.roles.verifiedRole).catch(e => { });
+		await manualVerifMember.roles.add(sectionForManualVerif.verifiedRole).catch(e => { });
 		if (sectionForManualVerif.isMain) {
 			await manualVerifMember.setNickname(manualVerificationProfile.inGameName).catch(e => { });
 			await VerificationHandler.accountInDatabase(

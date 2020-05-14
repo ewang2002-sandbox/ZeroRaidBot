@@ -41,7 +41,7 @@ export namespace GuildUtil {
 
 		const returnVal: RaidLeaderStatus = {
 			isUniversal: false,
-			sectionVerifiedRole: section.roles.verifiedRole,
+			sectionVerifiedRole: section.verifiedRole,
 			highestLeaderRole: "",
 			roleType: null
 		};
@@ -105,8 +105,8 @@ export namespace GuildUtil {
 		return {
 			nameOfSection: "Main",
 			isMain: true,
+			verifiedRole: guildData.roles.raider,
 			roles: {
-				verifiedRole: guildData.roles.raider,
 				trialLeaderRole: guildData.roles.mainSectionLeaderRole.sectionTrialLeaderRole,
 				almostLeaderRole: guildData.roles.mainSectionLeaderRole.sectionAlmostLeaderRole,
 				raidLeaderRole: guildData.roles.mainSectionLeaderRole.sectionLeaderRole

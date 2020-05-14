@@ -2114,6 +2114,9 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 
 		// roles for section (only 1)
 		const verifiedRole: Role | undefined = guild.roles.cache.get(section.roles.verifiedRole);
+		const secRaidLeaderRole: Role | undefined = guild.roles.cache.get(section.roles.raidLeaderRole);
+		const secAlmostRaidLeaderRole: Role | undefined = guild.roles.cache.get(section.roles.almostLeaderRole);
+		const secTrialLeaderRole: Role | undefined = guild.roles.cache.get(section.roles.trialLeaderRole);
 
 		// roles for the guild
 		const teamRole: Role | undefined = guild.roles.cache.get(guildData.roles.teamRole);
@@ -2170,6 +2173,12 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 		const roleSB: StringBuilder = new StringBuilder("__Role__")
 			.appendLine()
 			.append(`Verified Role: ${typeof verifiedRole === "undefined" ? "N/A" : verifiedRole}`)
+			.appendLine()
+			.append(`Section Leader Role: ${typeof secRaidLeaderRole === "undefined" ? "N/A" : secRaidLeaderRole}`)
+			.appendLine()
+			.append(`Section Almost Leader Role: ${typeof secAlmostRaidLeaderRole === "undefined" ? "N/A" : secAlmostRaidLeaderRole}`)
+			.appendLine()
+			.append(`Section Trial Leader Role: ${typeof secTrialLeaderRole === "undefined" ? "N/A" : secTrialLeaderRole}`);
 
 		const verificationSB: StringBuilder = new StringBuilder("__Verification__")
 			.appendLine()

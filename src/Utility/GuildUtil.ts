@@ -11,7 +11,12 @@ export namespace GuildUtil {
 		return {
 			nameOfSection: "Main",
 			isMain: true,
-			verifiedRole: guildData.roles.raider,
+			roles: {
+				verifiedRole: guildData.roles.raider,
+				trialLeaderRole: guildData.roles.sectionTrialLeaderRole,
+				almostLeaderRole: guildData.roles.sectionAlmostLeaderRole,
+				raidLeaderRole: guildData.roles.sectionLeaderRole
+			},
 			channels: {
 				verificationChannel: guildData.generalChannels.verificationChan,
 				afkCheckChannel: guildData.generalChannels.generalRaidAfkCheckChannel,

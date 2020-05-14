@@ -173,7 +173,7 @@ export class ConfigureSectionCommand extends Command {
 			d: "Mention, or type the ID of, the role that you want to make the Member role. Members will need this role to access the section (or the server).",
 			m: false,
 			mainMongo: "roles.raider",
-			sectMongo: "sections.$.verifiedRole"
+			sectMongo: "sections.$.roles.verifiedRole"
 		},
 		{
 			q: "Configure Team Role",
@@ -200,14 +200,14 @@ export class ConfigureSectionCommand extends Command {
 			q: "Configure Leader Role",
 			d: "Mention, or type the ID of, the role that you want to make the Leader role. Leaders will have the ability to suspend members.",
 			m: true,
-			mainMongo: "roles.raidLeader",
+			mainMongo: "roles.universalRaidLeader",
 			sectMongo: ""
 		},
 		{
 			q: "Configure Almost Leader Role",
 			d: "Mention, or type the ID of, the role that you want to make the Almost Leader role. Almost Leaders (ARLs) are leaders that have more experience than a Trial Leader but are not quite ready for the full responsibilities associated with being a Leader.",
 			m: true,
-			mainMongo: "roles.almostRaidLeader",
+			mainMongo: "roles.universalAlmostRaidLeader",
 			sectMongo: ""
 		},
 		{
@@ -435,7 +435,12 @@ export class ConfigureSectionCommand extends Command {
 			$push: {
 				sections: {
 					nameOfSection: nameOfSection,
-					verifiedRole: verifiedRole.id,
+					roles: {
+						verifiedRole: verifiedRole.id,
+						trialLeaderRole: "",
+						raidLeaderRole: "",
+						almostLeaderRole: ""
+					},
 					isMain: false,
 					channels: {
 						afkCheckChannel: afkCheckChan === "SKIP" ? "" : afkCheckChan.id,
@@ -491,9 +496,7 @@ export class ConfigureSectionCommand extends Command {
 
 		return (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: (msg.guild as Guild).id }, {
 			$pull: {
-				sections: {
-					verifiedRole: resp.verifiedRole
-				}
+				"sections.verifiedRole": resp.roles.verifiedRole
 			}
 		}, { returnOriginal: false })).value as IRaidGuild
 	}
@@ -619,7 +622,7 @@ export class ConfigureSectionCommand extends Command {
 				else {
 					// this part only handles channel modifications, not role modifications
 					// so we know that the role should be constant 
-					section = guildData.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
+					section = guildData.sections.find(x => x.roles.verifiedRole === section.roles.verifiedRole) as ISection;
 				}
 				this.modifyMainMenu(msg, guildData, section, m, false);
 				return;
@@ -936,7 +939,7 @@ export class ConfigureSectionCommand extends Command {
 			else {
 				// this part only handles channel modifications, not role modifications
 				// so we know that the role should be constant 
-				section = res.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
+				section = res.sections.find(x => x.roles.verifiedRole === section.roles.verifiedRole) as ISection;
 			}
 
 			this.sectionChannelMenuCommand(msg, res, section, botSentMsg, false, this.getStringRepOfGuildDoc(msg, section, res).channelSB.toString());
@@ -987,7 +990,6 @@ export class ConfigureSectionCommand extends Command {
 				.addField("Configure Head Leader Role", "React with 🥇 to configure the Head Leader role.")
 				.addField("Configure Leader Role", "React with 🥈 to configure the Leader role.")
 				.addField("Configure Almost Leader Role", "React with 🥉 to configure the Almost Leader role.")
-				.addField("Configure Trial Leader Role", "React with 🚩 to configure the Trial Leader role.")
 				.addField("Configure Support Role", "React with 📛 to configure the Support/Helper role.")
 				.addField("Configure Pardoned Leader Role", "React with 💤 to configure the Pardoned Leader role.")
 				.addField("Configure Suspended Role", "React with ⛔ to configure the Suspended role.")
@@ -997,7 +999,7 @@ export class ConfigureSectionCommand extends Command {
 			//.addField("Configure Tier II Key Role", "React with 🔑 to configure the Tier 2 Key Donator role.")
 			//.addField("Configure Tier III Key Role", "React with 🍀 to configure the Tier 3 Key Donator role.");
 
-			reactions.push("👪", "⚒️", "🥇", "🥈", "🥉", "🚩", "📛", "💤", "⛔", "🔈", "🗺️"); 
+			reactions.push("👪", "⚒️", "🥇", "🥈", "🥉", "📛", "💤", "⛔", "🔈", "🗺️"); 
 				// , "🔈", "🗝️", "🔑", "🍀"
 		}
 
@@ -1056,10 +1058,10 @@ export class ConfigureSectionCommand extends Command {
 					msg,
 					"Raider Role",
 					section,
-					guild.roles.cache.get(section.verifiedRole),
+					guild.roles.cache.get(section.roles.verifiedRole),
 					section.isMain
 						? "roles.raider"
-						: "sections.$.verifiedRole"
+						: "sections.$.roles.verifiedRole"
 				);
 			}
 			// moderator role
@@ -1091,8 +1093,8 @@ export class ConfigureSectionCommand extends Command {
 					msg,
 					"Leader Role",
 					section,
-					guild.roles.cache.get(guildData.roles.raidLeader),
-					"roles.raidLeader"
+					guild.roles.cache.get(guildData.roles.universalRaidLeader),
+					"roles.universalRaidLeader"
 				);
 			}
 			// almost leader
@@ -1102,19 +1104,8 @@ export class ConfigureSectionCommand extends Command {
 					msg,
 					"Almost Leader Role",
 					section,
-					guild.roles.cache.get(guildData.roles.almostRaidLeader),
-					"roles.almostRaidLeader"
-				);
-			}
-			// trial leader
-			else if (r.emoji.name === "🚩") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateRoleCommand(
-					msg,
-					"Trial Leader Role",
-					section,
-					guild.roles.cache.get(guildData.roles.trialRaidLeader),
-					"roles.trialRaidLeader"
+					guild.roles.cache.get(guildData.roles.universalAlmostRaidLeader),
+					"roles.universalAlmostRaidLeader"
 				);
 			}
 			// support
@@ -1372,7 +1363,7 @@ export class ConfigureSectionCommand extends Command {
 			else if (r.emoji.name === "🛡️") {
 				const filterQuery: FilterQuery<IRaidGuild> = section.isMain
 					? { guildID: guild.id }
-					: { guildID: guild.id, "sections.verifiedRole": section.verifiedRole };
+					: { guildID: guild.id, "sections.roles.verifiedRole": section.roles.verifiedRole };
 				const updateQuery: UpdateQuery<IRaidGuild> = section.isMain
 					? { $set: { "properties.showVerificationRequirements": !section.properties.showVerificationRequirements } }
 					: { $set: { "sections.$.properties.showVerificationRequirements": !section.properties.showVerificationRequirements } };
@@ -1450,7 +1441,7 @@ export class ConfigureSectionCommand extends Command {
 			else {
 				// this part only handles channel modifications, not role modifications
 				// so we know that the role should be constant 
-				section = res.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
+				section = res.sections.find(x => x.roles.verifiedRole === section.roles.verifiedRole) as ISection;
 			}
 
 			this.sectionVerificationMenuCommand(msg, res, section, botSentMsg, false, this.getStringRepOfGuildDoc(msg, section, res).verifSB.toString());
@@ -1500,7 +1491,7 @@ export class ConfigureSectionCommand extends Command {
 					: section.verification.maxedStats.required;
 			const filterQuery: FilterQuery<IRaidGuild> = section.isMain
 				? { guildID: guild.id }
-				: { guildID: guild.id, "sections.verifiedRole": section.verifiedRole };
+				: { guildID: guild.id, "sections.roles.verifiedRole": section.roles.verifiedRole };
 			const updateQueryOnOff: UpdateQuery<IRaidGuild> = section.isMain
 				? { $set: { [mainMongoPath[0]]: !currentStatus } }
 				: { $set: { [sectMongoPath[0]]: !currentStatus } };
@@ -1549,7 +1540,7 @@ export class ConfigureSectionCommand extends Command {
 					else {
 						// this part only handles channel modifications, not role modifications
 						// so we know that the role should be constant 
-						section = guildData.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
+						section = guildData.sections.find(x => x.roles.verifiedRole === section.roles.verifiedRole) as ISection;
 					}
 
 					this.sectionVerificationMenuCommand(msg, guildData, section, botMsg, false, this.getStringRepOfGuildDoc(msg, section, guildData).verifSB.toString());
@@ -1638,7 +1629,7 @@ export class ConfigureSectionCommand extends Command {
 					else {
 						// this part only handles channel modifications, not role modifications
 						// so we know that the role should be constant 
-						section = guildData.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
+						section = guildData.sections.find(x => x.roles.verifiedRole === section.roles.verifiedRole) as ISection;
 					}
 
 					this.sectionVerificationMenuCommand(msg, guildData, section, botMsg, false, this.getStringRepOfGuildDoc(msg, section, guildData).verifSB.toString());
@@ -1685,7 +1676,7 @@ export class ConfigureSectionCommand extends Command {
 			return guildData;
 		}
 
-		guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "sections.verifiedRole": section.verifiedRole }, {
+		guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "sections.roles.verifiedRole": section.roles.verifiedRole }, {
 			$set: {
 				"sections.$.nameOfSection": result
 			}
@@ -1717,7 +1708,7 @@ export class ConfigureSectionCommand extends Command {
 
 		let query: FilterQuery<IRaidGuild> = section.isMain
 			? { guildID: guild.id }
-			: { guildID: guild.id, "sections.verifiedRole": section.verifiedRole }
+			: { guildID: guild.id, "sections.roles.verifiedRole": section.roles.verifiedRole }
 
 		let updateQuery: UpdateQuery<IRaidGuild> = {};
 		let update$set: { [key: string]: string } = {};
@@ -1787,7 +1778,7 @@ export class ConfigureSectionCommand extends Command {
 
 		let query: FilterQuery<IRaidGuild> = section.isMain
 			? { guildID: guild.id }
-			: { guildID: guild.id, "sections.verifiedRole": section.verifiedRole };
+			: { guildID: guild.id, "sections.roles.verifiedRole": section.roles.verifiedRole };
 
 		return (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(query, {
 			$set: {
@@ -1830,7 +1821,7 @@ export class ConfigureSectionCommand extends Command {
 
 		let query: FilterQuery<IRaidGuild> = section.isMain
 			? { guildID: guild.id }
-			: { guildID: guild.id, "sections.verifiedRole": section.verifiedRole };
+			: { guildID: guild.id, "sections.roles.verifiedRole": section.roles.verifiedRole };
 
 		return (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(query, {
 			$set: {
@@ -1873,7 +1864,7 @@ export class ConfigureSectionCommand extends Command {
 		for (let i = 0; i < configuredSections.length; i++) {
 			const afkCheckChannel: GuildChannel | undefined = guild.channels.cache.get(configuredSections[i].channels.afkCheckChannel);
 			const verificationChannel: GuildChannel | undefined = guild.channels.cache.get(configuredSections[i].channels.verificationChannel);
-			const verifiedRole: Role | undefined = guild.roles.cache.get(configuredSections[i].verifiedRole);
+			const verifiedRole: Role | undefined = guild.roles.cache.get(configuredSections[i].roles.verifiedRole);
 
 			removeEmbed.addField(`[${i + 1}] Section: ${configuredSections[i].nameOfSection}`, `Verified Role: ${typeof verifiedRole !== "undefined" ? verifiedRole : "Not Set."}
 AFK Check Channel: ${typeof afkCheckChannel !== "undefined" ? afkCheckChannel : "Not Set."}
@@ -1927,7 +1918,7 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 				if (reason === "SAVE") {
 					const filterQuery: FilterQuery<IRaidGuild> = section.isMain
 						? { guildID: guild.id }
-						: { guildID: guild.id, "sections.verifiedRole": section.verifiedRole };
+						: { guildID: guild.id, "sections.roles.verifiedRole": section.roles.verifiedRole };
 					const updateQuery: UpdateQuery<IRaidGuild> = section.isMain
 						? { $set: { "properties.dungeons": d.filter(x => x.isIncluded).map(x => x.data.id) } }
 						: { $set: { "sections.$.properties.dungeons": d.filter(x => x.isIncluded).map(x => x.data.id) } };
@@ -2065,15 +2056,14 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 		const raidRequestsChannel: GuildChannel | undefined = guild.channels.cache.get(guildData.generalChannels.raidRequestChannel);
 
 		// roles for section (only 1)
-		const verifiedRole: Role | undefined = guild.roles.cache.get(section.verifiedRole);
+		const verifiedRole: Role | undefined = guild.roles.cache.get(section.roles.verifiedRole);
 
 		// roles for the guild
 		const teamRole: Role | undefined = guild.roles.cache.get(guildData.roles.teamRole);
 		const moderatorRole: Role | undefined = guild.roles.cache.get(guildData.roles.moderator);
 		const headLeaderRole: Role | undefined = guild.roles.cache.get(guildData.roles.headRaidLeader);
-		const leaderRole: Role | undefined = guild.roles.cache.get(guildData.roles.raidLeader);
-		const almostLeaderRole: Role | undefined = guild.roles.cache.get(guildData.roles.almostRaidLeader);
-		const trialLeaderRole: Role | undefined = guild.roles.cache.get(guildData.roles.trialRaidLeader);
+		const leaderRole: Role | undefined = guild.roles.cache.get(guildData.roles.universalRaidLeader);
+		const almostLeaderRole: Role | undefined = guild.roles.cache.get(guildData.roles.universalAlmostRaidLeader);
 		const supportRole: Role | undefined = guild.roles.cache.get(guildData.roles.support);
 		const pardonedLeaderRole: Role | undefined = guild.roles.cache.get(guildData.roles.pardonedRaidLeader);
 		const suspendedRole: Role | undefined = guild.roles.cache.get(guildData.roles.suspended);
@@ -2178,8 +2168,6 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 				.append(`Leader Role: ${typeof leaderRole === "undefined" ? "N/A" : leaderRole}`)
 				.appendLine()
 				.append(`Almost Leader Role: ${typeof almostLeaderRole === "undefined" ? "N/A" : almostLeaderRole}`)
-				.appendLine()
-				.append(`Trial Leader Role: ${typeof trialLeaderRole === "undefined" ? "N/A" : trialLeaderRole}`)
 				.appendLine()
 				.append(`Support Role: ${typeof supportRole === "undefined" ? "N/A" : supportRole}`)
 				.appendLine()

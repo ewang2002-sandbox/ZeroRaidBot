@@ -133,9 +133,8 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 		if (command.getRolePermissions().length !== 0
 			&& !member.permissions.has("ADMINISTRATOR")) {
 			const raider: string = guildHandler.roles.raider;
-			const trialRaidLeader: string = guildHandler.roles.trialRaidLeader;
-			const almostRaidLeader: string = guildHandler.roles.almostRaidLeader;
-			const raidLeader: string = guildHandler.roles.raidLeader;
+			const universalAlmostRaidLeader: string = guildHandler.roles.universalAlmostRaidLeader;
+			const universalRaidLeader: string = guildHandler.roles.universalRaidLeader;
 			const officer: string = guildHandler.roles.officer;
 			const headRaidLeader: string = guildHandler.roles.headRaidLeader;
 			const moderator: string = guildHandler.roles.moderator;
@@ -145,9 +144,8 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 				[moderator, "moderator"],
 				[headRaidLeader, "headRaidLeader"],
 				[officer, "officer"],
-				[raidLeader, "raidLeader"],
-				[almostRaidLeader, "almostRaidLeader"],
-				[trialRaidLeader, "trialRaidLeader"],
+				[universalRaidLeader, "universalRaidLeader"],
+				[universalAlmostRaidLeader, "universalAlmostRaidLeader"],
 				[support, "support"],
 				[raider, "raider"],
 				[suspended, "suspended"]

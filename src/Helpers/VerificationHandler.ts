@@ -55,11 +55,11 @@ export module VerificationHandler {
 	): Promise<void> {
 		try {
 			// already verified or no role
-			if (!guild.roles.cache.has(section.verifiedRole) || member.roles.cache.has(section.verifiedRole)) {
+			if (!guild.roles.cache.has(section.roles.verifiedRole) || member.roles.cache.has(section.roles.verifiedRole)) {
 				return;
 			}
 
-			const verifiedRole: Role = guild.roles.cache.get(section.verifiedRole) as Role;
+			const verifiedRole: Role = guild.roles.cache.get(section.roles.verifiedRole) as Role;
 			const dmChannel: DMChannel = await member.user.createDM();
 
 			// channel declaration
@@ -1128,10 +1128,26 @@ export module VerificationHandler {
 			await accountInDatabase(member, verificationInfo.name, nameHistoryInfo);
 		}
 
+		const desc: StringBuilder = new StringBuilder()
+			.append(`⇒ **Section:** ${section.nameOfSection}`)
+			.appendLine()
+			.append(`⇒ **User:** ${member}`)
+			.appendLine()
+			.append(`⇒ **IGN:** ${verificationInfo.name}`)
+			.appendLine()
+			.append(`⇒ **First Seen**: ${verificationInfo.created}`)
+			.appendLine()
+			.append(`⇒ **Last Seen**: ${verificationInfo.last_seen}`)
+			.appendLine()
+			.append(`⇒ **RealmEye:** [Profile](https://www.realmeye.com/player/${verificationInfo.name})`)
+			.appendLine()
+			.appendLine()
+			.append(`React with ☑️ to manually verify this person; otherwise, react with ❌.`)
+
 		const manualVerifEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(member.user.tag, member.user.displayAvatarURL())
 			.setTitle(`Manual Verification Request: **${verificationInfo.name}**`)
-			.setDescription(`⇒ **Section:** ${section.nameOfSection}\n ⇒ **User:** ${member}\n⇒ **IGN:** ${verificationInfo.name}\n⇒ **RealmEye:** [Profile](https://www.realmeye.com/player/${verificationInfo.name})\n\nReact with ☑️ to manually verify this person; otherwise, react with ❌.\n\nIf the bot doesn't respond after you react, wait 5 seconds and then un-react & re-react.`)
+			.setDescription(desc.toString())
 			.addField("Unmet Requirements", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()), true)
 			.setColor("YELLOW")
 			.setFooter(member.id)
@@ -1220,7 +1236,7 @@ export module VerificationHandler {
 		const guild: Guild = manualVerifMember.guild;
 		let loggingMsg: string = `✅ **\`[${sectionForManualVerif.nameOfSection}]\`** ${manualVerifMember} has been manually verified as \`${manualVerificationProfile.inGameName}\`. This manual verification was done by ${responsibleMember} (${responsibleMember.displayName})`;
 
-		await manualVerifMember.roles.add(sectionForManualVerif.verifiedRole).catch(e => { });
+		await manualVerifMember.roles.add(sectionForManualVerif.roles.verifiedRole).catch(e => { });
 		if (sectionForManualVerif.isMain) {
 			await manualVerifMember.setNickname(manualVerificationProfile.inGameName).catch(e => { });
 			await VerificationHandler.accountInDatabase(

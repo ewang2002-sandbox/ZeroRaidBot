@@ -224,9 +224,8 @@ export module MongoDbHelper {
 						moderator: "",
 						headRaidLeader: "",
 						officer: "",
-						raidLeader: "",
-						almostRaidLeader: "",
-						trialRaidLeader: "",
+						universalRaidLeader: "",
+						universalAlmostRaidLeader: "",
 						support: "",
 						pardonedRaidLeader: "",
 						raider: "",
@@ -247,7 +246,10 @@ export module MongoDbHelper {
 								role: "",
 								min: 0
 							}
-						}
+						},
+						sectionAlmostLeaderRole: "",
+						sectionLeaderRole: "",
+						sectionTrialLeaderRole: ""
 					},
 					properties: {
 						successfulVerificationMessage: "",

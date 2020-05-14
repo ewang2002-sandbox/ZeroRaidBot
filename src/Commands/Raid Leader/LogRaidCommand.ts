@@ -22,7 +22,7 @@ export class LogRaidCommand extends Command {
 			new CommandPermission(
 				[],
 				["EMBED_LINKS"],
-				["trialRaidLeader"],
+				[],
 				true
 			),
 			true, // guild-only command. 

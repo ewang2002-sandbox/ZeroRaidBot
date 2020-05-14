@@ -75,9 +75,7 @@ export class HelpCommand extends Command {
                     "moderator",
                     "headRaidLeader",
                     "officer",
-                    "raidLeader",
-                    "almostRaidLeader",
-                    "trialRaidLeader",
+                    "universalRaidLeader",
                     "support",
                     "raider",
                     "suspended"

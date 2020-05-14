@@ -248,7 +248,7 @@ export module RaidHandler {
 					// make sure he or she has a leader/higher-up role
 					const allowsRoles: string[] = [
 						guildDb.roles.headRaidLeader,
-						guildDb.roles.raidLeader,
+						guildDb.roles.universalRaidLeader,
 						guildDb.roles.moderator,
 						guildDb.roles.officer
 					];
@@ -341,7 +341,7 @@ export module RaidHandler {
 				deny: ["VIEW_CHANNEL", "SPEAK"]
 			},
 			{
-				id: SECTION.verifiedRole,
+				id: SECTION.roles.verifiedRole,
 				allow: ["VIEW_CHANNEL"]
 			},
 			{
@@ -349,15 +349,11 @@ export module RaidHandler {
 				allow: ["VIEW_CHANNEL", "CONNECT", "MOVE_MEMBERS"]
 			},
 			{
-				id: guildDb.roles.trialRaidLeader,
+				id: guildDb.roles.universalAlmostRaidLeader,
 				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK"]
 			},
 			{
-				id: guildDb.roles.almostRaidLeader,
-				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK"]
-			},
-			{
-				id: guildDb.roles.raidLeader,
+				id: guildDb.roles.universalRaidLeader,
 				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MUTE_MEMBERS", "MOVE_MEMBERS"]
 			},
 			{
@@ -877,7 +873,7 @@ export module RaidHandler {
 				// if they were not found in the list of reactions
 				// AND they are not a staff member 
 				if (!(isFound
-					|| member.roles.cache.some(x => [guildDb.roles.raidLeader, guildDb.roles.trialRaidLeader, guildDb.roles.headRaidLeader, guildDb.roles.moderator, guildDb.roles.almostRaidLeader, guildDb.roles.officer].includes(x.id)))) {
+					|| member.roles.cache.some(x => [guildDb.roles.universalRaidLeader, guildDb.roles.headRaidLeader, guildDb.roles.moderator, guildDb.roles.universalAlmostRaidLeader, guildDb.roles.officer].includes(x.id)))) {
 					member.voice.setChannel(loungeVC).catch(() => { });
 				}
 			}

@@ -21,10 +21,9 @@ export namespace UserHandler {
         let staffRoles: string[] = [
             guildData.roles.moderator,
             guildData.roles.headRaidLeader,
-			guildData.roles.raidLeader,
-			guildData.roles.trialRaidLeader,
+			guildData.roles.universalRaidLeader,
             guildData.roles.support,
-			guildData.roles.almostRaidLeader,
+			guildData.roles.universalAlmostRaidLeader,
 			guildData.roles.officer
 		];
 		

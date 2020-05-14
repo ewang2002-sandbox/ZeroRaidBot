@@ -48,14 +48,22 @@ export class Zero {
 		Zero.CmdManager.loadAllCommands();
 
 		// events
-		Zero.RaidClient.on("ready", () => onReadyEvent());
-		Zero.RaidClient.on("message", async (msg: Message) => await onMessageEvent(msg));
-		Zero.RaidClient.on("messageReactionAdd", async (reaction: MessageReaction, user: User | PartialUser) => await onMessageReactionAdd(reaction, user));
-		Zero.RaidClient.on("messageReactionRemove", async (reaction: MessageReaction, user: User | PartialUser) => await onMessageReactionRemove(reaction, user));
-		Zero.RaidClient.on("guildMemberAdd", async (member: GuildMember | PartialGuildMember) => await onGuildMemberAdd(member));
-		Zero.RaidClient.on("guildCreate", async (guild: Guild) => await onGuildCreate(guild));
-		Zero.RaidClient.on("guildMemberUpdate", async (oldMember: GuildMember | PartialGuildMember, newMember: GuildMember | PartialGuildMember) => await onGuildMemberUpdate(oldMember, newMember));
-		Zero.RaidClient.on("error", async (error: Error) => onError(error));
+		Zero.RaidClient
+			.on("ready", () => onReadyEvent());
+		Zero.RaidClient
+			.on("message", async (msg: Message) => await onMessageEvent(msg));
+		Zero.RaidClient
+			.on("messageReactionAdd", async (reaction: MessageReaction, user: User | PartialUser) => await onMessageReactionAdd(reaction, user));
+		Zero.RaidClient
+			.on("messageReactionRemove", async (reaction: MessageReaction, user: User | PartialUser) => await onMessageReactionRemove(reaction, user));
+		Zero.RaidClient
+			.on("guildMemberAdd", async (member: GuildMember | PartialGuildMember) => await onGuildMemberAdd(member));
+		Zero.RaidClient
+			.on("guildCreate", async (guild: Guild) => await onGuildCreate(guild));
+		Zero.RaidClient
+			.on("guildMemberUpdate", async (oldMember: GuildMember | PartialGuildMember, newMember: GuildMember | PartialGuildMember) => await onGuildMemberUpdate(oldMember, newMember));
+		Zero.RaidClient
+			.on("error", async (error: Error) => onError(error));
 	}
 
 	/**

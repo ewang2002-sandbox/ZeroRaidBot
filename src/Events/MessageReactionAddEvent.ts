@@ -102,7 +102,7 @@ export async function onMessageReactionAdd(
             const manualVerifMember: GuildMember | undefined = guild.members.cache
                 .get(manualVerificationProfile.userId);
             const sectionVerifiedRole: Role | undefined = guild.roles.cache
-                .get(sectionForManualVerif.verifiedRole);
+                .get(sectionForManualVerif.roles.verifiedRole);
 
             if (typeof manualVerifMember === "undefined" || typeof sectionVerifiedRole === "undefined") {
                 return; // GuildMemberRemove should auto take care of this
@@ -144,10 +144,10 @@ export async function onMessageReactionAdd(
             return;
         }
         else {
-            if (!member.roles.cache.has(sectionForVerification.verifiedRole)) {
+            if (!member.roles.cache.has(sectionForVerification.roles.verifiedRole)) {
                 return;
             }
-            await member.roles.remove(sectionForVerification.verifiedRole).catch(e => { });
+            await member.roles.remove(sectionForVerification.roles.verifiedRole).catch(e => { });
             await member.send(`**\`[${guild.name}]\`**: You have successfully been unverified from the **\`${sectionForVerification.nameOfSection}\`** section!`);
             if (typeof verificationSuccessChannel !== "undefined") {
                 verificationSuccessChannel.send(`📤 **\`[${sectionForVerification.nameOfSection}]\`** ${member} has been unverified from the section.`).catch(e => { });
@@ -166,9 +166,8 @@ export async function onMessageReactionAdd(
     }
 
     const leaderRoles: RoleResolvable[] = [
-        guildDb.roles.trialRaidLeader,
-        guildDb.roles.almostRaidLeader,
-        guildDb.roles.raidLeader,
+        guildDb.roles.universalAlmostRaidLeader,
+        guildDb.roles.universalRaidLeader,
         guildDb.roles.headRaidLeader
     ];
 

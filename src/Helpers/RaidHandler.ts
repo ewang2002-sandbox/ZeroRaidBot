@@ -1151,6 +1151,7 @@ export module RaidHandler {
 		guildDb: IRaidGuild,
 		guild: Guild
 	): Promise<void> {
+		const member: GuildMember = msg.member as GuildMember;
 		// ==================================
 		// begin getting afk check channel 
 		// ==================================
@@ -1181,6 +1182,12 @@ export module RaidHandler {
 			// and the items stored in memory could 
 			// have been reset
 			MessageUtil.send({ content: "A headcount could not be started because the selected channel has no category associated with it." }, msg.channel as TextChannel);
+			return;
+		}
+
+		const rlInfo: GuildUtil.RaidLeaderStatus = GuildUtil.getRaidLeaderStatus(member, guildDb, SECTION);
+		if (rlInfo.roleType === null && !rlInfo.isUniversal) {
+			MessageUtil.send({ content: "A headcount could not be started because you are not authorized to start headcounts in this section." }, msg.channel as TextChannel);
 			return;
 		}
 
@@ -1467,6 +1474,7 @@ export module RaidHandler {
 	function getHeadCountEmbed(msg: Message, ihcpi: { data: IDungeonData, isIncluded: boolean }[]): MessageEmbed {
 		const configureHeadCountEmbed: MessageEmbed = new MessageEmbed()
 			.setTitle("⚙️ Configuring Headcount: Dungeon Selection")
+			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 			.setDescription("You are close to starting a headcount! However, you need to select dungeons from the below list. To begin, please type the number corresponding to the dungeon(s) you want to add to the headcount. To send this headcount, type `send`. To cancel, type `cancel`.\n\nA ☑️ next to the dungeon means the dungeon will be included in the headcount.\nA ❌ means the dungeon will not be part of the overall headcount.")
 			.setColor("RANDOM")
 			.setFooter(`${(msg.guild as Guild).name} | ${ihcpi.filter(x => x.isIncluded).length}/19 Remaining Slots`);
@@ -1533,17 +1541,24 @@ export module RaidHandler {
 				const embed: MessageEmbed = new MessageEmbed()
 					.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 					.setTitle("⚙️ Select a Raid Section")
-					.setDescription("Your server contains multiple raiding sections. Please select the appropriate section.")
+					.setDescription("Your server contains multiple raiding sections. Please select the appropriate section.\n\n__Symbols__\n☑️ means you have the appropriate permission to start a run or headcount in the associated section.\n❌ means you do not have permission to start a run or headcount in the associated section.")
 					.setFooter(guild.name)
 					.setColor("RANDOM");
 				for (const section of sections) {
+					const rlInfo: GuildUtil.RaidLeaderStatus = GuildUtil.getRaidLeaderStatus(
+						msg.member as GuildMember, 
+						guildDb, 
+						section
+					);
+					const hasPermission: boolean = rlInfo.roleType !== null || rlInfo.isUniversal;
+
 					if (guild.channels.cache.has(section.channels.afkCheckChannel)) {
 						const afkCheckChannel: TextChannel = guild.channels.cache.get(section.channels.afkCheckChannel) as TextChannel;
 						const sectionParent: CategoryChannel | null = afkCheckChannel.parent;
 						// we want a category associated with the afk check channel
 						if (sectionParent !== null) {
 							embed.addFields({
-								name: `${max}: ${sectionParent.name}`,
+								name: `${max}: ${sectionParent.name} ${hasPermission ? "☑️" : "❌"}`,
 								value: `AFK Check Channel: ${afkCheckChannel}`
 							});
 							max++;

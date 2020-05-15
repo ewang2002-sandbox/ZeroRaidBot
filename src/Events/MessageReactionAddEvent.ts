@@ -184,12 +184,14 @@ export async function onMessageReactionAdd(
 
         // let's check headcounts first
         if (reaction.message.embeds[0].footer.text === "Control Panel • Headcount Ended"
-            && reaction.emoji.name === "🗑️") {
+            && reaction.emoji.name === "🗑️"
+            && (member.roles.cache.some(x => leaderRoles.includes(x.id)) || member.hasPermission("ADMINISTRATOR"))) {
             await reaction.message.delete().catch(() => { });
             return;
         }
 
-        if (reaction.message.embeds[0].footer.text.includes("Control Panel • Headcount")) {
+        if (reaction.message.embeds[0].footer.text.includes("Control Panel • Headcount")
+            && (member.roles.cache.some(x => leaderRoles.includes(x.id)) || member.hasPermission("ADMINISTRATOR"))) {
             // remember that there can only be one headcount per section
             const headCountData: IHeadCountInfo | undefined = guildDb.activeRaidsAndHeadcounts.headcounts
                 .find(x => x.section.channels.controlPanelChannel === reaction.message.channel.id);
@@ -217,8 +219,8 @@ export async function onMessageReactionAdd(
             // afk check
             if (reaction.message.embeds[0].footer.text.includes("Control Panel • AFK Check")
                 && raidFromReaction.status === RaidStatus.AFKCheck) {
-
-                if (member.roles.cache.some(x => leaderRoles.includes(x.id))) {
+                if (member.roles.cache.some(x => leaderRoles.includes(x.id))
+                    || member.hasPermission("ADMINISTRATOR")) {
                     // end afk
                     if (reaction.emoji.name === "⏹️") {
                         RaidHandler.endAfkCheck(guildDb, guild, raidFromReaction, member.voice.channel, member);
@@ -233,7 +235,8 @@ export async function onMessageReactionAdd(
                     }
                 }
 
-                if (member.roles.cache.some(x => [...staffRoles, ...leaderRoles].includes(x.id))) {
+                if (member.roles.cache.some(x => [...staffRoles, ...leaderRoles].includes(x.id))
+                    || member.hasPermission("ADMINISTRATOR")) {
                     // get loc
                     if (reaction.emoji.name === "🗺️") {
                         user.send(`**\`[${guild.name} ⇒ ${sectionFromControlPanel.nameOfSection} ⇒ Raiding ${raidFromReaction.raidNum}]\`** The location of this raid is: \`${raidFromReaction.location}\``);
@@ -243,7 +246,8 @@ export async function onMessageReactionAdd(
             // in raid
             else if (reaction.message.embeds[0].footer.text.includes("Control Panel • In Raid")
                 && raidFromReaction.status === RaidStatus.InRun) {
-                if (member.roles.cache.some(x => leaderRoles.includes(x.id))) {
+                if (member.roles.cache.some(x => leaderRoles.includes(x.id))
+                    || member.hasPermission("ADMINISTRATOR")) {
                     // end run
                     if (reaction.emoji.name === "⏹️") {
                         RaidHandler.endRun(member, guild, raidFromReaction);
@@ -266,7 +270,8 @@ export async function onMessageReactionAdd(
                     }
                 }
 
-                if (member.roles.cache.some(x => [...staffRoles, ...leaderRoles].includes(x.id))) {
+                if (member.roles.cache.some(x => [...staffRoles, ...leaderRoles].includes(x.id))
+                    || member.hasPermission("ADMINISTRATOR")) {
                     // get loc
                     if (reaction.emoji.name === "🗺️") {
                         user.send(`**\`[${guild.name} ⇒ ${sectionFromControlPanel.nameOfSection} ⇒ Raiding ${raidFromReaction.raidNum}]\`** The location of this raid is: \`${raidFromReaction.location}\``);

@@ -214,7 +214,6 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 						}
 					}
 				}
-
 			}
 
 			if (!canRunCommand) {

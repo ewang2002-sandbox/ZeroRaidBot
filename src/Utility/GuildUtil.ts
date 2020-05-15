@@ -30,7 +30,7 @@ export namespace GuildUtil {
 			guildData.roles.universalAlmostRaidLeader
 		];
 
-		if (allowedRoles.some(x => member.roles.cache.has(x))) {
+		if (allowedRoles.some(x => member.roles.cache.has(x)) || member.hasPermission("ADMINISTRATOR")) {
 			return {
 				isUniversal: true,
 				sectionVerifiedRole: "",

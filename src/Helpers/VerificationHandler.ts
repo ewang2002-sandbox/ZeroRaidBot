@@ -1238,7 +1238,10 @@ export module VerificationHandler {
 
 		await manualVerifMember.roles.add(sectionForManualVerif.verifiedRole).catch(e => { });
 		if (sectionForManualVerif.isMain) {
-			await manualVerifMember.setNickname(manualVerificationProfile.inGameName).catch(e => { });
+			await manualVerifMember.setNickname(manualVerifMember.user.username === manualVerificationProfile.inGameName
+				? `${manualVerificationProfile.inGameName}.`
+				: manualVerificationProfile.inGameName
+			).catch(e => { });
 			await VerificationHandler.accountInDatabase(
 				manualVerifMember,
 				manualVerificationProfile.inGameName,

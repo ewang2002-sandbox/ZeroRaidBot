@@ -26,6 +26,7 @@ export class MuteCommand extends Command {
 				["MUTE_MEMBERS"],
 				["MANAGE_CHANNELS", "MANAGE_ROLES", "EMBED_LINKS"],
 				["support", "headRaidLeader", "officer", "moderator"],
+				[],
 				false
 			),
 			true,

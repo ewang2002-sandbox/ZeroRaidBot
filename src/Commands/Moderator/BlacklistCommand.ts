@@ -27,7 +27,8 @@ export class BlacklistCommand extends Command {
 			new CommandPermission(
 				["BAN_MEMBERS", "MANAGE_GUILD"],
 				["BAN_MEMBERS", "EMBED_LINKS"],
-				["officer", "moderator"],
+				["officer", "moderator", "headRaidLeader"],
+				[],
 				false
 			),
 			true,
@@ -64,6 +65,7 @@ export class BlacklistCommand extends Command {
 			await MessageUtil.send({ content: `The reason you provided is too long; your reasoning is ${reason.length} characters long, and the maximum length is 500 characters.` }, msg.channel);
 			return;
 		}
+		
 		const memberToBlacklist: GuildMember | null = await UserHandler.resolveMember(msg, guildDb);
 
 		// check to see if in server 

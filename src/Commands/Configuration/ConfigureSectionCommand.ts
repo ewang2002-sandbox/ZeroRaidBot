@@ -197,31 +197,59 @@ export class ConfigureSectionCommand extends Command {
 			sectMongo: ""
 		},
 		{
-			q: "Configure Leader Role",
-			d: "Mention, or type the ID of, the role that you want to make the Leader role. Leaders will have the ability to suspend members.",
+			q: "Configure Officer Role",
+			d: "Mention, or type the ID of, the role that you want to make the Officer role. Officers will be able to access most moderation commands, including blacklists. Think of officers like Head Leaders, but without the ability to lead.",
 			m: true,
-			mainMongo: "roles.raidLeader",
+			mainMongo: "roles.officer",
 			sectMongo: ""
 		},
 		{
-			q: "Configure Almost Leader Role",
-			d: "Mention, or type the ID of, the role that you want to make the Almost Leader role. Almost Leaders (ARLs) are leaders that have more experience than a Trial Leader but are not quite ready for the full responsibilities associated with being a Leader.",
+			q: "Configure Universal Leader Role",
+			d: "Mention, or type the ID of, the role that you want to make the Universal Leader role. Leaders will have the ability to suspend members. **NOTE:** Universal Leaders have the ability to start AFK checks and headcounts in ANY section.",
 			m: true,
-			mainMongo: "roles.almostRaidLeader",
+			mainMongo: "roles.universalRaidLeader",
 			sectMongo: ""
 		},
 		{
-			q: "Configure Trial Leader Role",
-			d: "Mention, or type the ID of, the role that you want to make the Trial Leader role. Trial Leaders are leaders that have just been promoted. They are unable to start runs on their own but can talk (and should lead) in raids.",
+			q: "Configure Section Leader Role",
+			d: "Mention, or type the ID of, the role that you want to make the Section Leader role. Section Leaders will have the ability to suspend members. **NOTE:** Unlike universal leaders, section leaders can only start AFK checks and headcounts in their designated sections.",
+			m: false,
+			mainMongo: "roles.mainSectionLeaderRole.sectionLeaderRole",
+			sectMongo: "sections.$.roles.raidLeaderRole"
+		},
+		{
+			q: "Configure Universal Almost Leader Role",
+			d: "Mention, or type the ID of, the role that you want to make the Universal Almost Leader role. Almost Leaders (ARLs) are leaders that have more experience than a Trial Leader but are not quite ready for the full responsibilities associated with being a Leader. **NOTE:** Universal Almost Leaders have the ability to start AFK checks in ANY section.",
 			m: true,
-			mainMongo: "roles.trialRaidLeader",
+			mainMongo: "roles.universalAlmostRaidLeader",
 			sectMongo: ""
+		},
+		{
+			q: "Configure Section Almost Leader Role",
+			d: "Mention, or type the ID of, the role that you want to make the Section Almost Leader role. Section Almost Leaders are leaders that have more experience than a Section Trial Leader but are not quite ready for the full responsibilities associated with being a full-on Section Leader. **NOTE:** Unlike universal almost leaders, section almost leaders can only start AFK checks and headcounts in their designated sections.", // this sounds awkward to say out loud, doesn't it? 
+			m: false,
+			mainMongo: "roles.sectionAlmostLeader",
+			sectMongo: "sections.$.roles.mainSectionLeaderRole.sectionAlmostLeaderRole"
+		},
+		{
+			q: "Configure Section Trial Leader Role",
+			d: "Mention, or type the ID of, the role that you want to make the Section Leader role. Section Trial Leaders will be able to start AFK checks in their designated sections with approval from a Raid Leader. **NOTE:** Sction trial leaders can only start AFK checks and headcounts in their designated sections.",
+			m: false,
+			mainMongo: "roles.mainSectionLeaderRole.sectionTrialLeaderRole",
+			sectMongo: "sections.$.roles.trialLeaderRole"
 		},
 		{
 			q: "Configure Support Role",
 			d: "Mention, or type the ID of, the role that you want to make the Support role. Support/Helpers are generally in charge of moderating chat, and will have access to commands like mute, find, and more.",
 			m: true,
 			mainMongo: "roles.support",
+			sectMongo: ""
+		},
+		{
+			q: "Configure Verifier Role",
+			d: "Mention, or type the ID of, the role that you want to make the Verifier role. Verifiers will be able to access the find and manual verification command.",
+			m: true,
+			mainMongo: "roles.verifier",
 			sectMongo: ""
 		},
 		{
@@ -257,6 +285,7 @@ export class ConfigureSectionCommand extends Command {
 			new CommandPermission(
 				["ADMINISTRATOR"],
 				["ADD_REACTIONS", "MANAGE_MESSAGES", "EMBED_LINKS"],
+				["moderator"],
 				[],
 				false
 			),
@@ -436,6 +465,11 @@ export class ConfigureSectionCommand extends Command {
 				sections: {
 					nameOfSection: nameOfSection,
 					verifiedRole: verifiedRole.id,
+					roles: {
+						trialLeaderRole: "",
+						raidLeaderRole: "",
+						almostLeaderRole: ""
+					},
 					isMain: false,
 					channels: {
 						afkCheckChannel: afkCheckChan === "SKIP" ? "" : afkCheckChan.id,
@@ -491,9 +525,7 @@ export class ConfigureSectionCommand extends Command {
 
 		return (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: (msg.guild as Guild).id }, {
 			$pull: {
-				sections: {
-					verifiedRole: resp.verifiedRole
-				}
+				"sections.verifiedRole": resp.verifiedRole
 			}
 		}, { returnOriginal: false })).value as IRaidGuild
 	}
@@ -976,19 +1008,23 @@ export class ConfigureSectionCommand extends Command {
 		//#region append channels to messageembed 
 		embed
 			.addField("Go Back", "React with ⬅️ to go back to the Main Menu.")
-			.addField("Configure Member Role", "React with 💳 to configure the Member/Verified role.");
+			.addField("Configure Member Role", "React with 💳 to configure the Member/Verified role.")
+			.addField("Configure __Section__ Leader Role", "React with 🏳️ to configure the section leader role. Section leaders will be able to start AFK checks and headcounts in their respective section only.")
+			.addField("Configure __Section__ Almost Leader Role", "React with 🏴 to configure the section almost leader role. Section almost leaders will be able to start AFK checks and headcounts in their respective sections only.")
+			.addField("Configure __Section__ Trial Leader Role", "React with 🚩 to configure the section trial leader role. Section trial leaders will be able to start AFK checks (after getting approval from a leader) in their respective section only.");
 
-		reactions.push("⬅️", "💳");
+		reactions.push("⬅️", "💳", "🏳️", "🏴", "🚩");
 
 		if (section.isMain) {
 			embed
 				.addField("Configure Team Role", "React with 👪 to configure the Team role.")
 				.addField("Configure Moderator Role", "React with ⚒️ to configure the Moderator role.")
 				.addField("Configure Head Leader Role", "React with 🥇 to configure the Head Leader role.")
-				.addField("Configure Leader Role", "React with 🥈 to configure the Leader role.")
-				.addField("Configure Almost Leader Role", "React with 🥉 to configure the Almost Leader role.")
-				.addField("Configure Trial Leader Role", "React with 🚩 to configure the Trial Leader role.")
+				.addField("Configure Officer Role", "React with 👮 to configure the Officer role.")
+				.addField("Configure Universal Leader Role", "React with 🥈 to configure the Universal Leader role.")
+				.addField("Configure Universal Almost Leader Role", "React with 🥉 to configure the Universal Almost Leader role.")
 				.addField("Configure Support Role", "React with 📛 to configure the Support/Helper role.")
+				.addField("Configure Verifier Role", "React with 🔎 to configure the Verifier role.")
 				.addField("Configure Pardoned Leader Role", "React with 💤 to configure the Pardoned Leader role.")
 				.addField("Configure Suspended Role", "React with ⛔ to configure the Suspended role.")
 				.addField("Configure Talking Roles", "React with 🔈 to configure talking roles.")
@@ -997,14 +1033,13 @@ export class ConfigureSectionCommand extends Command {
 			//.addField("Configure Tier II Key Role", "React with 🔑 to configure the Tier 2 Key Donator role.")
 			//.addField("Configure Tier III Key Role", "React with 🍀 to configure the Tier 3 Key Donator role.");
 
-			reactions.push("👪", "⚒️", "🥇", "🥈", "🥉", "🚩", "📛", "💤", "⛔", "🔈", "🗺️"); 
-				// , "🔈", "🗝️", "🔑", "🍀"
+			reactions.push("👪", "⚒️", "🥇", "👮", "🥈", "🥉", "📛", "🔎", "💤", "⛔", "🔈", "🗺️");
+			// , "🔈", "🗝️", "🔑", "🍀"
 		}
 
 		embed
 			.addField("Role Wizard", "React with 💾 to begin the role wizard. This is ideal if this is your first time fully customizing the section's roles.")
 		reactions.push("💾");
-
 		//#endregion
 
 		try {
@@ -1091,8 +1126,8 @@ export class ConfigureSectionCommand extends Command {
 					msg,
 					"Leader Role",
 					section,
-					guild.roles.cache.get(guildData.roles.raidLeader),
-					"roles.raidLeader"
+					guild.roles.cache.get(guildData.roles.universalRaidLeader),
+					"roles.universalRaidLeader"
 				);
 			}
 			// almost leader
@@ -1102,19 +1137,8 @@ export class ConfigureSectionCommand extends Command {
 					msg,
 					"Almost Leader Role",
 					section,
-					guild.roles.cache.get(guildData.roles.almostRaidLeader),
-					"roles.almostRaidLeader"
-				);
-			}
-			// trial leader
-			else if (r.emoji.name === "🚩") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateRoleCommand(
-					msg,
-					"Trial Leader Role",
-					section,
-					guild.roles.cache.get(guildData.roles.trialRaidLeader),
-					"roles.trialRaidLeader"
+					guild.roles.cache.get(guildData.roles.universalAlmostRaidLeader),
+					"roles.universalAlmostRaidLeader"
 				);
 			}
 			// support
@@ -1172,6 +1196,67 @@ export class ConfigureSectionCommand extends Command {
 					guildData.roles.earlyLocationRoles
 				);
 			}
+			// sec leader role
+			else if (r.emoji.name === "🏳️") {
+				await this.resetBotEmbed(botSentMsg).catch(() => { });
+				res = await this.updateRoleCommand(
+					msg,
+					"Section Leader Roles",
+					section,
+					guild.roles.cache.get(section.roles.raidLeaderRole),
+					section.isMain
+						? "roles.mainSectionLeaderRole.sectionLeaderRole"
+						: "sections.$.roles.raidLeaderRole"
+				);
+			}
+			// sec arl
+			else if (r.emoji.name === "🏴") {
+				await this.resetBotEmbed(botSentMsg).catch(() => { });
+				res = await this.updateRoleCommand(
+					msg,
+					"Section Almost Leader Roles",
+					section,
+					guild.roles.cache.get(section.roles.almostLeaderRole),
+					section.isMain
+						? "roles.mainSectionLeaderRole.sectionAlmostLeaderRole"
+						: "sections.$.roles.almostLeaderRole"
+				);
+			}
+			// sec trl
+			else if (r.emoji.name === "🚩") {
+				await this.resetBotEmbed(botSentMsg).catch(() => { });
+				res = await this.updateRoleCommand(
+					msg,
+					"Section Trial Leader Roles",
+					section,
+					guild.roles.cache.get(section.roles.trialLeaderRole),
+					section.isMain
+						? "roles.mainSectionLeaderRole.sectionTrialLeaderRole"
+						: "sections.$.roles.trialLeaderRole"
+				);
+			}
+			// officer
+			else if (r.emoji.name === "👮") {
+				await this.resetBotEmbed(botSentMsg).catch(() => { });
+				res = await this.updateRoleCommand(
+					msg,
+					"Officer Role",
+					section,
+					guild.roles.cache.get(guildData.roles.officer),
+					"roles.officer"
+				);
+			}
+			// verifier
+			else if (r.emoji.name === "🔎") {
+				await this.resetBotEmbed(botSentMsg).catch(() => { });
+				res = await this.updateRoleCommand(
+					msg,
+					"Verifier Role",
+					section,
+					guild.roles.cache.get(guildData.roles.verifier),
+					"roles.verifier"
+				);
+			}
 			// configuration wizard
 			else if (r.emoji.name === "💾") {
 				res = await this.startWizard(msg, section, botSentMsg, this._roleQs, "ROLE");
@@ -1207,7 +1292,7 @@ export class ConfigureSectionCommand extends Command {
 	private async updateArrayRoleCommand(
 		msg: Message,
 		roleName: string,
-		guildData: IRaidGuild, 
+		guildData: IRaidGuild,
 		mongoPath: string,
 		currRoles: string[]
 	): Promise<IRaidGuild | "CANCEL" | "TIME"> {
@@ -1215,7 +1300,7 @@ export class ConfigureSectionCommand extends Command {
 		guildData = await this.removeDeadElements(guildData, currRoles, mongoPath, guild);
 
 		const roles: (Role | undefined)[] = currRoles.map(x => guild.roles.cache.get(x));
-		
+
 		const resolvedRole: Role[] = [];
 		for (const role of roles) {
 			if (typeof role !== "undefined") {
@@ -2066,15 +2151,19 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 
 		// roles for section (only 1)
 		const verifiedRole: Role | undefined = guild.roles.cache.get(section.verifiedRole);
+		const secRaidLeaderRole: Role | undefined = guild.roles.cache.get(section.roles.raidLeaderRole);
+		const secAlmostRaidLeaderRole: Role | undefined = guild.roles.cache.get(section.roles.almostLeaderRole);
+		const secTrialLeaderRole: Role | undefined = guild.roles.cache.get(section.roles.trialLeaderRole);
 
 		// roles for the guild
 		const teamRole: Role | undefined = guild.roles.cache.get(guildData.roles.teamRole);
 		const moderatorRole: Role | undefined = guild.roles.cache.get(guildData.roles.moderator);
 		const headLeaderRole: Role | undefined = guild.roles.cache.get(guildData.roles.headRaidLeader);
-		const leaderRole: Role | undefined = guild.roles.cache.get(guildData.roles.raidLeader);
-		const almostLeaderRole: Role | undefined = guild.roles.cache.get(guildData.roles.almostRaidLeader);
-		const trialLeaderRole: Role | undefined = guild.roles.cache.get(guildData.roles.trialRaidLeader);
+		const officerRole: Role | undefined = guild.roles.cache.get(guildData.roles.officer);
+		const leaderRole: Role | undefined = guild.roles.cache.get(guildData.roles.universalRaidLeader);
+		const almostLeaderRole: Role | undefined = guild.roles.cache.get(guildData.roles.universalAlmostRaidLeader);
 		const supportRole: Role | undefined = guild.roles.cache.get(guildData.roles.support);
+		const verifierRole: Role | undefined = guild.roles.cache.get(guildData.roles.verifier);
 		const pardonedLeaderRole: Role | undefined = guild.roles.cache.get(guildData.roles.pardonedRaidLeader);
 		const suspendedRole: Role | undefined = guild.roles.cache.get(guildData.roles.suspended);
 		const allTalkingRoles: (Role | undefined)[] = guildData.roles.talkingRoles.map(x => guild.roles.cache.get(x));
@@ -2123,6 +2212,12 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 		const roleSB: StringBuilder = new StringBuilder("__Role__")
 			.appendLine()
 			.append(`Verified Role: ${typeof verifiedRole === "undefined" ? "N/A" : verifiedRole}`)
+			.appendLine()
+			.append(`Section Leader Role: ${typeof secRaidLeaderRole === "undefined" ? "N/A" : secRaidLeaderRole}`)
+			.appendLine()
+			.append(`Section Almost Leader Role: ${typeof secAlmostRaidLeaderRole === "undefined" ? "N/A" : secAlmostRaidLeaderRole}`)
+			.appendLine()
+			.append(`Section Trial Leader Role: ${typeof secTrialLeaderRole === "undefined" ? "N/A" : secTrialLeaderRole}`);
 
 		const verificationSB: StringBuilder = new StringBuilder("__Verification__")
 			.appendLine()
@@ -2175,13 +2270,15 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 				.appendLine()
 				.append(`Head Leader Role: ${typeof headLeaderRole === "undefined" ? "N/A" : headLeaderRole}`)
 				.appendLine()
-				.append(`Leader Role: ${typeof leaderRole === "undefined" ? "N/A" : leaderRole}`)
+				.append(`Officer Role: ${typeof officerRole === "undefined" ? "N/A" : officerRole}`)
 				.appendLine()
-				.append(`Almost Leader Role: ${typeof almostLeaderRole === "undefined" ? "N/A" : almostLeaderRole}`)
+				.append(`Universal Leader Role: ${typeof leaderRole === "undefined" ? "N/A" : leaderRole}`)
 				.appendLine()
-				.append(`Trial Leader Role: ${typeof trialLeaderRole === "undefined" ? "N/A" : trialLeaderRole}`)
+				.append(`Universal Almost Leader Role: ${typeof almostLeaderRole === "undefined" ? "N/A" : almostLeaderRole}`)
 				.appendLine()
 				.append(`Support Role: ${typeof supportRole === "undefined" ? "N/A" : supportRole}`)
+				.appendLine()
+				.append(`Verifier Role: ${typeof verifierRole === "undefined" ? "N/A" : verifierRole}`)
 				.appendLine()
 				.append(`Pardoned Leader Role: ${typeof pardonedLeaderRole === "undefined" ? "N/A" : pardonedLeaderRole}`)
 				.appendLine()
@@ -2297,7 +2394,7 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 	 * @param {Guild} guild The guild. 
 	 */
 	private async removeDeadElements(
-		guildDb: IRaidGuild, 
+		guildDb: IRaidGuild,
 		roleArray: string[],
 		field: string,
 		guild: Guild

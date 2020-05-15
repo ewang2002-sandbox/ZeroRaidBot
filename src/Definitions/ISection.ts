@@ -17,8 +17,29 @@ export interface ISection {
 
 	/**
 	 * The role needed for access to this section.
+	 * Also the way to search for this section.
 	 */
 	verifiedRole: string;
+
+	/**
+	 * Other roles
+	 */
+	roles: {
+		/**
+		 * Raid leader role.
+		 */
+		raidLeaderRole: string;
+
+		/**
+		 * Almost leader role.
+		 */
+		almostLeaderRole: string;
+
+		/**
+		 * Trial leader role.
+		 */
+		trialLeaderRole: string;
+	}
 
 	/**
 	 * Channels for the group.

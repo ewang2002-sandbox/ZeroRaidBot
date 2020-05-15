@@ -107,6 +107,13 @@ export module RaidHandler {
 			MessageUtil.send({ content: "An AFK check could not be started because the control panel channel is not configured." }, msg.channel as TextChannel);
 			return;
 		}
+
+		const rlInfo: GuildUtil.RaidLeaderStatus = GuildUtil.getRaidLeaderStatus(member, guildDb, SECTION);
+		if (rlInfo.roleType === null && !rlInfo.isUniversal) {
+			MessageUtil.send({ content: "An AFK check could not be started because you are not authorized to start AFK checks in this section." }, msg.channel as TextChannel);
+			return;
+		}
+
 		const dungeons: IDungeonData[] = getDungeonsAllowedInSection(SECTION);
 
 		if (dungeons.length === 0) {
@@ -171,9 +178,11 @@ export module RaidHandler {
 		const SELECTED_DUNGEON: IDungeonData = dungeons[result - 1];
 
 		// if trial raid leader
+		// and not universal role
 		// we need to make sure 
 		// they have authorization
-		if (member.roles.cache.has(guildDb.roles.trialRaidLeader)
+		if (rlInfo.roleType === "TRL"
+			&& !rlInfo.isUniversal
 			&& typeof RAID_REQUEST_CHANNEL !== "undefined") {
 			const responseRequesterEmbed: MessageEmbed = new MessageEmbed()
 				.addField("Dungeon", StringUtil.applyCodeBlocks(SELECTED_DUNGEON.dungeonName), true)
@@ -248,7 +257,7 @@ export module RaidHandler {
 					// make sure he or she has a leader/higher-up role
 					const allowsRoles: string[] = [
 						guildDb.roles.headRaidLeader,
-						guildDb.roles.raidLeader,
+						guildDb.roles.universalRaidLeader,
 						guildDb.roles.moderator,
 						guildDb.roles.officer
 					];
@@ -335,6 +344,7 @@ export module RaidHandler {
 			newRaidNum = ++allNums[allNums.length - 1];
 		}
 
+		const sectionRLRoles: string[] = GuildUtil.getSectionRaidLeaderRoles(SECTION);
 		const permissions: ChannelCreationOverwrites[] = [
 			{
 				id: guild.roles.everyone.id, // TODO: need @everyone ID
@@ -349,15 +359,23 @@ export module RaidHandler {
 				allow: ["VIEW_CHANNEL", "CONNECT", "MOVE_MEMBERS"]
 			},
 			{
-				id: guildDb.roles.trialRaidLeader,
+				id: sectionRLRoles[0],
 				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK"]
 			},
 			{
-				id: guildDb.roles.almostRaidLeader,
-				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK"]
+				id: sectionRLRoles[1],
+				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MOVE_MEMBERS"]
 			},
 			{
-				id: guildDb.roles.raidLeader,
+				id: guildDb.roles.universalAlmostRaidLeader,
+				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MOVE_MEMBERS"]
+			},
+			{
+				id: sectionRLRoles[2],
+				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MUTE_MEMBERS", "MOVE_MEMBERS"]
+			},
+			{
+				id: guildDb.roles.universalRaidLeader,
 				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MUTE_MEMBERS", "MOVE_MEMBERS"]
 			},
 			{
@@ -391,6 +409,7 @@ export module RaidHandler {
 				});
 			}
 		}
+
 		const NEW_RAID_VC: VoiceChannel = await guild.channels.create(`🚦 Raiding ${newRaidNum}`, {
 			type: "voice",
 			permissionOverwrites: realPermissions,
@@ -411,7 +430,12 @@ export module RaidHandler {
 		let optionalReactsField: string = "";
 		let reactWithNitroBoosterEmoji: boolean = false;
 		if (existingEarlyLocRoles.length !== 0) {
-			optionalReactsField += `⇒ If you have one of the following roles, ${existingEarlyLocRoles.join(" ")}, react with ${earlyLocationEmoji} to get the raid location early.\n`;
+			if (existingEarlyLocRoles.length === 1) {
+				optionalReactsField += `⇒ If you have the ${existingEarlyLocRoles[0]} role, react with ${earlyLocationEmoji} to get the raid location early.\n`;
+			}
+			else {
+				optionalReactsField += `⇒ If you have one of the following roles, ${existingEarlyLocRoles.join(" ")}, react with ${earlyLocationEmoji} to get the raid location early.\n`;
+			}
 			reactWithNitroBoosterEmoji = true;
 		}
 
@@ -447,6 +471,8 @@ export module RaidHandler {
 		if (reactWithNitroBoosterEmoji) {
 			await afkCheckMessage.react(earlyLocationEmoji).catch(e => { });
 		}
+		// TODO make it so when ppl react to key while bot is still reacting
+		// it still works 
 		for await (const keyId of SELECTED_DUNGEON.keyEmojIDs) {
 			await afkCheckMessage.react(keyId.keyEmojID).catch(() => { });
 		}
@@ -458,7 +484,7 @@ export module RaidHandler {
 		// ==================================
 		// control panel stuff
 		// ==================================
-		const controlPanelDescription: string = `Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the AFK check.\nRaid Section: ${SECTION.nameOfSection}\nInitiator: ${member} (${member.displayName})\nDungeon: ${SELECTED_DUNGEON.dungeonName} ${Zero.RaidClient.emojis.cache.get(SELECTED_DUNGEON.portalEmojiID)}\nVoice Channel: Raiding ${newRaidNum}`;
+		const controlPanelDescription: string = `Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the AFK check.\n⇒ Raid Section: ${SECTION.nameOfSection}\n⇒ Initiator: ${member} (${member.displayName})\n⇒ Dungeon: ${SELECTED_DUNGEON.dungeonName} ${Zero.RaidClient.emojis.cache.get(SELECTED_DUNGEON.portalEmojiID)}\n⇒ Voice Channel: Raiding ${newRaidNum}`;
 		const controlPanelEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(`Control Panel: Raiding ${newRaidNum}`, SELECTED_DUNGEON.portalLink)
 			.setDescription(controlPanelDescription)
@@ -874,10 +900,13 @@ export module RaidHandler {
 					}
 				}
 
+				const data: GuildUtil.RaidLeaderStatus = GuildUtil.getRaidLeaderStatus(member, guildDb, rs.section);
+
 				// if they were not found in the list of reactions
 				// AND they are not a staff member 
-				if (!(isFound
-					|| member.roles.cache.some(x => [guildDb.roles.raidLeader, guildDb.roles.trialRaidLeader, guildDb.roles.headRaidLeader, guildDb.roles.moderator, guildDb.roles.almostRaidLeader, guildDb.roles.officer].includes(x.id)))) {
+				let shouldBeMovedOut: boolean = !isFound && !data.isUniversal && data.roleType === null
+
+				if (shouldBeMovedOut) {
 					member.voice.setChannel(loungeVC).catch(() => { });
 				}
 			}
@@ -982,10 +1011,10 @@ export module RaidHandler {
 		const initiator: GuildMember | null = guild.member(rs.startedBy);
 		let descStr: string = `Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the raid.\nRaid Section: ${rs.section.nameOfSection}\nInitiator: ${initiator === null ? "Unknown" : initiator} (${initiator === null ? "Unknown" : initiator.displayName})\nDungeon: ${rs.dungeonInfo.dungeonName} ${Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID)}\nVoice Channel: Raiding ${rs.raidNum}`;
 		if (peopleThatGotLocEarly.length !== 0) {
-			descStr += `\n\nEarly Locations: ${peopleThatGotLocEarly.join(" ")}`;
+			descStr += `\n\n__**Early Locations**__\n${peopleThatGotLocEarly.join(" ")}`;
 		}
 		if (getStringRepOfKeyCollection(peopleThatReactedToKey, rs).length !== 0) {
-			descStr += getStringRepOfKeyCollection(peopleThatReactedToKey, rs);
+			descStr += `\n\n__**Key Reacts**__\n${getStringRepOfKeyCollection(peopleThatReactedToKey, rs)}`;
 		}
 		const startRunControlPanelEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(`Control Panel: Raiding ${rs.raidNum}`, rs.dungeonInfo.portalLink)
@@ -1013,13 +1042,13 @@ export module RaidHandler {
 	function determineDurationForPostAfk(amtOfPeople: number): number {
 		let dur: number;
 		if (amtOfPeople > 80) {
-			dur = -1 / 2 * amtOfPeople + 45;
+			dur = -0.5 * amtOfPeople + 45;
 			if (dur < 0) {
 				dur = 0;
 			}
 		}
 		else {
-			dur = - Math.sqrt(8 * amtOfPeople) + 30;
+			dur = -Math.sqrt(8 * amtOfPeople) + 30;
 		}
 		return Math.round(dur);
 	}
@@ -1122,6 +1151,7 @@ export module RaidHandler {
 		guildDb: IRaidGuild,
 		guild: Guild
 	): Promise<void> {
+		const member: GuildMember = msg.member as GuildMember;
 		// ==================================
 		// begin getting afk check channel 
 		// ==================================
@@ -1152,6 +1182,12 @@ export module RaidHandler {
 			// and the items stored in memory could 
 			// have been reset
 			MessageUtil.send({ content: "A headcount could not be started because the selected channel has no category associated with it." }, msg.channel as TextChannel);
+			return;
+		}
+
+		const rlInfo: GuildUtil.RaidLeaderStatus = GuildUtil.getRaidLeaderStatus(member, guildDb, SECTION);
+		if (rlInfo.roleType === null && !rlInfo.isUniversal) {
+			MessageUtil.send({ content: "A headcount could not be started because you are not authorized to start headcounts in this section." }, msg.channel as TextChannel);
 			return;
 		}
 
@@ -1418,7 +1454,7 @@ export module RaidHandler {
 
 		await hcMsg.edit(newEmbed).catch(() => { });
 		await hcMsg.unpin().catch(() => { });
-		await hcMsg.reactions.removeAll().catch(() => { });
+		await controlPanelMessage.reactions.removeAll().catch(() => { });
 		await controlPanelMessage.edit(newControlPanelEmbed).catch(() => { });
 		await controlPanelMessage.react("🗑️").catch(() => { });
 		setTimeout(async () => {
@@ -1438,6 +1474,7 @@ export module RaidHandler {
 	function getHeadCountEmbed(msg: Message, ihcpi: { data: IDungeonData, isIncluded: boolean }[]): MessageEmbed {
 		const configureHeadCountEmbed: MessageEmbed = new MessageEmbed()
 			.setTitle("⚙️ Configuring Headcount: Dungeon Selection")
+			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 			.setDescription("You are close to starting a headcount! However, you need to select dungeons from the below list. To begin, please type the number corresponding to the dungeon(s) you want to add to the headcount. To send this headcount, type `send`. To cancel, type `cancel`.\n\nA ☑️ next to the dungeon means the dungeon will be included in the headcount.\nA ❌ means the dungeon will not be part of the overall headcount.")
 			.setColor("RANDOM")
 			.setFooter(`${(msg.guild as Guild).name} | ${ihcpi.filter(x => x.isIncluded).length}/19 Remaining Slots`);
@@ -1502,18 +1539,26 @@ export module RaidHandler {
 				let max: number = min;
 
 				const embed: MessageEmbed = new MessageEmbed()
+					.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 					.setTitle("⚙️ Select a Raid Section")
-					.setDescription("Your server contains multiple raiding sections. Please select the appropriate section.")
+					.setDescription("Your server contains multiple raiding sections. Please select the appropriate section by typing the number associated with the section you want to start an AFK check or headcount in.\n\n__Symbols__\n☑️ means you have the appropriate permission to start a run or headcount in the associated section.\n❌ means you do not have permission to start a run or headcount in the associated section.")
 					.setFooter(guild.name)
 					.setColor("RANDOM");
 				for (const section of sections) {
+					const rlInfo: GuildUtil.RaidLeaderStatus = GuildUtil.getRaidLeaderStatus(
+						msg.member as GuildMember, 
+						guildDb, 
+						section
+					);
+					const hasPermission: boolean = rlInfo.roleType !== null || rlInfo.isUniversal;
+
 					if (guild.channels.cache.has(section.channels.afkCheckChannel)) {
 						const afkCheckChannel: TextChannel = guild.channels.cache.get(section.channels.afkCheckChannel) as TextChannel;
 						const sectionParent: CategoryChannel | null = afkCheckChannel.parent;
 						// we want a category associated with the afk check channel
 						if (sectionParent !== null) {
 							embed.addFields({
-								name: `${max}: ${sectionParent.name}`,
+								name: `**[${max}]** ${section.nameOfSection} ${hasPermission ? "☑️" : "❌"}`,
 								value: `AFK Check Channel: ${afkCheckChannel}`
 							});
 							max++;

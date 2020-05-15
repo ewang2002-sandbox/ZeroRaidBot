@@ -143,6 +143,7 @@ export class PollCommand extends Command {
 				[],
 				["ADD_REACTIONS", "EMBED_LINKS"],
 				["support"],
+				[],
 				true
 			),
 			true, // guild-only command. 

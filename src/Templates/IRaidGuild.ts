@@ -59,21 +59,14 @@ export interface IRaidGuild {
 		 * 
 		 * Names for this role may include, but are not limited to: Raid Leader. 
 		 */
-		raidLeader: string;
+		universalRaidLeader: string;
 
 		/**
 		 * The almost raid leader role. 
 		 * 
 		 * Names for this role may include, but are not limited to: Trial Raid Leader.
 		 */
-		almostRaidLeader: string;
-
-		/**
-		 * The trial raid leader role. Trial raid leaders are new raid leaders and will have access to most of the commands Raid Leaders will have EXCEPT for the ability to start raids. 
-		 * 
-		 * Names for this role may include, but are not limited to: Trial Raid Leader.
-		 */
-		trialRaidLeader: string;
+		universalAlmostRaidLeader: string;
 
 		/**
 		 * The support role. Support is in charge of server management (think, a "lesser" version of moderators). 
@@ -81,6 +74,11 @@ export interface IRaidGuild {
 		 * Names for this role may include, but are not limited to: Security/Verifier (combined), Security, Helper.
 		 */
 		support: string;
+
+		/**
+		 * The verifier role. Verifiers will have access to the find and manualverify command.
+		 */
+		verifier: string;
 
 		/**
 		 * The pardoned raid leader role. Pardoned raid leaders are on break from leading.
@@ -145,6 +143,15 @@ export interface IRaidGuild {
 				role: string;
 				min: number;
 			}
+		};
+
+		/**
+		 * Section leader roles.
+		 */
+		mainSectionLeaderRole: {
+			sectionLeaderRole: string;
+			sectionAlmostLeaderRole: string; 
+			sectionTrialLeaderRole: string;
 		}
 	};
 
@@ -276,7 +283,7 @@ export interface IRaidGuild {
 	/**
 	 * The prefix users can use to invoke bot commands.
 	 */
-	prefix: string
+	prefix: string;
 
 	/**
 	 * These are mini-sections of a server, where AFK checks and verification will be separate from the main process. Some "sections" could be, for example, "Veteran Raids," "Event Raids," etc.

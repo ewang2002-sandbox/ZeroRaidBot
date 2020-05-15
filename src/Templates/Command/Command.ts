@@ -2,7 +2,7 @@ import { CommandDetail } from "./CommandDetail";
 import { CommandPermission } from "./CommandPermission";
 import { Message, PermissionResolvable } from "discord.js";
 import { IRaidGuild } from "../IRaidGuild";
-import { RoleNames } from "../../Definitions/Types";
+import { RoleNames, LeaderPermType } from "../../Definitions/Types";
 
 export abstract class Command {
 	/**
@@ -162,6 +162,14 @@ export abstract class Command {
 	 */
 	public isBotOwnerOnly(): boolean {
 		return this._botOwnerOnly;
+	}
+
+	/**
+	 * Which other non-universal RLs can use this command.
+	 * @returns {LeaderPermType[]} 
+	 */
+	public getSecRLAccountType(): LeaderPermType[] {
+		return this._commandPermissions.sectionRLAccountType();
 	}
 
 	/**

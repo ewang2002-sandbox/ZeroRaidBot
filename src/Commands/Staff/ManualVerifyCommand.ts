@@ -38,7 +38,8 @@ export class ManualVerifyCommand extends Command {
             new CommandPermission(
                 [],
                 ["EMBED_LINKS"],
-                ["support", "headRaidLeader", "officer", "moderator", "officer"],
+                ["support", "headRaidLeader", "officer", "moderator", "officer", "verifier"],
+                [],
                 false
             ),
             true, // guild-only command. 

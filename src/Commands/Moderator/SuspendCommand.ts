@@ -24,7 +24,8 @@ export class SuspendCommand extends Command {
 			new CommandPermission(
 				["KICK_MEMBERS"],
 				["MANAGE_ROLES", "EMBED_LINKS"],
-				["raidLeader", "headRaidLeader", "officer", "moderator"],
+				["universalRaidLeader", "headRaidLeader", "officer", "moderator"],
+				["SECTION_RL"],
 				false
 			),
 			true,

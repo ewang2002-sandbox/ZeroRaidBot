@@ -213,9 +213,7 @@ export module RaidDbHelper {
 				) {
 					MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
 						$pull: {
-							sections: {
-								verifiedRole: section.verifiedRole
-							}
+							"sections.roles": section.verifiedRole
 						}
 					}, (err: any, raw: any) => {
 						if (err) {

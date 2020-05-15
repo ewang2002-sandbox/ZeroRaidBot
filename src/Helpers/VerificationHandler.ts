@@ -1128,10 +1128,26 @@ export module VerificationHandler {
 			await accountInDatabase(member, verificationInfo.name, nameHistoryInfo);
 		}
 
+		const desc: StringBuilder = new StringBuilder()
+			.append(`⇒ **Section:** ${section.nameOfSection}`)
+			.appendLine()
+			.append(`⇒ **User:** ${member}`)
+			.appendLine()
+			.append(`⇒ **IGN:** ${verificationInfo.name}`)
+			.appendLine()
+			.append(`⇒ **First Seen**: ${verificationInfo.created}`)
+			.appendLine()
+			.append(`⇒ **Last Seen**: ${verificationInfo.last_seen}`)
+			.appendLine()
+			.append(`⇒ **RealmEye:** [Profile](https://www.realmeye.com/player/${verificationInfo.name})`)
+			.appendLine()
+			.appendLine()
+			.append(`React with ☑️ to manually verify this person; otherwise, react with ❌.`)
+
 		const manualVerifEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(member.user.tag, member.user.displayAvatarURL())
 			.setTitle(`Manual Verification Request: **${verificationInfo.name}**`)
-			.setDescription(`⇒ **Section:** ${section.nameOfSection}\n ⇒ **User:** ${member}\n⇒ **IGN:** ${verificationInfo.name}\n⇒ **RealmEye:** [Profile](https://www.realmeye.com/player/${verificationInfo.name})\n\nReact with ☑️ to manually verify this person; otherwise, react with ❌.\n\nIf the bot doesn't respond after you react, wait 5 seconds and then un-react & re-react.`)
+			.setDescription(desc.toString())
 			.addField("Unmet Requirements", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()), true)
 			.setColor("YELLOW")
 			.setFooter(member.id)
@@ -1202,6 +1218,14 @@ export module VerificationHandler {
 		}
 	}
 
+	/**
+	 * A function that should be executed when a manual verification application has been accepted.
+	 * @param {GuildMember} manualVerifMember The member to be manually verified.
+	 * @param {GuildMember} responsibleMember The member that manually verified `manualVerifMember`.
+	 * @param {ISection} sectionForManualVerif The section where the manual verification occurred.
+	 * @param {IManualVerification} manualVerificationProfile The manual verification profile.
+	 * @param {IRaidGuild} guildDb The guild doc.
+	 */
 	export async function acceptManualVerification(
 		manualVerifMember: GuildMember,
 		responsibleMember: GuildMember,
@@ -1210,11 +1234,14 @@ export module VerificationHandler {
 		guildDb: IRaidGuild
 	): Promise<void> {
 		const guild: Guild = manualVerifMember.guild;
-		let loggingMsg: string = `✅ **\`[${sectionForManualVerif.nameOfSection}]\`** ${manualVerifMember} has been manually verified as ${manualVerificationProfile.inGameName}. This manual verification was done by ${responsibleMember} (${responsibleMember.displayName})`;
+		let loggingMsg: string = `✅ **\`[${sectionForManualVerif.nameOfSection}]\`** ${manualVerifMember} has been manually verified as \`${manualVerificationProfile.inGameName}\`. This manual verification was done by ${responsibleMember} (${responsibleMember.displayName})`;
 
 		await manualVerifMember.roles.add(sectionForManualVerif.verifiedRole).catch(e => { });
 		if (sectionForManualVerif.isMain) {
-			await manualVerifMember.setNickname(manualVerificationProfile.inGameName).catch(e => { });
+			await manualVerifMember.setNickname(manualVerifMember.user.username === manualVerificationProfile.inGameName
+				? `${manualVerificationProfile.inGameName}.`
+				: manualVerificationProfile.inGameName
+			).catch(e => { });
 			await VerificationHandler.accountInDatabase(
 				manualVerifMember,
 				manualVerificationProfile.inGameName,
@@ -1240,6 +1267,13 @@ export module VerificationHandler {
 		sendLogAndUpdateDb(loggingMsg, sectionForManualVerif, manualVerifMember);
 	}
 
+	/**
+	 * A function that should be executed when a manual verification application has been denied.
+	 * @param {GuildMember} manualVerifMember The member whose manual verification application has been denied.
+	 * @param {GuildMember} responsibleMember The member that denied `manualVerifMember`'s manual verification application.
+	 * @param {ISection} sectionForManualVerif The section where the manual verification occurred.
+	 * @param {IManualVerification} manualVerificationProfile The manual verification profile.
+	 */
 	export async function denyManualVerification(
 		manualVerifMember: GuildMember,
 		responsibleMember: GuildMember,
@@ -1259,6 +1293,12 @@ export module VerificationHandler {
 		sendLogAndUpdateDb(loggingMsg, sectionForManualVerif, manualVerifMember);
 	}
 
+	/**
+	 * Updates the db and logs the manual verification event.
+	 * @param {string} logging The message to send to the logging channel. 
+	 * @param {ISection} sectionForManualVerif The section where the person tried to get manually verified. 
+	 * @param {GuildMember} manualVerifMember The member that tried to get a manual verification. 
+	 */
 	async function sendLogAndUpdateDb(
 		logging: string,
 		sectionForManualVerif: ISection,

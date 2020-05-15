@@ -23,6 +23,7 @@ export class HelpCommand extends Command {
                 [],
                 [],
                 ["raider"],
+                [],
                 true
             ),
             false, // guild-only command. 
@@ -75,9 +76,7 @@ export class HelpCommand extends Command {
                     "moderator",
                     "headRaidLeader",
                     "officer",
-                    "raidLeader",
-                    "almostRaidLeader",
-                    "trialRaidLeader",
+                    "universalRaidLeader",
                     "support",
                     "raider",
                     "suspended"

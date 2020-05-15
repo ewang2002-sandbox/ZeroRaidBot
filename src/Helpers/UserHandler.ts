@@ -3,6 +3,7 @@ import { IRaidGuild } from "../Templates/IRaidGuild";
 import Collection from "@discordjs/collection";
 import { StringUtil } from "../Utility/StringUtil";
 import { Zero } from "../Zero";
+import { GuildUtil } from "../Utility/GuildUtil";
 
 export namespace UserHandler {
 	/**
@@ -20,13 +21,19 @@ export namespace UserHandler {
 
         let staffRoles: string[] = [
             guildData.roles.moderator,
-            guildData.roles.headRaidLeader,
-			guildData.roles.raidLeader,
-			guildData.roles.trialRaidLeader,
-            guildData.roles.support,
-			guildData.roles.almostRaidLeader,
-			guildData.roles.officer
+			guildData.roles.headRaidLeader,
+			guildData.roles.officer,
+			guildData.roles.universalRaidLeader,
+			guildData.roles.universalAlmostRaidLeader,
+			guildData.roles.support,
+			guildData.roles.verifier,
+			guildData.roles.pardonedRaidLeader
 		];
+
+		// get each individual section rl roles
+		for (const section of [GuildUtil.getDefaultSection(guildData), ...guildData.sections]) {
+			staffRoles.push(section.roles.almostLeaderRole, section.roles.raidLeaderRole, section.roles.trialLeaderRole);
+		}
 		
 		const allStaffRoles: Role[] = [];
 		for (const role of staffRoles) {

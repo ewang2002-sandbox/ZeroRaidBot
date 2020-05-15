@@ -1531,6 +1531,7 @@ export module RaidHandler {
 				let max: number = min;
 
 				const embed: MessageEmbed = new MessageEmbed()
+					.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 					.setTitle("⚙️ Select a Raid Section")
 					.setDescription("Your server contains multiple raiding sections. Please select the appropriate section.")
 					.setFooter(guild.name)

@@ -197,6 +197,13 @@ export class ConfigureSectionCommand extends Command {
 			sectMongo: ""
 		},
 		{
+			q: "Configure Officer Role",
+			d: "Mention, or type the ID of, the role that you want to make the Officer role. Officers will be able to access most moderation commands, including blacklists. Think of officers like Head Leaders, but without the ability to lead.",
+			m: true,
+			mainMongo: "roles.officer",
+			sectMongo: ""
+		},
+		{
 			q: "Configure Universal Leader Role",
 			d: "Mention, or type the ID of, the role that you want to make the Universal Leader role. Leaders will have the ability to suspend members. **NOTE:** Universal Leaders have the ability to start AFK checks and headcounts in ANY section.",
 			m: true,
@@ -239,6 +246,13 @@ export class ConfigureSectionCommand extends Command {
 			sectMongo: ""
 		},
 		{
+			q: "Configure Verifier Role",
+			d: "Mention, or type the ID of, the role that you want to make the Verifier role. Verifiers will be able to access the find and manual verification command.",
+			m: true,
+			mainMongo: "roles.verifier",
+			sectMongo: ""
+		},
+		{
 			q: "Configure Pardoned Leader Role",
 			d: "Mention, or type the ID of, the role that you want to make the Pardoned Leader role. Pardoned Leaders are simply leaders, regardless of original rank, on leave. That is, they are taking a break from leading.",
 			m: true,
@@ -271,7 +285,7 @@ export class ConfigureSectionCommand extends Command {
 			new CommandPermission(
 				["ADMINISTRATOR"],
 				["ADD_REACTIONS", "MANAGE_MESSAGES", "EMBED_LINKS"],
-				[],
+				["moderator"],
 				[],
 				false
 			),
@@ -1006,9 +1020,11 @@ export class ConfigureSectionCommand extends Command {
 				.addField("Configure Team Role", "React with 👪 to configure the Team role.")
 				.addField("Configure Moderator Role", "React with ⚒️ to configure the Moderator role.")
 				.addField("Configure Head Leader Role", "React with 🥇 to configure the Head Leader role.")
+				.addField("Configure Officer Role", "React with 👮 to configure the Officer role.")
 				.addField("Configure Universal Leader Role", "React with 🥈 to configure the Universal Leader role.")
 				.addField("Configure Universal Almost Leader Role", "React with 🥉 to configure the Universal Almost Leader role.")
 				.addField("Configure Support Role", "React with 📛 to configure the Support/Helper role.")
+				.addField("Configure Verifier Role", "React with 🔎 to configure the Verifier role.")
 				.addField("Configure Pardoned Leader Role", "React with 💤 to configure the Pardoned Leader role.")
 				.addField("Configure Suspended Role", "React with ⛔ to configure the Suspended role.")
 				.addField("Configure Talking Roles", "React with 🔈 to configure talking roles.")
@@ -1017,7 +1033,7 @@ export class ConfigureSectionCommand extends Command {
 			//.addField("Configure Tier II Key Role", "React with 🔑 to configure the Tier 2 Key Donator role.")
 			//.addField("Configure Tier III Key Role", "React with 🍀 to configure the Tier 3 Key Donator role.");
 
-			reactions.push("👪", "⚒️", "🥇", "🥈", "🥉", "📛", "💤", "⛔", "🔈", "🗺️");
+			reactions.push("👪", "⚒️", "🥇", "👮", "🥈", "🥉", "📛", "🔎", "💤", "⛔", "🔈", "🗺️");
 			// , "🔈", "🗝️", "🔑", "🍀"
 		}
 
@@ -1217,6 +1233,28 @@ export class ConfigureSectionCommand extends Command {
 					section.isMain
 						? "roles.mainSectionLeaderRole.sectionTrialLeaderRole"
 						: "sections.$.roles.trialLeaderRole"
+				);
+			}
+			// officer
+			else if (r.emoji.name === "👮") {
+				await this.resetBotEmbed(botSentMsg).catch(() => { });
+				res = await this.updateRoleCommand(
+					msg,
+					"Officer Role",
+					section,
+					guild.roles.cache.get(guildData.roles.officer),
+					"roles.officer"
+				);
+			}
+			// verifier
+			else if (r.emoji.name === "🔎") {
+				await this.resetBotEmbed(botSentMsg).catch(() => { });
+				res = await this.updateRoleCommand(
+					msg,
+					"Verifier Role",
+					section,
+					guild.roles.cache.get(guildData.roles.verifier),
+					"roles.verifier"
 				);
 			}
 			// configuration wizard
@@ -2121,9 +2159,11 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 		const teamRole: Role | undefined = guild.roles.cache.get(guildData.roles.teamRole);
 		const moderatorRole: Role | undefined = guild.roles.cache.get(guildData.roles.moderator);
 		const headLeaderRole: Role | undefined = guild.roles.cache.get(guildData.roles.headRaidLeader);
+		const officerRole: Role | undefined = guild.roles.cache.get(guildData.roles.officer);
 		const leaderRole: Role | undefined = guild.roles.cache.get(guildData.roles.universalRaidLeader);
 		const almostLeaderRole: Role | undefined = guild.roles.cache.get(guildData.roles.universalAlmostRaidLeader);
 		const supportRole: Role | undefined = guild.roles.cache.get(guildData.roles.support);
+		const verifierRole: Role | undefined = guild.roles.cache.get(guildData.roles.verifier);
 		const pardonedLeaderRole: Role | undefined = guild.roles.cache.get(guildData.roles.pardonedRaidLeader);
 		const suspendedRole: Role | undefined = guild.roles.cache.get(guildData.roles.suspended);
 		const allTalkingRoles: (Role | undefined)[] = guildData.roles.talkingRoles.map(x => guild.roles.cache.get(x));
@@ -2230,11 +2270,15 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 				.appendLine()
 				.append(`Head Leader Role: ${typeof headLeaderRole === "undefined" ? "N/A" : headLeaderRole}`)
 				.appendLine()
-				.append(`Leader Role: ${typeof leaderRole === "undefined" ? "N/A" : leaderRole}`)
+				.append(`Officer Role: ${typeof officerRole === "undefined" ? "N/A" : officerRole}`)
 				.appendLine()
-				.append(`Almost Leader Role: ${typeof almostLeaderRole === "undefined" ? "N/A" : almostLeaderRole}`)
+				.append(`Universal Leader Role: ${typeof leaderRole === "undefined" ? "N/A" : leaderRole}`)
+				.appendLine()
+				.append(`Universal Almost Leader Role: ${typeof almostLeaderRole === "undefined" ? "N/A" : almostLeaderRole}`)
 				.appendLine()
 				.append(`Support Role: ${typeof supportRole === "undefined" ? "N/A" : supportRole}`)
+				.appendLine()
+				.append(`Verifier Role: ${typeof verifierRole === "undefined" ? "N/A" : verifierRole}`)
 				.appendLine()
 				.append(`Pardoned Leader Role: ${typeof pardonedLeaderRole === "undefined" ? "N/A" : pardonedLeaderRole}`)
 				.appendLine()

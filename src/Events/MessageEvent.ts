@@ -144,6 +144,7 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 			const headRaidLeader: string = guildHandler.roles.headRaidLeader;
 			const moderator: string = guildHandler.roles.moderator;
 			const support: string = guildHandler.roles.support;
+			const verifier: string = guildHandler.roles.verifier;
 			const suspended: string = guildHandler.roles.suspended;
 			// rl
 			const roleOrder: [string, RoleNames][] = [
@@ -181,6 +182,7 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 			// add the rest of the roles.
 			roleOrder.push(
 				[support, "support"],
+				[verifier, "verifier"],
 				[raider, "raider"],
 				[suspended, "suspended"]
 			);

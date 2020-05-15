@@ -76,6 +76,11 @@ export interface IRaidGuild {
 		support: string;
 
 		/**
+		 * The verifier role. Verifiers will have access to the find and manualverify command.
+		 */
+		verifier: string;
+
+		/**
 		 * The pardoned raid leader role. Pardoned raid leaders are on break from leading.
 		 * 
 		 * Names for this role may include, but are not limited to: Pardoned Raid Leader, Leader on Leave.

@@ -25,7 +25,7 @@ export class FindUserCommand extends Command {
 			new CommandPermission(
 				[],
 				["EMBED_LINKS"],
-				["support"],
+				["verifier"],
 				[],
 				true
 			),

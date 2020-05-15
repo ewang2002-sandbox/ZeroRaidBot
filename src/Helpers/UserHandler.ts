@@ -21,11 +21,13 @@ export namespace UserHandler {
 
         let staffRoles: string[] = [
             guildData.roles.moderator,
-            guildData.roles.headRaidLeader,
+			guildData.roles.headRaidLeader,
+			guildData.roles.officer,
 			guildData.roles.universalRaidLeader,
-            guildData.roles.support,
 			guildData.roles.universalAlmostRaidLeader,
-			guildData.roles.officer
+			guildData.roles.support,
+			guildData.roles.verifier,
+			guildData.roles.pardonedRaidLeader
 		];
 
 		// get each individual section rl roles

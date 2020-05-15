@@ -227,6 +227,7 @@ export module MongoDbHelper {
 						universalRaidLeader: "",
 						universalAlmostRaidLeader: "",
 						support: "",
+						verifier: "",
 						pardonedRaidLeader: "",
 						raider: "",
 						suspended: "",

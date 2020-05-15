@@ -484,7 +484,7 @@ export module RaidHandler {
 		// ==================================
 		// control panel stuff
 		// ==================================
-		const controlPanelDescription: string = `Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the AFK check.\nRaid Section: ${SECTION.nameOfSection}\nInitiator: ${member} (${member.displayName})\nDungeon: ${SELECTED_DUNGEON.dungeonName} ${Zero.RaidClient.emojis.cache.get(SELECTED_DUNGEON.portalEmojiID)}\nVoice Channel: Raiding ${newRaidNum}`;
+		const controlPanelDescription: string = `Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the AFK check.\n⇒ Raid Section: ${SECTION.nameOfSection}\n⇒ Initiator: ${member} (${member.displayName})\n⇒ Dungeon: ${SELECTED_DUNGEON.dungeonName} ${Zero.RaidClient.emojis.cache.get(SELECTED_DUNGEON.portalEmojiID)}\n⇒ Voice Channel: Raiding ${newRaidNum}`;
 		const controlPanelEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(`Control Panel: Raiding ${newRaidNum}`, SELECTED_DUNGEON.portalLink)
 			.setDescription(controlPanelDescription)
@@ -1541,7 +1541,7 @@ export module RaidHandler {
 				const embed: MessageEmbed = new MessageEmbed()
 					.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 					.setTitle("⚙️ Select a Raid Section")
-					.setDescription("Your server contains multiple raiding sections. Please select the appropriate section.\n\n__Symbols__\n☑️ means you have the appropriate permission to start a run or headcount in the associated section.\n❌ means you do not have permission to start a run or headcount in the associated section.")
+					.setDescription("Your server contains multiple raiding sections. Please select the appropriate section by typing the number associated with the section you want to start an AFK check or headcount in.\n\n__Symbols__\n☑️ means you have the appropriate permission to start a run or headcount in the associated section.\n❌ means you do not have permission to start a run or headcount in the associated section.")
 					.setFooter(guild.name)
 					.setColor("RANDOM");
 				for (const section of sections) {
@@ -1558,7 +1558,7 @@ export module RaidHandler {
 						// we want a category associated with the afk check channel
 						if (sectionParent !== null) {
 							embed.addFields({
-								name: `${max}: ${sectionParent.name} ${hasPermission ? "☑️" : "❌"}`,
+								name: `**[${max}]** ${section.nameOfSection} ${hasPermission ? "☑️" : "❌"}`,
 								value: `AFK Check Channel: ${afkCheckChannel}`
 							});
 							max++;

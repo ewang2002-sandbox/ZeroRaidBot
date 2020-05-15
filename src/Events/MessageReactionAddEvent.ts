@@ -235,8 +235,7 @@ export async function onMessageReactionAdd(
                     }
                 }
 
-                if (member.roles.cache.some(x => [...staffRoles, ...leaderRoles].includes(x.id))
-                    || member.hasPermission("ADMINISTRATOR")) {
+                if (member.roles.cache.has(guildDb.roles.teamRole) || member.hasPermission("ADMINISTRATOR")) {
                     // get loc
                     if (reaction.emoji.name === "🗺️") {
                         user.send(`**\`[${guild.name} ⇒ ${sectionFromControlPanel.nameOfSection} ⇒ Raiding ${raidFromReaction.raidNum}]\`** The location of this raid is: \`${raidFromReaction.location}\``);
@@ -270,8 +269,7 @@ export async function onMessageReactionAdd(
                     }
                 }
 
-                if (member.roles.cache.some(x => [...staffRoles, ...leaderRoles].includes(x.id))
-                    || member.hasPermission("ADMINISTRATOR")) {
+                if (member.roles.cache.has(guildDb.roles.teamRole) || member.hasPermission("ADMINISTRATOR")) {
                     // get loc
                     if (reaction.emoji.name === "🗺️") {
                         user.send(`**\`[${guild.name} ⇒ ${sectionFromControlPanel.nameOfSection} ⇒ Raiding ${raidFromReaction.raidNum}]\`** The location of this raid is: \`${raidFromReaction.location}\``);

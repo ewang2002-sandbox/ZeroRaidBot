@@ -210,7 +210,7 @@ export namespace MessageUtil {
 			}
 			case ("NO_MENTIONS_FOUND"): {
 				embed.setTitle("No Mentions Found");
-				embed.setDescription("You did not @Mention anyone. Please be sure you mention users.");
+				embed.setDescription("You did not @Mention anyone. Please be sure you mentioned someone.");
 				break;
 			}
 			case ("NO_RESOLVABLE_USER"): {

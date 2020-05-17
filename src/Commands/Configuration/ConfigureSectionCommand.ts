@@ -1,5 +1,4 @@
 // TODO
-// - implement talking role
 // - implement key tier role
 // - prevent duplicate/invalid entries (especially with afk check/control panel)
 

@@ -501,8 +501,7 @@ export module RaidHandler {
 		const collFilter = (reaction: MessageReaction, user: User) => {
 			// TODO: make sure this works. 
 			return reaction.emoji.id !== null
-				&& (SELECTED_DUNGEON.keyEmojIDs.some(x => x.keyEmojID === reaction.emoji.id)
-					|| reaction.emoji.id === earlyLocationEmoji.id)
+				&& (SELECTED_DUNGEON.keyEmojIDs.some(x => x.keyEmojID === reaction.emoji.id) || reaction.emoji.id === earlyLocationEmoji.id)
 				&& user.id !== (Zero.RaidClient.user as User).id;
 		}
 
@@ -589,7 +588,9 @@ export module RaidHandler {
 			if (reaction.emoji.id === earlyLocationEmoji.id
 				&& !earlyReactions.some(x => x.id === user.id)
 				// if you reacted w/ key you dont need the location twice.
-				&& !hasUserReactedWithKey(keysThatReacted, reaction.emoji.id, member.id)) {
+				&& !hasUserReactedWithKey(keysThatReacted, reaction.emoji.id, member.id)
+				// make sure you have the early location role.
+				&& guildDb.roles.earlyLocationRoles.some(x => member.roles.cache.has(x))) {
 				if (earlyReactions.length + 1 > 10) {
 					await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** You are unable to get the location early due to the volume of people that has requested the location early.`).catch(() => { });
 					return;

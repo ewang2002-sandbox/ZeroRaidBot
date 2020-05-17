@@ -48,7 +48,6 @@ export class ConfigureSectionCommand extends Command {
 	];
 
 	private static MAX_SECTIONS: number = 8;
-	private static MAX_ARRAY_LENGTH_ROLES: number = 8;
 
 	/**
 	 * q = question/title
@@ -283,7 +282,7 @@ export class ConfigureSectionCommand extends Command {
 				1
 			),
 			new CommandPermission(
-				["ADMINISTRATOR"],
+				["MANAGE_GUILD"],
 				["ADD_REACTIONS", "MANAGE_MESSAGES", "EMBED_LINKS"],
 				["moderator"],
 				[],

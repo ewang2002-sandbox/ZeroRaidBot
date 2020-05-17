@@ -1544,31 +1544,34 @@ export module RaidHandler {
 					.setDescription("Your server contains multiple raiding sections. Please select the appropriate section by typing the number associated with the section you want to start an AFK check or headcount in.\n\n__Symbols__\n☑️ means you have the appropriate permission to start a run or headcount in the associated section.\n❌ means you do not have permission to start a run or headcount in the associated section.")
 					.setFooter(guild.name)
 					.setColor("RANDOM");
-				for (const section of sections) {
+				for (let i = 0; i < sections.length; i++) {
 					const rlInfo: GuildUtil.RaidLeaderStatus = GuildUtil.getRaidLeaderStatus(
 						msg.member as GuildMember, 
 						guildDb, 
-						section
+						sections[i]
 					);
 					const hasPermission: boolean = rlInfo.roleType !== null || rlInfo.isUniversal;
 
-					if (guild.channels.cache.has(section.channels.afkCheckChannel)) {
-						const afkCheckChannel: TextChannel = guild.channels.cache.get(section.channels.afkCheckChannel) as TextChannel;
+					if (guild.channels.cache.has(sections[i].channels.afkCheckChannel)) {
+						const afkCheckChannel: TextChannel = guild.channels.cache.get(sections[i].channels.afkCheckChannel) as TextChannel;
 						const sectionParent: CategoryChannel | null = afkCheckChannel.parent;
 						// we want a category associated with the afk check channel
 						if (sectionParent !== null) {
 							embed.addFields({
-								name: `**[${max}]** ${section.nameOfSection} ${hasPermission ? "☑️" : "❌"}`,
+								name: `**[${max}]** ${sections[i].nameOfSection} ${hasPermission ? "☑️" : "❌"}`,
 								value: `AFK Check Channel: ${afkCheckChannel}`
 							});
 							max++;
 						}
 						else {
-							sections.splice(sections.indexOf(section), 1);
+							sections.splice(i, 1);
+							i--;
+
 						}
 					}
 					else {
-						sections.splice(sections.indexOf(section), 1);
+						sections.splice(i, 1);
+						i--;
 					}
 				}
 

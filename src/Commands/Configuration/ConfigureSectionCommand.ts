@@ -1833,6 +1833,10 @@ export class ConfigureSectionCommand extends Command {
 			update$set[section.isMain ? chanQ.mainMongo : chanQ.sectMongo] = resp.id;
 		}
 
+		if (Object.keys(update$set).length === 0) {
+			return await new MongoDbHelper.MongoDbGuildManager(guild.id).findOrCreateGuildDb();
+		}
+
 		updateQuery.$set = update$set;
 
 		return (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(query, updateQuery, { returnOriginal: false })).value as IRaidGuild;

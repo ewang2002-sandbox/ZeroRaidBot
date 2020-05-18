@@ -1,6 +1,5 @@
 import { Collection } from "discord.js";
 import { Command } from "../Templates/Command/Command";
-import { TestCommand } from "../Commands/Test/TestCommand";
 import { SendEmbedCommand } from "../Commands/Staff/SendEmbedCommand";
 import { ConfigureSectionCommand } from "../Commands/Configuration/ConfigureSectionCommand";
 import { StartAfkCheckCommand } from "../Commands/Raid Leader/StartAfkCheckCommand";
@@ -16,6 +15,11 @@ import { UnblacklistCommand } from "../Commands/Moderator/UnblacklistCommand";
 import { PollCommand } from "../Commands/Staff/PollCommand";
 import { HelpCommand } from "../Commands/Public/HelpCommand";
 import { ManualVerifyCommand } from "../Commands/Staff/ManualVerifyCommand";
+import { PingCommand } from "../Commands/Public/PingCommand";
+import { RoleInfoCommand } from "../Commands/Server Information/RoleInfoCommand";
+import { ServerInfoCommand } from "../Commands/Server Information/ServerInfoCommand";
+import { ChannelInfoCommand } from "../Commands/Server Information/ChannelInfoCommand";
+import { UserInfoCommand } from "../Commands/Server Information/UserInfoCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -48,7 +52,15 @@ export class CommandManager {
 		}
 
 		this.commands.set("Public", [
-			new HelpCommand()
+			new HelpCommand(),
+			new PingCommand()
+		]);
+
+		this.commands.set("Server Information", [
+			new RoleInfoCommand(),
+			new ServerInfoCommand(),
+			new ChannelInfoCommand(),
+			new UserInfoCommand()
 		]);
 
 		this.commands.set("Configuration", [
@@ -58,10 +70,6 @@ export class CommandManager {
 		this.commands.set("Raid Leader", [
 			new StartAfkCheckCommand(), 
 			new StartHeadcountCommand()
-		]);
-
-		this.commands.set("Developer", [
-			new TestCommand()
 		]);
 
 		this.commands.set("Staff", [

@@ -440,7 +440,7 @@ export module RaidHandler {
 		}
 
 		if (SELECTED_DUNGEON.keyEmojIDs.length !== 0) {
-			optionalReactsField += `⇒ If you have ${SELECTED_DUNGEON.keyEmojIDs.length === 1 ? `a ${SELECTED_DUNGEON.keyEmojIDs[0].keyEmojiName}` : "one of the following keys"}, react accordingly with ${SELECTED_DUNGEON.keyEmojIDs.map(x => guild.client.emojis.cache.get(x.keyEmojID)).join(" ")}\n`;
+			optionalReactsField += `⇒ If you have ${SELECTED_DUNGEON.keyEmojIDs.length === 1 ? `a ${SELECTED_DUNGEON.keyEmojIDs[0].keyEmojiName}` : "one of the following keys"}, react accordingly with ${SELECTED_DUNGEON.keyEmojIDs.map(x => msg.client.emojis.cache.get(x.keyEmojID)).join(" ")}\n`;
 		}
 		optionalReactsField += `⇒ React with the emoji(s) corresponding to your class and gear choices.`;
 

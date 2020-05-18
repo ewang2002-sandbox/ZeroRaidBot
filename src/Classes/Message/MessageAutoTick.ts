@@ -165,7 +165,6 @@ export class MessageAutoTick {
 			}
 			catch (e) {
 				// chances are, the _msg was deleted.
-				console.log(e);
 				this.disableAutoTick();
 			}
 

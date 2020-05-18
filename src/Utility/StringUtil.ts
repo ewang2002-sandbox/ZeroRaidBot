@@ -4,7 +4,7 @@ export namespace StringUtil {
 	 * @param {string} msg The string.
 	 * @returns {string} The modified string.
 	 */
-	export function applyCodeBlocks(msg: string): string { 
+	export function applyCodeBlocks(msg: any): string { 
 		return "```\n" + msg + "```";
 	}
 

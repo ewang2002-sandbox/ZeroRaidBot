@@ -9,11 +9,11 @@ bot.login();
 process.on("uncaughtException", (error) => {
     console.error(`ERROR OCCURRED AT: ${DateUtil.getTime()}`);
     console.error(error);
-    console.log("=====================");
+    console.info("=====================");
 });
 
 process.on("unhandledRejection", (error) => {
     console.error(`ERROR OCCURRED AT: ${DateUtil.getTime()}`);
     console.error(error);
-    console.log("=====================");
+    console.info("=====================");
 });

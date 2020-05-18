@@ -11,7 +11,7 @@ import { MessageUtil } from "../../Utility/MessageUtil";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
 import { GenericMessageCollector } from "../../Classes/Message/GenericMessageCollector";
 import { AFKDungeon } from "../../Constants/AFKDungeon";
-import { ISection } from "../../Definitions/ISection";
+import { ISection } from "../../Templates/ISection";
 import { TimeUnit } from "../../Definitions/TimeUnit";
 import { GuildUtil } from "../../Utility/GuildUtil";
 import { FilterQuery, UpdateQuery } from "mongodb";

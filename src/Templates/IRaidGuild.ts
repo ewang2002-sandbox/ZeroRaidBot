@@ -1,7 +1,7 @@
 import { IRaidInfo } from "../Definitions/IRaidInfo";
 import { IBlacklistedUser } from "../Definitions/IBlacklistedUser";
 import { IModMail } from "../Definitions/IModMail";
-import { ISection } from "../Definitions/ISection";
+import { ISection } from "./ISection";
 import { IVerification } from "../Definitions/IVerification";
 import { IPunishment } from "../Definitions/IPunishment";
 import { IHeadCountInfo } from "../Definitions/IHeadCountInfo";

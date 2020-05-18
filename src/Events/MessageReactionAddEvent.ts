@@ -2,7 +2,7 @@ import { MessageReaction, User, Message, Guild, GuildMember, TextChannel, RoleRe
 import { GuildUtil } from "../Utility/GuildUtil";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
-import { ISection } from "../Definitions/ISection";
+import { ISection } from "../Templates/ISection";
 import { VerificationHandler } from "../Helpers/VerificationHandler";
 import { IRaidInfo } from "../Definitions/IRaidInfo";
 import { RaidStatus } from "../Definitions/RaidStatus";

@@ -3,7 +3,7 @@ import { IRaidGuild } from "../Templates/IRaidGuild";
 import { IRaidUser } from "../Templates/IRaidUser";
 import { MessageAutoTick } from "../Classes/Message/MessageAutoTick";
 import { StringUtil } from "../Utility/StringUtil";
-import { ISection } from "../Definitions/ISection";
+import { ISection } from "../Templates/ISection";
 import { MongoDbHelper } from "./MongoDbHelper";
 import { MessageUtil } from "../Utility/MessageUtil";
 import { ITiffitRealmEyeProfile, ITiffitNoUser } from "../Definitions/ITiffitRealmEye";
@@ -193,75 +193,12 @@ export module VerificationHandler {
 				}
 
 				if (inGameName === "") { // TODO implement
-					const nameToUse: string | "CANCEL_" | "TIME_" = await new Promise(async (resolve) => {
-						const nameEmbed: MessageEmbed = new MessageEmbed()
-							.setAuthor(member.user.tag, member.user.displayAvatarURL())
-							.setTitle(`Verification For: **${guild.name}**`)
-							.setDescription("Please type your in-game name now. Your in-game name should be spelled exactly as seen in-game; however, capitalization does NOT matter.\n\nTo cancel this process, simply react with ❌.")
-							.setColor("RANDOM")
-							.setFooter("⏳ Time Remaining: 2 Minutes and 0 Seconds.");
-						botMsg = await botMsg.edit(nameEmbed);
-						for await (const [, reaction] of botMsg.reactions.cache) {
-							for await (const [, user] of reaction.users.cache) {
-								if (user.bot) {
-									await reaction.remove();
-									break;
-								}
-							}
-						}
-						await botMsg.react("❌");
-
-						const mcd: MessageAutoTick = new MessageAutoTick(botMsg, nameEmbed, 2 * 60 * 1000, null, "⏳ Time Remaining: {m} Minutes and {s} Seconds.");
-						const msgCollector: MessageCollector = new MessageCollector(dmChannel, m => m.author.id === member.user.id, {
-							time: 2 * 60 * 1000
-						});
-
-						//#region reaction collector
-						const reactFilter: ((r: MessageReaction, u: User) => boolean) = (reaction: MessageReaction, user: User) => {
-							return reaction.emoji.name === "❌" && user.id === member.user.id;
-						}
-
-						const reactCollector: ReactionCollector = botMsg.createReactionCollector(reactFilter, {
-							time: 2 * 60 * 1000,
-							max: 1
-						});
-
-						reactCollector.on("collect", async () => {
-							msgCollector.stop();
-							await botMsg.delete().catch(() => { });
-							return resolve("CANCEL_");
-						});
-
-						//#endregion
-
-						msgCollector.on("collect", async (msg: Message) => {
-							if (!/^[a-zA-Z]+$/.test(msg.content)) {
-								await MessageUtil.send({ content: "Please type a __valid__ in-game name." }, member.user);
-								return;
-							}
-
-							if (msg.content.length > 10) {
-								await MessageUtil.send({ content: "Your in-game name should not exceed 10 characters. Please try again." }, member.user);
-								return;
-							}
-
-							if (msg.content.length === 0) {
-								await MessageUtil.send({ content: "Please type in a valid in-game name." }, member.user);
-								return;
-							}
-
-							msgCollector.stop();
-							reactCollector.stop();
-							return resolve(msg.content);
-						});
-
-						msgCollector.on("end", (collected: Collection<string, Message>, reason: string) => {
-							mcd.disableAutoTick();
-							if (reason === "time") {
-								return resolve("TIME_");
-							}
-						});
-					});
+					const nameToUse: string | "CANCEL_" | "TIME_" = await getInGameNameByPrompt(
+						member.user,
+						dmChannel,
+						null, 
+						botMsg
+					);
 
 					if (nameToUse === "CANCEL_" || nameToUse === "TIME_") {
 						if (typeof verificationAttemptsChannel !== "undefined") {
@@ -940,7 +877,7 @@ export module VerificationHandler {
 			.setTitle(`Verification For: **${guild.name}**`)
 			.setDescription(`You have selected the in-game name: **\`${inGameName}\`**. To access your RealmEye profile, click [here](https://www.realmeye.com/player/${inGameName}).\n\nYou are almost done verifying; however, you need to do a few more things.\n\nTo stop the verification process, react with ❌.`)
 			.setColor("RANDOM")
-			.addField("1. Meet the Requirements", `Ensure you meet the requirements posted. For your convenience, the requirements for the server are listed below.${StringUtil.applyCodeBlocks(reqs.toString())}`)
+			.addField("1. Meet the Requirements", `Ensure you meet the requirements posted. For your convenience, the requirements are listed below.${StringUtil.applyCodeBlocks(reqs.toString())}`)
 			.setFooter("⏳ Time Remaining: 15 Minutes and 0 Seconds.");
 		if (isOldProfile) {
 			verifEmbed.addField("2. Get Your Verification Code", "Normally, I would require a verification code for your RealmEye profile; however, because I recognize you from a different server, you can skip this process completely.");
@@ -1328,6 +1265,107 @@ export module VerificationHandler {
 					userId: manualVerifMember.id
 				}
 			}
+		});
+	}
+
+	/**
+	 * Asks the user for their in-game name.
+	 * @param {User} user The user that initiated the function.
+	 * @param {DMChannel} dmChannel The DM channel.
+	 * @param {IRaidUser} [userDb] The user DB.
+	 * @param {Message} [botMsg] The bot message, if any.
+	 */
+	export async function getInGameNameByPrompt(
+		initUser: User,
+		dmChannel: DMChannel,
+		userDb: IRaidUser | null = null,
+		botMsg: Message | null = null
+	): Promise<string> {
+		return new Promise(async (resolve) => {
+			const nameEmbed: MessageEmbed = new MessageEmbed()
+				.setAuthor(initUser.tag, initUser.displayAvatarURL())
+				.setTitle("Verification For Profile")
+				.setDescription("Please type your in-game name now. Your in-game name should be spelled exactly as seen in-game; however, capitalization does NOT matter.\n\nTo cancel this process, simply react with ❌.")
+				.setColor("RANDOM")
+				.setFooter("⏳ Time Remaining: 2 Minutes and 0 Seconds.");
+
+			let resBotMsg: Message;
+			if (botMsg === null) {
+				resBotMsg = await dmChannel.send(nameEmbed);
+			}
+			else {
+				resBotMsg = await botMsg.edit(nameEmbed);
+			}
+
+			for await (const [, reaction] of resBotMsg.reactions.cache) {
+				for await (const [, user] of reaction.users.cache) {
+					if (user.bot) {
+						await reaction.remove();
+						break;
+					}
+				}
+			}
+			await resBotMsg.react("❌");
+
+			const mcd: MessageAutoTick = new MessageAutoTick(resBotMsg, nameEmbed, 2 * 60 * 1000, null, "⏳ Time Remaining: {m} Minutes and {s} Seconds.");
+			const msgCollector: MessageCollector = new MessageCollector(dmChannel, m => m.author.id === initUser.id, {
+				time: 2 * 60 * 1000
+			});
+
+			//#region reaction collector
+			const reactFilter: ((r: MessageReaction, u: User) => boolean) = (reaction: MessageReaction, user: User) => {
+				return reaction.emoji.name === "❌" && user.id === initUser.id;
+			}
+
+			const reactCollector: ReactionCollector = resBotMsg.createReactionCollector(reactFilter, {
+				time: 2 * 60 * 1000,
+				max: 1
+			});
+
+			reactCollector.on("collect", async () => {
+				msgCollector.stop();
+				await resBotMsg.delete().catch(() => { });
+				return resolve("CANCEL_");
+			});
+
+			msgCollector.on("collect", async (msg: Message) => {
+				if (!/^[a-zA-Z]+$/.test(msg.content)) {
+					await MessageUtil.send({ content: "Please type a __valid__ in-game name." }, msg.author);
+					return;
+				}
+
+				if (msg.content.length > 10) {
+					await MessageUtil.send({ content: "Your in-game name should not exceed 10 characters. Please try again." }, msg.author);
+					return;
+				}
+
+				if (msg.content.length === 0) {
+					await MessageUtil.send({ content: "Please type in a valid in-game name." }, msg.author);
+					return;
+				}
+
+				if (userDb !== null) {
+					const hasBeenUsedBefore: boolean = userDb.rotmgLowercaseName === msg.content.toLowerCase()
+						|| userDb.otherAccountNames.some(x => x.lowercase === msg.content.toLowerCase());
+
+					if (hasBeenUsedBefore) {
+						await MessageUtil.send({ content: "The in-game name you have chosen is already being used, either as your main account or as an alternative account." }, msg.author);
+						return;
+					}
+				}
+
+
+				msgCollector.stop();
+				reactCollector.stop();
+				return resolve(msg.content);
+			});
+
+			msgCollector.on("end", (collected: Collection<string, Message>, reason: string) => {
+				mcd.disableAutoTick();
+				if (reason === "time") {
+					return resolve("TIME_");
+				}
+			});
 		});
 	}
 }

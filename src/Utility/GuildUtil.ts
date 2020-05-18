@@ -1,7 +1,6 @@
 import { IRaidGuild } from "../Templates/IRaidGuild";
-import { ISection } from "../Definitions/ISection";
-import { Guild, Collection, Role, GuildMember } from "discord.js";
-import { RoleNames } from "../Definitions/Types";
+import { ISection } from "../Templates/ISection";
+import { GuildMember } from "discord.js";
 
 export namespace GuildUtil { 
 	export type RaidLeaderRole = null | "TRL" | "ARL" | "RL" | "HRL";
@@ -157,79 +156,4 @@ export namespace GuildUtil {
 	export function getSectionRaidLeaderRoles(section: ISection): string[] {
 		return [section.roles.trialLeaderRole, section.roles.almostLeaderRole, section.roles.raidLeaderRole];
 	}
-
-	/* WORKING ON AUTOMATIC ROLE ORDER ORGANIZATION
-	export function getRoleOrder(guild: Guild, db: IRaidGuild): [string, RoleNames][] {
-		const returnVal: [string, RoleNames][] = [];
-		// roles will be sorted
-		// from highest pos to lowest pos
-		const sortedRoles: Role[] = guild.roles.cache
-			.sort((a, b) => b.position - a.position)
-			.array();
-		let i: number = 0;
-
-		for (i = 0; i < sortedRoles.length; i++) {
-			const result: RoleNames | null = resolveRole(db, sortedRoles[i]);
-			if (result === null) {
-				continue;
-			}
-
-
-		}
-		for (const [id, role] of sortedRoles) {
-			const result: RoleNames | null = resolveRole(db, role);
-			if (result === null) {
-				continue;
-			}
-			returnVal.push([id, result]);
-		}
-
-		return returnVal;
-	}
-
-	function resolveRole(guildDb: IRaidGuild, role: Role | string): RoleNames | null {
-		const id: string = typeof role === "string" ? role : role.id;
-		
-		if (guildDb.roles.moderator === id) {
-			return "moderator";
-		}
-		else if (guildDb.roles.officer === id) {
-			return "officer";
-		}
-		else if (guildDb.roles.headRaidLeader === id) {
-			return "headRaidLeader";
-		}
-		else if (guildDb.roles.support === id) {
-			return "support";
-		}
-		else if (guildDb.roles.raider === id) {
-			return "raider";
-		}
-		else if (guildDb.roles.pardonedRaidLeader === id) {
-			return "pardonedRaidLeader";
-		}
-		else if (guildDb.roles.suspended === id) {
-			return "suspended";
-		}
-		else if (guildDb.roles.universalAlmostRaidLeader === id) {
-			return "universalAlmostRaidLeader";
-		}
-		else if (guildDb.roles.universalRaidLeader === id) {
-			return "universalRaidLeader";
-		}
-
-		for (const sec of [getDefaultSection(guildDb), ...guildDb.sections]) {
-			if (sec.roles.almostLeaderRole === id) {
-				return "universalAlmostRaidLeader";
-			}
-			else if (sec.roles.raidLeaderRole === id) {
-				return "universalRaidLeader";
-			}
-			else if (sec.roles.trialLeaderRole === id) {
-				return "trialLeader";
-			}
-		}
-
-		return null;
-	}*/
 }

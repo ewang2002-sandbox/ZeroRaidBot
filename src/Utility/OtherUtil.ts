@@ -1,4 +1,4 @@
-import { Collection, VoiceChannel } from "discord.js";
+import { Collection, VoiceChannel, Message, EmojiResolvable } from "discord.js";
 
 export module OtherUtil {
     /**
@@ -19,4 +19,23 @@ export module OtherUtil {
         return nums.sort();
     }
 
+    /**
+	 * Reacts to a message fast.
+	 * @param msg The message to react to.
+	 * @param reactions The set of reactions to use.
+	 */
+	export function reactFaster(msg: Message, reactions: EmojiResolvable[]): void {
+		let i: number = 0;
+		const interval: NodeJS.Timeout = setInterval(() => {
+			// think of this as a for loop
+			// for (let i = 0; i < reactions.length; i++)
+			if (i < reactions.length) { 
+				msg.react(reactions[i]).catch(e => { });
+			}
+			else {
+				clearInterval(interval);
+			}
+			i++;
+		}, 500);
+	}
 }

@@ -1,5 +1,5 @@
-import { IVerification } from "./IVerification";
-import { IManualVerification } from "./IManualVerification";
+import { IVerification } from "../Definitions/IVerification";
+import { IManualVerification } from "../Definitions/IManualVerification";
 
 /**
  * The name of the section will be the name of the category that the channels are under.

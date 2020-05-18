@@ -5,7 +5,7 @@ import { Message, GuildMember, Role, Guild, MessageEmbed, MessageReaction, User,
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { UserHandler } from "../../Helpers/UserHandler";
 import { MessageUtil } from "../../Utility/MessageUtil";
-import { ISection } from "../../Definitions/ISection";
+import { ISection } from "../../Templates/ISection";
 import { GuildUtil } from "../../Utility/GuildUtil";
 import { IManualVerification } from "../../Definitions/IManualVerification";
 import { VerificationHandler } from "../../Helpers/VerificationHandler";

@@ -1,6 +1,6 @@
 import { RaidStatus } from "./RaidStatus";
 import { IDungeonData } from "./IDungeonData";
-import { ISection } from "./ISection";
+import { ISection } from "../Templates/ISection";
 
 export interface IRaidInfo {
 	/**

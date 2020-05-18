@@ -5,7 +5,7 @@ import { AFKDungeon } from "../Constants/AFKDungeon";
 import { AllEmoji, NitroEmoji } from "../Constants/EmojiData";
 import { IDungeonData } from "../Definitions/IDungeonData";
 import { IRaidInfo } from "../Definitions/IRaidInfo";
-import { ISection } from "../Definitions/ISection";
+import { ISection } from "../Templates/ISection";
 import { RaidStatus } from "../Definitions/RaidStatus";
 import { RaidDbHelper } from "./RaidDbHelper";
 import { Zero } from "../Zero";
@@ -20,6 +20,7 @@ import { MessageAutoTick } from "../Classes/Message/MessageAutoTick";
 import { NumberUtil } from "../Utility/NumberUtil";
 import { MongoDbHelper } from "./MongoDbHelper";
 import { StringBuilder } from "../Classes/String/StringBuilder";
+import { OtherUtil } from "../Utility/OtherUtil";
 
 export module RaidHandler {
 	/**
@@ -466,20 +467,15 @@ export module RaidHandler {
 		}, MAX_TIME_LEFT);
 
 		// pin & react
-		await afkCheckMessage.pin().catch(() => { });
-		await afkCheckMessage.react(SELECTED_DUNGEON.portalEmojiID).catch(() => { });
+		afkCheckMessage.pin().catch(() => { });
+		let emojisToReactTo: EmojiResolvable[] = [SELECTED_DUNGEON.portalEmojiID];
 		if (reactWithNitroBoosterEmoji) {
-			await afkCheckMessage.react(earlyLocationEmoji).catch(e => { });
+			emojisToReactTo.push(earlyLocationEmoji);
 		}
 		// TODO make it so when ppl react to key while bot is still reacting
 		// it still works 
-		for await (const keyId of SELECTED_DUNGEON.keyEmojIDs) {
-			await afkCheckMessage.react(keyId.keyEmojID).catch(() => { });
-		}
-
-		for await (const reaction of SELECTED_DUNGEON.reactions) {
-			await afkCheckMessage.react(reaction).catch(() => { });
-		}
+		emojisToReactTo.push(...SELECTED_DUNGEON.keyEmojIDs.map(x => x.keyEmojID), ...SELECTED_DUNGEON.reactions);
+		OtherUtil.reactFaster(afkCheckMessage, emojisToReactTo);
 
 		// ==================================
 		// control panel stuff
@@ -1309,7 +1305,7 @@ export module RaidHandler {
 			.setDescription(`⇒ **React** with ${Zero.RaidClient.emojis.cache.get(AllEmoji)} if you want to participate in a raid with us.\n⇒ If you have a key and are willing to use it, then react with the corresponding key(s).`);
 
 		const emojis: EmojiResolvable[] = [
-			Zero.RaidClient.emojis.cache.get(AllEmoji) as GuildEmoji
+			Zero.RaidClient.emojis.cache.get(AllEmoji) as GuildEmoji,
 		];
 		for (const dungeon of dungeonsForHc) {
 			for (const key of dungeon.keyEmojIDs) {
@@ -1321,9 +1317,7 @@ export module RaidHandler {
 		const mst: MessageSimpleTick = new MessageSimpleTick(hcMessage, "@here, a headcount is currently in progress. There are {m} minutes and {s} seconds remaining on this headcount.", MAX_TIME_LEFT * 2); // 10 min
 		await hcMessage.pin().catch(() => { });
 
-		for await (const emoji of emojis) {
-			await hcMessage.react(emoji).catch(() => { });
-		}
+		OtherUtil.reactFaster(hcMessage, emojis);
 
 		const hcInfo: IHeadCountInfo = {
 			section: section,
@@ -1407,11 +1401,11 @@ export module RaidHandler {
 		CURRENT_HEADCOUNT_DATA.delete(hcInfo.msgID);
 
 		// let's now get the data, if any 
-		const reactionsFromHeadcount: Collection<string, MessageReaction> = hcMsg.reactions.cache;
+		const reactionsFromHeadcount: Collection<string, MessageReaction> = (await hcMsg.fetch()).reactions.cache;
 		const newEmbed: MessageEmbed = new MessageEmbed()
 			.setTitle(`🔕 The **Headcount** Has Been Ended ${endedBy === "AUTO" ? "Automatically" : `By: ${endedBy.displayName}`}`)
 			.setColor("RANDOM")
-			.setDescription(`There are currently ${(reactionsFromHeadcount.get(AllEmoji) as MessageReaction).users.cache.size - 1} raiders ready.`)
+			.setDescription(`There are currently ${(reactionsFromHeadcount.get(AllEmoji) as MessageReaction).users.cache.size} raiders ready.`)
 			.setTimestamp();
 
 		const newControlPanelEmbed: MessageEmbed = new MessageEmbed()
@@ -1473,12 +1467,18 @@ export module RaidHandler {
 	 * Precondition: The dungeons in `ihcpi` must have at least one key. 
 	 */
 	function getHeadCountEmbed(msg: Message, ihcpi: { data: IDungeonData, isIncluded: boolean }[]): MessageEmbed {
+		let amtKeys: number = 0;
+		for (const included of ihcpi) {
+			if (included.isIncluded) {
+				amtKeys += included.data.keyEmojIDs.length;
+			}
+		}
 		const configureHeadCountEmbed: MessageEmbed = new MessageEmbed()
 			.setTitle("⚙️ Configuring Headcount: Dungeon Selection")
 			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 			.setDescription("You are close to starting a headcount! However, you need to select dungeons from the below list. To begin, please type the number corresponding to the dungeon(s) you want to add to the headcount. To send this headcount, type `send`. To cancel, type `cancel`.\n\nA ☑️ next to the dungeon means the dungeon will be included in the headcount.\nA ❌ means the dungeon will not be part of the overall headcount.")
 			.setColor("RANDOM")
-			.setFooter(`${(msg.guild as Guild).name} | ${ihcpi.filter(x => x.isIncluded).length}/19 Remaining Slots`);
+			.setFooter(`${(msg.guild as Guild).name} | ${amtKeys}/19 Remaining Slots`);
 		let i: number = 0;
 		let k: number = 0;
 		let l: number = 0;

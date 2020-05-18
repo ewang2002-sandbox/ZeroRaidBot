@@ -20,6 +20,7 @@ import { RoleInfoCommand } from "../Commands/Server Information/RoleInfoCommand"
 import { ServerInfoCommand } from "../Commands/Server Information/ServerInfoCommand";
 import { ChannelInfoCommand } from "../Commands/Server Information/ChannelInfoCommand";
 import { UserInfoCommand } from "../Commands/Server Information/UserInfoCommand";
+import { ViewUserProfileCommand } from "../Commands/User Profile/ViewUserProfileCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -87,6 +88,10 @@ export class CommandManager {
 			new UnsuspendCommand(),
 			new BlacklistCommand(),
 			new UnblacklistCommand()
+		]);
+		
+		this.commands.set("User Profile", [
+			new ViewUserProfileCommand()
 		]);
 
 		this.hasBeenLoaded = true;

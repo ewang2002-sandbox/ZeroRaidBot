@@ -7,7 +7,7 @@ import { RoleNames } from "../Definitions/Types";
 import { StringUtil } from "../Utility/StringUtil";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
 import { MessageUtil } from "../Utility/MessageUtil";
-import { ISection } from "../Definitions/ISection";
+import { ISection } from "../Templates/ISection";
 import { GuildUtil } from "../Utility/GuildUtil";
 
 export async function onMessageEvent(msg: Message) {

@@ -4,7 +4,7 @@ import { MongoDbHelper } from "../Helpers/MongoDbHelper";
 import { StringUtil } from "../Utility/StringUtil";
 import { DateUtil } from "../Utility/DateUtil";
 import { FilterQuery } from "mongodb";
-import { ISection } from "../Definitions/ISection";
+import { ISection } from "../Templates/ISection";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { IManualVerification } from "../Definitions/IManualVerification";
 

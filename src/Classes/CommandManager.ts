@@ -21,6 +21,7 @@ import { ServerInfoCommand } from "../Commands/Server Information/ServerInfoComm
 import { ChannelInfoCommand } from "../Commands/Server Information/ChannelInfoCommand";
 import { UserInfoCommand } from "../Commands/Server Information/UserInfoCommand";
 import { ViewUserProfileCommand } from "../Commands/User Profile/ViewUserProfileCommand";
+import { AddAltAccountCommand } from "../Commands/User Profile/AddAltAccountCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -91,7 +92,8 @@ export class CommandManager {
 		]);
 		
 		this.commands.set("User Profile", [
-			new ViewUserProfileCommand()
+			new ViewUserProfileCommand(),
+			new AddAltAccountCommand()
 		]);
 
 		this.hasBeenLoaded = true;

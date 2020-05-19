@@ -70,10 +70,10 @@ export class ViewUserProfileCommand extends Command {
 
 
         embed.setDescription(descBuilder.toString())
-            .addField("Add Alternative Account", "You can use this command to either add an alternative account to your profile __or__ update your name in case of a name change.\n⇒ Command: `;addaltaccount IGN`\n⇒ Example: `;addaltaccount Testing`")
+            .addField("Add Alternative Account", "You can use this command to either add an alternative account to your profile __or__ update your name in case of a name change.\n⇒ Command: `;addaltaccount`")
             .addField("Remove Alternative Account", "You can use this command to remove an alternative account from your profile.\n⇒ Command: `;removealtaccount`\n⇒ Example: `;removealtaccount`")
-            .addField("Switch Main & Alternative Accounts", "You can use this account to switch your main account with one of your alternative accounts.\n⇒ Command: `;switchaccount`\n⇒ Example: `;switchaccount`")
-            .addField("View Server Profile", "Allows you to view your server statistics, make changes to your profile within the server, and more. Run this command in any server or in DMs.\n⇒ Command: `;serverprofile`\n⇒ Example: `;serverprofile`");
+            .addField("Switch Main & Alternative Accounts", "You can use this account to switch your main account with one of your alternative accounts.\n⇒ Command: `;switchaccount`")
+            .addField("View Server Profile", "Allows you to view your server statistics, make changes to your profile within the server, and more. Run this command in any server or in DMs.\n⇒ Command: `;serverprofile`");
         
         await dmChannel.send(embed);
     }

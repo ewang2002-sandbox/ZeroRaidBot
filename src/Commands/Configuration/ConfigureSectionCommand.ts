@@ -227,7 +227,7 @@ export class ConfigureSectionCommand extends Command {
 			d: "Mention, or type the ID of, the role that you want to make the Section Almost Leader role. Section Almost Leaders are leaders that have more experience than a Section Trial Leader but are not quite ready for the full responsibilities associated with being a full-on Section Leader. **NOTE:** Unlike universal almost leaders, section almost leaders can only start AFK checks and headcounts in their designated sections.", // this sounds awkward to say out loud, doesn't it? 
 			m: false,
 			mainMongo: "roles.sectionAlmostLeader",
-			sectMongo: "sections.$.roles.mainSectionLeaderRole.sectionAlmostLeaderRole"
+			sectMongo: "sections.$.roles.almostLeaderRole"
 		},
 		{
 			q: "Configure Section Trial Leader Role",

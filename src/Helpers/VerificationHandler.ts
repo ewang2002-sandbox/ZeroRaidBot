@@ -196,7 +196,8 @@ export module VerificationHandler {
 					const nameToUse: string | "CANCEL_" | "TIME_" = await getInGameNameByPrompt(
 						member.user,
 						dmChannel,
-						null, 
+						guild,
+						null,
 						botMsg
 					);
 
@@ -335,6 +336,8 @@ export module VerificationHandler {
 						canReact = true;
 						return;
 					}
+
+					nameHistory = TestCasesNameHistory.withNames();
 
 					const nameFromProfile: string = requestData.data.name;
 					if (!isOldProfile) {
@@ -1272,20 +1275,30 @@ export module VerificationHandler {
 	 * Asks the user for their in-game name.
 	 * @param {User} user The user that initiated the function.
 	 * @param {DMChannel} dmChannel The DM channel.
-	 * @param {IRaidUser} [userDb] The user DB.
-	 * @param {Message} [botMsg] The bot message, if any.
+	 * @param {Guild} [guild = null] The guild.
+	 * @param {IRaidUser} [userDb = null] The user DB.
+	 * @param {Message} [botMsg = null] The bot message, if any.
 	 */
 	export async function getInGameNameByPrompt(
 		initUser: User,
 		dmChannel: DMChannel,
+		guild: Guild | null = null,
 		userDb: IRaidUser | null = null,
 		botMsg: Message | null = null
 	): Promise<string> {
 		return new Promise(async (resolve) => {
+			let desc: string;
+			if (guild === null) {
+				desc = "Please type your in-game name now. This in-game name can either be one of your alternative accounts OR your new name (if you recently got a name change). Your in-game name should be spelled exactly as seen in-game; however, capitalization does NOT matter.";
+			}
+			else {
+				desc = "Please type your in-game name now. Your in-game name should be spelled exactly as seen in-game; however, capitalization does NOT matter.";
+			}
+
 			const nameEmbed: MessageEmbed = new MessageEmbed()
 				.setAuthor(initUser.tag, initUser.displayAvatarURL())
-				.setTitle("Verification For Profile")
-				.setDescription("Please type your in-game name now. Your in-game name should be spelled exactly as seen in-game; however, capitalization does NOT matter.\n\nTo cancel this process, simply react with ❌.")
+				.setTitle(guild === null ? "Verification For **User Profile**" : `Verification For **${guild.name}**`)
+				.setDescription(`${desc}\n\nTo cancel this process, simply react with ❌.`)
 				.setColor("RANDOM")
 				.setFooter("⏳ Time Remaining: 2 Minutes and 0 Seconds.");
 

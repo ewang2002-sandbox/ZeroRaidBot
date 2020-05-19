@@ -309,7 +309,7 @@ export const AFKDungeon: IDungeonData[] = [
 			{
 				keyEmojID: "561248917027684367",
 				// Numeric literals with absolute values equal to 2^53 or greater are too large to be represented accurately as integers.ts(80008)
-				// when you do 561248917027684367 instead of "561248917027684367" -- interesting
+				// when you do 561248917027684367 instead of "561248917027684367n" -- interesting
 				keyEmojiName: "Mountain Temple Key"
 			}
 		],

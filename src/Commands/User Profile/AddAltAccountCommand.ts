@@ -25,9 +25,9 @@ export class AddAltAccountCommand extends Command {
                 "addaltaccount",
                 [],
                 "Adds an alternative account to your profile or updates your name in case of a name change.",
-                ["addaltaccount <IGN: STRING>"],
-                ["userprofile Testing"],
-                1
+                ["addaltaccount"],
+                ["addaltaccount"],
+                0
             ),
             new CommandPermission(
                 [],
@@ -64,7 +64,8 @@ export class AddAltAccountCommand extends Command {
 
         const inGameName: string | "CANCEL_" | "TIME_" = await VerificationHandler.getInGameNameByPrompt(
             msg.author,
-            dmChannel,
+			dmChannel,
+			null,
             userDb,
             null
         );

@@ -20,6 +20,16 @@ export module TestCasesNameHistory {
                 name: "BigEpic",
                 from: "",
                 to: ""
+            },
+            {
+                name: "HahaYes",
+                from: "",
+                to: ""
+            },
+            {
+                name: "GoodDay",
+                from: "",
+                to: ""
             }
         ];
     }

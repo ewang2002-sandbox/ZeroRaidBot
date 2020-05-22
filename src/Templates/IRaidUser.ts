@@ -110,6 +110,11 @@ export interface IRaidUser {
 			endgame: number;
 
 			/**
+			 * The amt of realm clearing runs done.
+			 */
+			realmClearing: number;
+
+			/**
 			 * server
 			 */
 			server: string;
@@ -125,6 +130,11 @@ export interface IRaidUser {
 			 * Endgame dungeons led.
 			 */
 			endgame: number;
+
+			/**
+			 * Realm clearing led
+			 */
+			realmClearing: number;
 
 			/**
 			 * server

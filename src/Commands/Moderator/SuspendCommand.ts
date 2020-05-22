@@ -143,7 +143,7 @@ export class SuspendCommand extends Command {
 		const embed: MessageEmbed = new MessageEmbed()
 			.setAuthor(memberToSuspend.user.tag, memberToSuspend.user.displayAvatarURL())
 			.setTitle("🚩 Member Suspended")
-			.setDescription(`⇒ Suspended Member: ${memberToSuspend} (${memberToSuspend.displayName})\n⇒ Moderator: ${moderator} (${moderator.displayName})\n⇒ Reason: ${reason}\n⇒ nDuration: ${suspensionTime[1]}`)
+			.setDescription(`⇒ Suspended Member: ${memberToSuspend} (${memberToSuspend.displayName})\n⇒ Moderator: ${moderator} (${moderator.displayName})\n⇒ Reason: ${reason}\n⇒ Duration: ${suspensionTime[1]}`)
 			.setColor("RED")
 			.setTimestamp()
 			.setFooter("Suspension Command Executed At");

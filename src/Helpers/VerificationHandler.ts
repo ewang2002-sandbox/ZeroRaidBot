@@ -11,7 +11,7 @@ import { Zero } from "../Zero";
 import { TiffitRealmEyeAPI } from "../Constants/ConstantVars";
 import { StringBuilder } from "../Classes/String/StringBuilder";
 import { AxiosResponse } from "axios";
-import { FilterQuery, UpdateQuery } from "mongodb";
+import { FilterQuery, UpdateQuery, InsertOneWriteOpResult, WithId } from "mongodb";
 import { ArrayUtil } from "../Utility/ArrayUtil";
 import { INameHistory, IAPIError } from "../Definitions/ICustomREVerification";
 import { TestCasesNameHistory } from "../TestCases/TestCases";
@@ -836,6 +836,151 @@ export module VerificationHandler {
 				});
 			}
 		}
+	}
+
+	/**
+	 * Checks and see if a user has two profiles; if so, merge both profiles together. 
+	 * @param {(GuildMember | User)} member The guild member that has been verified. 
+	 * @param {string} nameFromProfile The name associated with the guild member. 
+	 * @param {INameHistory[]} nameHistory The person's name history. 
+	 * NOTE: There must be at least one entry in the db corresponding to the person.
+	 */
+	export async function checkForDuplicateProfiles(
+		member: GuildMember | User,
+		nameFromProfile: string,
+		nameHistory: INameHistory[]
+	): Promise<IRaidUser> {
+		const ignFilterQuery: FilterQuery<IRaidUser> = {
+			$or: [
+				{
+					rotmgLowercaseName: nameFromProfile.toLowerCase()
+				},
+				{
+					"otherAccountNames.lowercase": nameFromProfile.toLowerCase()
+				}
+			]
+		};
+		const allPossibleEntries: IRaidUser[] = await MongoDbHelper.MongoDbUserManager.MongoUserClient
+			.find(ignFilterQuery).toArray();
+		if (allPossibleEntries.length === 0) {
+			throw new Error("no profiles found");
+		}
+
+		if (allPossibleEntries.length === 1) {
+			return allPossibleEntries[0];
+		}
+
+		// have multiple entries
+		const newEntry: IRaidUser = {
+			discordUserId: member.id,
+			rotmgDisplayName: nameFromProfile,
+			rotmgLowercaseName: nameFromProfile.toLowerCase(),
+			otherAccountNames: [],
+			lastModified: new Date().getTime(),
+			general: {
+				keyPops: [],
+				voidVials: [],
+				wcRuns: [],
+				completedRuns: [],
+				leaderRuns: [],
+				moderationHistory: []
+			}
+		};
+
+		// start transferring data
+		const isAlreadyListed: (name: string) => boolean = (name: string) => newEntry.otherAccountNames.some(x => x.lowercase === name.toLowerCase());
+
+		for (const entry of allPossibleEntries) {
+			if (nameFromProfile.toLowerCase() !== entry.rotmgLowercaseName && !isAlreadyListed(entry.rotmgDisplayName)) {
+				newEntry.otherAccountNames.push({ displayName: nameFromProfile, lowercase: nameFromProfile.toLowerCase() });
+			}
+
+			for (const alt of entry.otherAccountNames) {
+				if (nameFromProfile.toLowerCase() !== alt.lowercase && !isAlreadyListed(alt.displayName)) {
+					newEntry.otherAccountNames.push({ displayName: alt.displayName, lowercase: alt.lowercase });
+				}
+			}
+
+			for (const keyPopData of entry.general.keyPops) {
+				const index: number = newEntry.general.keyPops.findIndex(x => x.server === keyPopData.server);
+				if (index === -1) {
+					// data doesn't exist
+					newEntry.general.keyPops.push({ server: keyPopData.server, keysPopped: keyPopData.keysPopped });
+				}
+				else {
+					newEntry.general.keyPops[index].keysPopped += keyPopData.keysPopped;
+				}
+			}
+
+			for (const voidVialData of entry.general.voidVials) {
+				const index: number = newEntry.general.voidVials.findIndex(x => x.server === voidVialData.server);
+				if (index === -1) {
+					// not found
+					newEntry.general.voidVials.push({ popped: voidVialData.popped, stored: voidVialData.stored, server: voidVialData.server });
+				}
+				else {
+					newEntry.general.voidVials[index].popped += voidVialData.popped;
+					newEntry.general.voidVials[index].stored += voidVialData.stored;
+				}
+			}
+
+			for (const wcRunData of entry.general.wcRuns) {
+				const index: number = newEntry.general.wcRuns.findIndex(x => x.server === wcRunData.server);
+				if (index === -1) {
+					// nope
+					newEntry.general.wcRuns.push({ wcIncs: { amt: wcRunData.wcIncs.amt, popped: wcRunData.wcIncs.popped }, swordRune: { amt: wcRunData.swordRune.amt, popped: wcRunData.swordRune.popped }, helmRune: { amt: wcRunData.helmRune.amt, popped: wcRunData.helmRune.popped }, shieldRune: { amt: wcRunData.shieldRune.amt, popped: wcRunData.shieldRune.popped }, server: wcRunData.server });
+				}
+				else {
+					newEntry.general.wcRuns[index].helmRune.amt += wcRunData.helmRune.amt;
+					newEntry.general.wcRuns[index].helmRune.popped += wcRunData.helmRune.popped;
+					newEntry.general.wcRuns[index].shieldRune.amt += wcRunData.shieldRune.amt;
+					newEntry.general.wcRuns[index].shieldRune.popped += wcRunData.shieldRune.popped;
+					newEntry.general.wcRuns[index].swordRune.amt += wcRunData.swordRune.amt;
+					newEntry.general.wcRuns[index].swordRune.popped += wcRunData.swordRune.popped;
+					newEntry.general.wcRuns[index].wcIncs.amt += wcRunData.wcIncs.amt;
+					newEntry.general.wcRuns[index].wcIncs.popped += wcRunData.wcIncs.popped;
+				}
+			}
+
+			for (const completedRunData of entry.general.completedRuns) {
+				const index: number = newEntry.general.completedRuns.findIndex(x => x.server === completedRunData.server);
+				if (index === -1) {
+					// no no no
+					newEntry.general.completedRuns.push({ server: completedRunData.server, general: completedRunData.general, endgame: completedRunData.endgame, realmClearing: completedRunData.realmClearing });
+				}
+				else {
+					newEntry.general.completedRuns[index].endgame += completedRunData.endgame;
+					newEntry.general.completedRuns[index].general += completedRunData.general;
+					newEntry.general.completedRuns[index].realmClearing += completedRunData.realmClearing;
+				}
+			}
+
+			for (const leaderRunData of entry.general.leaderRuns) {
+				const index: number = newEntry.general.leaderRuns.findIndex(x => x.server === leaderRunData.server);
+				if (index === -1) {
+					// no no no
+					newEntry.general.leaderRuns.push({ server: leaderRunData.server, general: leaderRunData.general, endgame: leaderRunData.endgame, realmClearing: leaderRunData.realmClearing });
+				}
+				else {
+					newEntry.general.leaderRuns[index].endgame += leaderRunData.endgame;
+					newEntry.general.leaderRuns[index].general += leaderRunData.general;
+					newEntry.general.leaderRuns[index].realmClearing += leaderRunData.realmClearing;
+				}
+			}
+
+			for (const punishmentData of entry.general.moderationHistory) {
+				newEntry.general.moderationHistory.push(punishmentData);
+			}
+		}
+
+		await MongoDbHelper.MongoDbUserManager.MongoUserClient.deleteMany(ignFilterQuery);
+		const results: InsertOneWriteOpResult<WithId<IRaidUser>> = await MongoDbHelper.MongoDbUserManager.MongoUserClient
+			.insertOne(newEntry);
+		
+		if (results.ops.length === 0) {
+			throw new Error("something went wrong when trying to create a new profile.");
+		}
+		return(results.ops[0]);
 	}
 
 	/**

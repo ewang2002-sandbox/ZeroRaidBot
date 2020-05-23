@@ -215,7 +215,10 @@ export class AddAltAccountCommand extends Command {
 			// if we're adding an alt account
 			// this should be the only boolean condition
 			// that is true
-			if (resolvedUserDbDiscord !== null && resolvedUserDbIGN === null) {
+			if (resolvedUserDbDiscord !== null && resolvedUserDbIGN !== null) {
+				VerificationHandler.verifyMoreThanOneIGNProfile(msg.author, nameFromProfile);
+			}
+			else if (resolvedUserDbDiscord !== null && resolvedUserDbIGN === null) {
 				let names: string[] = [
 					resolvedUserDbDiscord.rotmgLowercaseName
 					, ...resolvedUserDbDiscord.otherAccountNames.map(x => x.lowercase)

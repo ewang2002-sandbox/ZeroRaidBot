@@ -769,13 +769,21 @@ export module VerificationHandler {
 		};
 		const resolvedUserDbIGN: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient
 			.findOne(ignFilterQuery);
+
+		// they somehow have two profile
+		// probably because they had an alt account w/ an alt discord account
+		if (resolvedUserDbDiscord !== null && resolvedUserDbIGN !== null) {
+			await verifyMoreThanOneIGNProfile(member, nameFromProfile);
+		}
 		// completely new profile
-		if (resolvedUserDbDiscord === null && resolvedUserDbIGN === null) {
+		else if (resolvedUserDbDiscord === null && resolvedUserDbIGN === null) {
 			const userMongo: MongoDbHelper.MongoDbUserManager = new MongoDbHelper.MongoDbUserManager(nameFromProfile);
 			await userMongo.createNewUserDB(member.id);
 		}
 		else {
 			// discord id found; ign NOT found in db
+			// probably means name history changed? 
+			// or separate account.
 			if (resolvedUserDbDiscord !== null && resolvedUserDbIGN === null) {
 				let names: string[] = [
 					resolvedUserDbDiscord.rotmgLowercaseName,
@@ -839,29 +847,31 @@ export module VerificationHandler {
 	}
 
 	/**
-	 * Checks and see if a user has two profiles; if so, merge both profiles together. 
+	 * Checks and see if a user has two profiles in the database; if so, merge both profiles together. 
 	 * @param {(GuildMember | User)} member The guild member that has been verified. 
 	 * @param {string} nameFromProfile The name associated with the guild member. 
 	 * @param {INameHistory[]} nameHistory The person's name history. 
-	 * NOTE: There must be at least one entry in the db corresponding to the person.
 	 */
-	export async function checkForDuplicateProfiles(
+	export async function verifyMoreThanOneIGNProfile(
 		member: GuildMember | User,
-		nameFromProfile: string,
-		nameHistory: INameHistory[]
+		nameFromProfile: string
 	): Promise<IRaidUser> {
-		const ignFilterQuery: FilterQuery<IRaidUser> = {
+		const filterQuery: FilterQuery<IRaidUser> = {
 			$or: [
 				{
 					rotmgLowercaseName: nameFromProfile.toLowerCase()
 				},
 				{
 					"otherAccountNames.lowercase": nameFromProfile.toLowerCase()
+				},
+				{
+					discordUserId: member.id
 				}
 			]
 		};
 		const allPossibleEntries: IRaidUser[] = await MongoDbHelper.MongoDbUserManager.MongoUserClient
-			.find(ignFilterQuery).toArray();
+			.find(filterQuery).toArray();
+
 		if (allPossibleEntries.length === 0) {
 			throw new Error("no profiles found");
 		}
@@ -887,17 +897,25 @@ export module VerificationHandler {
 			}
 		};
 
-		// start transferring data
-		const isAlreadyListed: (name: string) => boolean = (name: string) => newEntry.otherAccountNames.some(x => x.lowercase === name.toLowerCase());
+		const isNotListed: (name: string) => boolean = (name: string) => newEntry.rotmgLowercaseName !== name.toLowerCase()
+			&& !newEntry.otherAccountNames.some(x => x.lowercase === name.toLowerCase());
 
+		// start transferring data
 		for (const entry of allPossibleEntries) {
-			if (nameFromProfile.toLowerCase() !== entry.rotmgLowercaseName && !isAlreadyListed(entry.rotmgDisplayName)) {
-				newEntry.otherAccountNames.push({ displayName: nameFromProfile, lowercase: nameFromProfile.toLowerCase() });
+			// main acc name of entry different from name of profile
+			if (isNotListed(entry.rotmgDisplayName)) {
+				newEntry.otherAccountNames.push({
+					lowercase: entry.rotmgLowercaseName,
+					displayName: entry.rotmgDisplayName
+				});
 			}
 
-			for (const alt of entry.otherAccountNames) {
-				if (nameFromProfile.toLowerCase() !== alt.lowercase && !isAlreadyListed(alt.displayName)) {
-					newEntry.otherAccountNames.push({ displayName: alt.displayName, lowercase: alt.lowercase });
+			for (const altAcc of entry.otherAccountNames) {
+				if (isNotListed(altAcc.displayName)) {
+					newEntry.otherAccountNames.push({
+						lowercase: altAcc.lowercase,
+						displayName: altAcc.displayName
+					});
 				}
 			}
 
@@ -973,14 +991,14 @@ export module VerificationHandler {
 			}
 		}
 
-		await MongoDbHelper.MongoDbUserManager.MongoUserClient.deleteMany(ignFilterQuery);
+		await MongoDbHelper.MongoDbUserManager.MongoUserClient.deleteMany(filterQuery);
 		const results: InsertOneWriteOpResult<WithId<IRaidUser>> = await MongoDbHelper.MongoDbUserManager.MongoUserClient
 			.insertOne(newEntry);
-		
+
 		if (results.ops.length === 0) {
 			throw new Error("something went wrong when trying to create a new profile.");
 		}
-		return(results.ops[0]);
+		return (results.ops[0]);
 	}
 
 	/**

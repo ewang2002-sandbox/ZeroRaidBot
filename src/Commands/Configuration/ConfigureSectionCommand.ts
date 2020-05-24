@@ -19,6 +19,7 @@ import { StringBuilder } from "../../Classes/String/StringBuilder";
 import { IDungeonData } from "../../Definitions/IDungeonData";
 import { Zero } from "../../Zero";
 import { StringUtil } from "../../Utility/StringUtil";
+import { NumberUtil } from "../../Utility/NumberUtil";
 
 type QType = {
 	q: string;
@@ -2060,19 +2061,16 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 					return;
 				}
 
-				const num: number = Number.parseInt(m.content);
-				if (Number.isNaN(num)) {
-					MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_NUMBER_INPUT", null), msg.channel as TextChannel);
-					return;
+				const nums: number[] = NumberUtil.parseNumbersFromString(m.content);
+				for (const num of nums) {
+					if (typeof d[num - 1] === "undefined") {
+						MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_INDEX", null), msg.channel as TextChannel);
+						return;
+					}
+	
+					d[num - 1].isIncluded = !d[num - 1].isIncluded;
+					await editorMessage.edit(this.getAllowedDungeonEditorEmbed(msg, d, section));
 				}
-
-				if (typeof d[num - 1] === "undefined") {
-					MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_INDEX", null), msg.channel as TextChannel);
-					return;
-				}
-
-				d[num - 1].isIncluded = !d[num - 1].isIncluded;
-				await editorMessage.edit(this.getAllowedDungeonEditorEmbed(msg, d, section));
 			});
 		});
 	}

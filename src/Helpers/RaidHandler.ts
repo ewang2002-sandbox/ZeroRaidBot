@@ -1230,29 +1230,26 @@ export module RaidHandler {
 				return;
 			}
 
-			const num: number = Number.parseInt(m.content);
-			if (Number.isNaN(num)) {
-				MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_NUMBER_INPUT", null), msg.channel as TextChannel);
-				return;
-			}
-
-			if (typeof allDungeons[num - 1] === "undefined") {
-				MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_INDEX", null), msg.channel as TextChannel);
-				return;
-			}
-
-			// if not included, let's make sure
-			// we can add it 
-			if (!allDungeons[num - 1].isIncluded) {
-				if (canAddAnother(allDungeons, allDungeons[num - 1].data.keyEmojIDs.length)) {
-					allDungeons[num - 1].isIncluded = true;
+			const nums: number[] = NumberUtil.parseNumbersFromString(m.content);
+			for (const num of nums) {
+				if (typeof allDungeons[num - 1] === "undefined") {
+					MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_INDEX", null), msg.channel as TextChannel);
+					return;
 				}
+	
+				// if not included, let's make sure
+				// we can add it 
+				if (!allDungeons[num - 1].isIncluded) {
+					if (canAddAnother(allDungeons, allDungeons[num - 1].data.keyEmojIDs.length)) {
+						allDungeons[num - 1].isIncluded = true;
+					}
+				}
+				else {
+					allDungeons[num - 1].isIncluded = false;
+				}
+	
+				sentHeadCountMessage.edit(getHeadCountEmbed(msg, allDungeons));
 			}
-			else {
-				allDungeons[num - 1].isIncluded = false;
-			}
-
-			sentHeadCountMessage.edit(getHeadCountEmbed(msg, allDungeons));
 		});
 
 		hcCollector.on("end", async (collected: Collection<string, Message>, reason: string) => {

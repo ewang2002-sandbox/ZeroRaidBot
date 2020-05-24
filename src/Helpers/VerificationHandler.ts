@@ -890,7 +890,7 @@ export module VerificationHandler {
 			general: {
 				keyPops: [],
 				voidVials: [],
-				wcRuns: [],
+				wcOryx: [],
 				completedRuns: [],
 				leaderRuns: [],
 				moderationHistory: []
@@ -942,21 +942,21 @@ export module VerificationHandler {
 				}
 			}
 
-			for (const wcRunData of entry.general.wcRuns) {
-				const index: number = newEntry.general.wcRuns.findIndex(x => x.server === wcRunData.server);
+			for (const wcRunData of entry.general.wcOryx) {
+				const index: number = newEntry.general.wcOryx.findIndex(x => x.server === wcRunData.server);
 				if (index === -1) {
 					// nope
-					newEntry.general.wcRuns.push({ wcIncs: { amt: wcRunData.wcIncs.amt, popped: wcRunData.wcIncs.popped }, swordRune: { amt: wcRunData.swordRune.amt, popped: wcRunData.swordRune.popped }, helmRune: { amt: wcRunData.helmRune.amt, popped: wcRunData.helmRune.popped }, shieldRune: { amt: wcRunData.shieldRune.amt, popped: wcRunData.shieldRune.popped }, server: wcRunData.server });
+					newEntry.general.wcOryx.push({ wcIncs: { amt: wcRunData.wcIncs.amt, popped: wcRunData.wcIncs.popped }, swordRune: { amt: wcRunData.swordRune.amt, popped: wcRunData.swordRune.popped }, helmRune: { amt: wcRunData.helmRune.amt, popped: wcRunData.helmRune.popped }, shieldRune: { amt: wcRunData.shieldRune.amt, popped: wcRunData.shieldRune.popped }, server: wcRunData.server });
 				}
 				else {
-					newEntry.general.wcRuns[index].helmRune.amt += wcRunData.helmRune.amt;
-					newEntry.general.wcRuns[index].helmRune.popped += wcRunData.helmRune.popped;
-					newEntry.general.wcRuns[index].shieldRune.amt += wcRunData.shieldRune.amt;
-					newEntry.general.wcRuns[index].shieldRune.popped += wcRunData.shieldRune.popped;
-					newEntry.general.wcRuns[index].swordRune.amt += wcRunData.swordRune.amt;
-					newEntry.general.wcRuns[index].swordRune.popped += wcRunData.swordRune.popped;
-					newEntry.general.wcRuns[index].wcIncs.amt += wcRunData.wcIncs.amt;
-					newEntry.general.wcRuns[index].wcIncs.popped += wcRunData.wcIncs.popped;
+					newEntry.general.wcOryx[index].helmRune.amt += wcRunData.helmRune.amt;
+					newEntry.general.wcOryx[index].helmRune.popped += wcRunData.helmRune.popped;
+					newEntry.general.wcOryx[index].shieldRune.amt += wcRunData.shieldRune.amt;
+					newEntry.general.wcOryx[index].shieldRune.popped += wcRunData.shieldRune.popped;
+					newEntry.general.wcOryx[index].swordRune.amt += wcRunData.swordRune.amt;
+					newEntry.general.wcOryx[index].swordRune.popped += wcRunData.swordRune.popped;
+					newEntry.general.wcOryx[index].wcIncs.amt += wcRunData.wcIncs.amt;
+					newEntry.general.wcOryx[index].wcIncs.popped += wcRunData.wcIncs.popped;
 				}
 			}
 

@@ -122,7 +122,7 @@ export module MongoDbHelper {
 					general: {
 						keyPops: [],
 						voidVials: [],
-						wcRuns: [],
+						wcOryx: [],
 						completedRuns: [],
 						leaderRuns: [],
 						moderationHistory: []

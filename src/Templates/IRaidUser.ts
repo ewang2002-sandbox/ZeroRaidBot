@@ -1,3 +1,5 @@
+import { IKeyPops, IVoidVials, IWineCellarOryx, ICompletedRuns, ILeaderRuns } from "../Definitions/UserDBProps";
+
 /**
  * This interface (and associated schema) will be using IGNs instead of Discord ID.
  */
@@ -39,108 +41,27 @@ export interface IRaidUser {
 		/**
 		 * Amount of keys popped for this server.
 		 */
-		keyPops: {
-			server: string;
-			keysPopped: number;
-		}[];
+		keyPops: IKeyPops[];
 
 		/**
 		 * Information on vials.
 		 */
-		voidVials: {
-			/**
-			 * Amount of vials popped for this server.
-			 */
-			popped: number;
-
-			/**
-			 * Amount of vials stored for this server. 
-			 */
-			stored: number;
-
-			/**
-			 * server
-			 */
-			server: string;
-		}[];
+		voidVials: IVoidVials[];
 
 		/**
 		 * Wine Cellar-related stuffs.
 		 */
-		wcRuns: {
-			wcIncs: {
-				amt: number;
-				popped: number;
-			};
-			swordRune: {
-				amt: number;
-				popped: number;
-			};
-			shieldRune: {
-				amt: number;
-				popped: number;
-			};
-			helmRune: {
-				amt: number;
-				popped: number;
-			};
-
-			/**
-			 * server
-			 */
-			server: string;
-		}[];
+		wcOryx: IWineCellarOryx[];
 
 		/**
 		 * Total completed runs.
 		 */
-		completedRuns: {
-			/**
-			 * General dungeons (i.e. not endgame)
-			 */
-			general: number;
+		completedRuns: ICompletedRuns[];
 
-			/**
-			 * Endgame dungeons. These are defined as 
-			 * - Cult
-			 * - Void
-			 * - Fungal/Crystal Cavern
-			 * - O3 (soon)
-			 */
-			endgame: number;
-
-			/**
-			 * The amt of realm clearing runs done.
-			 */
-			realmClearing: number;
-
-			/**
-			 * server
-			 */
-			server: string;
-		}[];
-
-		leaderRuns: {
-			/**
-			 * General dungeons led
-			 */
-			general: number;
-
-			/**
-			 * Endgame dungeons led.
-			 */
-			endgame: number;
-
-			/**
-			 * Realm clearing led
-			 */
-			realmClearing: number;
-
-			/**
-			 * server
-			 */
-			server: string;
-		}[];
+		/**
+		 * Leader runs
+		 */
+		leaderRuns: ILeaderRuns[];
 
 		/**
 		 * Moderation history from all servers.

@@ -1,5 +1,5 @@
 import { IDungeonData } from "../Definitions/IDungeonData";
-import { RushingClass, Daze, ArmorBreak, Knight, Warrior, Paladin, Priest, Slow, Paralyze, Samurai, Mystic, MSeal, Trickster, Puri } from "./EmojiData";
+import { RushingClass, Daze, ArmorBreak, Knight, Warrior, Paladin, Priest, Slow, Paralyze, Samurai, Mystic, MSeal, Trickster, Puri, Bard, BrainPrism } from "./EmojiData";
 
 export const AFKDungeon: IDungeonData[] = [
 	{
@@ -129,6 +129,34 @@ export const AFKDungeon: IDungeonData[] = [
 		]
 	},
 	{
+		id: 39,
+		dungeonName: "Heroic Undead Lair",
+		portalEmojiID: "711479365602508820",
+		keyEmojIDs: [
+			{
+				keyEmojID: "711444346334871643",
+				keyEmojiName: "Heroic Undead Lair Key"
+			}
+		],
+		reactions: [
+			Paladin,
+			Warrior,
+			Priest,
+			Puri,
+			MSeal,
+			Daze,
+			ArmorBreak
+		],
+		portalLink: "https://i.imgur.com/YgiGjh7.gif",
+		bossLink: ["https://i.imgur.com/WmL1qda.png"],
+		colors: [
+			0x4d19d1,
+			0xf5d311,
+			0x3d3434,
+			0x2b1e1e
+		]
+	},
+	{
 		id: 6,
 		dungeonName: "Abyss of Demons",
 		portalEmojiID: "561248700643409931",
@@ -146,6 +174,33 @@ export const AFKDungeon: IDungeonData[] = [
 		colors: [
 			0xe30707,
 			0xe09a19
+		]
+	},
+	{
+		id: 40,
+		dungeonName: "Heroic Abyss of Demons",
+		portalEmojiID: "711431861678637129",
+		keyEmojIDs: [
+			{
+				keyEmojID: "711444346263830559",
+				keyEmojiName: "Heroic Abyss of Demons Key"
+			}
+		],
+		reactions: [
+			Paladin,
+			Warrior,
+			Priest,
+			Puri,
+			MSeal,
+			Daze,
+			ArmorBreak
+		],
+		portalLink: "https://i.imgur.com/zz6D2lz.png",
+		bossLink: ["https://i.imgur.com/LCALe5V.png"],
+		colors: [
+			0xe30707,
+			0xe09a19,
+			0xf5d311
 		]
 	},
 	{
@@ -266,13 +321,14 @@ export const AFKDungeon: IDungeonData[] = [
 			}
 		],
 		reactions: [
-			RushingClass,
-			Daze,
-			ArmorBreak,
 			Knight,
 			Warrior,
 			Paladin,
-			Priest
+			Priest,
+			Bard,
+			RushingClass,
+			Daze,
+			ArmorBreak
 		],
 		portalLink: "https://cdn.discordapp.com/attachments/561245975767941120/561248332635439136/Parasite.png",
 		bossLink: ["https://i.imgur.com/zodPEFO.png"],
@@ -314,7 +370,8 @@ export const AFKDungeon: IDungeonData[] = [
 			}
 		],
 		reactions: [
-			RushingClass
+			RushingClass,
+			Puri
 		],
 		portalLink: "https://i.imgur.com/SY0Jtnp.png",
 		bossLink: ["https://i.imgur.com/TIektVi.png"],
@@ -335,6 +392,11 @@ export const AFKDungeon: IDungeonData[] = [
 		reactions: [
 			Warrior,
 			Paladin,
+			Bard,
+			Trickster,
+			Priest,
+			Daze,
+			Puri,
 			Slow
 		],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Consolation%20of%20Draconis%20Portal.png",
@@ -435,7 +497,10 @@ export const AFKDungeon: IDungeonData[] = [
 			RushingClass,
 			Warrior,
 			Paladin,
-			ArmorBreak
+			Knight,
+			Bard,
+			ArmorBreak,
+			Daze
 		],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Ocean%20Trench%20Portal.png",
 		bossLink: ["https://static.drips.pw/rotmg/wiki/Enemies/Thessal%20the%20Mermaid%20Goddess.png"],
@@ -456,7 +521,8 @@ export const AFKDungeon: IDungeonData[] = [
 			}
 		],
 		reactions: [
-			Priest
+			Priest,
+			Bard
 		],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Ice%20Cave%20Portal.png",
 		bossLink: ["https://static.drips.pw/rotmg/wiki/Enemies/ic%20Esben%20the%20Unwilling.png"],
@@ -481,8 +547,9 @@ export const AFKDungeon: IDungeonData[] = [
 			Warrior,
 			Paladin,
 			Knight,
+			Trickster,
 			Paralyze,
-			Slow
+			Bard
 		],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Tomb%20of%20the%20Ancients%20Portal.png",
 		bossLink: [
@@ -512,7 +579,11 @@ export const AFKDungeon: IDungeonData[] = [
 			Paladin,
 			Knight,
 			Samurai,
-			Priest
+			Priest,
+			Bard,
+			Puri,
+			Daze,
+			ArmorBreak
 		],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Lair%20of%20Shaitan%20Portal.png",
 		bossLink: ["https://i.imgur.com/azzD6jD.png"],
@@ -534,8 +605,12 @@ export const AFKDungeon: IDungeonData[] = [
 		reactions: [
 			Warrior,
 			Paladin,
+			Samurai,
+			Priest,
+			Bard,
+			Puri,
 			Paralyze,
-			Samurai
+			Daze
 		],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Puppet%20Encore%20Portal.png",
 		bossLink: ["https://static.drips.pw/rotmg/wiki/Enemies/Puppet%20Master%20v2.png"],
@@ -556,8 +631,11 @@ export const AFKDungeon: IDungeonData[] = [
 		reactions: [
 			Warrior,
 			Paladin,
+			Bard,
+			Samurai,
+			BrainPrism,
 			Slow,
-			Samurai
+			Daze
 		],
 		portalLink: "https://i.imgur.com/qjd04By.png",
 		bossLink: ["https://i.imgur.com/BF2DclQ.png"],
@@ -579,9 +657,11 @@ export const AFKDungeon: IDungeonData[] = [
 		reactions: [
 			Warrior,
 			Paladin,
-			Slow,
+			Bard,
 			Samurai,
-			Priest
+			Priest,
+			Slow,
+			Daze
 		],
 		portalLink: "https://i.imgur.com/8vEAT8t.png",
 		bossLink: [
@@ -604,7 +684,14 @@ export const AFKDungeon: IDungeonData[] = [
 				keyEmojiName: "Battle for the Nexus Key"
 			}
 		],
-		reactions: [],
+		reactions: [
+			Knight,
+			Paladin,
+			Warrior,
+			Bard,
+			Priest,
+			Trickster
+		],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Battle%20Nexus%20Portal.png",
 		bossLink: [
 			"https://static.drips.pw/rotmg/wiki/Enemies/Lord%20Ruthven.png",
@@ -617,7 +704,7 @@ export const AFKDungeon: IDungeonData[] = [
 			0xdfe30e,
 		]
 	},
-	{
+	{ // TODO: update emojis
 		id: 27,
 		dungeonName: "Belladonna's Garden",
 		portalEmojiID: "561248700693741569",
@@ -627,9 +714,15 @@ export const AFKDungeon: IDungeonData[] = [
 				keyEmojiName: "Belladonna's Garden Key"
 			}
 		],
-		reactions: [],
-		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Belladonna's%20Garden%20Portal.png",
-		bossLink: ["https://i.imgur.com/nnv2d6u.png"],
+		reactions: [
+			Warrior,
+			Paladin,
+			Bard,
+			Priest,
+			Puri
+		],
+		portalLink: "https://i.imgur.com/VTXGPSy.png",
+		bossLink: ["https://i.imgur.com/d7xzYLG.png"],
 		colors: [
 			0xd42c56,
 			0x08d41d
@@ -649,7 +742,9 @@ export const AFKDungeon: IDungeonData[] = [
 			Warrior,
 			Paladin,
 			Knight,
-			Paralyze
+			Trickster,
+			Paralyze,
+			Bard
 		],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Ice%20Tomb%20Portal.png",
 		bossLink: [
@@ -706,7 +801,11 @@ export const AFKDungeon: IDungeonData[] = [
 			Paladin,
 			Priest,
 			Mystic,
-			ArmorBreak
+			Bard,
+			Trickster,
+			ArmorBreak,
+			BrainPrism,
+			Daze
 		],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/The%20Shatters.png",
 		bossLink: [
@@ -804,10 +903,13 @@ export const AFKDungeon: IDungeonData[] = [
 			Warrior,
 			Knight,
 			RushingClass,
+			Trickster,
 			Priest,
+			Bard,
 			Daze,
 			MSeal,
-			Puri
+			Puri,
+			BrainPrism
 		],
 		portalLink: "https://i.imgur.com/on1ykYB.png",
 		bossLink: [
@@ -836,6 +938,10 @@ export const AFKDungeon: IDungeonData[] = [
 			{
 				keyEmojID: "585613660878274571",
 				keyEmojiName: "Lost Halls Key"
+			},
+			{
+				keyEmojID: "714012990873272321",
+				keyEmojiName: "Vial of Pure Darkness"
 			}
 		],
 		reactions: [
@@ -843,9 +949,12 @@ export const AFKDungeon: IDungeonData[] = [
 			Warrior,
 			Knight,
 			RushingClass,
+			Trickster,
 			Priest,
+			Bard,
 			MSeal,
-			Puri
+			Puri,
+			BrainPrism
 		],
 		portalLink: "https://i.imgur.com/uhDj0M5.png",
 		bossLink: ["https://i.imgur.com/kbzthE4.png"],
@@ -869,10 +978,12 @@ export const AFKDungeon: IDungeonData[] = [
 			Knight,
 			Trickster,
 			Priest,
+			Bard,
 			ArmorBreak,
 			Daze,
 			MSeal,
-			Slow
+			Slow,
+			BrainPrism
 		],
 		portalLink: "https://i.imgur.com/fHNesPK.png",
 		bossLink: [
@@ -936,10 +1047,11 @@ export const AFKDungeon: IDungeonData[] = [
 			Warrior,
 			Priest,
 			Trickster,
+			Bard,
+			BrainPrism,
 			Puri,
 			Daze,
-			ArmorBreak,
-			Trickster
+			ArmorBreak
 		],
 		portalLink: "https://i.imgur.com/nKKvJsv.png",
 		bossLink: [
@@ -954,3 +1066,4 @@ export const AFKDungeon: IDungeonData[] = [
 		]
 	}
 ];
+// max ID: 40 -- heroic abyss

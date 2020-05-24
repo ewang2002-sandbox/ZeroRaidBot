@@ -1,4 +1,4 @@
-import { MessageEmbed, Message, MessageCollector, Collection, MessageOptions, TextChannel, Guild, Role, GuildMember, Permissions, TextBasedChannelFields, User, PartialTextBasedChannelFields, GuildChannel } from "discord.js";
+import { MessageEmbed, Message, MessageCollector, Collection, MessageOptions, TextChannel, Guild, Role, GuildMember, Permissions, PartialTextBasedChannelFields, User, GuildChannel } from "discord.js";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { TimeUnit } from "../../Definitions/TimeUnit";
 
@@ -24,7 +24,7 @@ export class GenericMessageCollector<T> {
 	/**
 	 * The channel to send the message w/ collector to. 
 	 */
-	private readonly _channel: TextBasedChannelFields;
+	private readonly _channel: PartialTextBasedChannelFields;
 
 	/**
 	 * The duration to wait. 
@@ -37,14 +37,14 @@ export class GenericMessageCollector<T> {
 	 * @param {MessageOptions} msgToSend What to send. This will be a message, an embed, or both, that a bot will send. 
 	 * @param {number} maxDuration The duration of the collector. If you want to do 3 minutes, for example, type `3`.
 	 * @param {TimeUnit} timeUnit The unit of time of `maxDuration`. For the previous example of 3 minutes, you would do `TimeUnit.MINUTE`.
-	 * @param {TextBasedChannelFields} targetChannel The channel to send the message to, if applicable. Defaults to the same channel where the message was sent.
+	 * @param {PartialTextBasedChannelFields} targetChannel The channel to send the message to, if applicable. Defaults to the same channel where the message was sent.
 	 */
 	public constructor(
 		obj: Message | User | GuildMember,
 		msgToSend: MessageOptions,
 		maxDuration: number,
 		timeUnit: TimeUnit,
-		targetChannel?: TextBasedChannelFields
+		targetChannel?: PartialTextBasedChannelFields
 	) {
 		if (obj instanceof Message) {
 			this._originalAuthor = obj.author;
@@ -156,14 +156,14 @@ export class GenericMessageCollector<T> {
 	/**
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with either a TextChannel mention or ID. THIS FUNCTION MUST ONLY BE USED IN A GUILD.
 	 * @param {Message} msg The message that triggered this class. This is generally a message that results in the exeuction of the command. 
-	 * @param {TextBasedChannelFields} pChan The channel to send any messages to.
+	 * @param {PartialTextBasedChannelFields} pChan The channel to send any messages to.
 	 * @example 
 	 * const gmc: GenericMessageCollector<TextChannel> = new GenericMessageCollector<TextChannel>(msg, { embed: embed }, 1, TimeUnit.MINUTE);
 	 * const response: TextChannel | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getChannelPrompt(msg)); 
 	 */
 	public static getChannelPrompt(
 		msg: Message,
-		pChan: TextBasedChannelFields
+		pChan: PartialTextBasedChannelFields
 	): (m: Message) => Promise<void | TextChannel> {
 		if (msg.guild === null) {
 			throw new Error("The message object provided for this method was not sent from a guild.");
@@ -202,7 +202,7 @@ export class GenericMessageCollector<T> {
 
 	/**
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with a number.
-	 * @param {TextBasedChannelFields} channel The channel to send messages to.
+	 * @param {PartialTextBasedChannelFields} channel The channel to send messages to.
 	 * @param {number} [min] The minimum, inclusive.
 	 * @param {number} [max] The maximum, inclusive.
 	 * @example 
@@ -210,7 +210,7 @@ export class GenericMessageCollector<T> {
 	 * const response: number | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getNumber(msg)); 
 	 */
 	public static getNumber(
-		channel: TextBasedChannelFields,
+		channel: PartialTextBasedChannelFields,
 		min?: number,
 		max?: number
 	): (m: Message) => Promise<void | number> {
@@ -238,12 +238,12 @@ export class GenericMessageCollector<T> {
 	/**
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with a role ID or mention. THIS FUNCTION MUST ONLY BE USED IN A GUILD.
 	 * @param {Message} msg The message that triggered this class. This is generally a message that results in the exeuction of the command. 
-	 * @param {TextBasedChannelFields} pChan The channel to send messages to.
+	 * @param {PartialTextBasedChannelFields} pChan The channel to send messages to.
 	 * @example 
 	 * const gmc: GenericMessageCollector<Role> = new GenericMessageCollector<Role>(msg, { embed: embed }, 1, TimeUnit.MINUTE);
 	 * const response: Role | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getRolePrompt(msg)); 
 	 */
-	public static getRolePrompt(msg: Message, pChan: TextBasedChannelFields): (collectedMessage: Message) => Promise<void | Role> {
+	public static getRolePrompt(msg: Message, pChan: PartialTextBasedChannelFields): (collectedMessage: Message) => Promise<void | Role> {
 		if (msg.guild === null) {
 			throw new Error("The message object provided for this method was not sent from a guild.");
 		}
@@ -267,13 +267,13 @@ export class GenericMessageCollector<T> {
 
 	/**
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond and return the response.
-	 * @param {TextBasedChannelFields} pChan The channel where messages should be sent to.
+	 * @param {PartialTextBasedChannelFields} pChan The channel where messages should be sent to.
 	 * @param {StringPromptOptions} [options] Options, if any.
 	 * @example 
 	 * const gmc: GenericMessageCollector<string> = new GenericMessageCollector<string>(msg, { embed: embed }, 1, TimeUnit.MINUTE);
 	 * const response: string | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getStringPrompt(msg)); 
 	 */
-	public static getStringPrompt(pChan: TextBasedChannelFields, options?: StringPromptOptions): (collectedMessage: Message) => Promise<void | string> {
+	public static getStringPrompt(pChan: PartialTextBasedChannelFields, options?: StringPromptOptions): (collectedMessage: Message) => Promise<void | string> {
 		return async (m: Message): Promise<void | string> => {
 			if (m.content === null) {
 				MessageUtil.send({ content: `${m.author}, you did not provide any content. Try again. ` }, pChan);
@@ -305,12 +305,12 @@ export class GenericMessageCollector<T> {
 
 	/**
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with `yes` or `no` and return a boolean value associated with that choice.
-	 * @param {TextBasedChannelFields} pChan The channel where messages should be sent to.
+	 * @param {PartialTextBasedChannelFields} pChan The channel where messages should be sent to.
 	 * @example 
 	 * const gmc: GenericMessageCollector<boolean> = new GenericMessageCollector<boolean>(msg, { embed: embed }, 1, TimeUnit.MINUTE);
 	 * const response: boolean | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getYesNoPrompt(msg)); 
 	 */
-	public static getYesNoPrompt(pChan: TextBasedChannelFields): (collectedMessage: Message) => Promise<void | boolean> {
+	public static getYesNoPrompt(pChan: PartialTextBasedChannelFields): (collectedMessage: Message) => Promise<void | boolean> {
 		return async (m: Message): Promise<void | boolean> => {
 			if (m.content === null) {
 				MessageUtil.send({ content: `${m.author}, you did not provide any content. Try again. ` }, pChan);

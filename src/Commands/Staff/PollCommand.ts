@@ -193,7 +193,7 @@ export class PollCommand extends Command {
 				.setDescription("You can only have 1 question and 20 choices.")
 				.setAuthor(`${(msg.member as GuildMember).displayName} • ${msg.author.tag}`, msg.author.displayAvatarURL())
 				.setColor("RANDOM")
-				.setFooter("Zero")
+				.setFooter(msg.guild === null ? "Zero" : msg.guild.name)
 				.setTimestamp();
 			MessageUtil.send(embed, msg.channel as TextChannel).catch(e => { });
 			return;

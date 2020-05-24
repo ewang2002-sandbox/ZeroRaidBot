@@ -27,4 +27,39 @@ export namespace NumberUtil {
         }
         return -1;
     }
+
+    /**
+     * Parses a set of numbers from a string.
+     * @param {number} str The number(s). Use commas as separators and a hyphen to indicate a range.
+     * @returns {number[]} The set of parsed numbers.
+     */
+    export function parseNumbersFromString(str: string): number[] {
+        const returnVals: number[] = [];
+        const splitVals: string[] = str.split(",").map(x => x.trim());
+        for (const val of splitVals) {
+            // range
+            if (val.includes("-")) {
+                const unparsedRangeVals: string[] = val.split("-")
+                    .filter(x => x.length !== 0);
+                // there should be two numbers
+                const min: number = Number.parseInt(unparsedRangeVals[0]);
+                const max: number = Number.parseInt(unparsedRangeVals[1]);
+                if (Number.isNaN(min) || Number.isNaN(max)) {
+                    continue;
+                }
+
+                for (let i = min; i <= max; i++) {
+                    returnVals.push(i);
+                }
+            }
+            else {
+                const parsedNum: number = Number.parseInt(val);
+                if (Number.isNaN(parsedNum)) {
+                    continue;
+                }
+                returnVals.push(parsedNum);
+            }
+        }
+        return returnVals;
+    }
 }

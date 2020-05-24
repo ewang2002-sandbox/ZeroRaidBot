@@ -57,7 +57,7 @@ export class ServerProfileCommand extends Command {
             return;
         }
 
-        
+
         let guild: Guild;
         if (msg.guild === null) {
             const response: Guild | "CANCEL" | null = await this.getGuild(msg, dmChannel);
@@ -157,15 +157,66 @@ export class ServerProfileCommand extends Command {
             .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
             .setTitle(`Server Profile: **${guild.name}**`)
             .setColor("RANDOM")
+            .setFooter("Server Profile.")
             .setDescription(commandSB.toString());
-        
+
+        // key pops
         const keyPops: IKeyPops | undefined = userDb.general.keyPops.find(x => x.server === guild.id);
+
+        // void vials
         const voidVials: IVoidVials | undefined = userDb.general.voidVials.find(x => x.server === guild.id);
+        const vvSB: StringBuilder = new StringBuilder()
+            .append(`Popped: ${typeof voidVials === "undefined" ? 0 : voidVials.popped}`)
+            .appendLine()
+            .append(`Stored: ${typeof voidVials === "undefined" ? 0 : voidVials.stored}`);
+
+        // completed runs
         const completedRuns: ICompletedRuns | undefined = userDb.general.completedRuns.find(x => x.server === guild.id);
+        const crSB: StringBuilder = new StringBuilder()
+            .append(`General: ${typeof completedRuns === "undefined" ? 0 : completedRuns.general}`)
+            .appendLine()
+            .append(`Endgame: ${typeof completedRuns === "undefined" ? 0 : completedRuns.endgame}`)
+            .appendLine()
+            .append(`Realm Clearing: ${typeof completedRuns === "undefined" ? 0 : completedRuns.realmClearing}`)
+            .appendLine();
+
+        // leaders
         const leaderRuns: ILeaderRuns | undefined = userDb.general.leaderRuns.find(x => x.server === guild.id);
+        const lrSB: StringBuilder = new StringBuilder()
+            .append(`General: ${typeof leaderRuns === "undefined" ? 0 : leaderRuns.general}`)
+            .appendLine()
+            .append(`Endgame: ${typeof leaderRuns === "undefined" ? 0 : leaderRuns.endgame}`)
+            .appendLine()
+            .append(`Realm Clearing: ${typeof leaderRuns === "undefined" ? 0 : leaderRuns.realmClearing}`)
+            .appendLine();
+
         const wc: IWineCellarOryx | undefined = userDb.general.wcOryx.find(x => x.server === guild.id);
-        
-        
+        const wcSB: StringBuilder = new StringBuilder()
+            .append(`WC Stored: ${typeof wc === "undefined" ? 0 : wc.wcIncs.amt}`)
+            .appendLine()
+            .append(`WC Popped: ${typeof wc === "undefined" ? 0 : wc.wcIncs.popped}`)
+            .appendLine()
+            .append(`Sword Rune Stored: ${typeof wc === "undefined" ? 0 : wc.swordRune.amt}`)
+            .appendLine()
+            .append(`Sword Rune Popped: ${typeof wc === "undefined" ? 0 : wc.swordRune.popped}`)
+            .appendLine()
+            .append(`Shield Rune Stored: ${typeof wc === "undefined" ? 0 : wc.shieldRune.amt}`)
+            .appendLine()
+            .append(`Shield Rune Popped: ${typeof wc === "undefined" ? 0 : wc.shieldRune.popped}`)
+            .appendLine()
+            .append(`Helm Rune Stored: ${typeof wc === "undefined" ? 0 : wc.helmRune.amt}`)
+            .appendLine()
+            .append(`Helm Rune Popped: ${typeof wc === "undefined" ? 0 : wc.helmRune.popped}`)
+            .appendLine();
+
+        mEmbed.addField("Current Displayed Names", StringUtil.applyCodeBlocks(nameStr.toString()))
+            .addField("Keys Used", StringUtil.applyCodeBlocks(typeof keyPops === "undefined" ? 0 : keyPops.keysPopped), true)
+            .addField("Vial Information", StringUtil.applyCodeBlocks(vvSB.toString()), true)
+            .addField("Oryx III Information", StringUtil.applyCodeBlocks(wcSB.toString()))
+            .addField("Runs Completed", StringUtil.applyCodeBlocks(crSB.toString()), true)
+            .addField("Runs Led", StringUtil.applyCodeBlocks(lrSB.toString()), true);
+
+        await dmChannel.send(mEmbed);
     }
 
     /**
@@ -217,7 +268,7 @@ export class ServerProfileCommand extends Command {
         }
 
         if (embed.fields.length === 0) {
-            embed.addField("Guild Selection", StringUtil.applyCodeBlocks(str));   
+            embed.addField("Guild Selection", StringUtil.applyCodeBlocks(str));
         }
 
         const num: number | "CANCEL" | "TIME" = await new GenericMessageCollector<number>(

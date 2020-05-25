@@ -18,6 +18,8 @@ import { FilterQuery } from "mongodb";
 import { StringBuilder } from "../../Classes/String/StringBuilder";
 
 export class AddAltAccountCommand extends Command {
+	public static readonly MAX_ALTS_ALLOWED: number = 10;
+
     public constructor() {
         super(
             new CommandDetail(

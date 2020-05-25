@@ -22,11 +22,13 @@ import { ChannelInfoCommand } from "../Commands/Server Information/ChannelInfoCo
 import { UserInfoCommand } from "../Commands/Server Information/UserInfoCommand";
 import { ViewUserProfileCommand } from "../Commands/User Profile/ViewUserProfileCommand";
 import { AddAltAccountCommand } from "../Commands/User Profile/AddAltAccountCommand";
-import { ServerProfileCommand } from "../Commands/Server Profile/ServerProfileCommand";
+import { ViewServerProfileCommand } from "../Commands/Server Profile/ViewServerProfileCommand";
 import { SwitchMainAltAccountCommand } from "../Commands/User Profile/SwitchMainAltAccountCommand";
 import { ReconnectDBCommand } from "../Commands/Bot Owner/ReconnectDBCommand";
 import { AddToNicknameCommand } from "../Commands/Server Profile/AddToNicknameCommand";
 import { RemoveFromNicknameCommand } from "../Commands/Server Profile/RemoveFromNicknameCommand";
+import { ServerProfileHelpCommand } from "../Commands/Server Profile/ServerProfileHelpCommand";
+import { UserProfileHelpCommand } from "../Commands/User Profile/UserProfileHelpCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -99,13 +101,15 @@ export class CommandManager {
 		this.commands.set("User Profile", [
 			new ViewUserProfileCommand(),
 			new AddAltAccountCommand(),
-			new SwitchMainAltAccountCommand()
+			new SwitchMainAltAccountCommand(),
+			new UserProfileHelpCommand()
 		]);
 
 		this.commands.set("Server Profile", [
-			new ServerProfileCommand(),
+			new ViewServerProfileCommand(),
 			new AddToNicknameCommand(),
-			new RemoveFromNicknameCommand()
+			new RemoveFromNicknameCommand(),
+			new ServerProfileHelpCommand()
 		]);
 
 		this.commands.set("Bot Owner", [

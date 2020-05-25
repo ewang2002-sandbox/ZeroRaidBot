@@ -48,14 +48,27 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 		return; // no webhooks
 	}
 
-	if (msg.content.indexOf(DefaultPrefix) !== 0) {
+	const prefixes: string[] = [DefaultPrefix];
+	if (guildHandler !== null) {
+		prefixes.push(guildHandler.prefix);
+	}
+
+	let prefix: string | undefined;
+	for (const possPrefix of prefixes) {
+		if (msg.content.indexOf(possPrefix) === 0) {
+			prefix = possPrefix;
+			break;
+		}
+	}
+
+	if (typeof prefix === "undefined") {
 		return;
 	}
 
 	let messageArray: string[] = msg.content.split(/ +/);
 	let cmd: string = messageArray[0];
 	let args: string[] = messageArray.slice(1);
-	let commandfile: string = cmd.slice(DefaultPrefix.length);
+	let commandfile: string = cmd.slice(prefix.length);
 
 	// make sure the command exists
 	let command: Command | null = Zero.CmdManager.findCommand(commandfile);
@@ -98,9 +111,11 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 			return;
 		}
 
-		let hasServerPerms: boolean = command.getGeneralPermissions().length === 0
-			? false
-			: command.getGeneralPermissions().every(x => member.hasPermission(x));
+		let hasServerPerms: boolean = member.permissions.has("ADMINISTRATOR")
+			? true
+			: command.getGeneralPermissions().length === 0
+				? false
+				: command.getGeneralPermissions().every(x => member.hasPermission(x));
 
 		// check to see if the member has role perms
 		let hasRolePerms: boolean = false;

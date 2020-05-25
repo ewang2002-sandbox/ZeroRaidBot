@@ -1,4 +1,4 @@
-import { CategoryChannel, ChannelCreationOverwrites, ClientUser, Collection, Guild, GuildMember, Message, MessageCollector, MessageEmbed, MessageReaction, ReactionCollector, TextChannel, User, VoiceChannel, GuildEmoji, EmojiResolvable, ColorResolvable, DMChannel, Role } from "discord.js";
+import { CategoryChannel, ChannelCreationOverwrites, ClientUser, Collection, Guild, GuildMember, Message, MessageCollector, MessageEmbed, MessageReaction, ReactionCollector, TextChannel, User, VoiceChannel, GuildEmoji, EmojiResolvable, ColorResolvable, DMChannel, Role, PermissionOverwriteOptions, OverwriteResolvable } from "discord.js";
 import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollector";
 import { MessageSimpleTick } from "../Classes/Message/MessageSimpleTick";
 import { AFKDungeon } from "../Constants/AFKDungeon";
@@ -1092,6 +1092,16 @@ export module RaidHandler {
 			.filter(x => x.type === "voice")
 			.filter(x => x.parentID === raidVC.parentID)
 			.find(x => x.name.toLowerCase().includes("lounge") || x.name.toLowerCase().includes("queue")) as VoiceChannel | undefined;
+		// set perms so rls cant move ppl in
+		const permsToUpdate: OverwriteResolvable[] = [];
+		for (const [id, perm] of raidVC.permissionOverwrites) {
+			permsToUpdate.push({
+				id: perm.id,
+				deny: ["MOVE_MEMBERS"]
+			});
+		}
+		await raidVC.overwritePermissions(permsToUpdate).catch(e => { });
+
 		// move people out if there is a lounge vc 
 		if (typeof loungeVC !== "undefined") {
 			const promises: Promise<void>[] = raidVC.members.map(async (x) => {
@@ -1104,6 +1114,21 @@ export module RaidHandler {
 		else {
 			await raidVC.delete().catch(() => { });
 		}
+
+		// check vc to see if we can delete it
+		const interval: NodeJS.Timeout = setInterval(async () => {
+			// vc doesnt exist
+			if (!guild.channels.cache.has(raidVC.id)) {
+				clearInterval(interval);
+				return;
+			}
+
+			if (raidVC.members.size <= 0) {
+				await raidVC.delete().catch(e => { });
+				clearInterval(interval);
+				return;
+			}
+		}, 5 * 1000);
 	}
 
 	/**

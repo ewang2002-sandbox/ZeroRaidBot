@@ -11,13 +11,13 @@ import { StringUtil } from "../../Utility/StringUtil";
 import { IVoidVials, IKeyPops, ICompletedRuns, ILeaderRuns, IWineCellarOryx } from "../../Definitions/UserDBProps";
 import { GuildUtil } from "../../Utility/GuildUtil";
 
-export class ServerProfileCommand extends Command {
+export class ViewServerProfileCommand extends Command {
     public constructor() {
         super(
             new CommandDetail(
                 "View Server Profile Command",
                 "serverprofile",
-                [],
+                ["viewserverprofile"],
                 "Allows you to view your server profile.",
                 ["serverprofile"],
                 ["serverprofile"],
@@ -110,39 +110,14 @@ export class ServerProfileCommand extends Command {
                 .appendLine();
         } // end loop
 
-        const commandSB: StringBuilder = new StringBuilder()
-            .append("⇒ Manage Profile")
-            .appendLine()
-            .append("To manage your profile (including the ability to add an alternative account IGN to your profile so you can use it in any server or remove an alternative account IGN), run the `;userprofile` command.")
-            .appendLine()
-            .appendLine();
-        if (names.length + 1 <= 2) {
-            commandSB.append("⇒ Add Name To Display")
-                .appendLine()
-                .append("To add a linked alternative account IGN to your server nickname, use the `;addnameserver` command.")
-                .appendLine()
-                .appendLine();
-        }
 
-        // NOTE: Make sure you read the server's Discord & raiding rules; some servers require that the IGN corresponding to the account you want to use in a server raid be in your nickname.
-        if (names.length !== 1) {
-            commandSB.append("⇒ Remove Name From Display")
-                .appendLine()
-                .append("To remove an alternative account IGN from your server nickname, use the `;removenameserver` command.")
-                .appendLine()
-                .appendLine();
-        }
-
-        commandSB.append("⇒ Unverify From Server")
-            .appendLine()
-            .append("To unverify yourself from this server, use the `;serverunverify` command. You will no longer be able to manage your server profile for this server and your nickname will be reset.");
 
         const mEmbed: MessageEmbed = new MessageEmbed()
             .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
             .setTitle(`Server Profile: **${guild.name}**`)
             .setColor("RANDOM")
             .setFooter("Server Profile.")
-            .setDescription(commandSB.toString());
+            .setDescription(`Current Server Nickname: ${StringUtil.applyCodeBlocks(nameStr.toString())}\n\nTo see all available server profile commands, use the \`;sphelp\` command. To view your user profile, use the \`;userprofile\` command.`);
 
         // key pops
         const keyPops: IKeyPops | undefined = userDb.general.keyPops.find(x => x.server === guild.id);
@@ -193,8 +168,7 @@ export class ServerProfileCommand extends Command {
             .append(`Helm Rune Popped: ${typeof wc === "undefined" ? 0 : wc.helmRune.popped}`)
             .appendLine();
 
-        mEmbed.addField("Current Displayed Names", StringUtil.applyCodeBlocks(nameStr.toString()))
-            .addField("Keys Used", StringUtil.applyCodeBlocks(typeof keyPops === "undefined" ? 0 : keyPops.keysPopped), true)
+        mEmbed.addField("Keys Used", StringUtil.applyCodeBlocks(typeof keyPops === "undefined" ? 0 : keyPops.keysPopped), true)
             .addField("Vial Information", StringUtil.applyCodeBlocks(vvSB.toString()), true)
             .addField("Oryx III Information", StringUtil.applyCodeBlocks(wcSB.toString()))
             .addField("Runs Completed", StringUtil.applyCodeBlocks(crSB.toString()), true)

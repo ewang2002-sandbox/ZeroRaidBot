@@ -368,14 +368,14 @@ export class ConfigureSectionCommand extends Command {
 			.setFooter((msg.guild as Guild).name)
 			.setTimestamp();
 
-		const col1: GenericMessageCollector<TextChannel | "SKIP"> = new GenericMessageCollector<TextChannel | "SKIP">(
+		const col1: GenericMessageCollector<TextChannel | "SKIP" | "-"> = new GenericMessageCollector<TextChannel | "SKIP">(
 			msg,
 			{ embed: verificationPromptChannel },
 			5,
 			TimeUnit.MINUTE
 		);
 
-		const verifChan: TextChannel | "SKIP" | "CANCEL" | "TIME" = await col1.send(this.getChannelPrompt(msg));
+		const verifChan: TextChannel | "SKIP" | "CANCEL" | "TIME" | "-" = await col1.send(this.getChannelPrompt(msg));
 
 		if (verifChan === "CANCEL" || verifChan === "TIME") {
 			return;
@@ -389,14 +389,14 @@ export class ConfigureSectionCommand extends Command {
 			.setFooter((msg.guild as Guild).name)
 			.setTimestamp();
 
-		const col2: GenericMessageCollector<TextChannel | "SKIP"> = new GenericMessageCollector<TextChannel | "SKIP">(
+		const col2: GenericMessageCollector<TextChannel | "SKIP" | "-"> = new GenericMessageCollector<TextChannel | "SKIP" | "-">(
 			msg,
 			{ embed: afkCheckPromptChannel },
 			5,
 			TimeUnit.MINUTE
 		);
 
-		const afkCheckChan: TextChannel | "SKIP" | "CANCEL" | "TIME" = await col2.send(this.getChannelPrompt(msg));
+		const afkCheckChan: TextChannel | "SKIP" | "CANCEL" | "TIME" | "-" = await col2.send(this.getChannelPrompt(msg));
 
 		if (afkCheckChan === "CANCEL" || afkCheckChan === "TIME") {
 			return;
@@ -427,7 +427,7 @@ export class ConfigureSectionCommand extends Command {
 				return;
 			}
 
-			if (controlPanelChannel.id === afkCheckChan.id) {
+			if (afkCheckChan !== "-" && controlPanelChannel.id === afkCheckChan.id) {
 				MessageUtil.send({ content: "The AFK check channel and control panel channel cannot be the same! Try again. " }, msg.channel);
 				return;
 			}
@@ -471,8 +471,8 @@ export class ConfigureSectionCommand extends Command {
 					},
 					isMain: false,
 					channels: {
-						afkCheckChannel: afkCheckChan === "SKIP" ? "" : afkCheckChan.id,
-						verificationChannel: verifChan === "SKIP" ? "" : verifChan.id,
+						afkCheckChannel: afkCheckChan === "SKIP" || afkCheckChan === "-" ? "" : afkCheckChan.id,
+						verificationChannel: verifChan === "SKIP" || verifChan === "-" ? "" : verifChan.id,
 						controlPanelChannel: typeof controlPanelChan === "string" ? "" : controlPanelChan.id,
 						manualVerification: "",
 						logging: {
@@ -1810,15 +1810,15 @@ export class ConfigureSectionCommand extends Command {
 		for await (const chanQ of QsToAsk) {
 			const qEmbed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", { authorType: "GUILD", includeTimestamp: true })
 				.setTitle(chanQ.q)
-				.setDescription(`${chanQ.d}\n\nTo skip this selection, simply type \`skip\`.`)
+				.setDescription(`${chanQ.d}\n\nTo skip this selection, simply type \`skip\`.\nTo reset this value to the default (nothing), type \`-\`.`)
 				.setFooter(`Name: ${section.nameOfSection} • Main: ${section.isMain ? "Yes" : "No"}`);
 
-			let resp: (TextChannel | Role) | "CANCEL" | "TIME" | "SKIP";
+			let resp: (TextChannel | Role) | "-" | "CANCEL" | "TIME" | "SKIP";
 			if (wizType === "CHANNEL") {
-				resp = await (new GenericMessageCollector<TextChannel | "SKIP">(msg, { embed: qEmbed }, 2, TimeUnit.MINUTE)).send(this.getChannelPrompt(msg));
+				resp = await (new GenericMessageCollector<TextChannel | "SKIP" | "-">(msg, { embed: qEmbed }, 2, TimeUnit.MINUTE)).send(this.getChannelPrompt(msg));
 			}
 			else {
-				resp = await (new GenericMessageCollector<Role | "SKIP">(msg, { embed: qEmbed }, 2, TimeUnit.MINUTE)).send(this.getRolePrompt(msg));
+				resp = await (new GenericMessageCollector<Role | "SKIP" | "-">(msg, { embed: qEmbed }, 2, TimeUnit.MINUTE)).send(this.getRolePrompt(msg));
 			}
 
 			if (resp === "CANCEL" || resp === "TIME") {
@@ -1829,7 +1829,12 @@ export class ConfigureSectionCommand extends Command {
 				continue;
 			}
 
-			update$set[section.isMain ? chanQ.mainMongo : chanQ.sectMongo] = resp.id;
+			if (resp === "-") {
+				update$set[section.isMain ? chanQ.mainMongo : chanQ.sectMongo] = "";
+			}
+			else {
+				update$set[section.isMain ? chanQ.mainMongo : chanQ.sectMongo] = resp.id;
+			}
 		}
 
 		if (Object.keys(update$set).length === 0) {
@@ -1861,7 +1866,7 @@ export class ConfigureSectionCommand extends Command {
 			.setTitle(`Changing **${channelName}**`)
 			.setDescription(`Current ${channelName}: ${typeof currentChannel === "undefined" ? "Not Set" : currentChannel}.\n Please mention, or type the ID of, the channel now.`);
 
-		const chan: TextChannel | "CANCEL" | "TIME" = await (new GenericMessageCollector<TextChannel>(msg, {
+		const chan: TextChannel | "CANCEL" | "TIME" | "-" = await (new GenericMessageCollector<TextChannel | "-">(msg, {
 			embed: embed
 		}, 3, TimeUnit.MINUTE)).send(GenericMessageCollector.getChannelPrompt(msg, msg.channel));
 
@@ -1879,7 +1884,7 @@ export class ConfigureSectionCommand extends Command {
 
 		return (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(query, {
 			$set: {
-				[mongoPath]: chan.id
+				[mongoPath]: chan === "-" ? "" : chan.id
 			}
 		}, { returnOriginal: false })).value as IRaidGuild;
 	}
@@ -1904,15 +1909,15 @@ export class ConfigureSectionCommand extends Command {
 			.setTitle(`Changing **${roleName}**`)
 			.setDescription(`Current ${roleName}: ${typeof currentRole === "undefined" ? "Not Set" : currentRole}.\n Please mention, or type the ID of, the role now.`);
 
-		const chan: Role | "CANCEL" | "TIME" = await (new GenericMessageCollector<Role>(msg, {
+		const getRole: Role | "CANCEL" | "TIME" | "-" = await (new GenericMessageCollector<Role | "-">(msg, {
 			embed: embed
 		}, 3, TimeUnit.MINUTE)).send(GenericMessageCollector.getRolePrompt(msg, msg.channel));
 
-		if (chan === "CANCEL") {
+		if (getRole === "CANCEL") {
 			return "CANCEL";
 		}
 
-		if (chan === "TIME") {
+		if (getRole === "TIME") {
 			return "TIME";
 		}
 
@@ -1922,7 +1927,7 @@ export class ConfigureSectionCommand extends Command {
 
 		return (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(query, {
 			$set: {
-				[mongoPath]: chan.id
+				[mongoPath]: getRole === "-" ? "" : getRole.id
 			}
 		}, { returnOriginal: false })).value as IRaidGuild;
 	}
@@ -2328,10 +2333,14 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with either a TextChannel mention or ID, or simply the "skip" message.
 	 * @param {Message} msg The message that triggered this class. This is generally a message that results in the exeuction of the command. 
 	 */
-	private getChannelPrompt(msg: Message): (m: Message) => Promise<void | TextChannel | "SKIP"> {
-		return async (m: Message): Promise<void | TextChannel | "SKIP"> => {
+	private getChannelPrompt(msg: Message): (m: Message) => Promise<void | TextChannel | "SKIP" | "-"> {
+		return async (m: Message): Promise<void | TextChannel | "SKIP" | "-"> => {
 			if (m.content.toLowerCase() === "skip") {
 				return "SKIP";
+			}
+
+			if (m.content === "-") {
+				return "-";
 			}
 
 			const channel: GuildChannel | undefined = m.mentions.channels.first();
@@ -2362,10 +2371,14 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with a role ID or mention, or simply the "skip" message.
 	 * @param {Message} msg The message that triggered this class. This is generally a message that results in the exeuction of the command. 
 	 */
-	private getRolePrompt(msg: Message): (collectedMessage: Message) => Promise<void | Role | "SKIP"> {
-		return async (m: Message): Promise<void | Role | "SKIP"> => {
+	private getRolePrompt(msg: Message): (collectedMessage: Message) => Promise<void | Role | "SKIP" | "-"> {
+		return async (m: Message): Promise<void | Role | "SKIP" | "-"> => {
 			if (m.content.toLowerCase() === "skip") {
 				return "SKIP";
+			}
+
+			if (m.content === "-") {
+				return "-";
 			}
 
 			const role: Role | undefined = m.mentions.roles.first();

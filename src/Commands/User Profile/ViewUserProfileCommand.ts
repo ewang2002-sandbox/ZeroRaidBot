@@ -14,7 +14,7 @@ export class ViewUserProfileCommand extends Command {
             new CommandDetail(
                 "View User Profile Command",
                 "userprofile",
-                ["viewprofile"],
+                ["viewuserprofile"],
                 "Allows you to view your current profile.",
                 ["userprofile"],
                 ["userprofile"],
@@ -23,7 +23,7 @@ export class ViewUserProfileCommand extends Command {
             new CommandPermission(
                 [],
                 [],
-                [],
+                ["suspended"],
                 [],
                 true
             ),
@@ -53,12 +53,6 @@ export class ViewUserProfileCommand extends Command {
             return;
         }
 
-        const embed: MessageEmbed = new MessageEmbed()
-            .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
-            .setTitle(`User Profile: ${userDb.rotmgDisplayName}`)
-            .setFooter("User Profile Command")
-            .setColor("RANDOM");
-
         const altAccs: string = userDb.otherAccountNames.length === 0
             ? "N/A"
             : userDb.otherAccountNames.map(x => x.displayName).join(", ");
@@ -67,15 +61,18 @@ export class ViewUserProfileCommand extends Command {
             .appendLine()
             .append(`⇒ **Linked Discord ID:** ${userDb.discordUserId}`)
             .appendLine()
-            .append(`⇒ **Alternative Accounts:** ${altAccs}`);
+            .append(`⇒ **Alternative Accounts:** ${altAccs}`)
+            .appendLine()
+            .appendLine()
+            .append("To see all available user profile commands, run the `;uphelp` command. To view your profile for a specific server, run the `;serverprofile` command.");
 
 
-        embed.setDescription(descBuilder.toString())
-            .addField("Add Alternative Account", "You can use this command to either add an alternative account to your profile __or__ update your name in case of a name change.\n⇒ Command: `;addaltaccount`")
-            .addField("Remove Alternative Account", "You can use this command to remove an alternative account from your profile.\n⇒ Command: `;removealtaccount`\n⇒ Example: `;removealtaccount`")
-            .addField("Switch Main & Alternative Accounts", "You can use this account to switch your main account with one of your alternative accounts.\n⇒ Command: `;switchaccount`")
-            .addField("View Server Profile", "Allows you to view your server statistics, make changes to your profile within the server, and more. Run this command in any server or in DMs.\n⇒ Command: `;serverprofile`");
-        
+        const embed: MessageEmbed = new MessageEmbed()
+            .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
+            .setTitle(`User Profile: ${userDb.rotmgDisplayName}`)
+            .setFooter("User Profile Command")
+            .setDescription(descBuilder.toString())
+            .setColor("RANDOM");
         await dmChannel.send(embed);
     }
 }

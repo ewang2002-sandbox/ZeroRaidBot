@@ -73,7 +73,7 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 	if (command.isBotOwnerOnly() && !owners.some(x => x === msg.author.id)) {
 		embed.setTitle("**Bot Owner Command Only**")
 			.setDescription("This command can only be used by the bot owner.");
-		msg.author.send(embed).catch(() => { });
+		msg.channel.send(embed).catch(() => { });
 		return;
 	}
 
@@ -81,7 +81,7 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 	if (msg.guild === null && command.isGuildOnly()) {
 		embed.setTitle("**Server Command Only**")
 			.setDescription("This command only works in a server. Please try executing this command in a server.");
-		msg.author.send(embed).catch(() => { });
+		msg.channel.send(embed).catch(() => { });
 		return;
 	}
 
@@ -98,16 +98,9 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 			return;
 		}
 
-		let hasServerPerms: boolean = true;
-		if (command.getGeneralPermissions().length !== 0) {
-			for (let i = 0; i < command.getGeneralPermissions().length; i++) {
-				if (!member.hasPermission(command.getGeneralPermissions()[i])) {
-					// no server perms
-					hasServerPerms = false;
-					break;
-				}
-			}
-		}
+		let hasServerPerms: boolean = command.getGeneralPermissions().length === 0
+			? false
+			: command.getGeneralPermissions().every(x => member.hasPermission(x));
 
 		// check to see if the member has role perms
 		let hasRolePerms: boolean = false;
@@ -181,12 +174,12 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 				}
 			}
 			else {
-				for (let i = 0; i < command.getRolePermissions().length; i++) {
+				main: for (let i = 0; i < command.getRolePermissions().length; i++) {
 					for (let [roleID, roleName] of roleOrder) {
 						if (command.getRolePermissions()[i] === roleName
 							&& member.roles.cache.has(roleID)) {
 							hasRolePerms = true;
-							break;
+							break main;
 						}
 					}
 				}
@@ -231,7 +224,6 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 					}
 				]);
 			MessageUtil.send(embed, msg.channel, 8 * 1000).catch(() => { });
-
 			return;
 		}
 	}
@@ -258,7 +250,6 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 				}
 			]);
 		MessageUtil.send(embed, msg.channel, 8 * 1000).catch(() => { });
-
 		return;
 	}
 

@@ -22,6 +22,11 @@ import { ChannelInfoCommand } from "../Commands/Server Information/ChannelInfoCo
 import { UserInfoCommand } from "../Commands/Server Information/UserInfoCommand";
 import { ViewUserProfileCommand } from "../Commands/User Profile/ViewUserProfileCommand";
 import { AddAltAccountCommand } from "../Commands/User Profile/AddAltAccountCommand";
+import { ServerProfileCommand } from "../Commands/Server Profile/ServerProfileCommand";
+import { SwitchMainAltAccountCommand } from "../Commands/User Profile/SwitchMainAltAccountCommand";
+import { ReconnectDBCommand } from "../Commands/Bot Owner/ReconnectDBCommand";
+import { AddToNicknameCommand } from "../Commands/Server Profile/AddToNicknameCommand";
+import { RemoveFromNicknameCommand } from "../Commands/Server Profile/RemoveFromNicknameCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -93,7 +98,18 @@ export class CommandManager {
 		
 		this.commands.set("User Profile", [
 			new ViewUserProfileCommand(),
-			new AddAltAccountCommand()
+			new AddAltAccountCommand(),
+			new SwitchMainAltAccountCommand()
+		]);
+
+		this.commands.set("Server Profile", [
+			new ServerProfileCommand(),
+			new AddToNicknameCommand(),
+			new RemoveFromNicknameCommand()
+		]);
+
+		this.commands.set("Bot Owner", [
+			new ReconnectDBCommand()
 		]);
 
 		this.hasBeenLoaded = true;

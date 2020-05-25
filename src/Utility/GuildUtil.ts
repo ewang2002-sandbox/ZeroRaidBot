@@ -1,6 +1,10 @@
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { ISection } from "../Templates/ISection";
-import { GuildMember } from "discord.js";
+import { GuildMember, Message, DMChannel, Guild, MessageEmbed } from "discord.js";
+import { MongoDbHelper } from "../Helpers/MongoDbHelper";
+import { StringUtil } from "./StringUtil";
+import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollector";
+import { TimeUnit } from "../Definitions/TimeUnit";
 
 export namespace GuildUtil { 
 	export type RaidLeaderRole = null | "TRL" | "ARL" | "RL" | "HRL";
@@ -156,4 +160,71 @@ export namespace GuildUtil {
 	export function getSectionRaidLeaderRoles(section: ISection): string[] {
 		return [section.roles.trialLeaderRole, section.roles.almostLeaderRole, section.roles.raidLeaderRole];
 	}
+
+	/**
+     * Gets a guild.
+     * @param msg The message object.
+     */
+    export async function getGuild(msg: Message, dmChannel: DMChannel): Promise<Guild | null | "CANCEL"> {
+        const allGuilds: IRaidGuild[] = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.find({}).toArray();
+        const embed: MessageEmbed = new MessageEmbed()
+            .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
+            .setDescription("Please select the server that you want to configure your server profile for.")
+            .setColor("RANDOM")
+            .setFooter("Server Profile Management");
+
+        let str: string = "";
+        let index: number = 0;
+        const validGuilds: Guild[] = [];
+        for (const guildEntry of allGuilds) {
+            for (const [id, guild] of msg.client.guilds.cache) {
+                if (guild.id !== guildEntry.guildID) {
+                    continue; // guild associated with db not right
+                }
+
+                if (!guild.roles.cache.has(guildEntry.roles.raider)
+                    || !guild.members.cache.has(msg.author.id)) {
+                    break; // found guild but no verified role OR not a member of the server
+                }
+
+                const resolvedMember: GuildMember = guild.member(msg.author) as GuildMember;
+
+                if (!resolvedMember.roles.cache.has(guildEntry.roles.raider)) {
+                    break; // not verified
+                }
+
+                validGuilds.push(guild);
+                const tempStr: string = `[${++index}] ${guild.name}`;
+                if (str.length + tempStr.length > 1000) {
+                    embed.addField("Guild Selection", StringUtil.applyCodeBlocks(str));
+                    str = tempStr;
+                }
+                else {
+                    str += tempStr;
+                }
+            }
+        } // end major loop
+
+        if (validGuilds.length === 0) {
+            return null;
+        }
+
+        if (embed.fields.length === 0) {
+            embed.addField("Guild Selection", StringUtil.applyCodeBlocks(str));
+        }
+
+        const num: number | "CANCEL" | "TIME" = await new GenericMessageCollector<number>(
+            msg.author,
+            { embed: embed },
+            2,
+            TimeUnit.MINUTE,
+            dmChannel
+        ).send(GenericMessageCollector.getNumber(dmChannel, 1, validGuilds.length));
+
+        if (num === "CANCEL" || num === "TIME") {
+            return "CANCEL";
+        }
+
+        return validGuilds[num - 1];
+    }
 }

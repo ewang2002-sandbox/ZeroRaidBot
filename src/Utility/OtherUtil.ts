@@ -37,5 +37,17 @@ export module OtherUtil {
 			}
 			i++;
 		}, 500);
-	}
+    }
+    
+    /**
+     * Waits a certain amount of time before resolving the promise.
+     * @param {number} ms The time to wait, in milliseconds. 
+     */
+    export async function waitFor(ms: number): Promise<void> {
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                resolve();
+            }, ms);
+        });
+    }
 }

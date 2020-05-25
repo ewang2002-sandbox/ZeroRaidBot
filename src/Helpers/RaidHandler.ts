@@ -1232,9 +1232,8 @@ export module RaidHandler {
 
 			const nums: number[] = NumberUtil.parseNumbersFromString(m.content);
 			for (const num of nums) {
-				if (typeof allDungeons[num - 1] === "undefined") {
-					MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_INDEX", null), msg.channel as TextChannel);
-					return;
+				if (num - 1 < 0 || num - 1 >= allDungeons.length) {
+					return; // out of index
 				}
 	
 				// if not included, let's make sure
@@ -1246,10 +1245,9 @@ export module RaidHandler {
 				}
 				else {
 					allDungeons[num - 1].isIncluded = false;
-				}
-	
-				sentHeadCountMessage.edit(getHeadCountEmbed(msg, allDungeons));
-			}
+				}	
+			} // end loop
+			sentHeadCountMessage.edit(getHeadCountEmbed(msg, allDungeons));
 		});
 
 		hcCollector.on("end", async (collected: Collection<string, Message>, reason: string) => {
@@ -1473,7 +1471,7 @@ export module RaidHandler {
 		const configureHeadCountEmbed: MessageEmbed = new MessageEmbed()
 			.setTitle("⚙️ Configuring Headcount: Dungeon Selection")
 			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
-			.setDescription("You are close to starting a headcount! However, you need to select dungeons from the below list. To begin, please type the number corresponding to the dungeon(s) you want to add to the headcount. To send this headcount, type `send`. To cancel, type `cancel`.\n\nA ☑️ next to the dungeon means the dungeon will be included in the headcount.\nA ❌ means the dungeon will not be part of the overall headcount.")
+			.setDescription("You are close to starting a headcount! However, you need to select dungeons from the below list. To begin, please type the number (e.g. `2`, `15`) or range of numbers (e.g. `5-10`, `11-16`) corresponding to the dungeon(s) you want to add to the headcount. To send this headcount, type `send`. To cancel, type `cancel`.\n\nA ☑️ next to the dungeon means the dungeon will be included in the headcount.\nA ❌ means the dungeon will not be part of the overall headcount.")
 			.setColor("RANDOM")
 			.setFooter(`${(msg.guild as Guild).name} | ${amtKeys}/19 Remaining Slots`);
 		let i: number = 0;

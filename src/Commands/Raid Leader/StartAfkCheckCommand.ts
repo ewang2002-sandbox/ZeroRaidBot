@@ -11,7 +11,7 @@ export class StartAfkCheckCommand extends Command {
 			new CommandDetail(
 				"Start AFK Check",
 				"startafk",
-				["startafkcheck"],
+				["startafkcheck", "sac", "ac", "afk"],
 				"Starts an AFK check.",
 				["startafk <Location>"],
 				["startafk ussw left"],

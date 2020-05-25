@@ -12,10 +12,10 @@ export class ViewUserProfileCommand extends Command {
     public constructor() {
         super(
             new CommandDetail(
-                "View Profile Command",
+                "View User Profile Command",
                 "userprofile",
                 ["viewprofile"],
-                "Allows you to view your current profile. If executed in a server, you will see server-specific settings.",
+                "Allows you to view your current profile.",
                 ["userprofile"],
                 ["userprofile"],
                 0
@@ -56,6 +56,7 @@ export class ViewUserProfileCommand extends Command {
         const embed: MessageEmbed = new MessageEmbed()
             .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
             .setTitle(`User Profile: ${userDb.rotmgDisplayName}`)
+            .setFooter("User Profile Command")
             .setColor("RANDOM");
 
         const altAccs: string = userDb.otherAccountNames.length === 0

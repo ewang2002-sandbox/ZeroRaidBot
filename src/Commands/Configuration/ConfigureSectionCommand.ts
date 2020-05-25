@@ -2063,14 +2063,13 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 
 				const nums: number[] = NumberUtil.parseNumbersFromString(m.content);
 				for (const num of nums) {
-					if (typeof d[num - 1] === "undefined") {
-						MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_INDEX", null), msg.channel as TextChannel);
-						return;
+					if (num - 1 < 0 || num - 1 >= d.length) {
+						return; // out of index
 					}
 	
 					d[num - 1].isIncluded = !d[num - 1].isIncluded;
-					await editorMessage.edit(this.getAllowedDungeonEditorEmbed(msg, d, section));
 				}
+				await editorMessage.edit(this.getAllowedDungeonEditorEmbed(msg, d, section));
 			});
 		});
 	}
@@ -2087,7 +2086,7 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 	): MessageEmbed {
 		const allowedDungeonEmbed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", { authorType: "GUILD" })
 			.setTitle(`Section Dungeon Editor: **${section.nameOfSection}**`)
-			.setDescription("Please type the number corresponding to the dungeon(s) you want to allow in this section.\n\nA ☑️ next to the dungeon name means raid leaders will be able to use the dungeon in headcounts and AFK checks.\nA ❌ means the dungeon will not be part of the section.\n\nTo unselect all, type `disableAll`. To select all, type `enableAll`. To save, type `save`. To cancel, type `cancel`.")
+			.setDescription("Please type a number (e.g. `4`, `19`) or a range of numbers (e.g. `1-4`, `18-22, 24, 26`) corresponding to the dungeon(s) you want to allow in this section.\n\nA ☑️ next to the dungeon name means raid leaders will be able to use the dungeon in headcounts and AFK checks.\nA ❌ means the dungeon will not be part of the section.\n\nTo unselect all, type `disableAll`. To select all, type `enableAll`. To save, type `save`. To cancel, type `cancel`.")
 			.setColor("RANDOM")
 			.setFooter((msg.guild as Guild).name);
 		let i: number = 0;

@@ -63,6 +63,8 @@ export class SwitchMainAltAccountCommand extends Command {
         const embed: MessageEmbed = new MessageEmbed()
             .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
             .setTitle("**Switch Main & Alternative Accounts**")
+            .setColor("RANDOM")
+            .setFooter("User Profile Configuration Command")
             .setDescription(`Your designated main account is: **\`${userDb.rotmgDisplayName}\`**\n\nType the number corresponding to the name you want to make the new main account IGN.`);
         let str: string = "";
         let indexOfField: number = 0;
@@ -93,7 +95,7 @@ export class SwitchMainAltAccountCommand extends Command {
             return;
         }
 
-        const nameToSwitchWith: string = userDb.otherAccountNames[num].displayName;
+        const nameToSwitchWith: string = userDb.otherAccountNames[num - 1].displayName;
         
         await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateOne({ discordUserId: msg.author.id, "otherAccountNames.lowercase": nameToSwitchWith.toLowerCase() }, {
             $set: {

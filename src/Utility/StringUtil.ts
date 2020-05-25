@@ -69,4 +69,23 @@ export namespace StringUtil {
 
 		return (2.0 * intersectionSize) / (first.length + second.length - 2);
 	}
+
+	/**	
+	 * Returns a string consisting of all symbols BEFORE any letters.	
+	 * @param {string} str The string. 	
+	 */	
+	export function getSymbolsFromStartOfString(str: string): string {	
+		let symbols: string = "";	
+		for (let i = 0; i < str.length; i++) {	
+			if (!/^[A-Za-z]+$/.test(str[i])) {	
+				symbols += str[i];	
+				continue;	
+			}	
+			else {	
+				break;	
+			}	
+		}	
+
+		return symbols;	
+	}
 }

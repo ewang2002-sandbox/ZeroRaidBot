@@ -31,7 +31,9 @@ export module MongoDbHelper {
 		public async connect(): Promise<void> {
 			const mongoDbClient: MongoClient = new MongoClient(BotConfiguration.dbURL, {
 				useNewUrlParser: true,
-				autoReconnect: true
+				autoReconnect: true,
+				reconnectInterval: 2500,
+				reconnectTries: 90
 			});
 
 			MongoDbHelper.MongoDbBase.MongoClient = await mongoDbClient.connect();

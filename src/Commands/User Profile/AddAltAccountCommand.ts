@@ -300,7 +300,7 @@ export class AddAltAccountCommand extends Command {
 							const name: string = member.displayName;
 
 							let allNames: string[] = name.split("|");
-							let symbols: string = this.getSymbolsFromName(allNames[0]);
+							let symbols: string = StringUtil.getSymbolsFromStartOfString(allNames[0]);
 							allNames = allNames.map(x => x.trim().replace(/[^A-Za-z]/g, ""));
 							for (let i = 0; i < allNames.length; i++) {
 								if (allNames[i].toLowerCase() === nameToReplaceWith.toLowerCase()) {
@@ -320,23 +320,5 @@ export class AddAltAccountCommand extends Command {
 			}
 		});
     }
-    
-    /**	
-	 * Returns a string consisting of all symbols BEFORE any letters.	
-	 * @param {string} name The name. 	
-	 */	
-	private getSymbolsFromName(name: string): string {	
-		let symbols: string = "";	
-		for (let i = 0; i < name.length; i++) {	
-			if (!/^[A-Za-z]+$/.test(name[i])) {	
-				symbols += name[i];	
-				continue;	
-			}	
-			else {	
-				break;	
-			}	
-		}	
 
-		return symbols;	
-	}
 }

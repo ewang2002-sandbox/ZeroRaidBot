@@ -1,27 +1,26 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, MessageEmbed, DMChannel, Guild, MessageManager, GuildMember } from "discord.js";
+import { Message, MessageEmbed, DMChannel, Guild, GuildMember } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { StringBuilder } from "../../Classes/String/StringBuilder";
 import { IRaidUser } from "../../Templates/IRaidUser";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { StringUtil } from "../../Utility/StringUtil";
-import { GenericMessageCollector } from "../../Classes/Message/GenericMessageCollector";
-import { TimeUnit } from "../../Definitions/TimeUnit";
 import { IVoidVials, IKeyPops, ICompletedRuns, ILeaderRuns, IWineCellarOryx } from "../../Definitions/UserDBProps";
+import { GuildUtil } from "../../Utility/GuildUtil";
 
 export class ServerProfileCommand extends Command {
     public constructor() {
         super(
             new CommandDetail(
-                "View Profile Command",
-                "userprofile",
-                ["viewprofile"],
-                "Allows you to view your current profile. If executed in a server, you will see server-specific settings.",
-                ["userprofile"],
-                ["userprofile"],
+                "View Server Profile Command",
+                "serverprofile",
+                [],
+                "Allows you to view your server profile.",
+                ["serverprofile"],
+                ["serverprofile"],
                 0
             ),
             new CommandPermission(
@@ -60,7 +59,7 @@ export class ServerProfileCommand extends Command {
 
         let guild: Guild;
         if (msg.guild === null) {
-            const response: Guild | "CANCEL" | null = await this.getGuild(msg, dmChannel);
+            const response: Guild | "CANCEL" | null = await GuildUtil.getGuild(msg, dmChannel);
             if (response === "CANCEL") {
                 return;
             }
@@ -89,8 +88,8 @@ export class ServerProfileCommand extends Command {
         // make sure names correspond
         let nameStr: StringBuilder = new StringBuilder();
         let index: number = 0;
-        let hasUnverifiedName: boolean = false;
-        for (let listedName of names) {
+        main: for (let listedName of names) {
+            console.log(listedName);
             // check main account
             if (listedName.toLowerCase() === userDb.rotmgLowercaseName) {
                 nameStr.append(`[${++index}] ${listedName} (M)`)
@@ -99,23 +98,16 @@ export class ServerProfileCommand extends Command {
             }
 
             // check alt accounts
-            let isFound: boolean = false;
             for (const name of userDb.otherAccountNames) {
-                if (name.lowercase === listedName) {
+                if (name.lowercase === listedName.toLowerCase()) {
                     nameStr.append(`[${++index}] ${listedName} (A)`)
                         .appendLine();
-                    isFound = true;
-                    break;
+                    continue main;
                 }
             }
 
-            if (isFound) {
-                continue;
-            }
-
-            nameStr.append(`[${++index}] ${listedName} \`⚠️\``)
+            nameStr.append(`[${++index}] ${listedName} ⚠️`)
                 .appendLine();
-            hasUnverifiedName = true;
         } // end loop
 
         const commandSB: StringBuilder = new StringBuilder()
@@ -127,7 +119,7 @@ export class ServerProfileCommand extends Command {
         if (names.length + 1 <= 2) {
             commandSB.append("⇒ Add Name To Display")
                 .appendLine()
-                .append("To add a linked alternative account IGN to your server nickname, use the `;addservername` command.")
+                .append("To add a linked alternative account IGN to your server nickname, use the `;addnameserver` command.")
                 .appendLine()
                 .appendLine();
         }
@@ -136,15 +128,7 @@ export class ServerProfileCommand extends Command {
         if (names.length !== 1) {
             commandSB.append("⇒ Remove Name From Display")
                 .appendLine()
-                .append("To remove an alternative account IGN from your server nickname, use the `;removeservername` command.")
-                .appendLine()
-                .appendLine();
-        }
-
-        if (hasUnverifiedName) {
-            commandSB.append("⇒ Remove Unverified Names")
-                .appendLine()
-                .append("To remove an unverified IGN from your server nickname, use the `;removeunverified` command.")
+                .append("To remove an alternative account IGN from your server nickname, use the `;removenameserver` command.")
                 .appendLine()
                 .appendLine();
         }
@@ -217,72 +201,5 @@ export class ServerProfileCommand extends Command {
             .addField("Runs Led", StringUtil.applyCodeBlocks(lrSB.toString()), true);
 
         await dmChannel.send(mEmbed);
-    }
-
-    /**
-     * Gets a guild.
-     * @param msg The message object.
-     */
-    private async getGuild(msg: Message, dmChannel: DMChannel): Promise<Guild | null | "CANCEL"> {
-        const allGuilds: IRaidGuild[] = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.find({}).toArray();
-        const embed: MessageEmbed = new MessageEmbed()
-            .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
-            .setDescription("Please select the server that you want to configure your profile for.")
-            .setColor("RANDOM")
-            .setFooter("Zero");
-
-        let str: string = "";
-        let index: number = 0;
-        const validGuilds: Guild[] = [];
-        for (const guildEntry of allGuilds) {
-            for (const [id, guild] of msg.client.guilds.cache) {
-                if (guild.id !== guildEntry.guildID) {
-                    continue; // not the right guild
-                }
-
-                if (!guild.roles.cache.has(guildEntry.roles.raider)
-                    || guild.members.cache.has(msg.author.id)) {
-                    break; // found guild but no verified role OR not a member of the server
-                }
-
-                const resolvedMember: GuildMember = guild.member(msg.author) as GuildMember;
-
-                if (!resolvedMember.roles.cache.has(guildEntry.roles.raider)) {
-                    break; // not verified
-                }
-
-                validGuilds.push(guild);
-                const tempStr: string = `[${++index}] ${guild.name}`;
-                if (str.length + tempStr.length > 1000) {
-                    embed.addField("Guild Selection", StringUtil.applyCodeBlocks(str));
-                    str = tempStr;
-                }
-                else {
-                    str += tempStr;
-                }
-            }
-        } // end major loop
-
-        if (validGuilds.length === 0) {
-            return null;
-        }
-
-        if (embed.fields.length === 0) {
-            embed.addField("Guild Selection", StringUtil.applyCodeBlocks(str));
-        }
-
-        const num: number | "CANCEL" | "TIME" = await new GenericMessageCollector<number>(
-            msg.author,
-            { embed: embed },
-            2,
-            TimeUnit.MINUTE,
-            dmChannel
-        ).send(GenericMessageCollector.getNumber(dmChannel, 1, validGuilds.length));
-
-        if (num === "CANCEL" || num === "TIME") {
-            return "CANCEL";
-        }
-
-        return validGuilds[num];
     }
 }

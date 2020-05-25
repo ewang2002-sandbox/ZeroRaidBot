@@ -99,7 +99,7 @@ export class RemoveFromNicknameCommand extends Command {
         const embed: MessageEmbed = new MessageEmbed()
             .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
             .setTitle("Remove IGN from Nickname Command")
-            .setDescription("All your in-game names from your nickname are displayed below. __Type__ the number corresponding to the in-game name you want to remove from your nickname.")
+            .setDescription("All your in-game names from your nickname are displayed below. __Type__ the number corresponding to the in-game name you want to remove from your nickname.\n\nNOTE: Make sure you read your server's general and raiding rules before removing your in-game name from your nickname. Staff members will be able to see all your alternative accounts, regardless of whether you have it displayed it or not. And finally, you may be suspended if the account you bring into a raid does NOT correspond to the accounts listed in your nickname.")
             .setColor("RANDOM")
             .setFooter(guild.name)
             .addField("IGNs", StringUtil.applyCodeBlocks(str));

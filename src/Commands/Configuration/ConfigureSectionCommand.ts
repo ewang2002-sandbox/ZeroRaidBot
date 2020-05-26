@@ -1864,13 +1864,13 @@ export class ConfigureSectionCommand extends Command {
 		const guild: Guild = msg.guild as Guild;
 		const embed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", { authorType: "GUILD" })
 			.setTitle(`Changing **${channelName}**`)
-			.setDescription(`Current ${channelName}: ${typeof currentChannel === "undefined" ? "Not Set" : currentChannel}.\n Please mention, or type the ID of, the channel now.`);
+			.setDescription(`Current ${channelName}: ${typeof currentChannel === "undefined" ? "Not Set" : currentChannel}.\n Please mention, or type the ID of, the channel now. To reset this value, type \`-\`.`);
 
-		const chan: TextChannel | "CANCEL" | "TIME" | "-" = await (new GenericMessageCollector<TextChannel | "-">(msg, {
+		const chan: TextChannel | "CANCEL" | "TIME" | "-" | "SKIP" = await (new GenericMessageCollector<TextChannel | "-" | "SKIP">(msg, {
 			embed: embed
-		}, 3, TimeUnit.MINUTE)).send(GenericMessageCollector.getChannelPrompt(msg, msg.channel));
+		}, 3, TimeUnit.MINUTE)).send(this.getChannelPrompt(msg));
 
-		if (chan === "CANCEL") {
+		if (chan === "CANCEL" || chan === "SKIP") {
 			return "CANCEL";
 		}
 
@@ -1909,11 +1909,11 @@ export class ConfigureSectionCommand extends Command {
 			.setTitle(`Changing **${roleName}**`)
 			.setDescription(`Current ${roleName}: ${typeof currentRole === "undefined" ? "Not Set" : currentRole}.\n Please mention, or type the ID of, the role now.`);
 
-		const getRole: Role | "CANCEL" | "TIME" | "-" = await (new GenericMessageCollector<Role | "-">(msg, {
+		const getRole: Role | "CANCEL" | "TIME" | "-" | "SKIP" = await (new GenericMessageCollector<Role | "-" | "SKIP">(msg, {
 			embed: embed
-		}, 3, TimeUnit.MINUTE)).send(GenericMessageCollector.getRolePrompt(msg, msg.channel));
+		}, 3, TimeUnit.MINUTE)).send(this.getRolePrompt(msg));
 
-		if (getRole === "CANCEL") {
+		if (getRole === "CANCEL" || getRole === "SKIP") {
 			return "CANCEL";
 		}
 

@@ -112,9 +112,16 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 			return;
 		}
 
-		const [hasServerPerms, hasRolePerms]: [boolean, boolean] = OtherUtil.checkCommandPerms(msg, command, guildHandler);
+		const [hasServerPerms, hasRolePerms, considerServerPerms]: [boolean, boolean, boolean] = OtherUtil.checkCommandPerms(msg, command, guildHandler);
 		
-		if (!hasServerPerms && !hasRolePerms) {
+		let canRunCommand: boolean;
+		if (considerServerPerms) {
+			canRunCommand = hasServerPerms || hasRolePerms;
+		}
+		else {
+			canRunCommand = hasRolePerms;
+		}
+		if (!canRunCommand) {
 			embed.setTitle("**Missing Permissions**")
 				.setDescription("You are missing either server or role permissions. Please use the help command to look up the permissions needed to run this command.")
 			MessageUtil.send(embed, msg.channel, 8 * 1000).catch(() => { });

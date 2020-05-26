@@ -71,9 +71,17 @@ export class HelpCommand extends Command {
                     if (command.isBotOwnerOnly() && !owners.some(x => x === msg.author.id)) {
                         continue;
                     }
+
+                    const cmdUserPerm: [boolean, boolean, boolean] = OtherUtil.checkCommandPerms(msg, command, guildDb);
+                    let canRunCommand: boolean;
+                    if (cmdUserPerm[2]) {
+                        canRunCommand = cmdUserPerm[0] || cmdUserPerm[1];
+                    }
+                    else {
+                        canRunCommand = cmdUserPerm[1];
+                    }
                     
-                    const cmdUserPerm: [boolean, boolean] = OtherUtil.checkCommandPerms(msg, command, guildDb);
-                    if (cmdUserPerm[0] || cmdUserPerm[1]) {
+                    if (canRunCommand) {
                         commands += command.getMainCommandName() + "\n";
                     }
                 }

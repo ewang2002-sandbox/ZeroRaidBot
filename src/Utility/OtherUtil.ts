@@ -61,8 +61,9 @@ export module OtherUtil {
      * @param {Message} msg The message that is supposed to execute the command. THIS MESSAGE MUST BE SENT IN A GUILD.
      * @param {Command} command The command to check.
      * @param {IRaidGuild} guildHandler The guild document.
+     * @returns Three boolean values. The first boolean value is whether the person has server permissions. The second boolean value is whether the person has role permissions. And the third boolean value is whether there are any server permissions whatsoever defined for the command.
      */
-    export function checkCommandPerms(msg: Message, command: Command, guildHandler: IRaidGuild): [boolean, boolean] {
+    export function checkCommandPerms(msg: Message, command: Command, guildHandler: IRaidGuild): [boolean, boolean, boolean] {
         const member: GuildMember = msg.member as GuildMember;
         let hasServerPerms: boolean = member.permissions.has("ADMINISTRATOR")
             ? true
@@ -71,7 +72,7 @@ export module OtherUtil {
                 : command.getGeneralPermissions().every(x => member.hasPermission(x));
 
         // check to see if the member has role perms
-        let hasRolePerms: boolean = false;
+        let hasRolePerms: boolean = true;
         if (command.getRolePermissions().length !== 0 && !member.permissions.has("ADMINISTRATOR")) {
             const allSections: ISection[] = [GuildUtil.getDefaultSection(guildHandler), ...guildHandler.sections];
 
@@ -126,14 +127,10 @@ export module OtherUtil {
                 [suspended, "suspended"]
             );
 
+            let hasPermArr: boolean[] = [];
             if (command.isRoleInclusive()) {
                 for (let [roleID, roleName] of roleOrder) {
-                    if (member.roles.cache.has(roleID)) {
-                        hasRolePerms = true;
-                        // break out of THIS loop 
-                        break;
-                    }
-
+                    hasPermArr.push(member.roles.cache.has(roleID));
                     // we reached the minimum role
                     // break out since we no longer need to check 
                     if (roleName === command.getRolePermissions()[0]) {
@@ -141,19 +138,21 @@ export module OtherUtil {
                     }
                 }
             }
+            // not inclusive
+            // you either have it or you dont 
             else {
-                main: for (let i = 0; i < command.getRolePermissions().length; i++) {
+                for (let i = 0; i < command.getRolePermissions().length; i++) {
                     for (let [roleID, roleName] of roleOrder) {
-                        if (command.getRolePermissions()[i] === roleName
-                            && member.roles.cache.has(roleID)) {
-                            hasRolePerms = true;
-                            break main;
+                        if (command.getRolePermissions()[i] === roleName) {
+                            hasPermArr.push(member.roles.cache.has(roleID));
                         }
                     }
                 }
             }
+
+            hasRolePerms = hasPermArr.some(x => x);
         }
 
-        return [hasServerPerms, hasRolePerms];
+        return [hasServerPerms, hasRolePerms, command.getGeneralPermissions().length !== 0];
     }
 }

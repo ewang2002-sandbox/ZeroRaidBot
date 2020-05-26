@@ -211,7 +211,7 @@ export class PollCommand extends Command {
 				MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "MSG_TOO_LONG", null, "poll option", "1000"), msg.channel as TextChannel);
 				return;
 			}
-			pollEmbed.addField(`Choice ${selectedReaction[i]}`, StringUtil.applyCodeBlocks(args[i]), true);
+			pollEmbed.addField(`Choice ${selectedReaction[i]}`, args[i]);
 			toReactWith.push(selectedReaction[i]);
 		}
 		const pollMsg: Message | void = await msg.channel.send(pollEmbed).catch(e => { });

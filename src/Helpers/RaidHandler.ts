@@ -320,7 +320,7 @@ export module RaidHandler {
 
 		// first, let's determine the numbers that have been used
 		// by previous vcs
-		let allNums: number[] = SECTION_CATEGORY.children
+		const allNums: number[] = SECTION_CATEGORY.children
 			.filter(x => x.type === "voice")
 			.filter(y => vcEndsWithNumber(y as VoiceChannel)
 				&& (y.name.startsWith("🚦")
@@ -1260,7 +1260,7 @@ export module RaidHandler {
 				if (num - 1 < 0 || num - 1 >= allDungeons.length) {
 					return; // out of index
 				}
-	
+
 				// if not included, let's make sure
 				// we can add it 
 				if (!allDungeons[num - 1].isIncluded) {
@@ -1270,7 +1270,7 @@ export module RaidHandler {
 				}
 				else {
 					allDungeons[num - 1].isIncluded = false;
-				}	
+				}
 			} // end loop
 			sentHeadCountMessage.edit(getHeadCountEmbed(msg, allDungeons));
 		});
@@ -1567,8 +1567,8 @@ export module RaidHandler {
 					.setColor("RANDOM");
 				for (let i = 0; i < sections.length; i++) {
 					const rlInfo: GuildUtil.RaidLeaderStatus = GuildUtil.getRaidLeaderStatus(
-						msg.member as GuildMember, 
-						guildDb, 
+						msg.member as GuildMember,
+						guildDb,
 						sections[i]
 					);
 					const hasPermission: boolean = rlInfo.roleType !== null || rlInfo.isUniversal;

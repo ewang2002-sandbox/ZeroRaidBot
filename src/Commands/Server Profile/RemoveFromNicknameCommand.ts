@@ -26,7 +26,7 @@ export class RemoveFromNicknameCommand extends Command {
             new CommandPermission(
                 [],
                 [],
-                ["raider"],
+                ["suspended"],
                 [],
                 true
             ),

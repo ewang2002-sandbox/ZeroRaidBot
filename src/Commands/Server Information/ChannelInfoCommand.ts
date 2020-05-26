@@ -22,7 +22,7 @@ export class ChannelInfoCommand extends Command {
             new CommandPermission(
                 [],
                 [],
-                [],
+                ["suspended"],
                 [],
                 true
             ),

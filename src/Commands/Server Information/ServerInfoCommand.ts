@@ -22,7 +22,7 @@ export class ServerInfoCommand extends Command {
             new CommandPermission(
                 [],
                 [],
-                [],
+                ["suspended"],
                 [],
                 true
             ),

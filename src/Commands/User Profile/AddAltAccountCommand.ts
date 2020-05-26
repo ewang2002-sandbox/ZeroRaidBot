@@ -34,7 +34,7 @@ export class AddAltAccountCommand extends Command {
             new CommandPermission(
                 [],
                 [],
-                [],
+                ["suspended"],
                 [],
                 true
             ),

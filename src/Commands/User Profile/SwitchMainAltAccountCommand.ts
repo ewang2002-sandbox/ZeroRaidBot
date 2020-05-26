@@ -25,7 +25,7 @@ export class SwitchMainAltAccountCommand extends Command {
             new CommandPermission(
                 [],
                 [],
-                [],
+                ["suspended"],
                 [],
                 true
             ),

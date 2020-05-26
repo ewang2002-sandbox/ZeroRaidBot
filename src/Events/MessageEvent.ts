@@ -9,6 +9,7 @@ import { MongoDbHelper } from "../Helpers/MongoDbHelper";
 import { MessageUtil } from "../Utility/MessageUtil";
 import { ISection } from "../Templates/ISection";
 import { GuildUtil } from "../Utility/GuildUtil";
+import { OtherUtil } from "../Utility/OtherUtil";
 
 export async function onMessageEvent(msg: Message) {
 	// make sure we have a regular message to handle
@@ -111,96 +112,8 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 			return;
 		}
 
-		let hasServerPerms: boolean = member.permissions.has("ADMINISTRATOR")
-			? true
-			: command.getGeneralPermissions().length === 0
-				? false
-				: command.getGeneralPermissions().every(x => member.hasPermission(x));
-
-		// check to see if the member has role perms
-		let hasRolePerms: boolean = false;
-		if (command.getRolePermissions().length !== 0 && !member.permissions.has("ADMINISTRATOR")) {
-			const allSections: ISection[] = [GuildUtil.getDefaultSection(guildHandler), ...guildHandler.sections];
-
-			// role define
-			const raider: string = guildHandler.roles.raider;
-			const universalAlmostRaidLeader: string = guildHandler.roles.universalAlmostRaidLeader;
-			const universalRaidLeader: string = guildHandler.roles.universalRaidLeader;
-			const officer: string = guildHandler.roles.officer;
-			const headRaidLeader: string = guildHandler.roles.headRaidLeader;
-			const moderator: string = guildHandler.roles.moderator;
-			const support: string = guildHandler.roles.support;
-			const verifier: string = guildHandler.roles.verifier;
-			const suspended: string = guildHandler.roles.suspended;
-			// rl
-			const roleOrder: [string, RoleNames][] = [
-				[moderator, "moderator"],
-				[headRaidLeader, "headRaidLeader"],
-				[officer, "officer"],
-				[universalRaidLeader, "universalRaidLeader"],
-			];
-
-			if (command.getSecRLAccountType().includes("ALL_RL_TYPE")
-				|| command.getSecRLAccountType().includes("SECTION_RL")) {
-				// rl
-				for (const sec of allSections) {
-					roleOrder.push([sec.roles.raidLeaderRole, "universalRaidLeader"]);
-				}
-			}
-
-			roleOrder.push([universalAlmostRaidLeader, "universalAlmostRaidLeader"]);
-			if (command.getSecRLAccountType().includes("ALL_RL_TYPE")
-				|| command.getSecRLAccountType().includes("SECTION_ARL")) {
-				// arl
-				for (const sec of allSections) {
-					roleOrder.push([sec.roles.almostLeaderRole, "universalAlmostRaidLeader"]);
-				}
-			}
-
-			if (command.getSecRLAccountType().includes("ALL_RL_TYPE")
-				|| command.getSecRLAccountType().includes("SECTION_TRL")) {
-				// trl
-				for (const sec of allSections) {
-					roleOrder.push([sec.roles.trialLeaderRole, "universalAlmostRaidLeader"]); // for now
-				}
-			}
-
-			// add the rest of the roles.
-			roleOrder.push(
-				[support, "support"],
-				[verifier, "verifier"],
-				[raider, "raider"],
-				[suspended, "suspended"]
-			);
-
-			if (command.isRoleInclusive()) {
-				for (let [roleID, roleName] of roleOrder) {
-					if (member.roles.cache.has(roleID)) {
-						hasRolePerms = true;
-						// break out of THIS loop 
-						break;
-					}
-
-					// we reached the minimum role
-					// break out since we no longer need to check 
-					if (roleName === command.getRolePermissions()[0]) {
-						break;
-					}
-				}
-			}
-			else {
-				main: for (let i = 0; i < command.getRolePermissions().length; i++) {
-					for (let [roleID, roleName] of roleOrder) {
-						if (command.getRolePermissions()[i] === roleName
-							&& member.roles.cache.has(roleID)) {
-							hasRolePerms = true;
-							break main;
-						}
-					}
-				}
-			}
-		}
-
+		const [hasServerPerms, hasRolePerms]: [boolean, boolean] = OtherUtil.checkCommandPerms(msg, command, guildHandler);
+		
 		if (!hasServerPerms && !hasRolePerms) {
 			embed.setTitle("**Missing Permissions**")
 				.setDescription("You are missing either server or role permissions. Please use the help command to look up the permissions needed to run this command.")

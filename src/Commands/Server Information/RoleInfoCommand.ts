@@ -23,7 +23,7 @@ export class RoleInfoCommand extends Command {
             new CommandPermission(
                 [],
                 [],
-                [],
+                ["suspended"],
                 [],
                 true
             ),

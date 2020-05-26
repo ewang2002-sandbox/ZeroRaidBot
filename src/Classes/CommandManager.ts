@@ -29,6 +29,8 @@ import { AddToNicknameCommand } from "../Commands/Server Profile/AddToNicknameCo
 import { RemoveFromNicknameCommand } from "../Commands/Server Profile/RemoveFromNicknameCommand";
 import { ServerProfileHelpCommand } from "../Commands/Server Profile/ServerProfileHelpCommand";
 import { UserProfileHelpCommand } from "../Commands/User Profile/UserProfileHelpCommand";
+import { ConfigurePrefixCommand } from "../Commands/Configuration/ConfigurePrefixCommand";
+import { ConfigureVerifSuccessCommand } from "../Commands/Configuration/ConfigureVerifSuccessCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -73,7 +75,9 @@ export class CommandManager {
 		]);
 
 		this.commands.set("Configuration", [
-			new ConfigureSectionCommand()
+			new ConfigureSectionCommand(),
+			new ConfigurePrefixCommand(),
+			new ConfigureVerifSuccessCommand()
 		]);
 
 		this.commands.set("Raid Leader", [

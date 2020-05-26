@@ -26,7 +26,7 @@ export class AddToNicknameCommand extends Command {
             new CommandPermission(
                 [],
                 [],
-                ["raider"],
+                ["suspended"],
                 [],
                 true
             ),

@@ -4,7 +4,6 @@ import { CommandPermission } from "../../Templates/Command/CommandPermission";
 import { Message, MessageEmbed, Guild } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { StringUtil } from "../../Utility/StringUtil";
-import { MessageAutoTick } from "../../Classes/Message/MessageAutoTick";
 import { GenericMessageCollector } from "../../Classes/Message/GenericMessageCollector";
 import { TimeUnit } from "../../Definitions/TimeUnit";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
@@ -46,7 +45,7 @@ export class ConfigureVerifSuccessCommand extends Command {
                 .setDescription(guildDb.properties.successfulVerificationMessage.length === 0 ? "N/A" : guildDb.properties.successfulVerificationMessage)
                 .setColor("RANDOM")
                 .setFooter(guildDb.properties.successfulVerificationMessage.length === 0 ? "No Configured Message" : `${guildDb.properties.successfulVerificationMessage.length}/1800 Characters.`);
-            msg.channel.send(descEmbed).catch(e => { });
+            msg.channel.send(descEmbed).catch(() => { });
             return;
         }
 

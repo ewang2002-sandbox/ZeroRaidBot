@@ -6,3 +6,6 @@
 
 # Configuration.
 /src/Configuration/Config.ts
+
+# Notes
+/notes/*

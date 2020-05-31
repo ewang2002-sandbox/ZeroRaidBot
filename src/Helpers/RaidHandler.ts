@@ -21,8 +21,20 @@ import { NumberUtil } from "../Utility/NumberUtil";
 import { MongoDbHelper } from "./MongoDbHelper";
 import { StringBuilder } from "../Classes/String/StringBuilder";
 import { OtherUtil } from "../Utility/OtherUtil";
+import { FilterQuery } from "mongodb";
+import { IRaidUser } from "../Templates/IRaidUser";
 
 export module RaidHandler {
+	/**
+	 * All dungeons that are considered "endgame."
+	 */
+	const ENDGAME_DUNGEONS: number[] = [38, 36, 35, 34, 32, 30];
+
+	/**
+	 * All dungeons that are considered "realm clearing."
+	 */
+	const REALM_CLEARING_DUNGEONS: number[] = [];
+
 	/**
 	 * The maximum time that an AFK check should last for. 
 	 */
@@ -519,7 +531,8 @@ export module RaidHandler {
 			startedBy: msg.author.id,
 			status: RaidStatus.AFKCheck,
 			keyReacts: [],
-			earlyReacts: []
+			earlyReacts: [],
+			dungeonsDone: 0
 		};
 
 		// add to db 
@@ -1006,7 +1019,7 @@ export module RaidHandler {
 		});
 		// control panel 
 		const initiator: GuildMember | null = guild.member(rs.startedBy);
-		let descStr: string = `Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the raid.\nRaid Section: ${rs.section.nameOfSection}\nInitiator: ${initiator === null ? "Unknown" : initiator} (${initiator === null ? "Unknown" : initiator.displayName})\nDungeon: ${rs.dungeonInfo.dungeonName} ${Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID)}\nVoice Channel: Raiding ${rs.raidNum}`;
+		let descStr: string = `Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the raid.\n\nRaid Section: ${rs.section.nameOfSection}\nInitiator: ${initiator === null ? "Unknown" : initiator} (${initiator === null ? "Unknown" : initiator.displayName})\nDungeon: ${rs.dungeonInfo.dungeonName} ${Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID)}\nVoice Channel: Raiding ${rs.raidNum}\nDungeons Completed: ${rs.dungeonsDone}`;
 		if (peopleThatGotLocEarly.length !== 0) {
 			descStr += `\n\n__**Early Locations**__\n${peopleThatGotLocEarly.join(" ")}`;
 		}
@@ -1030,6 +1043,8 @@ export module RaidHandler {
 		await cpMsg.react("🗺️").catch(() => { });
 		await cpMsg.react("🔒").catch(() => { });
 		await cpMsg.react("🔓").catch(() => { });
+		await cpMsg.react("⬆️").catch(() => { });
+		await cpMsg.react("⬇️").catch(() => { });
 	}
 
 	/**
@@ -1063,7 +1078,7 @@ export module RaidHandler {
 		const controlPanelChannel: TextChannel = guild.channels.cache.get(rs.section.channels.controlPanelChannel) as TextChannel;
 		let cpMsg: Message = await controlPanelChannel.messages.fetch(rs.controlPanelMsgId);
 		const raidVC: VoiceChannel = guild.channels.cache.get(rs.vcID) as VoiceChannel;
-		const membersLeft: number = raidVC.members.size;
+		const membersLeft: Collection<string, GuildMember> = raidVC.members;
 
 		// if we're in post afk 
 		if (typeof raidMsg.embeds[0].description !== "undefined" && raidMsg.embeds[0].description.includes("Join any available voice channel and then")) {
@@ -1074,13 +1089,14 @@ export module RaidHandler {
 
 		const endedRun: MessageEmbed = new MessageEmbed()
 			.setAuthor(`${memberThatEnded.displayName} has ended the ${rs.dungeonInfo.dungeonName} raid.`, rs.dungeonInfo.portalLink)
-			.setDescription(`The ${rs.dungeonInfo.dungeonName} raid is now finished.\n${membersLeft} members have stayed with us throughout the entire raid.`)
+			.setDescription(`The ${rs.dungeonInfo.dungeonName} raid is now finished.\n${membersLeft.size} members have stayed with us throughout the entire raid.`)
 			.setImage("https://static.drips.pw/rotmg/wiki/Enemies/Event%20Chest.png")
-			.setColor(ArrayUtil.getRandomElement(rs.dungeonInfo.colors))
+			.setColor(ArrayUtil.getRandomElement<ColorResolvable>(rs.dungeonInfo.colors))
 			.setFooter(guild.name);
 		await raidMsg.edit("The raid is now over. Thanks to everyone for attending!", endedRun);
 		await raidMsg.unpin().catch(() => { });
 		await cpMsg.delete().catch(() => { });
+		await logCompletedRunsForRaiders(guild, membersLeft, rs, 1);
 		await movePeopleOutAndDeleteRaidVc(guild, raidVC);
 	}
 
@@ -1423,7 +1439,7 @@ export module RaidHandler {
 		// let's now get the data, if any 
 		const reactionsFromHeadcount: Collection<string, MessageReaction> = (await hcMsg.fetch()).reactions.cache;
 		const newEmbed: MessageEmbed = new MessageEmbed()
-			.setTitle(`🔕 The **Headcount** Has Been Ended ${endedBy === "AUTO" ? "Automatically" : `By: ${endedBy.displayName}`}`)
+			.setTitle(`🔕 The headcount has been ended ${endedBy === "AUTO" ? "automatically" : `by ${endedBy.displayName}`}`)
 			.setColor("RANDOM")
 			.setDescription(`There are currently ${(reactionsFromHeadcount.get(AllEmoji) as MessageReaction).users.cache.size} raiders ready.`)
 			.setTimestamp();
@@ -1654,45 +1670,44 @@ export module RaidHandler {
 	}
 
 	/**
-	 * 
-	 * @param member The member that initiated the command (usually, the person that ended the run) 
-	 * @param db The db. 
-	 * @param rs The raid info.
+	 * Logs the run for all raiders that attended.
+	 * @param {Guild} guild The guild.
+	 * @param {Collection<string, GuildMember>} members The members that attended the raid.
+	 * @param {IRaidInfo} raidInfo The raid information.
+	 * @param {number} [amount = 1] The amount to log.
 	 */
-	export async function logRuns(
-		member: GuildMember,
-		db: IRaidGuild,
-		rs: IRaidInfo
+	export async function logCompletedRunsForRaiders(
+		guild: Guild,
+		members: Collection<string, GuildMember>,
+		raidInfo: IRaidInfo,
+		amount: number = 1
 	): Promise<void> {
-		let dmChannel: DMChannel;
-		try {
-			dmChannel = await member.createDM();
-		}
-		catch (e) {
-			return;
-		}
+		const filterQuery: FilterQuery<IRaidUser> = {
+			"general.completedRuns.server": guild.id
+		};
+		filterQuery.$or = [];
 
-		const promptEmbed: MessageEmbed = new MessageEmbed()
-			.setAuthor(member.guild.name, member.guild.iconURL() === null ? undefined : member.guild.iconURL() as string)
-			.setColor("GREEN")
-			.setTitle(`${rs.dungeonInfo.dungeonName} Raid Log`)
-			.setThumbnail(ArrayUtil.getRandomElement<string>(rs.dungeonInfo.bossLink))
-			.setDescription("Type the amount of runs you did. Please be honest; failure to be honest will result in demotion.")
-			.setFooter("Log Raids Command")
-			.setTimestamp();
-
-		const resp: number | "TIME" | "CANCEL" = await new GenericMessageCollector<number>(
-			member,
-			{ embed: promptEmbed },
-			2,
-			TimeUnit.MINUTE,
-			dmChannel
-		).send(GenericMessageCollector.getNumber(dmChannel, 1));
-
-		if (resp === "TIME" || resp === "CANCEL") {
-			return;
+		for (const [id, member] of members) {
+			filterQuery.$or.push({
+				discordUserId: id
+			});
 		}
 
-		// get guild member next
+		let propToUpdate: string;
+		if (ENDGAME_DUNGEONS.includes(raidInfo.dungeonInfo.id)) {
+			propToUpdate = "general.completedRuns.$.endgame";
+		}
+		else if (REALM_CLEARING_DUNGEONS.includes(raidInfo.dungeonInfo.id)) {
+			propToUpdate = "general.completedRuns.$.realmClearing";
+		}
+		else {
+			propToUpdate = "general.completedRuns.$.general";
+		}
+
+		await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateMany(filterQuery, {
+			$inc: {
+				[propToUpdate]: amount
+			}
+		});
 	}
 }

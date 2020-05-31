@@ -977,12 +977,37 @@ export module VerificationHandler {
 				const index: number = newEntry.general.leaderRuns.findIndex(x => x.server === leaderRunData.server);
 				if (index === -1) {
 					// no no no
-					newEntry.general.leaderRuns.push({ server: leaderRunData.server, general: leaderRunData.general, endgame: leaderRunData.endgame, realmClearing: leaderRunData.realmClearing });
+					newEntry.general.leaderRuns.push({
+						server: leaderRunData.server,
+						generalRuns: {
+							failed: leaderRunData.generalRuns.failed,
+							completed: leaderRunData.generalRuns.completed,
+							assists: leaderRunData.generalRuns.assists
+						},
+						endgame: {
+							failed: leaderRunData.endgame.failed,
+							completed: leaderRunData.endgame.completed,
+							assists: leaderRunData.endgame.assists
+						},
+						realmClearing: {
+							failed: leaderRunData.realmClearing.failed,
+							completed: leaderRunData.realmClearing.completed,
+							assists: leaderRunData.realmClearing.assists
+						}
+					});
 				}
 				else {
-					newEntry.general.leaderRuns[index].endgame += leaderRunData.endgame;
-					newEntry.general.leaderRuns[index].general += leaderRunData.general;
-					newEntry.general.leaderRuns[index].realmClearing += leaderRunData.realmClearing;
+					newEntry.general.leaderRuns[index].endgame.assists += leaderRunData.endgame.assists;
+					newEntry.general.leaderRuns[index].endgame.completed += leaderRunData.endgame.completed;
+					newEntry.general.leaderRuns[index].endgame.failed += leaderRunData.endgame.failed;
+
+					newEntry.general.leaderRuns[index].generalRuns.assists += leaderRunData.generalRuns.assists;
+					newEntry.general.leaderRuns[index].generalRuns.completed += leaderRunData.generalRuns.completed;
+					newEntry.general.leaderRuns[index].generalRuns.failed += leaderRunData.generalRuns.failed;
+					
+					newEntry.general.leaderRuns[index].realmClearing.assists += leaderRunData.realmClearing.assists;
+					newEntry.general.leaderRuns[index].realmClearing.completed += leaderRunData.realmClearing.completed;
+					newEntry.general.leaderRuns[index].realmClearing.failed += leaderRunData.realmClearing.failed;
 				}
 			}
 

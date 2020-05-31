@@ -141,13 +141,7 @@ export class ViewServerProfileCommand extends Command {
 
         // leaders
         const leaderRuns: ILeaderRuns | undefined = userDb.general.leaderRuns.find(x => x.server === guild.id);
-        const lrSB: StringBuilder = new StringBuilder()
-            .append(`General: ${typeof leaderRuns === "undefined" ? 0 : leaderRuns.general}`)
-            .appendLine()
-            .append(`Endgame: ${typeof leaderRuns === "undefined" ? 0 : leaderRuns.endgame}`)
-            .appendLine()
-            .append(`Realm Clearing: ${typeof leaderRuns === "undefined" ? 0 : leaderRuns.realmClearing}`)
-            .appendLine();
+        // TODO redo this again
 
         const wc: IWineCellarOryx | undefined = userDb.general.wcOryx.find(x => x.server === guild.id);
         const wcSB: StringBuilder = new StringBuilder()

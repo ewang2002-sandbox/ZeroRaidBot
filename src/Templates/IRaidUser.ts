@@ -1,4 +1,4 @@
-import { IKeyPops, IVoidVials, IWineCellarOryx, ICompletedRuns, ILeaderRuns } from "../Definitions/UserDBProps";
+import { IKeyPops, IVoidVials, IWineCellarOryx, ILeaderRuns, ICompletedRuns } from "../Definitions/UserDBProps";
 
 /**
  * This interface (and associated schema) will be using IGNs instead of Discord ID.

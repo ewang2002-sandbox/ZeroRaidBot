@@ -169,12 +169,6 @@ export async function onMessageReactionAdd(
         guildDb.roles.headRaidLeader
     ];
 
-    let staffRoles: RoleResolvable[] = [
-        guildDb.roles.support,
-        guildDb.roles.officer,
-        guildDb.roles.moderator
-    ];
-
     if (typeof sectionFromControlPanel !== "undefined"  // from control panel
         && reaction.message.embeds.length > 0 // has embed
         && reaction.message.embeds[0].footer !== null // embed footer isnt null

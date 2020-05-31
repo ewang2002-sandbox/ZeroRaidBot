@@ -44,7 +44,7 @@ export interface IWineCellarOryx {
     server: string;
 }
 
-interface IRuns {
+export interface ICompletedRuns {
     /**
      * General dungeons (i.e. not endgame)
      */
@@ -55,25 +55,49 @@ interface IRuns {
      * - Cult
      * - Void
      * - Fungal/Crystal Cavern
-     * - O3 (soon)     */
+     * - O3 (soon)    
+     */
     endgame: number;
 
     /**
      * Realm clearing led
      */
     realmClearing: number;
-}
 
-export interface ICompletedRuns extends IRuns {
     /**
      * server
      */
     server: string;
 }
 
-export interface ILeaderRuns extends IRuns {
+export interface ILeaderRuns {
+    /**
+     * General dungeons (i.e. not endgame)
+     */
+    generalRuns: ILeaderLogType;
+
+    /**
+     * Endgame dungeons. These are defined as 
+     * - Cult
+     * - Void
+     * - Fungal/Crystal Cavern
+     * - O3 (soon)    
+     */
+    endgame: ILeaderLogType;
+
+    /**
+     * Realm clearing led
+     */
+    realmClearing: ILeaderLogType;
+
     /**
      * server
      */
     server: string;
+}
+
+interface ILeaderLogType {
+    completed: number;
+    failed: number; 
+    assists: number;
 }

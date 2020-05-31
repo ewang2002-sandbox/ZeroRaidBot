@@ -29,18 +29,16 @@ export module RaidDbHelper {
 	 * @param {IRaidInfo} ri The data to add to the list of current raids. 
 	 * @returns {Promise<IRaidGuild>} The new document.  
 	 */
-	export function addRaidChannel(
+	export async function addRaidChannel(
 		guild: Guild,
 		ri: IRaidInfo
 	): Promise<IRaidGuild> {
-		return new Promise(async (resolve, reject) => {
-			const x: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id }, {
-				$push: {
-					"activeRaidsAndHeadcounts.raidChannels": ri
-				}
-			}, { returnOriginal: false });
-			resolve(x.value);
-		});
+		const x: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id }, {
+			$push: {
+				"activeRaidsAndHeadcounts.raidChannels": ri
+			}
+		}, { returnOriginal: false });
+		return x.value as IRaidGuild;
 	}
 
 	/**
@@ -50,22 +48,20 @@ export module RaidDbHelper {
 	 * @param {(GuildMember | string | User)} member The guild member that reacted with key. 
 	 * @param {string} keyId The key ID.
 	 */
-	export function addKeyReaction(
+	export async function addKeyReaction(
 		guild: Guild,
 		vcID: string,
 		member: GuildMember | string | User,
 		keyId: string
 	): Promise<IRaidGuild> {
-		return new Promise(async (resolve, reject) => {
-			const data: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "activeRaidsAndHeadcounts.raidChannels.vcID": vcID }, {
-				$push: {
-					"activeRaidsAndHeadcounts.raidChannels.$.keyReacts": typeof member === "object" 
-						? { keyId: keyId, userId: member.id } 
-						: { keyId: keyId, userId: member }
-				}
-			}, { returnOriginal: false });
-			resolve(data.value);
-		});
+		const data: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "activeRaidsAndHeadcounts.raidChannels.vcID": vcID }, {
+			$push: {
+				"activeRaidsAndHeadcounts.raidChannels.$.keyReacts": typeof member === "object" 
+					? { keyId: keyId, userId: member.id } 
+					: { keyId: keyId, userId: member }
+			}
+		}, { returnOriginal: false });
+		return data.value as IRaidGuild;
 	}
 
 	/**
@@ -74,19 +70,17 @@ export module RaidDbHelper {
 	 * @param {string} vcID The voice channel ID.
 	 * @param {(GuildMember | string | User)} member The guild member that reacted with the early reaction emoji.
 	 */
-	export function addEarlyReaction(
+	export async function addEarlyReaction(
 		guild: Guild,
 		vcID: string,
 		member: GuildMember | string | User
 	): Promise<IRaidGuild> {
-		return new Promise(async (resolve, reject) => {
-			const data: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "activeRaidsAndHeadcounts.raidChannels.vcID": vcID }, {
-				$push: {
-					"activeRaidsAndHeadcounts.raidChannels.$.earlyReacts": typeof member === "object" ? member.id : member
-				}
-			}, { returnOriginal: false });
-			resolve(data.value);
-		});
+		const data: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "activeRaidsAndHeadcounts.raidChannels.vcID": vcID }, {
+			$push: {
+				"activeRaidsAndHeadcounts.raidChannels.$.earlyReacts": typeof member === "object" ? member.id : member
+			}
+		}, { returnOriginal: false });
+		return data.value as IRaidGuild;
 	}
 
 	/**
@@ -95,18 +89,16 @@ export module RaidDbHelper {
 	 * @param {IHeadCountInfo} ri The data to add to the list of current headcounts. 
 	 * @returns {Promise<IRaidGuild>} The new document.  
 	 */
-	export function addHeadcount(
+	export async function addHeadcount(
 		guild: Guild,
 		hcInfo: IHeadCountInfo
 	): Promise<IRaidGuild> {
-		return new Promise(async (resolve, reject) => {
-			const x: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id }, {
-				$push: {
-					"activeRaidsAndHeadcounts.headcounts": hcInfo
-				}
-			}, { returnOriginal: false });
-			resolve(x.value);
-		});
+		const x: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id }, {
+			$push: {
+				"activeRaidsAndHeadcounts.headcounts": hcInfo
+			}
+		}, { returnOriginal: false });
+		return x.value as IRaidGuild;
 	}
 
 	/**
@@ -115,20 +107,18 @@ export module RaidDbHelper {
 	 * @param {string} msgId The ID of the message associated with the headcount that has (or should have) ended.
 	 * @returns {Promise<IRaidGuild>} The new document.
 	 */
-	export function removeHeadcount(
+	export async function removeHeadcount(
 		guild: Guild,
 		msgId: string
 	): Promise<IRaidGuild> {
-		return new Promise(async (resolve, reject) => {
-			const x: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id }, {
-				$pull: {
-					"activeRaidsAndHeadcounts.headcounts": {
-						msgID: msgId
-					}
+		const x: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id }, {
+			$pull: {
+				"activeRaidsAndHeadcounts.headcounts": {
+					msgID: msgId
 				}
-			}, { returnOriginal: false });
-			resolve(x.value);
-		});
+			}
+		}, { returnOriginal: false });
+		return x.value as IRaidGuild;
 	}
 
 	/**
@@ -137,20 +127,18 @@ export module RaidDbHelper {
 	 * @param {string} vcID The ID of the voice channel associated with the raid that has ended.
 	 * @returns {Promise<IRaidGuild>} The new document.
 	 */
-	export function removeRaidChannel(
+	export async function removeRaidChannel(
 		guild: Guild,
 		vcID: string
 	): Promise<IRaidGuild> {
-		return new Promise(async (resolve, reject) => {
-			const data: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id }, {
-				$pull: {
-					"activeRaidsAndHeadcounts.raidChannels": {
-						vcID: vcID
-					}
+		const data: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id }, {
+			$pull: {
+				"activeRaidsAndHeadcounts.raidChannels": {
+					vcID: vcID
 				}
-			}, { returnOriginal: false });
-			resolve(data.value);
-		});
+			}
+		}, { returnOriginal: false });
+		return data.value as IRaidGuild;
 	}
 
 	/**
@@ -159,18 +147,16 @@ export module RaidDbHelper {
 	 * @param {string} vcID The ID of the voice channel associated with the raid that has progressed to RAID status.
 	 * @returns {Promise<IRaidGuild>} The new document.
 	 */
-	export function updateRaidStatus(
+	export async function updateRaidStatus(
 		guild: Guild,
 		vcID: string
 	): Promise<IRaidGuild> {
-		return new Promise(async (resolve, reject) => {
-			const data: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "activeRaidsAndHeadcounts.raidChannels.vcID": vcID }, {
-				$set: {
-					"activeRaidsAndHeadcounts.raidChannels.$.status": RaidStatus.InRun
-				}
-			}, { returnOriginal: false });
-			resolve(data.value);
-		});
+		const data: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "activeRaidsAndHeadcounts.raidChannels.vcID": vcID }, {
+			$set: {
+				"activeRaidsAndHeadcounts.raidChannels.$.status": RaidStatus.InRun
+			}
+		}, { returnOriginal: false });
+		return data.value as IRaidGuild;
 	}
 
 	/**
@@ -178,60 +164,91 @@ export module RaidDbHelper {
 	 * @param {Guild} guild The target guild. 
 	 * @param {string} vcID The ID of the voice channel associated with the raid that has progressed to RAID status.
 	 * @param {string} location The new location. 
-	 * @returns {Promise<IRaidGuild | null>} The new document.
+	 * @returns {Promise<IRaidGuild>} The new document.
 	 */
-	export function editLocation(
+	export async function editLocation(
 		guild: Guild,
 		vcID: string,
 		location: string
 	): Promise<IRaidGuild> {
-		return new Promise(async (resolve, reject) => {
-			const data: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "activeRaidsAndHeadcounts.raidChannels.vcID": vcID }, {
-				$set: {
-					"activeRaidsAndHeadcounts.raidChannels.$.location": location
-				}
-			}, { returnOriginal: false });
-			resolve(data.value);
-		});
+		const data: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "activeRaidsAndHeadcounts.raidChannels.vcID": vcID }, {
+			$set: {
+				"activeRaidsAndHeadcounts.raidChannels.$.location": location
+			}
+		}, { returnOriginal: false });
+		return data.value as IRaidGuild;
 	}
 
 	/**
-	 * Checks and removes any defective sections. This will NOT check the main section.
-	 * @param {Guild} guild The guild. 
-	 * @param {IRaidGuild} guildData The guild document. 
-	 * @returns {IRaidGuild} The new document. 
+	 * Increments -- or decrements -- the dungeons that have been completed in the raid by a certain amount.
+	 * @param {Guild} guild The target guild. 
+	 * @param {string} vcID The ID of the voice channel associated with the raid that has progressed to RAID status.
+	 * @param {number} incrementBy The amount to increment by. 
+	 * @returns {Promise<number>} The current amount of dungeons that have been completed.
 	 */
-	export async function removeDeletedSections(
+	export async function incrementDungeonsDone(
 		guild: Guild,
-		guildData: IRaidGuild
+		vcID: string,
+		incrementBy: number
+	): Promise<number> {
+		const data: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "activeRaidsAndHeadcounts.raidChannels.vcID": vcID }, {
+			$inc: {
+				"activeRaidsAndHeadcounts.raidChannels.$.dungeonsDone": incrementBy
+			}
+		}, { returnOriginal: false });
+
+		if (typeof data.value === "undefined") {
+			return -1;
+		}
+
+		const indexOfRaid: number = data.value.activeRaidsAndHeadcounts.raidChannels
+			.findIndex(x => x.vcID === vcID);
+		
+		if (indexOfRaid === -1) {
+			return -1;
+		}
+
+
+		return data.value.activeRaidsAndHeadcounts.raidChannels[indexOfRaid].dungeonsDone;
+	}
+
+	/**
+	 * Edits the specified raiding category's location with the provided location.
+	 * @param {Guild} guild The target guild. 
+	 * @param {string} vcID The ID of the voice channel associated with the raid that has progressed to RAID status.
+	 * @param {string} top The top string to update.
+	 * @returns {Promise<IRaidGuild>} The new document.
+	 */
+	export async function updateTopString(
+		guild: Guild,
+		vcID: string,
+		top: string
 	): Promise<IRaidGuild> {
-		const promises: Promise<void>[] = guildData.sections.map(section => {
-			return new Promise((resolve, reject) => {
-				if (!guild.channels.cache.has(section.channels.afkCheckChannel)
-					|| !guild.channels.cache.has(section.channels.verificationChannel)
-					|| !guild.roles.cache.has(section.verifiedRole)
-				) {
-					MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
-						$pull: {
-							"sections.roles": section.verifiedRole
-						}
-					}, (err: any, raw: any) => {
-						if (err) {
-							reject(err);
-						}
-						resolve();
-					});
-				}
-				else {
-					resolve();
-				}
-			});
-		});
+		const data: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "activeRaidsAndHeadcounts.raidChannels.vcID": vcID }, {
+			$set: {
+				"activeRaidsAndHeadcounts.raidChannels.$.controlPanelDesc.top": top
+			}
+		}, { returnOriginal: false });
+		return data.value as IRaidGuild;
+	}
 
-		// execute it 
-		await Promise.all(promises);
-
-		// this should not return null as we know this obj exists. 
-		return await ((new MongoDbHelper.MongoDbGuildManager(guild.id)).findOrCreateGuildDb() as Promise<IRaidGuild>);
+	/**
+	 * Edits the specified raiding category's location with the provided location.
+	 * @param {Guild} guild The target guild. 
+	 * @param {string} vcID The ID of the voice channel associated with the raid that has progressed to RAID status.
+	 * @param {string} bottom The bottom string to update.
+	 * @returns {Promise<IRaidGuild>} The new document.
+	 */
+	export async function updateBottomString(
+		guild: Guild,
+		vcID: string,
+		bottom: string
+	): Promise<IRaidGuild> {
+		const data: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "activeRaidsAndHeadcounts.raidChannels.vcID": vcID }, {
+			$set: {
+				"activeRaidsAndHeadcounts.raidChannels.$.controlPanelDesc.bottom": bottom
+			}
+		}, { returnOriginal: false });
+		return data.value as IRaidGuild;
 	}
 }

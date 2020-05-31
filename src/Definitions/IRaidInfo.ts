@@ -1,6 +1,7 @@
 import { RaidStatus } from "./RaidStatus";
 import { IDungeonData } from "./IDungeonData";
 import { ISection } from "../Templates/ISection";
+import { ChannelCreationOverwrites } from "discord.js";
 
 export interface IRaidInfo {
 	/**
@@ -62,4 +63,9 @@ export interface IRaidInfo {
 	 * Early reactions.
 	 */
 	earlyReacts: string[];
+
+	/**
+	 * Dungeons completed.
+	 */
+	dungeonsDone: number;
 }

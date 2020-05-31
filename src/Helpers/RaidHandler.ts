@@ -1043,8 +1043,6 @@ export module RaidHandler {
 		await cpMsg.react("🗺️").catch(() => { });
 		await cpMsg.react("🔒").catch(() => { });
 		await cpMsg.react("🔓").catch(() => { });
-		await cpMsg.react("⬆️").catch(() => { });
-		await cpMsg.react("⬇️").catch(() => { });
 	}
 
 	/**

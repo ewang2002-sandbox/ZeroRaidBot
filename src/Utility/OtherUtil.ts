@@ -25,26 +25,6 @@ export module OtherUtil {
     }
 
     /**
-	 * Reacts to a message fast.
-	 * @param msg The message to react to fast.
-	 * @param reactions The set of reactions to use.
-	 */
-    export function reactFaster(msg: Message, reactions: EmojiResolvable[]): void {
-        let i: number = 0;
-        const interval: NodeJS.Timeout = setInterval(() => {
-            // think of this as a for loop
-            // for (let i = 0; i < reactions.length; i++)
-            if (i < reactions.length) {
-                msg.react(reactions[i]).catch(e => { });
-            }
-            else {
-                clearInterval(interval);
-            }
-            i++;
-        }, 500);
-    }
-
-    /**
      * Waits a certain amount of time before resolving the promise.
      * @param {number} ms The time to wait, in milliseconds. 
      */

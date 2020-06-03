@@ -23,6 +23,7 @@ import { StringBuilder } from "../Classes/String/StringBuilder";
 import { OtherUtil } from "../Utility/OtherUtil";
 import { FilterQuery } from "mongodb";
 import { IRaidUser } from "../Templates/IRaidUser";
+import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuManager";
 
 export module RaidHandler {
 	/**
@@ -487,7 +488,7 @@ export module RaidHandler {
 		// TODO make it so when ppl react to key while bot is still reacting
 		// it still works 
 		emojisToReactTo.push(...SELECTED_DUNGEON.keyEmojIDs.map(x => x.keyEmojID), ...SELECTED_DUNGEON.reactions);
-		OtherUtil.reactFaster(afkCheckMessage, emojisToReactTo);
+		FastReactionMenuManager.reactFaster(afkCheckMessage, emojisToReactTo);
 
 		// ==================================
 		// control panel stuff
@@ -1351,7 +1352,7 @@ export module RaidHandler {
 		const mst: MessageSimpleTick = new MessageSimpleTick(hcMessage, "@here, a headcount is currently in progress. There are {m} minutes and {s} seconds remaining on this headcount.", MAX_TIME_LEFT * 2); // 10 min
 		await hcMessage.pin().catch(() => { });
 
-		OtherUtil.reactFaster(hcMessage, emojis);
+		FastReactionMenuManager.reactFaster(hcMessage, emojis);
 
 		const hcInfo: IHeadCountInfo = {
 			section: section,

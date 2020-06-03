@@ -11,7 +11,7 @@ import { ISection } from "../Templates/ISection";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { OtherUtil } from "../Utility/OtherUtil";
 
-export async function onMessageEvent(msg: Message) {
+export async function onMessageEvent(msg: Message): Promise<void> {
 	// make sure we have a regular message to handle
 	if (msg.type === "PINS_ADD") {
 		await msg.delete().catch(() => { });

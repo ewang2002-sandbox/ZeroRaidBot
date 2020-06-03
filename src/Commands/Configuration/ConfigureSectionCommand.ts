@@ -6,7 +6,7 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, MessageEmbed, Role, Collection, Guild, TextChannel, MessageReaction, User, ReactionCollector, EmojiResolvable, GuildChannel, MessageCollector } from "discord.js";
+import { Message, MessageEmbed, Role, Collection, Guild, TextChannel, MessageReaction, User, ReactionCollector, EmojiResolvable, GuildChannel, MessageCollector, GuildEmoji, ReactionEmoji } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
@@ -21,6 +21,7 @@ import { IDungeonData } from "../../Definitions/IDungeonData";
 import { Zero } from "../../Zero";
 import { StringUtil } from "../../Utility/StringUtil";
 import { NumberUtil } from "../../Utility/NumberUtil";
+import { FastReactionMenuManager } from "../../Classes/Reaction/FastReactionMenuManager";
 
 type QType = {
 	q: string;
@@ -624,63 +625,52 @@ export class ConfigureSectionCommand extends Command {
 			m = await msg.channel.send(embed);
 		}
 
-		for await (const reaction of emojisToReact) {
-			await m.react(reaction).catch(() => { });
+		const r: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(m, msg.author, emojisToReact, 2, TimeUnit.MINUTE).react();
+
+		if (r === "TIME") {
+			await m.delete().catch(() => { });
+			return;
 		}
 
-		const reactCollector: ReactionCollector = m.createReactionCollector(this.reactionCollectionFilter(emojisToReact, msg), {
-			time: 900000,
-			max: 1
-		});
+		// change name of section
+		if (r.name === "📋") {
+			guildData = await this.changeNameOfSectionCommand(msg, guildData, section, m);
 
-		reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
-			//console.log(reason); // => limit
-		});
-
-		reactCollector.on("collect", async (r: MessageReaction) => {
-			await r.remove().catch(() => { });
-			reactCollector.stop();
-
-			// change name of section
-			if (r.emoji.name === "📋") {
-				guildData = await this.changeNameOfSectionCommand(msg, guildData, section, m);
-
-				if (section.isMain) {
-					section = GuildUtil.getDefaultSection(guildData);
-				}
-				else {
-					// this part only handles channel modifications, not role modifications
-					// so we know that the role should be constant 
-					section = guildData.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
-				}
-				this.modifyMainMenu(msg, guildData, section, m, false);
-				return;
+			if (section.isMain) {
+				section = GuildUtil.getDefaultSection(guildData);
 			}
-			// change channels
-			else if (r.emoji.name === "#️⃣") {
-				await this.sectionChannelMenuCommand(msg, guildData, section, m, false, channelStr);
+			else {
+				// this part only handles channel modifications, not role modifications
+				// so we know that the role should be constant 
+				section = guildData.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
 			}
-			// change roles
-			else if (r.emoji.name === "📁") {
-				await this.sectionRoleMenuCommand(msg, guildData, section, m, false, roleStr);
-			}
-			// change verification
-			else if (r.emoji.name === "✅") {
-				await this.sectionVerificationMenuCommand(msg, guildData, section, m, false, verificationStr);
-			}
-			// dungeon config
-			else if (r.emoji.name === "🏃") {
-				await this.resetBotEmbed(m).catch(() => { });
-				guildData = await this.configDungeonCommand(msg, section, guildData);
-				this.modifyMainMenu(msg, guildData, section, m, false);
-				return;
-			}
-			// cancel
-			else if (r.emoji.name === "❌") {
-				await m.delete().catch(() => { });
-				return;
-			}
-		});
+			this.modifyMainMenu(msg, guildData, section, m, false);
+			return;
+		}
+		// change channels
+		else if (r.name === "#️⃣") {
+			await this.sectionChannelMenuCommand(msg, guildData, section, m, channelStr);
+		}
+		// change roles
+		else if (r.name === "📁") {
+			await this.sectionRoleMenuCommand(msg, guildData, section, m, roleStr);
+		}
+		// change verification
+		else if (r.name === "✅") {
+			await this.sectionVerificationMenuCommand(msg, guildData, section, m, verificationStr);
+		}
+		// dungeon config
+		else if (r.name === "🏃") {
+			await this.resetBotEmbed(m).catch(() => { });
+			guildData = await this.configDungeonCommand(msg, section, guildData);
+			this.modifyMainMenu(msg, guildData, section, m, false);
+			return;
+		}
+		// cancel
+		else if (r.name === "❌") {
+			await m.delete().catch(() => { });
+			return;
+		}
 	}
 
 	/**
@@ -689,7 +679,6 @@ export class ConfigureSectionCommand extends Command {
 	 * @param {IRaidGuild} guildData The guild data. 
 	 * @param {ISection} section The section. 
 	 * @param {Message} botSentMsg The message that the bot sent (if we want to edit the old bot message). 
-	 * @param {boolean} isSameBotMessage Whether the function was called from itself (true) or from an external function.
 	 * @param {string} channelInfo The channel information string.
 	 */
 	private async sectionChannelMenuCommand(
@@ -697,12 +686,9 @@ export class ConfigureSectionCommand extends Command {
 		guildData: IRaidGuild,
 		section: ISection,
 		botSentMsg: Message,
-		isSameBotMessage: boolean,
 		channelInfo: string
 	): Promise<void> {
-		if (!isSameBotMessage) {
-			await botSentMsg.reactions.removeAll().catch(() => { });
-		}
+		await botSentMsg.reactions.removeAll().catch(() => { });
 		const guild: Guild = msg.guild as Guild;
 		const reactions: EmojiResolvable[] = [];
 
@@ -752,227 +738,214 @@ export class ConfigureSectionCommand extends Command {
 			botSentMsg = await msg.channel.send(botSentMsg);
 		}
 
-		if (!isSameBotMessage) {
-			for await (const reaction of reactions) {
-				await botSentMsg.react(reaction).catch(() => { });
-			}
+		const r: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(botSentMsg, msg.author, reactions, 2, TimeUnit.MINUTE).react();
+
+		if (r === "TIME") {
+			await botSentMsg.delete().catch(() => { });
+			return;
 		}
 
-		const reactCollector: ReactionCollector = botSentMsg.createReactionCollector(this.reactionCollectionFilter(reactions, msg), {
-			time: 900000,
-			max: 1
-		});
+		let res: IRaidGuild | "CANCEL" | "TIME";
+		// go back
+		if (r.name === "⬅️") {
+			this.modifyMainMenu(msg, guildData, section, botSentMsg);
+			return;
+		}
+		// afk check channel
+		else if (r.name === "🚥") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateChannelCommand(
+				msg,
+				"AFK Check Channel",
+				section,
+				guild.channels.cache.get(section.channels.afkCheckChannel),
+				section.isMain
+					? "generalChannels.generalRaidAfkCheckChannel"
+					: "sections.$.channels.afkCheckChannel"
+			);
+		}
+		// control panel channel
+		else if (r.name === "💻") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateChannelCommand(
+				msg,
+				"Control Panel Channel",
+				section,
+				guild.channels.cache.get(section.channels.controlPanelChannel),
+				section.isMain
+					? "generalChannels.controlPanelChannel"
+					: "sections.$.channels.controlPanelChannel"
+			);
+		}
+		// verification channel
+		else if (r.name === "✅") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateChannelCommand(
+				msg,
+				"Verification Channel",
+				section,
+				guild.channels.cache.get(section.channels.verificationChannel),
+				section.isMain
+					? "generalChannels.verificationChan"
+					: "sections.$.channels.verificationChannel"
+			);
+		}
+		else if (r.name === "🔍") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateChannelCommand(
+				msg,
+				"Manual Verification Channel",
+				section,
+				guild.channels.cache.get(section.channels.manualVerification),
+				section.isMain
+					? "generalChannels.manualVerification"
+					: "sections.$.channels.manualVerification"
+			);
+		}
+		// verification attempts channel
+		else if (r.name === "🥈") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateChannelCommand(
+				msg,
+				"Verification Attempts Logging Channel",
+				section,
+				guild.channels.cache.get(section.channels.logging.verificationAttemptsChannel),
+				section.isMain
+					? "generalChannels.logging.verificationAttemptsChannel"
+					: "sections.$.channels.logging.verificationAttemptsChannel"
+			);
+		}
+		// verification success channel
+		else if (r.name === "🥇") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateChannelCommand(
+				msg,
+				"Verification Success Logging Channel",
+				section,
+				guild.channels.cache.get(section.channels.logging.verificationSuccessChannel),
+				section.isMain
+					? "generalChannels.logging.verificationSuccessChannel"
+					: "sections.$.channels.logging.verificationSuccessChannel"
+			);
+		}
+		// reaction logging
+		else if (r.name === "😄") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateChannelCommand(
+				msg,
+				"Reaction Logging Channel",
+				section,
+				guild.channels.cache.get(section.channels.logging.reactionLoggingChannel),
+				section.isMain
+					? "generalChannels.logging.reactionLoggingChannel"
+					: "sections.$.channels.logging.reactionLoggingChannel"
+			);
+		}
+		// mod log channel
+		else if (r.name === "⚒️") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateChannelCommand(
+				msg,
+				"Moderation Channel",
+				section,
+				guild.channels.cache.get(guildData.generalChannels.logging.moderationLogs),
+				"generalChannels.logging.moderationLogs"
+			);
+		}
+		// suspension cmd
+		else if (r.name === "⚠️") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateChannelCommand(
+				msg,
+				"Suspension Logging Channel",
+				section,
+				guild.channels.cache.get(guildData.generalChannels.logging.suspensionLogs),
+				"generalChannels.logging.suspensionLogs"
+			);
+		}
+		// join leave
+		else if (r.name === "📥") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateChannelCommand(
+				msg,
+				"Join & Leave Channel",
+				section,
+				guild.channels.cache.get(guildData.generalChannels.logging.joinLeaveChannel),
+				"generalChannels.logging.joinLeaveChannel"
+			);
+		}
+		// bot updates
+		else if (r.name === "🤖") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateChannelCommand(
+				msg,
+				"Bot Updates Channel",
+				section,
+				guild.channels.cache.get(guildData.generalChannels.logging.botUpdatesChannel),
+				"generalChannels.logging.botUpdatesChannel"
+			);
+		}
+		// mod mail
+		else if (r.name === "📬") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateChannelCommand(
+				msg,
+				"Moderation Mail Channel",
+				section,
+				guild.channels.cache.get(guildData.generalChannels.modMailChannel),
+				"generalChannels.modMailChannel"
+			);
+		}
+		else if (r.name === "❓") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateChannelCommand(
+				msg,
+				"Raid Requests Channel",
+				section,
+				guild.channels.cache.get(guildData.generalChannels.raidRequestChannel),
+				"generalChannels.raidRequestChannel"
+			);
+		}
+		else if (r.name === "📢") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateChannelCommand(
+				msg,
+				"Network Announcements Channel",
+				section,
+				guild.channels.cache.get(guildData.generalChannels.networkAnnouncementsChannel),
+				"generalChannels.networkAnnouncementsChannel"
+			);
+		}
+		// configuration wizard
+		else if (r.name === "💾") {
+			res = await this.startWizard(msg, section, botSentMsg, this._channelQs, "CHANNEL");
+		}
+		else {
+			return; // because of strict typing
+		}
 
-		reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
-			//console.log(reason);
-		});
+		if (res === "TIME") {
+			// cancel ENTIRE process
+			// stop EVERYTHING
+			await botSentMsg.delete().catch(() => { });
+			return;
+		}
 
-		reactCollector.on("collect", async (r: MessageReaction) => {
-			await r.remove().catch(() => { });
-			reactCollector.stop(); // TODO acknowledge for reason TIME
+		if (res === "CANCEL") {
+			this.sectionChannelMenuCommand(msg, guildData, section, botSentMsg, channelInfo);
+			return;
+		}
 
-			let res: IRaidGuild | "CANCEL" | "TIME";
-			// go back
-			if (r.emoji.name === "⬅️") {
-				this.modifyMainMenu(msg, guildData, section, botSentMsg);
-				return;
-			}
-			// afk check channel
-			else if (r.emoji.name === "🚥") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateChannelCommand(
-					msg,
-					"AFK Check Channel",
-					section,
-					guild.channels.cache.get(section.channels.afkCheckChannel),
-					section.isMain
-						? "generalChannels.generalRaidAfkCheckChannel"
-						: "sections.$.channels.afkCheckChannel"
-				);
-			}
-			// control panel channel
-			else if (r.emoji.name === "💻") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateChannelCommand(
-					msg,
-					"Control Panel Channel",
-					section,
-					guild.channels.cache.get(section.channels.controlPanelChannel),
-					section.isMain
-						? "generalChannels.controlPanelChannel"
-						: "sections.$.channels.controlPanelChannel"
-				);
-			}
-			// verification channel
-			else if (r.emoji.name === "✅") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateChannelCommand(
-					msg,
-					"Verification Channel",
-					section,
-					guild.channels.cache.get(section.channels.verificationChannel),
-					section.isMain
-						? "generalChannels.verificationChan"
-						: "sections.$.channels.verificationChannel"
-				);
-			}
-			else if (r.emoji.name === "🔍") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateChannelCommand(
-					msg,
-					"Manual Verification Channel",
-					section,
-					guild.channels.cache.get(section.channels.manualVerification),
-					section.isMain
-						? "generalChannels.manualVerification"
-						: "sections.$.channels.manualVerification"
-				);
-			}
-			// verification attempts channel
-			else if (r.emoji.name === "🥈") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateChannelCommand(
-					msg,
-					"Verification Attempts Logging Channel",
-					section,
-					guild.channels.cache.get(section.channels.logging.verificationAttemptsChannel),
-					section.isMain
-						? "generalChannels.logging.verificationAttemptsChannel"
-						: "sections.$.channels.logging.verificationAttemptsChannel"
-				);
-			}
-			// verification success channel
-			else if (r.emoji.name === "🥇") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateChannelCommand(
-					msg,
-					"Verification Success Logging Channel",
-					section,
-					guild.channels.cache.get(section.channels.logging.verificationSuccessChannel),
-					section.isMain
-						? "generalChannels.logging.verificationSuccessChannel"
-						: "sections.$.channels.logging.verificationSuccessChannel"
-				);
-			}
-			// reaction logging
-			else if (r.emoji.name === "😄") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateChannelCommand(
-					msg,
-					"Reaction Logging Channel",
-					section,
-					guild.channels.cache.get(section.channels.logging.reactionLoggingChannel),
-					section.isMain
-						? "generalChannels.logging.reactionLoggingChannel"
-						: "sections.$.channels.logging.reactionLoggingChannel"
-				);
-			}
-			// mod log channel
-			else if (r.emoji.name === "⚒️") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateChannelCommand(
-					msg,
-					"Moderation Channel",
-					section,
-					guild.channels.cache.get(guildData.generalChannels.logging.moderationLogs),
-					"generalChannels.logging.moderationLogs"
-				);
-			}
-			// suspension cmd
-			else if (r.emoji.name === "⚠️") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateChannelCommand(
-					msg,
-					"Suspension Logging Channel",
-					section,
-					guild.channels.cache.get(guildData.generalChannels.logging.suspensionLogs),
-					"generalChannels.logging.suspensionLogs"
-				);
-			}
-			// join leave
-			else if (r.emoji.name === "📥") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateChannelCommand(
-					msg,
-					"Join & Leave Channel",
-					section,
-					guild.channels.cache.get(guildData.generalChannels.logging.joinLeaveChannel),
-					"generalChannels.logging.joinLeaveChannel"
-				);
-			}
-			// bot updates
-			else if (r.emoji.name === "🤖") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateChannelCommand(
-					msg,
-					"Bot Updates Channel",
-					section,
-					guild.channels.cache.get(guildData.generalChannels.logging.botUpdatesChannel),
-					"generalChannels.logging.botUpdatesChannel"
-				);
-			}
-			// mod mail
-			else if (r.emoji.name === "📬") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateChannelCommand(
-					msg,
-					"Moderation Mail Channel",
-					section,
-					guild.channels.cache.get(guildData.generalChannels.modMailChannel),
-					"generalChannels.modMailChannel"
-				);
-			}
-			else if (r.emoji.name === "❓") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateChannelCommand(
-					msg,
-					"Raid Requests Channel",
-					section,
-					guild.channels.cache.get(guildData.generalChannels.raidRequestChannel),
-					"generalChannels.raidRequestChannel"
-				);
-			}
-			else if (r.emoji.name === "📢") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateChannelCommand(
-					msg,
-					"Network Announcements Channel",
-					section,
-					guild.channels.cache.get(guildData.generalChannels.networkAnnouncementsChannel),
-					"generalChannels.networkAnnouncementsChannel"
-				);
-			}
-			// configuration wizard
-			else if (r.emoji.name === "💾") {
-				res = await this.startWizard(msg, section, botSentMsg, this._channelQs, "CHANNEL");
-			}
-			else {
-				return; // because of strict typing
-			}
+		if (section.isMain) {
+			section = GuildUtil.getDefaultSection(res);
+		}
+		else {
+			// this part only handles channel modifications, not role modifications
+			// so we know that the role should be constant 
+			section = res.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
+		}
 
-			if (res === "TIME") {
-				// cancel ENTIRE process
-				// stop EVERYTHING
-				await botSentMsg.delete().catch(() => { });
-				return;
-			}
-
-			if (res === "CANCEL") {
-				this.sectionChannelMenuCommand(msg, guildData, section, botSentMsg, false, channelInfo);
-				return;
-			}
-
-			if (section.isMain) {
-				section = GuildUtil.getDefaultSection(res);
-			}
-			else {
-				// this part only handles channel modifications, not role modifications
-				// so we know that the role should be constant 
-				section = res.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
-			}
-
-			this.sectionChannelMenuCommand(msg, res, section, botSentMsg, false, this.getStringRepOfGuildDoc(msg, section, res).channelSB.toString());
-		});
+		this.sectionChannelMenuCommand(msg, res, section, botSentMsg, this.getStringRepOfGuildDoc(msg, section, res).channelSB.toString());
 	}
 
 	/**
@@ -981,7 +954,6 @@ export class ConfigureSectionCommand extends Command {
 	 * @param {IRaidGuild} guildData The guild data. 
 	 * @param {ISection} section The section. 
 	 * @param {Message} botSentMsg The message that the bot sent (if we want to edit the old bot message). 
-	 * @param {boolean} isSameBotMessage Whether the function was called from itself (true) or from an external function.
 	 * @param {string} roleInfo The role information string.
 	 */
 	private async sectionRoleMenuCommand(
@@ -989,12 +961,9 @@ export class ConfigureSectionCommand extends Command {
 		guildData: IRaidGuild,
 		section: ISection,
 		botSentMsg: Message,
-		isSameBotMessage: boolean,
 		roleInfo: string
 	): Promise<void> {
-		if (!isSameBotMessage) {
-			await botSentMsg.reactions.removeAll().catch(() => { });
-		}
+		await botSentMsg.reactions.removeAll().catch(() => { });
 		const guild: Guild = msg.guild as Guild;
 		const reactions: EmojiResolvable[] = [];
 
@@ -1049,244 +1018,231 @@ export class ConfigureSectionCommand extends Command {
 			botSentMsg = await msg.channel.send(botSentMsg);
 		}
 
-		if (!isSameBotMessage) {
-			for await (const reaction of reactions) {
-				await botSentMsg.react(reaction).catch(() => { });
-			}
+		const r: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(botSentMsg, msg.author, reactions, 2, TimeUnit.MINUTE).react();
+
+		if (r === "TIME") {
+			await botSentMsg.delete().catch(() => { });
+			return;
 		}
 
-		const reactCollector: ReactionCollector = botSentMsg.createReactionCollector(this.reactionCollectionFilter(reactions, msg), {
-			time: 900000,
-			max: 1
-		});
+		let res: IRaidGuild | "CANCEL" | "TIME";
+		// go back
+		if (r.name === "⬅️") {
+			this.modifyMainMenu(msg, guildData, section, botSentMsg);
+			return;
+		}
+		else if (r.name === "👪") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateRoleCommand(
+				msg,
+				"Team Role",
+				section,
+				guild.roles.cache.get(guildData.roles.teamRole),
+				"roles.teamRole"
+			);
+		}
+		// raider role
+		else if (r.name === "💳") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateRoleCommand(
+				msg,
+				"Raider Role",
+				section,
+				guild.roles.cache.get(section.verifiedRole),
+				section.isMain
+					? "roles.raider"
+					: "sections.$.verifiedRole"
+			);
+		}
+		// moderator role
+		else if (r.name === "⚒️") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateRoleCommand(
+				msg,
+				"Moderator Role",
+				section,
+				guild.roles.cache.get(guildData.roles.moderator),
+				"roles.moderator"
+			);
+		}
+		// head raid leader role
+		else if (r.name === "🥇") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateRoleCommand(
+				msg,
+				"Head Leader Role",
+				section,
+				guild.roles.cache.get(guildData.roles.headRaidLeader),
+				"roles.headRaidLeader"
+			);
+		}
+		// leader role
+		else if (r.name === "🥈") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateRoleCommand(
+				msg,
+				"Leader Role",
+				section,
+				guild.roles.cache.get(guildData.roles.universalRaidLeader),
+				"roles.universalRaidLeader"
+			);
+		}
+		// almost leader
+		else if (r.name === "🥉") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateRoleCommand(
+				msg,
+				"Almost Leader Role",
+				section,
+				guild.roles.cache.get(guildData.roles.universalAlmostRaidLeader),
+				"roles.universalAlmostRaidLeader"
+			);
+		}
+		// support
+		else if (r.name === "📛") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateRoleCommand(
+				msg,
+				"Support/Helper Role",
+				section,
+				guild.roles.cache.get(guildData.roles.support),
+				"roles.support"
+			);
+		}
+		// pardoned rl
+		else if (r.name === "💤") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateRoleCommand(
+				msg,
+				"Pardoned Leader Role",
+				section,
+				guild.roles.cache.get(guildData.roles.pardonedRaidLeader),
+				"roles.pardonedRaidLeader"
+			);
+		}
+		// suspended
+		else if (r.name === "⛔") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateRoleCommand(
+				msg,
+				"Suspended Role",
+				section,
+				guild.roles.cache.get(guildData.roles.suspended),
+				"roles.suspended"
+			);
+		}
+		// talking roles
+		else if (r.name === "🔈") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateArrayRoleCommand(
+				msg,
+				"Talking Roles",
+				guildData,
+				"roles.talkingRoles",
+				guildData.roles.talkingRoles
+			);
+		}
+		// early loc roles
+		else if (r.name === "🗺️") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateArrayRoleCommand(
+				msg,
+				"Early Location Roles",
+				guildData,
+				"roles.earlyLocationRoles",
+				guildData.roles.earlyLocationRoles
+			);
+		}
+		// sec leader role
+		else if (r.name === "🏳️") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateRoleCommand(
+				msg,
+				"Section Leader Roles",
+				section,
+				guild.roles.cache.get(section.roles.raidLeaderRole),
+				section.isMain
+					? "roles.mainSectionLeaderRole.sectionLeaderRole"
+					: "sections.$.roles.raidLeaderRole"
+			);
+		}
+		// sec arl
+		else if (r.name === "🏴") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateRoleCommand(
+				msg,
+				"Section Almost Leader Roles",
+				section,
+				guild.roles.cache.get(section.roles.almostLeaderRole),
+				section.isMain
+					? "roles.mainSectionLeaderRole.sectionAlmostLeaderRole"
+					: "sections.$.roles.almostLeaderRole"
+			);
+		}
+		// sec trl
+		else if (r.name === "🚩") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateRoleCommand(
+				msg,
+				"Section Trial Leader Roles",
+				section,
+				guild.roles.cache.get(section.roles.trialLeaderRole),
+				section.isMain
+					? "roles.mainSectionLeaderRole.sectionTrialLeaderRole"
+					: "sections.$.roles.trialLeaderRole"
+			);
+		}
+		// officer
+		else if (r.name === "👮") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateRoleCommand(
+				msg,
+				"Officer Role",
+				section,
+				guild.roles.cache.get(guildData.roles.officer),
+				"roles.officer"
+			);
+		}
+		// verifier
+		else if (r.name === "🔎") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateRoleCommand(
+				msg,
+				"Verifier Role",
+				section,
+				guild.roles.cache.get(guildData.roles.verifier),
+				"roles.verifier"
+			);
+		}
+		// configuration wizard
+		else if (r.name === "💾") {
+			res = await this.startWizard(msg, section, botSentMsg, this._roleQs, "ROLE");
+		}
+		else {
+			return; // because of strict typing
+		}
 
-		reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
-			//console.log(reason);
-		});
+		if (res === "TIME") {
+			// cancel ENTIRE process
+			// stop EVERYTHING
+			await botSentMsg.delete().catch(() => { });
+			return;
+		}
 
-		reactCollector.on("collect", async (r: MessageReaction) => {
-			await r.remove().catch(() => { });
-			reactCollector.stop(); // TODO acknowledge for reason TIME
+		if (res === "CANCEL") {
+			this.sectionRoleMenuCommand(msg, guildData, section, botSentMsg, roleInfo);
+			return;
+		}
 
-			let res: IRaidGuild | "CANCEL" | "TIME";
-			// go back
-			if (r.emoji.name === "⬅️") {
-				this.modifyMainMenu(msg, guildData, section, botSentMsg);
-				return;
-			}
-			else if (r.emoji.name === "👪") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateRoleCommand(
-					msg,
-					"Team Role",
-					section,
-					guild.roles.cache.get(guildData.roles.teamRole),
-					"roles.teamRole"
-				);
-			}
-			// raider role
-			else if (r.emoji.name === "💳") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateRoleCommand(
-					msg,
-					"Raider Role",
-					section,
-					guild.roles.cache.get(section.verifiedRole),
-					section.isMain
-						? "roles.raider"
-						: "sections.$.verifiedRole"
-				);
-			}
-			// moderator role
-			else if (r.emoji.name === "⚒️") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateRoleCommand(
-					msg,
-					"Moderator Role",
-					section,
-					guild.roles.cache.get(guildData.roles.moderator),
-					"roles.moderator"
-				);
-			}
-			// head raid leader role
-			else if (r.emoji.name === "🥇") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateRoleCommand(
-					msg,
-					"Head Leader Role",
-					section,
-					guild.roles.cache.get(guildData.roles.headRaidLeader),
-					"roles.headRaidLeader"
-				);
-			}
-			// leader role
-			else if (r.emoji.name === "🥈") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateRoleCommand(
-					msg,
-					"Leader Role",
-					section,
-					guild.roles.cache.get(guildData.roles.universalRaidLeader),
-					"roles.universalRaidLeader"
-				);
-			}
-			// almost leader
-			else if (r.emoji.name === "🥉") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateRoleCommand(
-					msg,
-					"Almost Leader Role",
-					section,
-					guild.roles.cache.get(guildData.roles.universalAlmostRaidLeader),
-					"roles.universalAlmostRaidLeader"
-				);
-			}
-			// support
-			else if (r.emoji.name === "📛") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateRoleCommand(
-					msg,
-					"Support/Helper Role",
-					section,
-					guild.roles.cache.get(guildData.roles.support),
-					"roles.support"
-				);
-			}
-			// pardoned rl
-			else if (r.emoji.name === "💤") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateRoleCommand(
-					msg,
-					"Pardoned Leader Role",
-					section,
-					guild.roles.cache.get(guildData.roles.pardonedRaidLeader),
-					"roles.pardonedRaidLeader"
-				);
-			}
-			// suspended
-			else if (r.emoji.name === "⛔") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateRoleCommand(
-					msg,
-					"Suspended Role",
-					section,
-					guild.roles.cache.get(guildData.roles.suspended),
-					"roles.suspended"
-				);
-			}
-			// talking roles
-			else if (r.emoji.name === "🔈") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateArrayRoleCommand(
-					msg,
-					"Talking Roles",
-					guildData,
-					"roles.talkingRoles",
-					guildData.roles.talkingRoles
-				);
-			}
-			// early loc roles
-			else if (r.emoji.name === "🗺️") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateArrayRoleCommand(
-					msg,
-					"Early Location Roles",
-					guildData,
-					"roles.earlyLocationRoles",
-					guildData.roles.earlyLocationRoles
-				);
-			}
-			// sec leader role
-			else if (r.emoji.name === "🏳️") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateRoleCommand(
-					msg,
-					"Section Leader Roles",
-					section,
-					guild.roles.cache.get(section.roles.raidLeaderRole),
-					section.isMain
-						? "roles.mainSectionLeaderRole.sectionLeaderRole"
-						: "sections.$.roles.raidLeaderRole"
-				);
-			}
-			// sec arl
-			else if (r.emoji.name === "🏴") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateRoleCommand(
-					msg,
-					"Section Almost Leader Roles",
-					section,
-					guild.roles.cache.get(section.roles.almostLeaderRole),
-					section.isMain
-						? "roles.mainSectionLeaderRole.sectionAlmostLeaderRole"
-						: "sections.$.roles.almostLeaderRole"
-				);
-			}
-			// sec trl
-			else if (r.emoji.name === "🚩") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateRoleCommand(
-					msg,
-					"Section Trial Leader Roles",
-					section,
-					guild.roles.cache.get(section.roles.trialLeaderRole),
-					section.isMain
-						? "roles.mainSectionLeaderRole.sectionTrialLeaderRole"
-						: "sections.$.roles.trialLeaderRole"
-				);
-			}
-			// officer
-			else if (r.emoji.name === "👮") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateRoleCommand(
-					msg,
-					"Officer Role",
-					section,
-					guild.roles.cache.get(guildData.roles.officer),
-					"roles.officer"
-				);
-			}
-			// verifier
-			else if (r.emoji.name === "🔎") {
-				await this.resetBotEmbed(botSentMsg).catch(() => { });
-				res = await this.updateRoleCommand(
-					msg,
-					"Verifier Role",
-					section,
-					guild.roles.cache.get(guildData.roles.verifier),
-					"roles.verifier"
-				);
-			}
-			// configuration wizard
-			else if (r.emoji.name === "💾") {
-				res = await this.startWizard(msg, section, botSentMsg, this._roleQs, "ROLE");
-			}
-			else {
-				return; // because of strict typing
-			}
+		if (section.isMain) {
+			section = GuildUtil.getDefaultSection(res);
+		}
+		else {
+			// name should be constant
+			section = res.sections.find(x => x.nameOfSection === section.nameOfSection) as ISection;
+		}
 
-			if (res === "TIME") {
-				// cancel ENTIRE process
-				// stop EVERYTHING
-				await botSentMsg.delete().catch(() => { });
-				return;
-			}
-
-			if (res === "CANCEL") {
-				this.sectionRoleMenuCommand(msg, guildData, section, botSentMsg, false, roleInfo);
-				return;
-			}
-
-			if (section.isMain) {
-				section = GuildUtil.getDefaultSection(res);
-			}
-			else {
-				// name should be constant
-				section = res.sections.find(x => x.nameOfSection === section.nameOfSection) as ISection;
-			}
-
-			this.sectionRoleMenuCommand(msg, res, section, botSentMsg, false, this.getStringRepOfGuildDoc(msg, section, res).roleSB.toString());
-		});
+		this.sectionRoleMenuCommand(msg, res, section, botSentMsg, this.getStringRepOfGuildDoc(msg, section, res).roleSB.toString());
 	}
 
 	private async updateArrayRoleCommand(
@@ -1346,7 +1302,6 @@ export class ConfigureSectionCommand extends Command {
 	 * @param {IRaidGuild} guildData The guild data. 
 	 * @param {ISection} section The section. 
 	 * @param {Message} botSentMsg The message that the bot sent (if we want to edit the old bot message). 
-	 * @param {boolean} isSameBotMessage Whether the function was called from itself (true) or from an external function.
 	 * @param {string} verifInfo The role information string.
 	 */
 	private async sectionVerificationMenuCommand(
@@ -1354,12 +1309,9 @@ export class ConfigureSectionCommand extends Command {
 		guildData: IRaidGuild,
 		section: ISection,
 		botSentMsg: Message,
-		isSameBotMessage: boolean,
 		verifInfo: string
 	): Promise<void> {
-		if (!isSameBotMessage) {
-			await botSentMsg.reactions.removeAll().catch(() => { });
-		}
+		await botSentMsg.reactions.removeAll().catch(() => { });
 		const guild: Guild = msg.guild as Guild;
 		const reactions: EmojiResolvable[] = [];
 		const verificationChannel: GuildChannel | undefined = guild.channels.cache.get(section.channels.verificationChannel);
@@ -1392,156 +1344,142 @@ export class ConfigureSectionCommand extends Command {
 			botSentMsg = await msg.channel.send(botSentMsg);
 		}
 
-		if (!isSameBotMessage) {
-			for await (const reaction of reactions) {
-				await botSentMsg.react(reaction).catch(() => { });
-			}
+		const r: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(botSentMsg, msg.author, reactions, 2, TimeUnit.MINUTE).react();
+
+		if (r === "TIME") {
+			await botSentMsg.delete().catch(() => { });
+			return;
 		}
 
-		const reactCollector: ReactionCollector = botSentMsg.createReactionCollector(this.reactionCollectionFilter(reactions, msg), {
-			time: 900000,
-			max: 1
-		});
+		let res: IRaidGuild | "CANCEL" | "TIME";
+		// go back
+		if (r.name === "⬅️") {
+			this.modifyMainMenu(msg, guildData, section, botSentMsg);
+			return;
+		}
+		// rank req
+		else if (r.name === "⭐") {
+			res = await this.verifAlterCommand(
+				msg,
+				guildData,
+				section,
+				botSentMsg,
+				"RANK",
+				["verification.stars.required", "verification.stars.minimum"],
+				["sections.$.verification.stars.required", "sections.$.verification.stars.minimum"]
+			);
+		}
+		// fame req
+		else if (r.name === "📛") {
+			res = await this.verifAlterCommand(
+				msg,
+				guildData,
+				section,
+				botSentMsg,
+				"FAME",
+				["verification.aliveFame.required", "verification.aliveFame.minimum"],
+				["sections.$.verification.aliveFame.required", "sections.$.verification.aliveFame.minimum"]
+			);
+		}
+		// maxed stats req
+		else if (r.name === "➕") {
+			res = await this.verifAlterCommand(
+				msg,
+				guildData,
+				section,
+				botSentMsg,
+				"STATS",
+				["verification.maxedStats.required", "verification.maxedStats.statsReq"],
+				["sections.$.verification.maxedStats.required", "sections.$.verification.maxedStats.statsReq"]
+			);
+		}
+		// show/hide reqs
+		else if (r.name === "🛡️") {
+			const filterQuery: FilterQuery<IRaidGuild> = section.isMain
+				? { guildID: guild.id }
+				: { guildID: guild.id, "sections.verifiedRole": section.verifiedRole };
+			const updateQuery: UpdateQuery<IRaidGuild> = section.isMain
+				? { $set: { "properties.showVerificationRequirements": !section.properties.showVerificationRequirements } }
+				: { $set: { "sections.$.properties.showVerificationRequirements": !section.properties.showVerificationRequirements } };
+			res = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(filterQuery, updateQuery, {
+				returnOriginal: false
+			})).value as IRaidGuild;
+		}
+		// send embed
+		else if (r.name === "📧") {
+			let reqs: StringBuilder = new StringBuilder()
+				.append("• Public Profile.")
+				.appendLine()
+				.append("• Private \"Last Seen\" Location.")
+				.appendLine();
 
-		reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
-			//console.log(reason);
-		});
-
-		reactCollector.on("collect", async (r: MessageReaction) => {
-			await r.remove().catch(() => { });
-			reactCollector.stop(); // TODO acknowledge for reason TIME
-
-			let res: IRaidGuild | "CANCEL" | "TIME";
-			// go back
-			if (r.emoji.name === "⬅️") {
-				this.modifyMainMenu(msg, guildData, section, botSentMsg);
-				return;
-			}
-			// rank req
-			else if (r.emoji.name === "⭐") {
-				res = await this.verifAlterCommand(
-					msg,
-					guildData,
-					section,
-					botSentMsg,
-					"RANK",
-					["verification.stars.required", "verification.stars.minimum"],
-					["sections.$.verification.stars.required", "sections.$.verification.stars.minimum"]
-				);
-			}
-			// fame req
-			else if (r.emoji.name === "📛") {
-				res = await this.verifAlterCommand(
-					msg,
-					guildData,
-					section,
-					botSentMsg,
-					"FAME",
-					["verification.aliveFame.required", "verification.aliveFame.minimum"],
-					["sections.$.verification.aliveFame.required", "sections.$.verification.aliveFame.minimum"]
-				);
-			}
-			// maxed stats req
-			else if (r.emoji.name === "➕") {
-				res = await this.verifAlterCommand(
-					msg,
-					guildData,
-					section,
-					botSentMsg,
-					"STATS",
-					["verification.maxedStats.required", "verification.maxedStats.statsReq"],
-					["sections.$.verification.maxedStats.required", "sections.$.verification.maxedStats.statsReq"]
-				);
-			}
-			// show/hide reqs
-			else if (r.emoji.name === "🛡️") {
-				const filterQuery: FilterQuery<IRaidGuild> = section.isMain
-					? { guildID: guild.id }
-					: { guildID: guild.id, "sections.verifiedRole": section.verifiedRole };
-				const updateQuery: UpdateQuery<IRaidGuild> = section.isMain
-					? { $set: { "properties.showVerificationRequirements": !section.properties.showVerificationRequirements } }
-					: { $set: { "sections.$.properties.showVerificationRequirements": !section.properties.showVerificationRequirements } };
-				res = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(filterQuery, updateQuery, {
-					returnOriginal: false
-				})).value as IRaidGuild;
-			}
-			// send embed
-			else if (r.emoji.name === "📧") {
-				let reqs: StringBuilder = new StringBuilder()
-					.append("• Public Profile.")
-					.appendLine()
-					.append("• Private \"Last Seen\" Location.")
+			if (section.isMain) {
+				reqs.append("• Public Name History.")
 					.appendLine();
+			}
 
-				if (section.isMain) {
-					reqs.append("• Public Name History.")
+			if (section.properties.showVerificationRequirements) {
+				if (section.verification.aliveFame.required) {
+					reqs.append(`• ${section.verification.aliveFame.minimum} Alive Fame.`)
 						.appendLine();
 				}
 
-				if (section.properties.showVerificationRequirements) {
-					if (section.verification.aliveFame.required) {
-						reqs.append(`• ${section.verification.aliveFame.minimum} Alive Fame.`)
-							.appendLine();
-					}
+				if (section.verification.stars.required) {
+					reqs.append(`• ${section.verification.stars.minimum} Stars.`)
+						.appendLine();
+				}
 
-					if (section.verification.stars.required) {
-						reqs.append(`• ${section.verification.stars.minimum} Stars.`)
-							.appendLine();
-					}
-
-					if (section.verification.maxedStats.required) {
-						for (let i = 0; i < section.verification.maxedStats.statsReq.length; i++) {
-							if (section.verification.maxedStats.statsReq[i] !== 0) {
-								reqs.append(`• ${section.verification.maxedStats.statsReq[i]} ${i}/8 Character(s).`)
-									.appendLine();
-							}
+				if (section.verification.maxedStats.required) {
+					for (let i = 0; i < section.verification.maxedStats.statsReq.length; i++) {
+						if (section.verification.maxedStats.statsReq[i] !== 0) {
+							reqs.append(`• ${section.verification.maxedStats.statsReq[i]} ${i}/8 Character(s).`)
+								.appendLine();
 						}
 					}
 				}
-
-				const verifEmbed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", { authorType: "GUILD" })
-					.setTitle(`**${section.isMain ? "Server" : "Section"} Verification Channel**`)
-					.setDescription(`Welcome to ${section.isMain ? `**\`${guild.name}\`**` : `the **\`${section.nameOfSection}\`** section`}! In order to join in on our raids, you will have to first verify your identity. The requirements for this server are listed below. ${StringUtil.applyCodeBlocks(reqs.toString())}\nIf you meet these requirements, then please react to the ✅ to get started. ${!section.isMain ? "To unverify from the section, simply react with ❌." : ""}`)
-					.setFooter(section.isMain ? "Server Verification" : "Section Verification")
-					.setColor("RANDOM");
-				const z: Message = await (verificationChannel as TextChannel).send(verifEmbed);
-				await z.react("✅").catch(() => { });
-				if (!section.isMain) {
-					await z.react("❌").catch(() => { });
-				}
-				await z.pin().catch(() => { });
-				this.modifyMainMenu(msg, guildData, section, botSentMsg);
-				return;
-			}
-			else {
-				return; // because of strict typing
 			}
 
-			if (res === "TIME") {
-				// cancel ENTIRE process
-				// stop EVERYTHING
-				await botSentMsg.delete().catch(() => { });
-				return;
+			const verifEmbed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", { authorType: "GUILD" })
+				.setTitle(`**${section.isMain ? "Server" : "Section"} Verification Channel**`)
+				.setDescription(`Welcome to ${section.isMain ? `**\`${guild.name}\`**` : `the **\`${section.nameOfSection}\`** section`}! In order to join in on our raids, you will have to first verify your identity. The requirements for this server are listed below. ${StringUtil.applyCodeBlocks(reqs.toString())}\nIf you meet these requirements, then please react to the ✅ to get started. ${!section.isMain ? "To unverify from the section, simply react with ❌." : ""}`)
+				.setFooter(section.isMain ? "Server Verification" : "Section Verification")
+				.setColor("RANDOM");
+			const z: Message = await (verificationChannel as TextChannel).send(verifEmbed);
+			await z.react("✅").catch(() => { });
+			if (!section.isMain) {
+				await z.react("❌").catch(() => { });
 			}
+			await z.pin().catch(() => { });
+			this.modifyMainMenu(msg, guildData, section, botSentMsg);
+			return;
+		}
+		else {
+			return; // because of strict typing
+		}
 
-			if (res === "CANCEL") {
-				this.sectionVerificationMenuCommand(msg, guildData, section, botSentMsg, false, verifInfo);
-				return;
-			}
+		if (res === "TIME") {
+			// cancel ENTIRE process
+			// stop EVERYTHING
+			await botSentMsg.delete().catch(() => { });
+			return;
+		}
 
-			if (section.isMain) {
-				section = GuildUtil.getDefaultSection(res);
-			}
-			else {
-				// this part only handles channel modifications, not role modifications
-				// so we know that the role should be constant 
-				section = res.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
-			}
+		if (res === "CANCEL") {
+			this.sectionVerificationMenuCommand(msg, guildData, section, botSentMsg, verifInfo);
+			return;
+		}
 
-			this.sectionVerificationMenuCommand(msg, res, section, botSentMsg, false, this.getStringRepOfGuildDoc(msg, section, res).verifSB.toString());
-		});
+		if (section.isMain) {
+			section = GuildUtil.getDefaultSection(res);
+		}
+		else {
+			// this part only handles channel modifications, not role modifications
+			// so we know that the role should be constant 
+			section = res.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
+		}
+
+		this.sectionVerificationMenuCommand(msg, res, section, botSentMsg, this.getStringRepOfGuildDoc(msg, section, res).verifSB.toString());
 	}
-
 
 
 
@@ -1600,136 +1538,125 @@ export class ConfigureSectionCommand extends Command {
 			botMsg = await botMsg.edit(embed);
 			const reactions: EmojiResolvable[] = ["⬅️", "🔔", "🛠"];
 
-			for await (const reaction of reactions) {
-				await botMsg.react(reaction).catch(() => { });
+			const r: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(botMsg, msg.author, reactions, 2, TimeUnit.MINUTE).react();
+
+			if (r === "TIME") {
+				await botMsg.delete().catch(() => { });
+				return;
 			}
 
-			const reactCollector: ReactionCollector = botMsg.createReactionCollector(this.reactionCollectionFilter(reactions, msg), {
-				time: 900000,
-				max: 1
-			});
+			if (r.name === "⬅️") {
+				await this.resetBotEmbed(botMsg).catch(() => { });
+				this.sectionVerificationMenuCommand(msg, guildData, section, botMsg, this.getStringRepOfGuildDoc(msg, section, guildData).verifSB.toString());
+				return;
+			}
+			else if (r.name === "🔔") {
+				await this.resetBotEmbed(botMsg).catch(() => { });
+				guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(filterQuery, updateQueryOnOff, {
+					returnOriginal: false
+				})).value as IRaidGuild;
 
-			reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
-				//console.log(reason);
-			});
-
-			reactCollector.on("collect", async (r: MessageReaction) => {
-				await r.remove().catch(() => { });
-				reactCollector.stop(); // TODO acknowledge for reason TIME
-
-				if (r.emoji.name === "⬅️") {
-					await this.resetBotEmbed(botMsg).catch(() => { });
-					this.sectionVerificationMenuCommand(msg, guildData, section, botMsg, false, this.getStringRepOfGuildDoc(msg, section, guildData).verifSB.toString());
-					return;
+				if (section.isMain) {
+					section = GuildUtil.getDefaultSection(guildData);
 				}
-				else if (r.emoji.name === "🔔") {
-					await this.resetBotEmbed(botMsg).catch(() => { });
-					guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(filterQuery, updateQueryOnOff, {
-						returnOriginal: false
-					})).value as IRaidGuild;
-
-					if (section.isMain) {
-						section = GuildUtil.getDefaultSection(guildData);
-					}
-					else {
-						// this part only handles channel modifications, not role modifications
-						// so we know that the role should be constant 
-						section = guildData.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
-					}
-
-					this.sectionVerificationMenuCommand(msg, guildData, section, botMsg, false, this.getStringRepOfGuildDoc(msg, section, guildData).verifSB.toString());
-					return;
+				else {
+					// this part only handles channel modifications, not role modifications
+					// so we know that the role should be constant 
+					section = guildData.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
 				}
-				else if (r.emoji.name === "🛠") {
-					await this.resetBotEmbed(botMsg).catch(() => { });
-					let promptEmbed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null);
-					if (verifType === "FAME") {
-						const gm0: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, {
-							embed: promptEmbed.setTitle("**Edit Minimum Fame**").setDescription("Type the minimum amount of fame a person needs to meet the requirements.")
-						}, 2, TimeUnit.MINUTE);
 
-						const n: number | "TIME" | "CANCEL" = await gm0.send(GenericMessageCollector.getNumber(msg.channel, 0));
-						if (n === "TIME") {
-							return resolve("TIME");
-						}
+				this.sectionVerificationMenuCommand(msg, guildData, section, botMsg, this.getStringRepOfGuildDoc(msg, section, guildData).verifSB.toString());
+				return;
+			}
+			else if (r.name === "🛠") {
+				await this.resetBotEmbed(botMsg).catch(() => { });
+				let promptEmbed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null);
+				if (verifType === "FAME") {
+					const gm0: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, {
+						embed: promptEmbed.setTitle("**Edit Minimum Fame**").setDescription("Type the minimum amount of fame a person needs to meet the requirements.")
+					}, 2, TimeUnit.MINUTE);
 
-						if (n === "CANCEL") {
-							return resolve("CANCEL");
-						}
-
-						guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(filterQuery, {
-							$set: {
-								[section.isMain ? mainMongoPath[1] : sectMongoPath[1]]: n
-							}
-						}, { returnOriginal: false })).value as IRaidGuild;
-					}
-					else if (verifType === "RANK") {
-						const gm0: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, {
-							embed: promptEmbed.setTitle("**Edit Minimum Rank**").setDescription("Type the minimum rank a person needs to meet the requirements.")
-						}, 2, TimeUnit.MINUTE);
-
-						const n: number | "TIME" | "CANCEL" = await gm0.send(GenericMessageCollector.getNumber(msg.channel, 0, 75));
-						if (n === "TIME") {
-							return resolve("TIME");
-						}
-
-						if (n === "CANCEL") {
-							return resolve("CANCEL");
-						}
-
-						guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(filterQuery, {
-							$set: {
-								[section.isMain ? mainMongoPath[1] : sectMongoPath[1]]: n
-							}
-						}, { returnOriginal: false })).value as IRaidGuild;
-					}
-					else {
-						const gmc2: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, {
-							embed: promptEmbed.setTitle("**Edit Required Character Stats**").setDescription("Please type the stats type that you want to modify. For example, to modify the amount of `7/8`s needed to verify, type `7`.")
-						}, 2, TimeUnit.MINUTE);
-						const n: number | "TIME" | "CANCEL" = await gmc2.send(GenericMessageCollector.getNumber(msg.channel, 0, 8));
-						if (n === "TIME") {
-							return resolve("TIME");
-						}
-
-						if (n === "CANCEL") {
-							return resolve("CANCEL");
-						}
-
-						promptEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null);
-						const gmc3: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, {
-							embed: promptEmbed.setTitle("**Edit Required Character Stats**").setDescription(`You are currently modifying the required amount of ${n}/8 needed. Please type the amount of ${n}/8 characters needed.`)
-						}, 2, TimeUnit.MINUTE);
-
-						const m: number | "TIME" | "CANCEL" = await gmc3.send(GenericMessageCollector.getNumber(msg.channel, 0, 15));
-						if (m === "TIME") {
-							return resolve("TIME");
-						}
-
-						if (m === "CANCEL") {
-							return resolve("CANCEL");
-						}
-
-						guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(filterQuery, {
-							$set: {
-								[`${section.isMain ? mainMongoPath[1] : sectMongoPath[1]}.${n}`]: m
-							}
-						}, { returnOriginal: false })).value as IRaidGuild;
+					const n: number | "TIME" | "CANCEL" = await gm0.send(GenericMessageCollector.getNumber(msg.channel, 0));
+					if (n === "TIME") {
+						return resolve("TIME");
 					}
 
-					if (section.isMain) {
-						section = GuildUtil.getDefaultSection(guildData);
-					}
-					else {
-						// this part only handles channel modifications, not role modifications
-						// so we know that the role should be constant 
-						section = guildData.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
+					if (n === "CANCEL") {
+						return resolve("CANCEL");
 					}
 
-					this.sectionVerificationMenuCommand(msg, guildData, section, botMsg, false, this.getStringRepOfGuildDoc(msg, section, guildData).verifSB.toString());
-					return;
+					guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(filterQuery, {
+						$set: {
+							[section.isMain ? mainMongoPath[1] : sectMongoPath[1]]: n
+						}
+					}, { returnOriginal: false })).value as IRaidGuild;
 				}
-			});
+				else if (verifType === "RANK") {
+					const gm0: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, {
+						embed: promptEmbed.setTitle("**Edit Minimum Rank**").setDescription("Type the minimum rank a person needs to meet the requirements.")
+					}, 2, TimeUnit.MINUTE);
+
+					const n: number | "TIME" | "CANCEL" = await gm0.send(GenericMessageCollector.getNumber(msg.channel, 0, 75));
+					if (n === "TIME") {
+						return resolve("TIME");
+					}
+
+					if (n === "CANCEL") {
+						return resolve("CANCEL");
+					}
+
+					guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(filterQuery, {
+						$set: {
+							[section.isMain ? mainMongoPath[1] : sectMongoPath[1]]: n
+						}
+					}, { returnOriginal: false })).value as IRaidGuild;
+				}
+				else {
+					const gmc2: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, {
+						embed: promptEmbed.setTitle("**Edit Required Character Stats**").setDescription("Please type the stats type that you want to modify. For example, to modify the amount of `7/8`s needed to verify, type `7`.")
+					}, 2, TimeUnit.MINUTE);
+					const n: number | "TIME" | "CANCEL" = await gmc2.send(GenericMessageCollector.getNumber(msg.channel, 0, 8));
+					if (n === "TIME") {
+						return resolve("TIME");
+					}
+
+					if (n === "CANCEL") {
+						return resolve("CANCEL");
+					}
+
+					promptEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null);
+					const gmc3: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, {
+						embed: promptEmbed.setTitle("**Edit Required Character Stats**").setDescription(`You are currently modifying the required amount of ${n}/8 needed. Please type the amount of ${n}/8 characters needed.`)
+					}, 2, TimeUnit.MINUTE);
+
+					const m: number | "TIME" | "CANCEL" = await gmc3.send(GenericMessageCollector.getNumber(msg.channel, 0, 15));
+					if (m === "TIME") {
+						return resolve("TIME");
+					}
+
+					if (m === "CANCEL") {
+						return resolve("CANCEL");
+					}
+
+					guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(filterQuery, {
+						$set: {
+							[`${section.isMain ? mainMongoPath[1] : sectMongoPath[1]}.${n}`]: m
+						}
+					}, { returnOriginal: false })).value as IRaidGuild;
+				}
+
+				if (section.isMain) {
+					section = GuildUtil.getDefaultSection(guildData);
+				}
+				else {
+					// this part only handles channel modifications, not role modifications
+					// so we know that the role should be constant 
+					section = guildData.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
+				}
+
+				this.sectionVerificationMenuCommand(msg, guildData, section, botMsg, this.getStringRepOfGuildDoc(msg, section, guildData).verifSB.toString());
+				return;
+			}
 		});
 	}
 
@@ -2072,7 +1999,7 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 					if (num - 1 < 0 || num - 1 >= d.length) {
 						return; // out of index
 					}
-	
+
 					d[num - 1].isIncluded = !d[num - 1].isIncluded;
 				}
 				await editorMessage.edit(this.getAllowedDungeonEditorEmbed(msg, d, section));

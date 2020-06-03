@@ -11,8 +11,8 @@ import { ArrayUtil } from "../../Utility/ArrayUtil";
 import { GenericMessageCollector } from "../../Classes/Message/GenericMessageCollector";
 import { TimeUnit } from "../../Definitions/TimeUnit";
 import { OtherUtil } from "../../Utility/OtherUtil";
-import { getReactionFromMessage } from "../../Classes/ReactionManager";
 import { MessageUtil } from "../../Utility/MessageUtil";
+import { FastReactionMenuManager } from "../../Classes/Reaction/FastReactionMenuManager";
 
 export class LogRunsCommand extends Command {
 	public constructor() {
@@ -55,13 +55,8 @@ export class LogRunsCommand extends Command {
 			.setColor("RANDOM");
 		const reactionsForInitLogType: EmojiResolvable[] = ["🇦", "🇧", "🇨", "❌"];
 		const botMsg: Message = await msg.channel.send(initiatorLogTypeEmbed);
-		OtherUtil.reactFaster(botMsg, reactionsForInitLogType);
-		const resultantReactionForInit: GuildEmoji | ReactionEmoji | "TIME" = await getReactionFromMessage(
-			botMsg,
-			msg.author,
-			reactionsForInitLogType
-		);
-
+		
+		const resultantReactionForInit: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(botMsg, msg.author, reactionsForInitLogType, 2, TimeUnit.MINUTE).react();
 		if (resultantReactionForInit === "TIME" || resultantReactionForInit.name === "❌") {
 			await botMsg.delete().catch(e => { });
 			return;
@@ -94,12 +89,7 @@ export class LogRunsCommand extends Command {
 			.addField("React With ❌", "If you did __not__ do any realm clearing.")
 			.setColor("RANDOM");
 		await botMsg.edit(realmClearingAskEmbed).catch(e => { });
-		OtherUtil.reactFaster(botMsg, checkXReactions);
-		const resultantReactionForRCAsk: GuildEmoji | ReactionEmoji | "TIME" = await getReactionFromMessage(
-			botMsg,
-			msg.author,
-			checkXReactions
-		);
+		const resultantReactionForRCAsk: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(botMsg, msg.author, checkXReactions, 2, TimeUnit.MINUTE).react();
 
 		if (resultantReactionForRCAsk === "TIME") {
 			await botMsg.delete().catch(e => { });
@@ -120,12 +110,7 @@ export class LogRunsCommand extends Command {
 				.addField("React With ❌", "If you did __not__ do any endgame dungeons.")
 				.setColor("RANDOM");
 			await botMsg.edit(endgameAskEmbed).catch(e => { });
-			OtherUtil.reactFaster(botMsg, checkXReactions);
-			const resultantReactionForEndGameAsk: GuildEmoji | ReactionEmoji | "TIME" = await getReactionFromMessage(
-				botMsg,
-				msg.author,
-				checkXReactions
-			);
+			const resultantReactionForEndGameAsk: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(botMsg, msg.author, checkXReactions, 2, TimeUnit.MINUTE).react();
 
 			if (resultantReactionForEndGameAsk === "TIME") {
 				await botMsg.delete().catch(e => { });
@@ -145,12 +130,7 @@ export class LogRunsCommand extends Command {
 				.addField("React With ❌", "If you did __not__ do any general dungeons.")
 				.setColor("RANDOM");
 			await botMsg.edit(generalAskEmbed).catch(e => { });
-			OtherUtil.reactFaster(botMsg, checkXReactions);
-			const resultantReactionForGeneralAsk: GuildEmoji | ReactionEmoji | "TIME" = await getReactionFromMessage(
-				botMsg,
-				msg.author,
-				checkXReactions
-			);
+			const resultantReactionForGeneralAsk: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(botMsg, msg.author, checkXReactions, 2, TimeUnit.MINUTE).react();
 
 			if (resultantReactionForGeneralAsk === "TIME") {
 				await botMsg.delete().catch(e => { });
@@ -162,7 +142,11 @@ export class LogRunsCommand extends Command {
 			}
 		}
 
+		console.log(didEndgameDungeons, didRealmClearing, didGeneralDungeons);
+
 		// get main rls
+
+		/*
 		let tempArrOfMainRls: GuildMember[] = mainLeaders;
 		while (true) {
 			const tempMainRlEmbed: MessageEmbed = new MessageEmbed()
@@ -182,7 +166,7 @@ export class LogRunsCommand extends Command {
 			if (tempMainRlEmbed !== botMsg.embeds[0]) {
 				await botMsg.edit(tempArrOfMainRls).catch(e => { });
 			}
-		}
+		}*/
 	}
 
 	private getPerson(msg: Message): GuildMember | null {

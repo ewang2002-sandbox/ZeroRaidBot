@@ -6,30 +6,22 @@ import { ColorResolvable } from "discord.js";
 export interface IConfigurationSettings {
     /**
      * The token for the bot.
-     * @type {string}
      */
     token: string;
     /**
      * URL that the bot will connect to.
-     *  @type {string}
      */
     dbURL: string;
     /**
      * The database name to use for MongoDB.
-     * 
-     * @type {string} 
      */
     dbName: string;
     /**
      * The user collection name. 
-     * 
-     * @type {string} 
      */
     userCollectionName: string;
     /**
      * The guild collection name. 
-     * 
-     * @type {string}
      */
     guildCollectionName: string;
     /**

@@ -19,6 +19,7 @@ import { GuildUtil } from "../Utility/GuildUtil";
 import { IManualVerification } from "../Definitions/IManualVerification";
 import { IRealmEyeNoUser } from "../Definitions/IRealmEyeNoUser";
 import { IRealmEyeAPI } from "../Definitions/IRealmEyeAPI";
+import { PRIVATE_BOT } from "../Configuration/Config";
 
 export module VerificationHandler {
 	interface ICheckResults {
@@ -1271,7 +1272,7 @@ export module VerificationHandler {
 			.appendLine()
 			.append(`⇒ **IGN:** ${verificationInfo.player}`)
 			.appendLine()
-			.append(`⇒ **First Seen**: ${verificationInfo.player_first_seen}`)
+			.append(`⇒ **First Seen**: ${PRIVATE_BOT ? verificationInfo.player_first_seen : "Not Available"}`)
 			.appendLine()
 			.append(`⇒ **Last Seen**: ${verificationInfo.player_last_seen}`)
 			.appendLine()

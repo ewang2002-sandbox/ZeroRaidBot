@@ -1,6 +1,9 @@
 export interface IRealmEyeAPI {
     account_fame: number;
     account_fame_rank: number;
+    /**
+     * The public API cannot access most of the information here.
+     */
     characters: IRealmEyeCharacters[];
     characters_hidden: boolean;
     chars: 1;
@@ -16,6 +19,9 @@ export interface IRealmEyeAPI {
     guild_confirmed: boolean;
     guild_rank: string;
     player: string;
+    /**
+     * This is NOT available in the public API.
+     */
     player_first_seen: string;
     player_last_seen: string;
     rank: number;

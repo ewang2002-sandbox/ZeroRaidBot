@@ -1,7 +1,11 @@
+import { PRIVATE_BOT, APIUrl } from "../Configuration/Config";
+
 /**
- * Public API Link.
+ * RealmEye API to use. 
  */
-export const RealmEyeAPILink: string = "https://nightfirec.at/realmeye-api/?player=";  
+export const RealmEyeAPILink: string = PRIVATE_BOT 
+    ? APIUrl
+    : "https://nightfirec.at/realmeye-api/?player=";  
 
 /**
  * The default prefix for the bot.

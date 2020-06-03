@@ -26,7 +26,7 @@ export module OtherUtil {
 
     /**
 	 * Reacts to a message fast.
-	 * @param msg The message to react to.
+	 * @param msg The message to react to fast.
 	 * @param reactions The set of reactions to use.
 	 */
     export function reactFaster(msg: Message, reactions: EmojiResolvable[]): void {

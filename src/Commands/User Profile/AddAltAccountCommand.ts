@@ -10,12 +10,13 @@ import { MessageAutoTick } from "../../Classes/Message/MessageAutoTick";
 import { VerificationHandler } from "../../Helpers/VerificationHandler";
 import { StringUtil } from "../../Utility/StringUtil";
 import { AxiosResponse } from "axios";
-import { ITiffitNoUser, ITiffitRealmEyeProfile } from "../../Definitions/ITiffitRealmEye";
 import { Zero } from "../../Zero";
-import { TiffitRealmEyeAPI } from "../../Constants/ConstantVars";
+import { RealmEyeAPILink } from "../../Constants/ConstantVars";
 import { INameHistory, IAPIError } from "../../Definitions/ICustomREVerification";
 import { FilterQuery } from "mongodb";
 import { StringBuilder } from "../../Classes/String/StringBuilder";
+import { IDarkMatterNoUser } from "../../Definitions/IDarkMatterNoUser";
+import { IDarkMatterAPI } from "../../Definitions/IDarkMatterAPI";
 
 export class AddAltAccountCommand extends Command {
 	public static readonly MAX_ALTS_ALLOWED: number = 10;
@@ -131,10 +132,10 @@ export class AddAltAccountCommand extends Command {
 			canReact = false;
 			// begin verification time
 
-			let requestData: AxiosResponse<ITiffitNoUser | ITiffitRealmEyeProfile>;
+			let requestData: AxiosResponse<IDarkMatterNoUser | IDarkMatterAPI>;
 			try {
 				requestData = await Zero.AxiosClient
-					.get<ITiffitNoUser | ITiffitRealmEyeProfile>(TiffitRealmEyeAPI + inGameName);
+					.get<IDarkMatterNoUser | IDarkMatterAPI>(RealmEyeAPILink + inGameName);
 			}
 			catch (e) {
 				reactCollector.stop();
@@ -148,10 +149,15 @@ export class AddAltAccountCommand extends Command {
 				return;
 			}
 
-			const nameFromProfile: string = requestData.data.name;
+			const nameFromProfile: string = requestData.data.player;
 			let codeFound: boolean = false;
-			for (let i = 0; i < requestData.data.description.length; i++) {
-				if (requestData.data.description[i].includes(code)) {
+			let description: string[] = [
+				requestData.data.desc1,
+				requestData.data.desc2,
+				requestData.data.desc3
+			]
+			for (let i = 0; i < description.length; i++) {
+				if (description[i].includes(code)) {
 					codeFound = true;
 				}
 			}
@@ -162,7 +168,7 @@ export class AddAltAccountCommand extends Command {
 				return;
 			}
 
-			if (requestData.data.last_seen !== "hidden") {
+			if (requestData.data.player_last_seen !== "hidden") {
 				await dmChannel.send("Your last-seen location is not hidden. Please make sure __no one__ can see your last-seen location.");
 				canReact = true;
 				return;
@@ -170,7 +176,7 @@ export class AddAltAccountCommand extends Command {
 
 			let nameHistory: INameHistory[] | IAPIError;
 			try {
-				nameHistory = await VerificationHandler.getRealmEyeNameHistory(requestData.data.name);
+				nameHistory = await VerificationHandler.getRealmEyeNameHistory(requestData.data.player);
 			} catch (e) {
 				reactCollector.stop();
 				await dmChannel.send(`An error occurred when trying to connect to your RealmEye profile.\n\tError: ${e}`);

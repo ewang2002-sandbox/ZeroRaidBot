@@ -2,7 +2,7 @@ export interface IDarkMatterAPI {
     account_fame: number;
     account_fame_rank: number;
     characters: IDarkMatterCharactersAPI[];
-    characters_hidden: false;
+    characters_hidden: boolean;
     chars: 1;
     desc1: string;
     desc2: string;
@@ -54,5 +54,5 @@ export interface IDarkMatterCharactersAPI  {
         vitality: number;
         wisdom: number;
     };
-    stats_maxed: string;
+    stats_maxed: number;
 }

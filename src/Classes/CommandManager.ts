@@ -31,6 +31,7 @@ import { ServerProfileHelpCommand } from "../Commands/Server Profile/ServerProfi
 import { UserProfileHelpCommand } from "../Commands/User Profile/UserProfileHelpCommand";
 import { ConfigurePrefixCommand } from "../Commands/Configuration/ConfigurePrefixCommand";
 import { ConfigureVerifSuccessCommand } from "../Commands/Configuration/ConfigureVerifSuccessCommand";
+import { LogRunsCommand } from "../Commands/Raid Leader/LogRunsCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -82,7 +83,8 @@ export class CommandManager {
 
 		this.commands.set("Raid Leader", [
 			new StartAfkCheckCommand(), 
-			new StartHeadcountCommand()
+			new StartHeadcountCommand(),
+			new LogRunsCommand()
 		]);
 
 		this.commands.set("Staff", [

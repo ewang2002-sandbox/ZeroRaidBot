@@ -1,7 +1,7 @@
 /**
- * Tiffit API Link.
+ * API Link.
  */
-export const TiffitRealmEyeAPI: string = "http://www.tiffit.net/RealmInfo/api/user?u="; 
+export const RealmEyeAPILink: string = "";  
 
 /**
  * The default prefix for the bot.

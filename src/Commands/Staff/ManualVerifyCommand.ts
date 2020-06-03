@@ -12,12 +12,13 @@ import { VerificationHandler } from "../../Helpers/VerificationHandler";
 import { GenericMessageCollector } from "../../Classes/Message/GenericMessageCollector";
 import { TimeUnit } from "../../Definitions/TimeUnit";
 import { AxiosResponse } from "axios";
-import { ITiffitRealmEyeProfile, ITiffitNoUser } from "../../Definitions/ITiffitRealmEye";
 import { Zero } from "../../Zero";
-import { TiffitRealmEyeAPI } from "../../Constants/ConstantVars";
+import { RealmEyeAPILink } from "../../Constants/ConstantVars";
 import { INameHistory, IAPIError } from "../../Definitions/ICustomREVerification";
 import { FilterQuery } from "mongodb";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
+import { IDarkMatterNoUser } from "../../Definitions/IDarkMatterNoUser";
+import { IDarkMatterAPI } from "../../Definitions/IDarkMatterAPI";
 
 export class ManualVerifyCommand extends Command {
     private readonly _emojis: EmojiResolvable[] = [
@@ -363,10 +364,10 @@ export class ManualVerifyCommand extends Command {
                         return;
                     }
 
-                    let requestData: AxiosResponse<ITiffitNoUser | ITiffitRealmEyeProfile>;
+                    let requestData: AxiosResponse<IDarkMatterNoUser | IDarkMatterAPI>;
                     try {
                         requestData = await Zero.AxiosClient
-                            .get<ITiffitNoUser | ITiffitRealmEyeProfile>(TiffitRealmEyeAPI + collectedMessage.content);
+                            .get<IDarkMatterNoUser | IDarkMatterAPI>(RealmEyeAPILink + collectedMessage.content);
                     }
                     catch (e) {
                         return "ERROR_";
@@ -377,7 +378,7 @@ export class ManualVerifyCommand extends Command {
                         return;
                     }
                     else {
-                        return requestData.data.name;
+                        return requestData.data.player;
                     }
                 }, "-cancel"
             );

@@ -213,6 +213,7 @@ export module MongoDbHelper {
 							botUpdatesChannel: "",
 							reactionLoggingChannel: ""
 						},
+						quotaChannel: "",
 						manualVerification: "",
 						modMailChannel: "",
 						generalRaidAfkCheckChannel: "",
@@ -257,6 +258,7 @@ export module MongoDbHelper {
 						}
 					},
 					properties: {
+						quotaDetails: [],
 						successfulVerificationMessage: "",
 						modMail: [],
 						manualVerificationEntries: [],

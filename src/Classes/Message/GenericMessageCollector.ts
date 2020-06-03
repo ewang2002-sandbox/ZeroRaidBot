@@ -111,7 +111,7 @@ export class GenericMessageCollector<T> {
 	public async send(
 		func: (collectedMessage: Message, ...otherArgs: any) => Promise<T | void>,
 		cancelFlag: string = "cancel",
-		deleteResponseMessages: boolean = true
+		deleteResponseMessages: boolean = true,
 	): Promise<T | "CANCEL" | "TIME"> {
 		return new Promise(async (resolve) => {
 			const msg: Message = await this._channel.send({ embed: this._embed, content: this._strContent });

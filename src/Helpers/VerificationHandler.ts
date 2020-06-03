@@ -6,9 +6,8 @@ import { StringUtil } from "../Utility/StringUtil";
 import { ISection } from "../Templates/ISection";
 import { MongoDbHelper } from "./MongoDbHelper";
 import { MessageUtil } from "../Utility/MessageUtil";
-import { ITiffitRealmEyeProfile, ITiffitNoUser } from "../Definitions/ITiffitRealmEye";
 import { Zero } from "../Zero";
-import { TiffitRealmEyeAPI } from "../Constants/ConstantVars";
+import { RealmEyeAPILink } from "../Constants/ConstantVars";
 import { StringBuilder } from "../Classes/String/StringBuilder";
 import { AxiosResponse } from "axios";
 import { FilterQuery, UpdateQuery, InsertOneWriteOpResult, WithId } from "mongodb";
@@ -18,6 +17,8 @@ import { TestCasesNameHistory } from "../TestCases/TestCases";
 import { UserHandler } from "./UserHandler";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { IManualVerification } from "../Definitions/IManualVerification";
+import { IDarkMatterNoUser } from "../Definitions/IDarkMatterNoUser";
+import { IDarkMatterAPI } from "../Definitions/IDarkMatterAPI";
 
 export module VerificationHandler {
 	interface ICheckResults {
@@ -278,10 +279,10 @@ export module VerificationHandler {
 					canReact = false;
 					// begin verification time
 
-					let requestData: AxiosResponse<ITiffitNoUser | ITiffitRealmEyeProfile>;
+					let requestData: AxiosResponse<IDarkMatterNoUser | IDarkMatterAPI>;
 					try {
 						requestData = await Zero.AxiosClient
-							.get<ITiffitNoUser | ITiffitRealmEyeProfile>(TiffitRealmEyeAPI + inGameName);
+							.get<IDarkMatterNoUser | IDarkMatterAPI>(RealmEyeAPILink + inGameName);
 					}
 					catch (e) {
 						reactCollector.stop();
@@ -311,7 +312,7 @@ export module VerificationHandler {
 					// get name history
 					let nameHistory: INameHistory[] | IAPIError;
 					try {
-						nameHistory = await getRealmEyeNameHistory(requestData.data.name);
+						nameHistory = await getRealmEyeNameHistory(requestData.data.player);
 					} catch (e) {
 						reactCollector.stop();
 						if (typeof verificationAttemptsChannel !== "undefined") {
@@ -339,11 +340,16 @@ export module VerificationHandler {
 
 					nameHistory = TestCasesNameHistory.withNames();
 
-					const nameFromProfile: string = requestData.data.name;
+					const nameFromProfile: string = requestData.data.player;
 					if (!isOldProfile) {
 						let codeFound: boolean = false;
-						for (let i = 0; i < requestData.data.description.length; i++) {
-							if (requestData.data.description[i].includes(code)) {
+						let description: string[] = [
+							requestData.data.desc1,
+							requestData.data.desc2,
+							requestData.data.desc3
+						]
+						for (let i = 0; i < description.length; i++) {
+							if (description[i].includes(code)) {
 								codeFound = true;
 							}
 						}
@@ -381,7 +387,7 @@ export module VerificationHandler {
 					}
 
 					// now back to regular checking
-					if (requestData.data.last_seen !== "hidden") {
+					if (requestData.data.player_last_seen !== "hidden") {
 						if (typeof verificationAttemptsChannel !== "undefined") {
 							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her last-seen location is not hidden.`).catch(() => { });
 						}
@@ -534,7 +540,7 @@ export module VerificationHandler {
 
 					// success!
 					await member.roles.add(verifiedRole);
-					await member.setNickname(member.user.username === requestData.data.name ? `${requestData.data.name}.` : requestData.data.name).catch(() => { });
+					await member.setNickname(member.user.username === requestData.data.player ? `${requestData.data.player}.` : requestData.data.player).catch(() => { });
 
 					reactCollector.stop();
 					const successEmbed: MessageEmbed = new MessageEmbed()
@@ -579,8 +585,8 @@ export module VerificationHandler {
 					return;
 				}
 
-				const requestData: AxiosResponse<ITiffitNoUser | ITiffitRealmEyeProfile> = await Zero.AxiosClient
-					.get<ITiffitNoUser | ITiffitRealmEyeProfile>(TiffitRealmEyeAPI + name);
+				const requestData: AxiosResponse<IDarkMatterNoUser | IDarkMatterAPI> = await Zero.AxiosClient
+					.get<IDarkMatterNoUser | IDarkMatterAPI>(RealmEyeAPILink + name);
 				if ("error" in requestData.data) {
 					if (typeof verificationAttemptsChannel !== "undefined") {
 						verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${name}\`, but the name could not be found on RealmEye.`).catch(() => { });
@@ -1084,7 +1090,7 @@ export module VerificationHandler {
 
 	function preliminaryCheck(
 		sec: ISection,
-		reapi: ITiffitRealmEyeProfile
+		reapi: IDarkMatterAPI
 	): ICheckResults {
 		// char pts 
 		let zero: number = 0;
@@ -1098,7 +1104,7 @@ export module VerificationHandler {
 		let eight: number = 0;
 
 		for (let character of reapi.characters) {
-			const maxedStat: number = Number.parseInt(character.stats_maxed.split("/")[0]);
+			const maxedStat: number = character.stats_maxed;
 			switch (maxedStat) {
 				case (0): zero++; break;
 				case (1): one++; break;
@@ -1163,7 +1169,7 @@ export module VerificationHandler {
 			characters: {
 				amt: [zero, one, two, three, four, five, six, seven, eight],
 				passed: charPassed,
-				hidden: reapi.characterCount === -1
+				hidden: reapi.characters_hidden
 			},
 			passedAll: rankPassed && famePassed && charPassed
 		};
@@ -1173,12 +1179,14 @@ export module VerificationHandler {
 	 * Returns the name history of a person.
 	 * @param {string} ign The in-game name. 
 	 */
-	export async function getRealmEyeNameHistory(ign: string): Promise<IAPIError | INameHistory[]> {
+	export async function getRealmEyeNameHistory(
+		ign: string
+	): Promise<IAPIError | INameHistory[]> {
 		const resp: AxiosResponse<string> = await Zero.AxiosClient.get(
 			`https://www.realmeye.com/name-history-of-player/${ign}`,
 			{
 				headers: {
-					"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.103 Safari/537.36"
+					"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.61 Safari/537.36"
 				}
 			}
 		);
@@ -1244,7 +1252,7 @@ export module VerificationHandler {
 	async function manualVerification(
 		guild: Guild,
 		member: GuildMember,
-		verificationInfo: ITiffitRealmEyeProfile,
+		verificationInfo: IDarkMatterAPI,
 		manualVerificationChannel: TextChannel,
 		section: ISection,
 		reqsFailedToMeet: StringBuilder,
@@ -1253,7 +1261,7 @@ export module VerificationHandler {
 		if (section.isMain) {
 			// we can safely assume
 			// that the id = the person.
-			await accountInDatabase(member, verificationInfo.name, nameHistoryInfo);
+			await accountInDatabase(member, verificationInfo.player, nameHistoryInfo);
 		}
 
 		const desc: StringBuilder = new StringBuilder()
@@ -1261,20 +1269,20 @@ export module VerificationHandler {
 			.appendLine()
 			.append(`⇒ **User:** ${member}`)
 			.appendLine()
-			.append(`⇒ **IGN:** ${verificationInfo.name}`)
+			.append(`⇒ **IGN:** ${verificationInfo.player}`)
 			.appendLine()
-			.append(`⇒ **First Seen**: ${verificationInfo.created}`)
+			.append(`⇒ **First Seen**: ${verificationInfo.player_first_seen}`)
 			.appendLine()
-			.append(`⇒ **Last Seen**: ${verificationInfo.last_seen}`)
+			.append(`⇒ **Last Seen**: ${verificationInfo.player_last_seen}`)
 			.appendLine()
-			.append(`⇒ **RealmEye:** [Profile](https://www.realmeye.com/player/${verificationInfo.name})`)
+			.append(`⇒ **RealmEye:** [Profile](https://www.realmeye.com/player/${verificationInfo.player})`)
 			.appendLine()
 			.appendLine()
 			.append(`React with ☑️ to manually verify this person; otherwise, react with ❌.`)
 
 		const manualVerifEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(member.user.tag, member.user.displayAvatarURL())
-			.setTitle(`Manual Verification Request: **${verificationInfo.name}**`)
+			.setTitle(`Manual Verification Request: **${verificationInfo.player}**`)
 			.setDescription(desc.toString())
 			.addField("Unmet Requirements", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()), true)
 			.setColor("YELLOW")
@@ -1299,7 +1307,7 @@ export module VerificationHandler {
 			$push: {
 				[updateKey]: {
 					userId: member.id,
-					inGameName: verificationInfo.name,
+					inGameName: verificationInfo.player,
 					rank: verificationInfo.rank,
 					aFame: verificationInfo.fame,
 					nameHistory: nameHistoryInfo,

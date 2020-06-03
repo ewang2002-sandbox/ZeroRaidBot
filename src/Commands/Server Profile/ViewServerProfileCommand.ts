@@ -166,7 +166,7 @@ export class ViewServerProfileCommand extends Command {
             .addField("Vial Information", StringUtil.applyCodeBlocks(vvSB.toString()), true)
             .addField("Oryx III Information", StringUtil.applyCodeBlocks(wcSB.toString()))
             .addField("Runs Completed", StringUtil.applyCodeBlocks(crSB.toString()), true)
-            .addField("Runs Led", StringUtil.applyCodeBlocks(lrSB.toString()), true);
+            .addField("Runs Led", StringUtil.applyCodeBlocks("TEST"), true);
 
         await dmChannel.send(mEmbed);
     }

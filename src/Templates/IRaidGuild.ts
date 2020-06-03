@@ -7,6 +7,7 @@ import { IPunishment } from "../Definitions/IPunishment";
 import { IHeadCountInfo } from "../Definitions/IHeadCountInfo";
 import { IMutedData, ISuspendedData } from "../Definitions/IPunishmentObject";
 import { IManualVerification } from "../Definitions/IManualVerification";
+import { IQuotaDbInfo } from "../Definitions/IQuotaDbInfo";
 
 /**
  * Everything here (excluding "sections") represents ESSENTIALS needed for the core bot functions to work properly.
@@ -233,12 +234,22 @@ export interface IRaidGuild {
 		 * Any messages from Network Admins will be sent to this channel.
 		 */
 		networkAnnouncementsChannel: string;
+
+		/**
+		 * Quota channel.
+		 */
+		quotaChannel: string;
 	},
 
 	/**
 	 * General information relating to the server.
 	 */
 	properties: {
+		/**
+		 * Quota details.
+		 */
+		quotaDetails: IQuotaDbInfo[];
+		
 		/**
 		 * The message that users will receive after they are verified.
 		 */

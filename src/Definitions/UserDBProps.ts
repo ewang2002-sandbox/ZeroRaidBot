@@ -1,3 +1,9 @@
+export interface ILeaderLogType {
+    completed: number;
+    failed: number; 
+    assists: number;
+}
+
 export interface IKeyPops {
     server: string;
     keysPopped: number;
@@ -94,10 +100,4 @@ export interface ILeaderRuns {
      * server
      */
     server: string;
-}
-
-interface ILeaderLogType {
-    completed: number;
-    failed: number; 
-    assists: number;
 }

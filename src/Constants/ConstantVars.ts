@@ -1,7 +1,7 @@
 /**
- * API Link.
+ * Public API Link.
  */
-export const RealmEyeAPILink: string = "";  
+export const RealmEyeAPILink: string = "https://nightfirec.at/realmeye-api/?player=";  
 
 /**
  * The default prefix for the bot.

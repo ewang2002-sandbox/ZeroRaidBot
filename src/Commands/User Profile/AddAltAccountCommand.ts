@@ -15,8 +15,8 @@ import { RealmEyeAPILink } from "../../Constants/ConstantVars";
 import { INameHistory, IAPIError } from "../../Definitions/ICustomREVerification";
 import { FilterQuery } from "mongodb";
 import { StringBuilder } from "../../Classes/String/StringBuilder";
-import { IDarkMatterNoUser } from "../../Definitions/IDarkMatterNoUser";
-import { IDarkMatterAPI } from "../../Definitions/IDarkMatterAPI";
+import { IRealmEyeNoUser } from "../../Definitions/IRealmEyeNoUser";
+import { IRealmEyeAPI } from "../../Definitions/IRealmEyeAPI";
 
 export class AddAltAccountCommand extends Command {
 	public static readonly MAX_ALTS_ALLOWED: number = 10;
@@ -132,10 +132,10 @@ export class AddAltAccountCommand extends Command {
 			canReact = false;
 			// begin verification time
 
-			let requestData: AxiosResponse<IDarkMatterNoUser | IDarkMatterAPI>;
+			let requestData: AxiosResponse<IRealmEyeNoUser | IRealmEyeAPI>;
 			try {
 				requestData = await Zero.AxiosClient
-					.get<IDarkMatterNoUser | IDarkMatterAPI>(RealmEyeAPILink + inGameName);
+					.get<IRealmEyeNoUser | IRealmEyeAPI>(RealmEyeAPILink + inGameName);
 			}
 			catch (e) {
 				reactCollector.stop();

@@ -17,8 +17,8 @@ import { TestCasesNameHistory } from "../TestCases/TestCases";
 import { UserHandler } from "./UserHandler";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { IManualVerification } from "../Definitions/IManualVerification";
-import { IDarkMatterNoUser } from "../Definitions/IDarkMatterNoUser";
-import { IDarkMatterAPI } from "../Definitions/IDarkMatterAPI";
+import { IRealmEyeNoUser } from "../Definitions/IRealmEyeNoUser";
+import { IRealmEyeAPI } from "../Definitions/IRealmEyeAPI";
 
 export module VerificationHandler {
 	interface ICheckResults {
@@ -279,10 +279,10 @@ export module VerificationHandler {
 					canReact = false;
 					// begin verification time
 
-					let requestData: AxiosResponse<IDarkMatterNoUser | IDarkMatterAPI>;
+					let requestData: AxiosResponse<IRealmEyeNoUser | IRealmEyeAPI>;
 					try {
 						requestData = await Zero.AxiosClient
-							.get<IDarkMatterNoUser | IDarkMatterAPI>(RealmEyeAPILink + inGameName);
+							.get<IRealmEyeNoUser | IRealmEyeAPI>(RealmEyeAPILink + inGameName);
 					}
 					catch (e) {
 						reactCollector.stop();
@@ -585,8 +585,8 @@ export module VerificationHandler {
 					return;
 				}
 
-				const requestData: AxiosResponse<IDarkMatterNoUser | IDarkMatterAPI> = await Zero.AxiosClient
-					.get<IDarkMatterNoUser | IDarkMatterAPI>(RealmEyeAPILink + name);
+				const requestData: AxiosResponse<IRealmEyeNoUser | IRealmEyeAPI> = await Zero.AxiosClient
+					.get<IRealmEyeNoUser | IRealmEyeAPI>(RealmEyeAPILink + name);
 				if ("error" in requestData.data) {
 					if (typeof verificationAttemptsChannel !== "undefined") {
 						verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${name}\`, but the name could not be found on RealmEye.`).catch(() => { });
@@ -1090,7 +1090,7 @@ export module VerificationHandler {
 
 	function preliminaryCheck(
 		sec: ISection,
-		reapi: IDarkMatterAPI
+		reapi: IRealmEyeAPI
 	): ICheckResults {
 		// char pts 
 		let zero: number = 0;
@@ -1252,7 +1252,7 @@ export module VerificationHandler {
 	async function manualVerification(
 		guild: Guild,
 		member: GuildMember,
-		verificationInfo: IDarkMatterAPI,
+		verificationInfo: IRealmEyeAPI,
 		manualVerificationChannel: TextChannel,
 		section: ISection,
 		reqsFailedToMeet: StringBuilder,

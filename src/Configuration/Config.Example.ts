@@ -6,6 +6,12 @@ import { IConfigurationSettings } from "./IConfigurationSettings";
  */
 const PRODUCTION_BOT: boolean = false;
 
+/**
+ * True -- use private settings.
+ * False -- use public settings.
+ */
+const PRIVATE_BOT: boolean = false;
+
 export const BotConfiguration: IConfigurationSettings = PRODUCTION_BOT
     ? {
         token: "",
@@ -36,3 +42,8 @@ export const DefaultPrefix: string = ";";
  * How long notification embeds should last before they are deleted. This should be in milliseconds.
  */
 export const DeleteEmbedTime: number = 5000;
+
+/**
+ * Private RealmEye API URL
+ */
+export const APIUrl: string = "";

@@ -17,8 +17,8 @@ import { RealmEyeAPILink } from "../../Constants/ConstantVars";
 import { INameHistory, IAPIError } from "../../Definitions/ICustomREVerification";
 import { FilterQuery } from "mongodb";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
-import { IDarkMatterNoUser } from "../../Definitions/IDarkMatterNoUser";
-import { IDarkMatterAPI } from "../../Definitions/IDarkMatterAPI";
+import { IRealmEyeNoUser } from "../../Definitions/IRealmEyeNoUser";
+import { IRealmEyeAPI } from "../../Definitions/IRealmEyeAPI";
 
 export class ManualVerifyCommand extends Command {
     private readonly _emojis: EmojiResolvable[] = [
@@ -364,10 +364,10 @@ export class ManualVerifyCommand extends Command {
                         return;
                     }
 
-                    let requestData: AxiosResponse<IDarkMatterNoUser | IDarkMatterAPI>;
+                    let requestData: AxiosResponse<IRealmEyeNoUser | IRealmEyeAPI>;
                     try {
                         requestData = await Zero.AxiosClient
-                            .get<IDarkMatterNoUser | IDarkMatterAPI>(RealmEyeAPILink + collectedMessage.content);
+                            .get<IRealmEyeNoUser | IRealmEyeAPI>(RealmEyeAPILink + collectedMessage.content);
                     }
                     catch (e) {
                         return "ERROR_";

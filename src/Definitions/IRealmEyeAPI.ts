@@ -1,7 +1,7 @@
-export interface IDarkMatterAPI {
+export interface IRealmEyeAPI {
     account_fame: number;
     account_fame_rank: number;
-    characters: IDarkMatterCharactersAPI[];
+    characters: IRealmEyeCharacters[];
     characters_hidden: boolean;
     chars: 1;
     desc1: string;
@@ -23,7 +23,7 @@ export interface IDarkMatterAPI {
     skins_rank: number   
 }
 
-export interface IDarkMatterCharactersAPI  {
+export interface IRealmEyeCharacters  {
     backpack: boolean;
     character_dyes: {
         accessory_dye: string;

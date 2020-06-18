@@ -140,7 +140,7 @@ export class LogRunsCommand extends Command {
 		}
 
 		// maybe find a way to optimize this? :) 
-		let realmClearingLeaders: QuotaLoggingHandler.LeaderLoggingArray = {
+		let realmClearingLeadersLog: QuotaLoggingHandler.LeaderLoggingArray = {
 			main: {
 				members: [],
 				completed: 0,
@@ -151,7 +151,7 @@ export class LogRunsCommand extends Command {
 				assists: 0
 			}
 		};
-		let endgameLeaders: QuotaLoggingHandler.LeaderLoggingArray = {
+		let endgameLeadersLog: QuotaLoggingHandler.LeaderLoggingArray = {
 			main: {
 				members: [],
 				completed: 0,
@@ -162,7 +162,7 @@ export class LogRunsCommand extends Command {
 				assists: 0
 			}
 		};
-		let generalLeaders: QuotaLoggingHandler.LeaderLoggingArray = {
+		let generalLeadersLog: QuotaLoggingHandler.LeaderLoggingArray = {
 			main: {
 				members: [],
 				completed: 0,
@@ -179,44 +179,50 @@ export class LogRunsCommand extends Command {
 			const data: QuotaLoggingHandler.LeaderLoggingArray | "CANCEL" = await this.getData(
 				msg, 
 				guildData, 
-				realmClearingLeaders,
+				realmClearingLeadersLog,
 				[mainLeaders, assistLeaders],
 				"REALM CLEARING"
 			);
 			if (data === "CANCEL") {
 				return;
 			}
-			realmClearingLeaders = data; 
+			realmClearingLeadersLog = data; 
 		}
 		else {
 			if (didEndgameDungeons) {
 				const data: QuotaLoggingHandler.LeaderLoggingArray | "CANCEL" = await this.getData(
 					msg, 
 					guildData, 
-					endgameLeaders,
+					endgameLeadersLog,
 					[mainLeaders, assistLeaders],
 					"END GAME"
 				);
 				if (data === "CANCEL") {
 					return;
 				}
-				endgameLeaders = data; 
+				endgameLeadersLog = data; 
 			}
 
 			if (didGeneralDungeons) {
 				const data: QuotaLoggingHandler.LeaderLoggingArray | "CANCEL" = await this.getData(
 					msg, 
 					guildData, 
-					generalLeaders,
+					generalLeadersLog,
 					[mainLeaders, assistLeaders],
 					"GENERAL"
 				);
 				if (data === "CANCEL") {
 					return;
 				}
-				generalLeaders = data; 
+				generalLeadersLog = data; 
 			}
 		}
+
+		QuotaLoggingHandler.logRunsAndUpdateQuota(msg.guild as Guild, {
+			general: generalLeadersLog,
+			endgame: endgameLeadersLog,
+			realmClearing: realmClearingLeadersLog
+		});
 	}
 
 	public async getData(

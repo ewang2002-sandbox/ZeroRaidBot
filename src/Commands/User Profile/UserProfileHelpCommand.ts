@@ -48,7 +48,7 @@ export class UserProfileHelpCommand extends Command {
             .appendLine()
             .append("⇒ Remove Alternative Account")
             .appendLine()
-            .append("You can use this command to remove an alternative account from your profile.\n⇒ Command: `;removealtaccount`\n⇒ Example: `;removealtaccount`")
+            .append("This command is currently not available.")
             .appendLine()
             .appendLine()
             .append("⇒ Switch Main & Alternative Accounts")

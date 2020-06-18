@@ -260,7 +260,8 @@ export module MongoDbHelper {
 					properties: {
 						quotas: {
 							quotaDetails: [],
-							quotaMessage: ""
+							quotaMessage: "",
+							lastReset: new Date().getTime()
 						},
 						successfulVerificationMessage: "",
 						modMail: [],

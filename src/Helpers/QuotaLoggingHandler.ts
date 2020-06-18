@@ -188,52 +188,22 @@ export module QuotaLoggingHandler {
             return;
         }
 
-        // get leader count
-        const universalARL: Role | undefined = guild.roles.cache.get(guildDb.roles.universalAlmostRaidLeader);
-        const universalRL: Role | undefined = guild.roles.cache.get(guildDb.roles.universalRaidLeader);
-        const allLeaders: string[] = [];
-
-        if (typeof universalARL !== "undefined") {
-            allLeaders.push(...universalARL.members.map(x => x.id));
-        }
-
-        if (typeof universalRL !== "undefined") {
-            allLeaders.push(...universalRL.members.map(x => x.id));
-        }
-
-        for (const section of [GuildUtil.getDefaultSection(guildDb), ...guildDb.sections]) {
-            const leaderRoles: (Role | undefined)[] = [
-                guild.roles.cache.get(section.roles.almostLeaderRole),
-                guild.roles.cache.get(section.roles.raidLeaderRole),
-                guild.roles.cache.get(section.roles.trialLeaderRole)
-            ];
-
-            for (const leaderRole of leaderRoles) {
-                if (typeof leaderRole === "undefined") {
-                    continue;
-                }
-
-                const membersOfRole: GuildMember[] = leaderRole.members.array();
-                for (const member of membersOfRole) {
-                    if (!allLeaders.includes(member.id)) {
-                        allLeaders.push(member.id);
-                    }
-                }
-            }
-        }
-
         const leaderboardData: [number, LeaderLogAndTotal][] = generateLeaderboardArray(quotaDbAndTotal)
             .filter(x => guild.members.cache.has(x[1].memberId));
         const sb: StringBuilder = new StringBuilder()
             .append(`⇒ **Quota Last Updated:** ${DateUtil.getTime()}`)
             .appendLine()
+            .append(`⇒ **Quota Last Reset:** ${DateUtil.getTime(guildDb.properties.quotas.lastReset)}`)
+            .appendLine()
             .append(`⇒ **Leaders Accounted:** ${leaderboardData.length}`)
             .appendLine()
-            .append(`⇒ **Total Leaders:** ${allLeaders.length}`)
+            .append(`⇒ **Total Leaders:** ${GuildUtil.getNumberOfLeaders(guild, guildDb)}`);
         const quotaEmbed: MessageEmbed = new MessageEmbed()
             .setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
             .setTitle("**Quota Leaderboard**")
             .setDescription(sb.toString())
+            .setFooter("Completed / Failed / Assists")
+            .setTimestamp()
             .setColor("RED");
 
         let str: string = "";
@@ -273,6 +243,22 @@ export module QuotaLoggingHandler {
             quotaEmbed.addField("Leaderboards", str);
         }
 
+        sendOrUpdateQuotaMessage(guild, guildDb, quotaChannel, quotaEmbed);
+    }
+
+    /**
+     * Sends or updates the quota message. 
+     * @param guild The guild.
+     * @param guildDb The guild db.
+     * @param quotaChannel The quota channel. This must be defined.
+     * @param quotaEmbed The quota embed.
+     */
+    export async function sendOrUpdateQuotaMessage(
+        guild: Guild,
+        guildDb: IRaidGuild,
+        quotaChannel: TextChannel,
+        quotaEmbed: MessageEmbed
+    ): Promise<boolean> {
         let quotaMsg: Message;
         let isCreated: boolean = false;
         try {
@@ -287,7 +273,7 @@ export module QuotaLoggingHandler {
             }
             catch (e) {
                 // no permission to send message in channel
-                return;
+                return false;
             }
             // update message id
             await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
@@ -299,12 +285,13 @@ export module QuotaLoggingHandler {
 
         // embed was created, so we dont need to edit anymore
         if (isCreated) {
-            return;
+            return true;
         }
 
         // we need to edit the embed
         // so edit it
         await quotaMsg.edit(quotaEmbed).catch(e => { });
+        return true;
     }
 
     /**

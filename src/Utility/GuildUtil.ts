@@ -1,12 +1,12 @@
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { ISection } from "../Templates/ISection";
-import { GuildMember, Message, DMChannel, Guild, MessageEmbed } from "discord.js";
+import { GuildMember, Message, DMChannel, Guild, MessageEmbed, Role } from "discord.js";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
 import { StringUtil } from "./StringUtil";
 import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollector";
 import { TimeUnit } from "../Definitions/TimeUnit";
 
-export namespace GuildUtil { 
+export namespace GuildUtil {
 	export type RaidLeaderRole = null | "TRL" | "ARL" | "RL" | "HRL";
 	export type RaidLeaderStatus = {
 		isUniversal: boolean; // this will override any other setting
@@ -23,8 +23,8 @@ export namespace GuildUtil {
 	 * @returns {boolean} True if the leader can start AFK check without approval.
 	 */
 	export function getRaidLeaderStatus(
-		member: GuildMember, 
-		guildData: IRaidGuild, 
+		member: GuildMember,
+		guildData: IRaidGuild,
 		section: ISection
 	): RaidLeaderStatus {
 		const allowedRoles: string[] = [
@@ -71,8 +71,8 @@ export namespace GuildUtil {
 	 * @param {ISection} section The section where the command was executed
 	 */
 	export function getHighestRaidLeaderRole(
-		member: GuildMember, 
-		guildData: IRaidGuild, 
+		member: GuildMember,
+		guildData: IRaidGuild,
 		section: ISection
 	): RaidLeaderRole {
 		if (member.roles.cache.has(guildData.roles.headRaidLeader)) {
@@ -165,66 +165,109 @@ export namespace GuildUtil {
      * Gets a guild.
      * @param msg The message object.
      */
-    export async function getGuild(msg: Message, dmChannel: DMChannel): Promise<Guild | null | "CANCEL"> {
-        const allGuilds: IRaidGuild[] = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.find({}).toArray();
-        const embed: MessageEmbed = new MessageEmbed()
-            .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
-            .setDescription("Please select the server that you want to configure your server profile for.")
-            .setColor("RANDOM")
-            .setFooter("Server Profile Management");
+	export async function getGuild(msg: Message, dmChannel: DMChannel): Promise<Guild | null | "CANCEL"> {
+		const allGuilds: IRaidGuild[] = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.find({}).toArray();
+		const embed: MessageEmbed = new MessageEmbed()
+			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
+			.setDescription("Please select the server that you want to configure your server profile for.")
+			.setColor("RANDOM")
+			.setFooter("Server Profile Management");
 
-        let str: string = "";
-        let index: number = 0;
-        const validGuilds: Guild[] = [];
-        for (const guildEntry of allGuilds) {
-            for (const [id, guild] of msg.client.guilds.cache) {
-                if (guild.id !== guildEntry.guildID) {
-                    continue; // guild associated with db not right
-                }
+		let str: string = "";
+		let index: number = 0;
+		const validGuilds: Guild[] = [];
+		for (const guildEntry of allGuilds) {
+			for (const [id, guild] of msg.client.guilds.cache) {
+				if (guild.id !== guildEntry.guildID) {
+					continue; // guild associated with db not right
+				}
 
-                if (!guild.roles.cache.has(guildEntry.roles.raider)
-                    || !guild.members.cache.has(msg.author.id)) {
-                    break; // found guild but no verified role OR not a member of the server
-                }
+				if (!guild.roles.cache.has(guildEntry.roles.raider)
+					|| !guild.members.cache.has(msg.author.id)) {
+					break; // found guild but no verified role OR not a member of the server
+				}
 
-                const resolvedMember: GuildMember = guild.member(msg.author) as GuildMember;
+				const resolvedMember: GuildMember = guild.member(msg.author) as GuildMember;
 
-                if (!resolvedMember.roles.cache.has(guildEntry.roles.raider)) {
-                    break; // not verified
-                }
+				if (!resolvedMember.roles.cache.has(guildEntry.roles.raider)) {
+					break; // not verified
+				}
 
-                validGuilds.push(guild);
-                const tempStr: string = `[${++index}] ${guild.name}`;
-                if (str.length + tempStr.length > 1000) {
-                    embed.addField("Guild Selection", StringUtil.applyCodeBlocks(str));
-                    str = tempStr;
-                }
-                else {
-                    str += tempStr;
-                }
-            }
-        } // end major loop
+				validGuilds.push(guild);
+				const tempStr: string = `[${++index}] ${guild.name}`;
+				if (str.length + tempStr.length > 1000) {
+					embed.addField("Guild Selection", StringUtil.applyCodeBlocks(str));
+					str = tempStr;
+				}
+				else {
+					str += tempStr;
+				}
+			}
+		} // end major loop
 
-        if (validGuilds.length === 0) {
-            return null;
-        }
+		if (validGuilds.length === 0) {
+			return null;
+		}
 
-        if (embed.fields.length === 0) {
-            embed.addField("Guild Selection", StringUtil.applyCodeBlocks(str));
-        }
+		if (embed.fields.length === 0) {
+			embed.addField("Guild Selection", StringUtil.applyCodeBlocks(str));
+		}
 
-        const num: number | "CANCEL" | "TIME" = await new GenericMessageCollector<number>(
-            msg.author,
-            { embed: embed },
-            2,
-            TimeUnit.MINUTE,
-            dmChannel
-        ).send(GenericMessageCollector.getNumber(dmChannel, 1, validGuilds.length));
+		const num: number | "CANCEL" | "TIME" = await new GenericMessageCollector<number>(
+			msg.author,
+			{ embed: embed },
+			2,
+			TimeUnit.MINUTE,
+			dmChannel
+		).send(GenericMessageCollector.getNumber(dmChannel, 1, validGuilds.length));
 
-        if (num === "CANCEL" || num === "TIME") {
-            return "CANCEL";
-        }
+		if (num === "CANCEL" || num === "TIME") {
+			return "CANCEL";
+		}
 
-        return validGuilds[num - 1];
-    }
+		return validGuilds[num - 1];
+	}
+
+	/**
+	 * Gets the total number of leaders in the server.
+	 * @param guild The guild object.
+	 * @param guildDb The guild db.
+	 */
+	export function getNumberOfLeaders(guild: Guild, guildDb: IRaidGuild): number {
+		// get leader count
+		const universalARL: Role | undefined = guild.roles.cache.get(guildDb.roles.universalAlmostRaidLeader);
+		const universalRL: Role | undefined = guild.roles.cache.get(guildDb.roles.universalRaidLeader);
+		const allLeaders: string[] = [];
+
+		if (typeof universalARL !== "undefined") {
+			allLeaders.push(...universalARL.members.map(x => x.id));
+		}
+
+		if (typeof universalRL !== "undefined") {
+			allLeaders.push(...universalRL.members.map(x => x.id));
+		}
+
+		for (const section of [GuildUtil.getDefaultSection(guildDb), ...guildDb.sections]) {
+			const leaderRoles: (Role | undefined)[] = [
+				guild.roles.cache.get(section.roles.almostLeaderRole),
+				guild.roles.cache.get(section.roles.raidLeaderRole),
+				guild.roles.cache.get(section.roles.trialLeaderRole)
+			];
+
+			for (const leaderRole of leaderRoles) {
+				if (typeof leaderRole === "undefined") {
+					continue;
+				}
+
+				const membersOfRole: GuildMember[] = leaderRole.members.array();
+				for (const member of membersOfRole) {
+					if (!allLeaders.includes(member.id)) {
+						allLeaders.push(member.id);
+					}
+				}
+			}
+		}
+
+		return allLeaders.length;
+	}
 }

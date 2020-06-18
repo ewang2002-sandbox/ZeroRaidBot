@@ -31,7 +31,7 @@ import { ServerProfileHelpCommand } from "../Commands/Server Profile/ServerProfi
 import { UserProfileHelpCommand } from "../Commands/User Profile/UserProfileHelpCommand";
 import { ConfigurePrefixCommand } from "../Commands/Configuration/ConfigurePrefixCommand";
 import { ConfigureVerifSuccessCommand } from "../Commands/Configuration/ConfigureVerifSuccessCommand";
-import { LogRunsCommand } from "../Commands/Raid Leader/LogRunsCommand";
+import { LogRunsCommand } from "../Commands/Quota & Logging/LogRunsCommand";
 
 /**
  * This class should only be called ONCE. 

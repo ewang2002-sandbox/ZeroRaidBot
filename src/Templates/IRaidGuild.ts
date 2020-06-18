@@ -251,6 +251,7 @@ export interface IRaidGuild {
 		quotas: {
 			quotaDetails: IQuotaDbInfo[];
 			quotaMessage: string;
+			lastReset: number;
 		} 
 		
 		/**

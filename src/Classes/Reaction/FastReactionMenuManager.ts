@@ -55,6 +55,10 @@ export class FastReactionMenuManager {
      * @returns Either the resolved emoji that has been reacted to, or "TIME" if time has been reached.
      */
     public react(delay: number = 500, clearReactsAfter: boolean = true): Promise<GuildEmoji | ReactionEmoji | "TIME"> {
+        if (delay < 500) {
+            delay = 500;
+        }
+        
         return new Promise((resolve, reject) => {
             let i: number = 0;
             const interval: NodeJS.Timeout = setInterval(() => {

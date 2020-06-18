@@ -141,7 +141,34 @@ export class ViewServerProfileCommand extends Command {
 
         // leaders
         const leaderRuns: ILeaderRuns | undefined = userDb.general.leaderRuns.find(x => x.server === guild.id);
-        // TODO redo this again
+        const lRSB: StringBuilder = new StringBuilder()
+            .append("General Runs")
+            .appendLine()
+            .append(`- Completed: ${typeof leaderRuns === "undefined" ? 0 : leaderRuns.generalRuns.completed}`)
+            .appendLine()
+            .append(`- Failed: ${typeof leaderRuns === "undefined" ? 0 : leaderRuns.generalRuns.failed}`)
+            .appendLine()
+            .append(`- Assisted: ${typeof leaderRuns === "undefined" ? 0 : leaderRuns.generalRuns.assists}`)
+            .appendLine()
+            .appendLine()
+            // new sect
+            .append("Endgame Runs")
+            .appendLine()
+            .append(`- Completed: ${typeof leaderRuns === "undefined" ? 0 : leaderRuns.endgame.completed}`)
+            .appendLine()
+            .append(`- Failed: ${typeof leaderRuns === "undefined" ? 0 : leaderRuns.endgame.failed}`)
+            .appendLine()
+            .append(`- Assisted: ${typeof leaderRuns === "undefined" ? 0 : leaderRuns.endgame.assists}`)
+            .appendLine()
+            .appendLine()
+            // new sect
+            .append("Realm Clearing Runs")
+            .appendLine()
+            .append(`- Completed: ${typeof leaderRuns === "undefined" ? 0 : leaderRuns.realmClearing.completed}`)
+            .appendLine()
+            .append(`- Failed: ${typeof leaderRuns === "undefined" ? 0 : leaderRuns.realmClearing.failed}`)
+            .appendLine()
+            .append(`- Assisted: ${typeof leaderRuns === "undefined" ? 0 : leaderRuns.realmClearing.assists}`);
 
         const wc: IWineCellarOryx | undefined = userDb.general.wcOryx.find(x => x.server === guild.id);
         const wcSB: StringBuilder = new StringBuilder()
@@ -166,7 +193,7 @@ export class ViewServerProfileCommand extends Command {
             .addField("Vial Information", StringUtil.applyCodeBlocks(vvSB.toString()), true)
             .addField("Oryx III Information", StringUtil.applyCodeBlocks(wcSB.toString()))
             .addField("Runs Completed", StringUtil.applyCodeBlocks(crSB.toString()), true)
-            .addField("Runs Led", StringUtil.applyCodeBlocks("TEST"), true);
+            .addField("Runs Led", StringUtil.applyCodeBlocks(lRSB.toString()), true);
 
         await dmChannel.send(mEmbed);
     }

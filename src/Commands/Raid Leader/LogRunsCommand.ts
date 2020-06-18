@@ -1,18 +1,16 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, TextChannel, MessageCollector, Collection, MessageEmbed, ColorResolvable, GuildMember, EmojiResolvable, GuildEmoji, ReactionEmoji, Guild, PartialTextBasedChannelFields } from "discord.js";
+import { Message, MessageEmbed, GuildMember, EmojiResolvable, GuildEmoji, ReactionEmoji, Guild } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
-import { IDungeonData } from "../../Definitions/IDungeonData";
-import { NumberUtil } from "../../Utility/NumberUtil";
-import { AFKDungeon } from "../../Constants/AFKDungeon";
-import { StringBuilder } from "../../Classes/String/StringBuilder";
-import { ArrayUtil } from "../../Utility/ArrayUtil";
 import { GenericMessageCollector } from "../../Classes/Message/GenericMessageCollector";
 import { TimeUnit } from "../../Definitions/TimeUnit";
-import { OtherUtil } from "../../Utility/OtherUtil";
-import { MessageUtil } from "../../Utility/MessageUtil";
 import { FastReactionMenuManager } from "../../Classes/Reaction/FastReactionMenuManager";
+import { UserHandler } from "../../Helpers/UserHandler";
+import { QuotaLoggingHandler } from "../../Helpers/QuotaLoggingHandler";
+
+type RaidTypes = "REALM CLEARING" | "END GAME" | "GENERAL";
+
 
 export class LogRunsCommand extends Command {
 	public constructor() {
@@ -40,7 +38,6 @@ export class LogRunsCommand extends Command {
 	}
 
 	public async executeCommand(msg: Message, args: string[], guildData: IRaidGuild): Promise<void> {
-		const guild: Guild = msg.guild as Guild;
 		const member: GuildMember = msg.member as GuildMember;
 
 		// is the member a main leader or an assisting leader?
@@ -55,10 +52,10 @@ export class LogRunsCommand extends Command {
 			.setColor("RANDOM");
 		const reactionsForInitLogType: EmojiResolvable[] = ["🇦", "🇧", "🇨", "❌"];
 		const botMsg: Message = await msg.channel.send(initiatorLogTypeEmbed);
-		
+
 		const resultantReactionForInit: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(botMsg, msg.author, reactionsForInitLogType, 2, TimeUnit.MINUTE).react();
 		if (resultantReactionForInit === "TIME" || resultantReactionForInit.name === "❌") {
-			await botMsg.delete().catch(e => { });
+			await botMsg.delete().catch(() => { });
 			return;
 		}
 
@@ -72,7 +69,7 @@ export class LogRunsCommand extends Command {
 			assistLeaders.push(member);
 		}
 
-		await botMsg.reactions.removeAll().catch(e => { });
+		await botMsg.reactions.removeAll().catch(() => { });
 
 		// check and x reactions
 		const checkXReactions: EmojiResolvable[] = ["✅", "❌"];
@@ -88,11 +85,11 @@ export class LogRunsCommand extends Command {
 			.addField("React With ✅", "If you did any realm clearing.")
 			.addField("React With ❌", "If you did __not__ do any realm clearing.")
 			.setColor("RANDOM");
-		await botMsg.edit(realmClearingAskEmbed).catch(e => { });
+		await botMsg.edit(realmClearingAskEmbed).catch(() => { });
 		const resultantReactionForRCAsk: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(botMsg, msg.author, checkXReactions, 2, TimeUnit.MINUTE).react();
 
 		if (resultantReactionForRCAsk === "TIME") {
-			await botMsg.delete().catch(e => { });
+			await botMsg.delete().catch(() => { });
 			return;
 		}
 
@@ -109,11 +106,11 @@ export class LogRunsCommand extends Command {
 				.addField("React With ✅", "If you did any endgame dungeons.")
 				.addField("React With ❌", "If you did __not__ do any endgame dungeons.")
 				.setColor("RANDOM");
-			await botMsg.edit(endgameAskEmbed).catch(e => { });
+			await botMsg.edit(endgameAskEmbed).catch(() => { });
 			const resultantReactionForEndGameAsk: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(botMsg, msg.author, checkXReactions, 2, TimeUnit.MINUTE).react();
 
 			if (resultantReactionForEndGameAsk === "TIME") {
-				await botMsg.delete().catch(e => { });
+				await botMsg.delete().catch(() => { });
 				return;
 			}
 
@@ -129,11 +126,11 @@ export class LogRunsCommand extends Command {
 				.addField("React With ✅", "If you did any general dungeons.")
 				.addField("React With ❌", "If you did __not__ do any general dungeons.")
 				.setColor("RANDOM");
-			await botMsg.edit(generalAskEmbed).catch(e => { });
+			await botMsg.edit(generalAskEmbed).catch(() => { });
 			const resultantReactionForGeneralAsk: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(botMsg, msg.author, checkXReactions, 2, TimeUnit.MINUTE).react();
 
 			if (resultantReactionForGeneralAsk === "TIME") {
-				await botMsg.delete().catch(e => { });
+				await botMsg.delete().catch(() => { });
 				return;
 			}
 
@@ -142,34 +139,245 @@ export class LogRunsCommand extends Command {
 			}
 		}
 
-		console.log(didEndgameDungeons, didRealmClearing, didGeneralDungeons);
+		// maybe find a way to optimize this? :) 
+		let realmClearingLeaders: QuotaLoggingHandler.LeaderLoggingArray = {
+			main: {
+				members: [],
+				completed: 0,
+				failed: 0
+			},
+			assists: {
+				members: [],
+				assists: 0
+			}
+		};
+		let endgameLeaders: QuotaLoggingHandler.LeaderLoggingArray = {
+			main: {
+				members: [],
+				completed: 0,
+				failed: 0
+			},
+			assists: {
+				members: [],
+				assists: 0
+			}
+		};
+		let generalLeaders: QuotaLoggingHandler.LeaderLoggingArray = {
+			main: {
+				members: [],
+				completed: 0,
+				failed: 0
+			},
+			assists: {
+				members: [],
+				assists: 0
+			}
+		};
 
-		// get main rls
-
-		/*
-		let tempArrOfMainRls: GuildMember[] = mainLeaders;
-		while (true) {
-			const tempMainRlEmbed: MessageEmbed = new MessageEmbed()
-				.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
-				.setTitle("Select Main Leaders")
-				.setDescription("Please select up to 5 leaders. Main leaders are leaders that were actively leading.\n\nTo **add** a person as a main leader, you may either choose to either mention the person, type their IGN, or type their Discord ID. If you want, you can separate multiple entries with a comma (ex. `Deatttthhh, 123143243242434`).\n\nTo **remove** a person that is listed below, type the number corresponding to the person.\n\nWhen you are done, type `done`.");
-			// assume that the length will never be greater than 200.
-			let str: string = "";	
-			for (let i = 0; i < tempArrOfMainRls.length; i++) {
-				str += `**\`[${i + 1}]\`** ${tempArrOfMainRls[i]}\n`;
+		// let's get people + run count
+		if (didRealmClearing) {
+			const data: QuotaLoggingHandler.LeaderLoggingArray | "CANCEL" = await this.getData(
+				msg, 
+				guildData, 
+				realmClearingLeaders,
+				[mainLeaders, assistLeaders],
+				"REALM CLEARING"
+			);
+			if (data === "CANCEL") {
+				return;
+			}
+			realmClearingLeaders = data; 
+		}
+		else {
+			if (didEndgameDungeons) {
+				const data: QuotaLoggingHandler.LeaderLoggingArray | "CANCEL" = await this.getData(
+					msg, 
+					guildData, 
+					endgameLeaders,
+					[mainLeaders, assistLeaders],
+					"END GAME"
+				);
+				if (data === "CANCEL") {
+					return;
+				}
+				endgameLeaders = data; 
 			}
 
-			if (str.length !== 0) {
-				tempMainRlEmbed.addField("Choice", str);
+			if (didGeneralDungeons) {
+				const data: QuotaLoggingHandler.LeaderLoggingArray | "CANCEL" = await this.getData(
+					msg, 
+					guildData, 
+					generalLeaders,
+					[mainLeaders, assistLeaders],
+					"GENERAL"
+				);
+				if (data === "CANCEL") {
+					return;
+				}
+				generalLeaders = data; 
 			}
-
-			if (tempMainRlEmbed !== botMsg.embeds[0]) {
-				await botMsg.edit(tempArrOfMainRls).catch(e => { });
-			}
-		}*/
+		}
 	}
 
-	private getPerson(msg: Message): GuildMember | null {
-		return null;
+	public async getData(
+		msg: Message,
+		guildData: IRaidGuild,
+		data: QuotaLoggingHandler.LeaderLoggingArray,
+		mainAssistLeaders: [GuildMember[], GuildMember[]],
+		raidType: RaidTypes
+	): Promise<QuotaLoggingHandler.LeaderLoggingArray | "CANCEL"> {
+		data.main.members.push(...mainAssistLeaders[0]);
+		data.assists.members.push(...mainAssistLeaders[1]);
+		// ask for people
+		const mainLeadersThatContributed: GuildMember[] | "CANCEL" = await this.getAllPeople(
+			msg,
+			raidType,
+			"MAIN",
+			guildData,
+			mainAssistLeaders[0]
+		);
+
+		if (mainLeadersThatContributed === "CANCEL") {
+			return "CANCEL";
+		}
+
+		const assistLeadersThatContributed: GuildMember[] | "CANCEL" = await this.getAllPeople(
+			msg,
+			raidType,
+			"ASSISTING",
+			guildData,
+			mainAssistLeaders[1]
+		);
+
+		if (assistLeadersThatContributed === "CANCEL") {
+			return "CANCEL";
+		}
+
+		data.main.members.push(...mainLeadersThatContributed);
+		data.assists.members.push(...assistLeadersThatContributed);
+
+		// ask how many runs
+		const amtSuccessfulRuns: number | "CANCEL" | "TIME" = await new GenericMessageCollector<number>(
+			msg,
+			{ content: `Type the number of __${raidType.toLowerCase()} runs__ all __main leaders__ have successfully completed.` },
+			1,
+			TimeUnit.MINUTE
+		).send(GenericMessageCollector.getNumber(msg.channel, 0));
+
+		if (amtSuccessfulRuns === "CANCEL" || amtSuccessfulRuns === "TIME") {
+			return "CANCEL";
+		}
+
+		data.main.completed = amtSuccessfulRuns;
+
+		const amtFailedRuns: number | "CANCEL" | "TIME" = await new GenericMessageCollector<number>(
+			msg,
+			{ content: `Type the number of __${raidType.toLowerCase()} runs__ all __main leaders__ have __failed__ to complete.` },
+			1,
+			TimeUnit.MINUTE
+		).send(GenericMessageCollector.getNumber(msg.channel, 0));
+
+		if (amtFailedRuns === "CANCEL" || amtFailedRuns === "TIME") {
+			return "CANCEL";
+		}
+
+		data.main.failed = amtFailedRuns;
+
+		data.assists.assists = amtSuccessfulRuns + amtFailedRuns;
+
+		return data;
+	}
+
+	public async getAllPeople(
+		msg: Message,
+		logType: RaidTypes,
+		leaderType: "MAIN" | "ASSISTING",
+		guildDb: IRaidGuild,
+		leaders: GuildMember[] = []
+	): Promise<GuildMember[] | "CANCEL"> {
+		const guild: Guild = msg.guild as Guild;
+		let members: GuildMember[] = [...leaders];
+		while (true) {
+			const embed: MessageEmbed = new MessageEmbed()
+				.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
+				.setTitle(`Logging Type: ${logType} | ${leaderType === "MAIN" ? "Main Leaders" : "Assisting Leaders"}`)
+				.setDescription(`Please add any __${leaderType.toLowerCase()}__ leaders that contributed to the ${logType.toLowerCase()} runs.\n\n**DIRECTIONS**: To add a person so he or she gets logging credit, either mention their tag, type their Discord ID, or type their in-game name.\n\nTo remove a person so he or she doesn't get logging credit, do the same thing as above, but with a name that is shown below.\n\n\n**FINISHED?** When you are done selecting the leaders, type \`-done\` to move on to the next step.\n\n**CANCEL?** To cancel this logging process, type \`-cancel\`.`)
+				.setColor("RANDOM")
+				.setFooter(logType);
+
+			let str: string = "";
+			for (const member of members) {
+				if (str.length + member.toString().length + 4 > 1000) {
+					embed.addField("Logging Credit", str);
+					str = member.toString();
+				}
+				else {
+					str += `${member}\n`;
+				}
+			}
+
+			if (embed.fields.length === 0 && str.length !== 0) {
+				embed.addField("Logging Credit", str);
+			}
+
+			const coll: string = await new GenericMessageCollector<string>(
+				msg,
+				{ embed: embed },
+				2,
+				TimeUnit.MINUTE
+			).send(GenericMessageCollector.getStringPrompt(msg.channel), "-cancel");
+
+			if (coll === "TIME" || coll === "CANCEL") {
+				return "CANCEL";
+			}
+
+			if (coll === "-done") {
+				break;
+			}
+
+			const membersToLog: GuildMember[] = await this.getPeople(coll, guild, guildDb);
+			for (let i = 0; i < membersToLog.length; i++) {
+				if (members.some(x => x.id === membersToLog[i].id)) {
+					members.splice(i, 1);
+					i--;
+				}
+				else {
+					members.push(membersToLog[i]);
+				}
+			}
+		} // end while loop
+
+		return members;
+	}
+
+	public async getPeople(str: string, guild: Guild, guildDb: IRaidGuild): Promise<GuildMember[]> {
+		const members: GuildMember[] = [];
+		const args: string[] = str.split(/ +/); // TODO check if this is correct
+		for await (const arg of args) {
+			// check if mention
+			const res: string | null = UserHandler.getUserFromMention(arg);
+			if (res !== null) {
+				try {
+					members.push(await guild.members.fetch(res));
+					continue;
+				}
+				catch (e) { }
+			}
+
+			// check if id
+			if (/^\d+$/.test(arg)) {
+				try {
+					members.push(await guild.members.fetch(arg));
+					continue;
+				}
+				catch (e) { }
+			}
+
+			const nameSearchResults: GuildMember | GuildMember[] = UserHandler.findUserByInGameName(guild, arg, guildDb);
+			if (!Array.isArray(nameSearchResults)) {
+				members.push(nameSearchResults);
+			}
+		}
+		return members;
 	}
 }

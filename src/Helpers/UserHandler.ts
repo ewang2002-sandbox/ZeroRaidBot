@@ -184,7 +184,7 @@ export namespace UserHandler {
 	 * @param {string} mention The mention (string format). 
 	 * @see https://discordjs.guide/miscellaneous/parsing-mention-arguments.html#using-regular-expressions
 	 */
-	function getUserFromMention(mention: string): string | null {
+	export function getUserFromMention(mention: string): string | null {
 		// The id is the first and only match found by the RegEx.
 		const matches: RegExpMatchArray | null = mention.match(/^<@!?(\d+)>$/);
 	

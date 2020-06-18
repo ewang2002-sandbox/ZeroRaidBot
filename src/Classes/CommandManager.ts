@@ -32,6 +32,8 @@ import { UserProfileHelpCommand } from "../Commands/User Profile/UserProfileHelp
 import { ConfigurePrefixCommand } from "../Commands/Configuration/ConfigurePrefixCommand";
 import { ConfigureVerifSuccessCommand } from "../Commands/Configuration/ConfigureVerifSuccessCommand";
 import { LogRunsCommand } from "../Commands/Quota & Logging/LogRunsCommand";
+import { ResetQuotaCommand } from "../Commands/Quota & Logging/ResetQuotaCommand";
+import { CheckQuotaCommand } from "../Commands/Quota & Logging/CheckQuotaCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -83,8 +85,7 @@ export class CommandManager {
 
 		this.commands.set("Raid Leader", [
 			new StartAfkCheckCommand(), 
-			new StartHeadcountCommand(),
-			new LogRunsCommand()
+			new StartHeadcountCommand()
 		]);
 
 		this.commands.set("Staff", [
@@ -121,6 +122,12 @@ export class CommandManager {
 		this.commands.set("Bot Owner", [
 			new ReconnectDBCommand()
 		]);
+
+		this.commands.set("Quota & Logging", [
+			new LogRunsCommand(),
+			new ResetQuotaCommand(),
+			new CheckQuotaCommand()
+		])
 
 		this.hasBeenLoaded = true;
 	}

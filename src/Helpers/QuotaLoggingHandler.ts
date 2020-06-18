@@ -9,7 +9,7 @@ import { StringBuilder } from "../Classes/String/StringBuilder";
 import { GuildUtil } from "../Utility/GuildUtil";
 
 export module QuotaLoggingHandler {
-    type LeaderLogAndTotal = IQuotaDbInfo & { total: number };
+    export type LeaderLogAndTotal = IQuotaDbInfo & { total: number };
 
     export type LeaderLoggingArray = {
         main: {
@@ -298,7 +298,7 @@ export module QuotaLoggingHandler {
      * Generates a leaderboard array (a 2D array with the first element being the place and the second being the value).
      * @param data The quota data.
      */
-    function generateLeaderboardArray(data: LeaderLogAndTotal[]): [number, LeaderLogAndTotal][] {
+    export function generateLeaderboardArray(data: LeaderLogAndTotal[]): [number, LeaderLogAndTotal][] {
         data.sort((x, y) => y.total - x.total);
         let place: number = 1;
         let diff: number = 0;

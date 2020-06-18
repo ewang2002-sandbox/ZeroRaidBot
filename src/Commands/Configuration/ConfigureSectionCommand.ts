@@ -157,6 +157,13 @@ export class ConfigureSectionCommand extends Command {
 			m: true,
 			mainMongo: "generalChannels.networkAnnouncementsChannel",
 			sectMongo: ""
+		},
+		{
+			q: "Configure Quota Leaderboard Channel",
+			d: "Mention, or type the ID of, the channel that you want to make the quota leaderboard channel. This channel is where fellow raid leaders can see the top leaders.",
+			m: true,
+			mainMongo: "generalChannels.quotaChannel",
+			sectMongo: ""
 		}
 	];
 
@@ -720,9 +727,10 @@ export class ConfigureSectionCommand extends Command {
 				.addField("Configure Bot Updates Channel", "React with 🤖 to configure the bot updates channel. Any bot changelog information will be forwarded to this channel.")
 				.addField("Configure Moderation Mail Channel", "React with 📬 to configure the moderation mail channel.")
 				.addField("Configure Raid Requests Channel", "React with ❓ to configure the raid requests channel.")
-				.addField("Configure Network Announcements Channel", "React with to configure the network announcements channel.");
+				.addField("Configure Network Announcements Channel", "React with to configure the network announcements channel.")
+				.addField("Configure Quota Channel", "React with 📋 to configure the quota leaderboard channel.");
 
-			reactions.push("⚒️", "⚠️", "📥", "🤖", "📬", "❓", "📢");
+			reactions.push("⚒️", "⚠️", "📥", "🤖", "📬", "❓", "📢", "📋");
 		}
 
 		embed
@@ -914,6 +922,16 @@ export class ConfigureSectionCommand extends Command {
 				section,
 				guild.channels.cache.get(guildData.generalChannels.networkAnnouncementsChannel),
 				"generalChannels.networkAnnouncementsChannel"
+			);
+		}
+		else if (r.name === "📋") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateChannelCommand(
+				msg,
+				"Quota Leaderboard Channel",
+				section,
+				guild.channels.cache.get(guildData.generalChannels.quotaChannel),
+				"generalChannels.quotaChannel"
 			);
 		}
 		// configuration wizard

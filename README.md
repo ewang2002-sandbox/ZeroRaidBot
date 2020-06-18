@@ -23,6 +23,7 @@ Some of the bot's more prominent features include the following.
         - Verification Requirements: 2 8/8s, 2500 Base Fame, 50 Stars.
         - Leader ROles: @Trial Endgame Leader, @Endgame Leader
         - Dungeons: Lost Halls, Shatters, Fungal Caverns
+- **Moderation:** This bot includes simple moderation commands such as mute, suspend, and blacklist. I plan on adding a warning system later. The idea behind not adding a full-blown moderation system is that there are other bots that can do that better (like Dyno).
 - **Logging/Quota System:** Leaders are able to log the dungeons that they have completed. Furthermore, leaders can log key pops, giving the players that contribute keys credit. There is also a quota system that administrators can set up to ensure all leaders are doing the requirement number of runs. 
 - **User/Member Manager**: Every person is given a profile (one person = one Discord account). Within a profile, the person can add or remove* alternative accounts, and can make minor changes to their profile. 
 

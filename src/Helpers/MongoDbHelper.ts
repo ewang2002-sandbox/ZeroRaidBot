@@ -258,7 +258,10 @@ export module MongoDbHelper {
 						}
 					},
 					properties: {
-						quotaDetails: [],
+						quotas: {
+							quotaDetails: [],
+							quotaMessage: ""
+						},
 						successfulVerificationMessage: "",
 						modMail: [],
 						manualVerificationEntries: [],

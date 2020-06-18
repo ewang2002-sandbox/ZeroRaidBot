@@ -248,7 +248,10 @@ export interface IRaidGuild {
 		/**
 		 * Quota details.
 		 */
-		quotaDetails: IQuotaDbInfo[];
+		quotas: {
+			quotaDetails: IQuotaDbInfo[];
+			quotaMessage: string;
+		} 
 		
 		/**
 		 * The message that users will receive after they are verified.

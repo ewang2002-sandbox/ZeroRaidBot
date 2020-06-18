@@ -1,11 +1,16 @@
-import { GuildMember, Message, Guild, TextChannel } from "discord.js";
+import { GuildMember, Message, Guild, TextChannel, MessageEmbed, MessageManager, Role } from "discord.js";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { MongoDbHelper } from "./MongoDbHelper";
 import { FilterQuery, UpdateQuery } from "mongodb";
 import { IRaidUser } from "../Templates/IRaidUser";
 import { IQuotaDbInfo } from "../Definitions/IQuotaDbInfo";
+import { DateUtil } from "../Utility/DateUtil";
+import { StringBuilder } from "../Classes/String/StringBuilder";
+import { GuildUtil } from "../Utility/GuildUtil";
 
-export module QuotaLoggingHandler { 
+export module QuotaLoggingHandler {
+    type LeaderLogAndTotal = IQuotaDbInfo & { total: number };
+
     export type LeaderLoggingArray = {
         main: {
             members: GuildMember[];
@@ -83,22 +88,254 @@ export module QuotaLoggingHandler {
         await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateMany(assistFilterQuery, assistUpdateQuery);
 
         // ==================
-        
+
         // update quotas
         const guildDb: IRaidGuild = await new MongoDbHelper.MongoDbGuildManager(guild.id)
             .findOrCreateGuildDb();
 
+        const quotaDbEntry: IQuotaDbInfo[] = guildDb.properties.quotas.quotaDetails;
+        // leaders are the same regardless of property
+        // update quota property
+        for (const leader of logData.general.main.members) {
+            const index: number = quotaDbEntry.findIndex(x => x.memberId === leader.id);
+            if (index === -1) {
+                quotaDbEntry.push({
+                    memberId: leader.id,
+                    general: {
+                        completed: logData.general.main.completed,
+                        failed: logData.general.main.failed,
+                        assists: 0
+                    },
+                    endgame: {
+                        completed: logData.endgame.main.completed,
+                        failed: logData.endgame.main.failed,
+                        assists: 0
+                    },
+                    realmClearing: {
+                        completed: logData.realmClearing.main.completed,
+                        failed: logData.realmClearing.main.failed,
+                        assists: 0
+                    },
+                    lastUpdated: new Date().getTime()
+                });
+            }
+            else {
+                quotaDbEntry[index].general.completed += logData.general.main.completed;
+                quotaDbEntry[index].general.failed += logData.general.main.failed;
+                quotaDbEntry[index].endgame.completed += logData.endgame.main.completed;
+                quotaDbEntry[index].endgame.failed += logData.endgame.main.failed;
+                quotaDbEntry[index].realmClearing.completed += logData.realmClearing.main.completed;
+                quotaDbEntry[index].realmClearing.failed += logData.realmClearing.main.failed;
+                quotaDbEntry[index].lastUpdated = new Date().getTime();
+            }
+        }
 
-        const quotaDbEntry: IQuotaDbInfo[] = [];
-        
+        for (const leader of logData.general.assists.members) {
+            const index: number = quotaDbEntry.findIndex(x => x.memberId === leader.id);
+            if (index === -1) {
+                quotaDbEntry.push({
+                    memberId: leader.id,
+                    general: {
+                        completed: 0,
+                        failed: 0,
+                        assists: logData.general.assists.assists
+                    },
+                    endgame: {
+                        completed: 0,
+                        failed: 0,
+                        assists: logData.endgame.assists.assists
+                    },
+                    realmClearing: {
+                        completed: 0,
+                        failed: 0,
+                        assists: logData.realmClearing.assists.assists
+                    },
+                    lastUpdated: new Date().getTime()
+                });
+            }
+            else {
+                quotaDbEntry[index].general.assists += logData.general.assists.assists;
+                quotaDbEntry[index].endgame.assists += logData.endgame.assists.assists;
+                quotaDbEntry[index].realmClearing.assists += logData.realmClearing.assists.assists;
+                quotaDbEntry[index].lastUpdated = new Date().getTime();
+            }
+        }
 
+        await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
+            $set: {
+                "properties.quotas.quotaDetails": quotaDbEntry
+            }
+        });
+
+        // sort 
+        const quotaDbAndTotal: LeaderLogAndTotal[] = [];
+        for (const entry of quotaDbEntry) {
+            quotaDbAndTotal.push({
+                memberId: entry.memberId,
+                endgame: entry.endgame,
+                realmClearing: entry.realmClearing,
+                general: entry.general,
+                lastUpdated: entry.lastUpdated,
+                total: entry.endgame.completed + entry.endgame.failed + entry.endgame.assists + entry.general.completed + entry.general.failed + entry.general.assists + entry.realmClearing.completed + entry.realmClearing.failed + entry.realmClearing.assists
+            });
+        }
         // get quota channel
         const quotaChannel: TextChannel | null = guild.channels.cache.has(guildDb.generalChannels.quotaChannel)
             ? guild.channels.cache.get(guildDb.generalChannels.quotaChannel) as TextChannel
             : null;
-        
-        if (quotaChannel === null) {
 
+        if (quotaChannel === null) {
+            return;
         }
+
+        // get leader count
+        const universalARL: Role | undefined = guild.roles.cache.get(guildDb.roles.universalAlmostRaidLeader);
+        const universalRL: Role | undefined = guild.roles.cache.get(guildDb.roles.universalRaidLeader);
+        const allLeaders: string[] = [];
+
+        if (typeof universalARL !== "undefined") {
+            allLeaders.push(...universalARL.members.map(x => x.id));
+        }
+
+        if (typeof universalRL !== "undefined") {
+            allLeaders.push(...universalRL.members.map(x => x.id));
+        }
+
+        for (const section of [GuildUtil.getDefaultSection(guildDb), ...guildDb.sections]) {
+            const leaderRoles: (Role | undefined)[] = [
+                guild.roles.cache.get(section.roles.almostLeaderRole),
+                guild.roles.cache.get(section.roles.raidLeaderRole),
+                guild.roles.cache.get(section.roles.trialLeaderRole)
+            ];
+
+            for (const leaderRole of leaderRoles) {
+                if (typeof leaderRole === "undefined") {
+                    continue;
+                }
+
+                const membersOfRole: GuildMember[] = leaderRole.members.array();
+                for (const member of membersOfRole) {
+                    if (!allLeaders.includes(member.id)) {
+                        allLeaders.push(member.id);
+                    }
+                }
+            }
+        }
+
+        const leaderboardData: [number, LeaderLogAndTotal][] = generateLeaderboardArray(quotaDbAndTotal)
+            .filter(x => guild.members.cache.has(x[1].memberId));
+        const sb: StringBuilder = new StringBuilder()
+            .append(`⇒ **Quota Last Updated:** ${DateUtil.getTime()}`)
+            .appendLine()
+            .append(`⇒ **Leaders Accounted:** ${leaderboardData.length}`)
+            .appendLine()
+            .append(`⇒ **Total Leaders:** ${allLeaders.length}`)
+        const quotaEmbed: MessageEmbed = new MessageEmbed()
+            .setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+            .setTitle("**Quota Leaderboard**")
+            .setDescription(sb.toString())
+            .setColor("RED");
+
+        let str: string = "";
+        let finalAdded: boolean = false;
+        for (const entry of leaderboardData) {
+            const member: GuildMember | null = guild.member(entry[1].memberId);
+            if (member === null) {
+                continue;
+            }
+
+            const preparedStr: string = new StringBuilder()
+                .append(`**\`[${entry[0]}]\`** ${member} (${member.displayName})`)
+                .appendLine()
+                .append(`⇒ TTL: ${entry[1].total}`)
+                .appendLine()
+                .append(`⇒ General: ${entry[1].general.completed} / ${entry[1].general.failed} / ${entry[1].general.assists}`)
+                .appendLine()
+                .append(`⇒ Endgame: ${entry[1].endgame.completed} / ${entry[1].endgame.failed} / ${entry[1].endgame.assists}`)
+                .appendLine()
+                .append(`⇒ Realm Clearing: ${entry[1].realmClearing.completed} / ${entry[1].realmClearing.failed} / ${entry[1].realmClearing.assists}`)
+                .appendLine()
+                .appendLine()
+                .toString();
+
+            if (preparedStr.length + str.length > 1016) {
+                quotaEmbed.addField("Leaderboards", str);
+                str = preparedStr;
+                finalAdded = true;
+            }
+            else {
+                str += preparedStr;
+                finalAdded = false;
+            }
+        }
+
+        if ((quotaEmbed.fields.length === 0 && str.length !== 0) || !finalAdded) {
+            quotaEmbed.addField("Leaderboards", str);
+        }
+
+        let quotaMsg: Message;
+        let isCreated: boolean = false;
+        try {
+            quotaMsg = await quotaChannel.messages.fetch(guildDb.properties.quotas.quotaMessage);
+        }
+        catch (e) {
+            // basically means we dont have a message defined
+            // so create a new one
+            try {
+                quotaMsg = await quotaChannel.send(quotaEmbed);
+                isCreated = true;
+            }
+            catch (e) {
+                // no permission to send message in channel
+                return;
+            }
+            // update message id
+            await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
+                $set: {
+                    "properties.quotas.quotaMessage": quotaMsg.id
+                }
+            });
+        }
+
+        // embed was created, so we dont need to edit anymore
+        if (isCreated) {
+            return;
+        }
+
+        // we need to edit the embed
+        // so edit it
+        await quotaMsg.edit(quotaEmbed).catch(e => { });
+    }
+
+    /**
+     * Generates a leaderboard array (a 2D array with the first element being the place and the second being the value).
+     * @param data The quota data.
+     */
+    function generateLeaderboardArray(data: LeaderLogAndTotal[]): [number, LeaderLogAndTotal][] {
+        data.sort((x, y) => y.total - x.total);
+        let place: number = 1;
+        let diff: number = 0;
+        let lastIndexOfData: number = 0;
+        let returnData: [number, LeaderLogAndTotal][] = [];
+
+        for (let i = 0; i < data.length; i++) {
+            if (i === 0) {
+                returnData.push([place, data[i]]);
+                continue;
+            }
+
+            if (data[i].total === returnData[lastIndexOfData][1].total) {
+                returnData.push([place, data[i]]);
+                diff++;
+            }
+            else {
+                place += diff + 1;
+                diff = 0;
+                returnData.push([place, data[i]]);
+            }
+            lastIndexOfData++;
+        }
+
+        return returnData;
     }
 }

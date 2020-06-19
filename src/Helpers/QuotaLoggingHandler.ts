@@ -7,6 +7,7 @@ import { IQuotaDbInfo } from "../Definitions/IQuotaDbInfo";
 import { DateUtil } from "../Utility/DateUtil";
 import { StringBuilder } from "../Classes/String/StringBuilder";
 import { GuildUtil } from "../Utility/GuildUtil";
+import { ArrayUtil } from "../Utility/ArrayUtil";
 
 export module QuotaLoggingHandler {
     export type LeaderLogAndTotal = IQuotaDbInfo & { total: number };
@@ -28,64 +29,121 @@ export module QuotaLoggingHandler {
         general: LeaderLoggingArray;
         endgame: LeaderLoggingArray;
         realmClearing: LeaderLoggingArray;
+        [prop: string]: LeaderLoggingArray;
     }
 
     /**
      * Logs runs and updates the quota, if applicable.
      * @param {Guild} guild The guild.
-     * @param {LeaderLogData} logData The logging data. It is assumed that the `members` defined in each of the properties of this variable is equal in length and content.
+     * @param {LeaderLogData} logData The logging data. 
      */
     export async function logRunsAndUpdateQuota(
         guild: Guild,
         logData: LeaderLogData
     ): Promise<void> {
-        // first, let's update each individual profile
-
-        // main
-        const mainFilterQuery: FilterQuery<IRaidUser> = {
-            "general.leaderRuns.server": guild.id
-        };
-        mainFilterQuery.$or = [];
-
-        for (let i = 0; i < logData.general.main.members.length; i++) {
-            mainFilterQuery.$or.push({
-                discordUserId: logData.general.main.members[i].id
+        // first, let's make sure each profile has an individual guild entry for leader logging
+        const filterQ: FilterQuery<IRaidUser> = {};
+        filterQ.$or = [];
+        for (const member of [
+            ...logData.endgame.assists.members,
+            ...logData.general.assists.members,
+            ...logData.realmClearing.assists.members,
+            ...logData.endgame.main.members,
+            ...logData.general.main.members,
+            ...logData.realmClearing.main.members
+        ]) {
+            filterQ.$or.push({
+                discordUserId: member.id
             });
         }
+        filterQ.$or = ArrayUtil.removeDuplicate(filterQ.$or);
+        const userData: IRaidUser[] = await MongoDbHelper.MongoDbUserManager.MongoUserClient
+            .find(filterQ)
+            .toArray();
 
-        const mainUpdateQuery: UpdateQuery<IRaidUser> = {
-            $inc: {
-                "general.leaderRuns.$.generalRuns.completed": logData.general.main.completed,
-                "general.leaderRuns.$.generalRuns.failed": logData.general.main.failed,
-                "general.leaderRuns.$.endgame.completed": logData.endgame.main.completed,
-                "general.leaderRuns.$.endgame.failed": logData.endgame.main.failed,
-                "general.leaderRuns.$.realmClearing.completed": logData.realmClearing.main.completed,
-                "general.leaderRuns.$.realmClearing.failed": logData.realmClearing.main.failed,
+        const noProfileFindQuery: FilterQuery<IRaidUser> = {};
+        noProfileFindQuery.$or = [];
+        for (const entry of userData) {
+            if (entry.general.leaderRuns.findIndex(x => x.server === guild.id) === -1) {
+                noProfileFindQuery.$or.push({
+                    discordUserId: entry.discordUserId
+                });
             }
         }
 
-        // assisting
-        const assistFilterQuery: FilterQuery<IRaidUser> = {
-            "general.leaderRuns.server": guild.id
-        };
-        assistFilterQuery.$or = [];
-
-        for (let i = 0; i < logData.general.assists.members.length; i++) {
-            mainFilterQuery.$or.push({
-                discordUserId: logData.general.assists.members[i].id
+        if (noProfileFindQuery.$or.length !== 0) {
+            await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateMany(noProfileFindQuery, {
+                $push: {
+                    "general.leaderRuns": {
+                        server: guild.id,
+                        generalRuns: {
+                            completed: 0,
+                            failed: 0,
+                            assists: 0
+                        },
+                        endgame: {
+                            completed: 0,
+                            failed: 0,
+                            assists: 0
+                        },
+                        realmClearing: {
+                            completed: 0,
+                            failed: 0,
+                            assists: 0
+                        }
+                    }
+                }
             });
         }
-        const assistUpdateQuery: UpdateQuery<IRaidUser> = {
-            $inc: {
-                "general.leaderRuns.$.generalRuns.assists": logData.general.assists.assists,
-                "general.leaderRuns.$.endgame.assists": logData.endgame.assists.assists,
-                "general.leaderRuns.$.realmClearing.assists": logData.realmClearing.assists.assists
+
+
+        // next, let's update each individual profile
+        for (const logInfo in logData) {
+            // main
+            const mainFilterQuery: FilterQuery<IRaidUser> = {
+                "general.leaderRuns.server": guild.id
+            };
+            mainFilterQuery.$or = [];
+
+            for (let i = 0; i < logData[logInfo].main.members.length; i++) {
+                mainFilterQuery.$or.push({
+                    discordUserId: logData[logInfo].main.members[i].id
+                });
+            }
+
+            const mainUpdateQuery: UpdateQuery<IRaidUser> = {
+                $inc: {
+                    [`general.leaderRuns.$.${logInfo}.completed`]: logData[logInfo].main.completed,
+                    [`general.leaderRuns.$.${logInfo}.failed`]: logData[logInfo].main.failed
+                }
+            }
+
+            // assisting
+            const assistFilterQuery: FilterQuery<IRaidUser> = {
+                "general.leaderRuns.server": guild.id
+            };
+            assistFilterQuery.$or = [];
+
+            for (let i = 0; i < logData[logInfo].assists.members.length; i++) {
+                assistFilterQuery.$or.push({
+                    discordUserId: logData[logInfo].assists.members[i].id
+                });
+            }
+            const assistUpdateQuery: UpdateQuery<IRaidUser> = {
+                $inc: {
+                    [`general.leaderRuns.$.${logInfo}.assists`]: logData[logInfo].assists.assists
+                }
+            }
+
+            // update all 
+            if (mainFilterQuery.$or.length !== 0) {
+                await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateMany(mainFilterQuery, mainUpdateQuery);
+            }
+
+            if (assistFilterQuery.$or.length !== 0) {
+                await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateMany(assistFilterQuery, assistUpdateQuery);
             }
         }
-
-        // update all 
-        await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateMany(mainFilterQuery, mainUpdateQuery);
-        await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateMany(assistFilterQuery, assistUpdateQuery);
 
         // ==================
 
@@ -94,69 +152,87 @@ export module QuotaLoggingHandler {
             .findOrCreateGuildDb();
 
         const quotaDbEntry: IQuotaDbInfo[] = guildDb.properties.quotas.quotaDetails;
-        // leaders are the same regardless of property
+
         // update quota property
-        for (const leader of logData.general.main.members) {
-            const index: number = quotaDbEntry.findIndex(x => x.memberId === leader.id);
-            if (index === -1) {
-                quotaDbEntry.push({
-                    memberId: leader.id,
-                    general: {
-                        completed: logData.general.main.completed,
-                        failed: logData.general.main.failed,
-                        assists: 0
-                    },
-                    endgame: {
-                        completed: logData.endgame.main.completed,
-                        failed: logData.endgame.main.failed,
-                        assists: 0
-                    },
-                    realmClearing: {
-                        completed: logData.realmClearing.main.completed,
-                        failed: logData.realmClearing.main.failed,
-                        assists: 0
-                    },
-                    lastUpdated: new Date().getTime()
-                });
-            }
-            else {
-                quotaDbEntry[index].general.completed += logData.general.main.completed;
-                quotaDbEntry[index].general.failed += logData.general.main.failed;
-                quotaDbEntry[index].endgame.completed += logData.endgame.main.completed;
-                quotaDbEntry[index].endgame.failed += logData.endgame.main.failed;
-                quotaDbEntry[index].realmClearing.completed += logData.realmClearing.main.completed;
-                quotaDbEntry[index].realmClearing.failed += logData.realmClearing.main.failed;
+        for (const logInfo in logData) {
+            for (const leader of logData[logInfo].main.members) {
+                let index: number = quotaDbEntry.findIndex(x => x.memberId === leader.id);
+                if (index === -1) {
+                    quotaDbEntry.push({
+                        memberId: leader.id,
+                        general: {
+                            completed: 0,
+                            failed: 0,
+                            assists: 0
+                        },
+                        endgame: {
+                            completed: 0,
+                            failed: 0,
+                            assists: 0
+                        },
+                        realmClearing: {
+                            completed: 0,
+                            failed: 0,
+                            assists: 0
+                        },
+                        lastUpdated: 0
+                    });
+
+                    index = quotaDbEntry.length - 1;
+                }
+
+                // TODO somehow use quotaDbEntry[index][logInfo] instead of having
+                // a bunch of random if-statements. 
+                if (logInfo === "general") {
+                    quotaDbEntry[index].general.completed += logData.general.main.completed;
+                    quotaDbEntry[index].general.failed += logData.general.main.failed;
+                }
+                else if (logInfo === "endgame") {
+                    quotaDbEntry[index].endgame.completed += logData.endgame.main.completed;
+                    quotaDbEntry[index].endgame.failed += logData.endgame.main.failed;
+                }
+                else {
+                    quotaDbEntry[index].realmClearing.completed += logData.realmClearing.main.completed;
+                    quotaDbEntry[index].realmClearing.failed += logData.realmClearing.main.failed;
+                }
                 quotaDbEntry[index].lastUpdated = new Date().getTime();
             }
-        }
 
-        for (const leader of logData.general.assists.members) {
-            const index: number = quotaDbEntry.findIndex(x => x.memberId === leader.id);
-            if (index === -1) {
-                quotaDbEntry.push({
-                    memberId: leader.id,
-                    general: {
-                        completed: 0,
-                        failed: 0,
-                        assists: logData.general.assists.assists
-                    },
-                    endgame: {
-                        completed: 0,
-                        failed: 0,
-                        assists: logData.endgame.assists.assists
-                    },
-                    realmClearing: {
-                        completed: 0,
-                        failed: 0,
-                        assists: logData.realmClearing.assists.assists
-                    },
-                    lastUpdated: new Date().getTime()
-                });
-            }
-            else {
-                quotaDbEntry[index].general.assists += logData.general.assists.assists;
-                quotaDbEntry[index].endgame.assists += logData.endgame.assists.assists;
-                quotaDbEntry[index].realmClearing.assists += logData.realmClearing.assists.assists;
+            for (const leader of logData[logInfo].assists.members) {
+                let index: number = quotaDbEntry.findIndex(x => x.memberId === leader.id);
+                if (index === -1) {
+                    quotaDbEntry.push({
+                        memberId: leader.id,
+                        general: {
+                            completed: 0,
+                            failed: 0,
+                            assists: 0
+                        },
+                        endgame: {
+                            completed: 0,
+                            failed: 0,
+                            assists: 0
+                        },
+                        realmClearing: {
+                            completed: 0,
+                            failed: 0,
+                            assists: 0
+                        },
+                        lastUpdated: 0
+                    });
+
+                    index = quotaDbEntry.length - 1;
+                }
+
+                if (logInfo === "general") {
+                    quotaDbEntry[index].general.assists += logData.general.assists.assists;
+                }
+                else if (logInfo === "endgame") {
+                    quotaDbEntry[index].endgame.assists += logData.endgame.assists.assists;
+                }
+                else {
+                    quotaDbEntry[index].realmClearing.assists += logData.realmClearing.assists.assists;
+                }
                 quotaDbEntry[index].lastUpdated = new Date().getTime();
             }
         }

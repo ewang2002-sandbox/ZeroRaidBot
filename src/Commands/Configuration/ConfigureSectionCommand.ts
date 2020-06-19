@@ -2098,6 +2098,7 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 		const botUpdatesChannel: GuildChannel | undefined = guild.channels.cache.get(guildData.generalChannels.logging.botUpdatesChannel);
 		const modMailChannel: GuildChannel | undefined = guild.channels.cache.get(guildData.generalChannels.modMailChannel);
 		const raidRequestsChannel: GuildChannel | undefined = guild.channels.cache.get(guildData.generalChannels.raidRequestChannel);
+		const quotaLeaderboardChannel: GuildChannel | undefined = guild.channels.cache.get(guildData.generalChannels.quotaChannel);
 
 		// roles for section (only 1)
 		const verifiedRole: Role | undefined = guild.roles.cache.get(section.verifiedRole);
@@ -2211,6 +2212,8 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 				.append(`Mod Mail Channel: ${typeof modMailChannel === "undefined" ? "N/A" : modMailChannel}`)
 				.appendLine()
 				.append(`Raid Requests Channel: ${typeof raidRequestsChannel === "undefined" ? "N/A" : raidRequestsChannel}`)
+				.appendLine()
+				.append(`Quota Channel: ${typeof quotaLeaderboardChannel === "undefined" ? "N/A" : quotaLeaderboardChannel}`);
 
 			roleSB
 				.appendLine()

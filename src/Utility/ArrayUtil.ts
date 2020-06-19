@@ -23,4 +23,12 @@ export module ArrayUtil {
 		}
 		return array;
 	}
+
+	/**
+	 * Removes duplicate entries from an array.
+	 * @param {T[]} array The array to remove duplicates from. 
+	 */
+	export function removeDuplicate<T>(array: T[]): T[] {
+		return array.filter((item, index) => array.indexOf(item) === index);
+	}
 }

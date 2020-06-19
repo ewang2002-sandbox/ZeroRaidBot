@@ -237,6 +237,7 @@ export namespace GuildUtil {
 		// get leader count
 		const universalARL: Role | undefined = guild.roles.cache.get(guildDb.roles.universalAlmostRaidLeader);
 		const universalRL: Role | undefined = guild.roles.cache.get(guildDb.roles.universalRaidLeader);
+		const hrl: Role | undefined = guild.roles.cache.get(guildDb.roles.headRaidLeader);
 		const allLeaders: string[] = [];
 
 		if (typeof universalARL !== "undefined") {
@@ -245,6 +246,10 @@ export namespace GuildUtil {
 
 		if (typeof universalRL !== "undefined") {
 			allLeaders.push(...universalRL.members.map(x => x.id));
+		}
+
+		if (typeof hrl !== "undefined") {
+			allLeaders.push(...hrl.members.map(x => x.id));
 		}
 
 		for (const section of [GuildUtil.getDefaultSection(guildDb), ...guildDb.sections]) {

@@ -11,7 +11,7 @@ import { onGuildCreate } from "./Events/GuildCreateEvent";
 import { onGuildMemberUpdate } from "./Events/GuildMemberUpdate";
 import { Collection } from "mongodb";
 import { IRaidBot } from "./Templates/IRaidBot";
-import { onError } from "./Events/Error";
+import { onError } from "./Events/ErrorEvent";
 
 export class Zero {
 	/** 

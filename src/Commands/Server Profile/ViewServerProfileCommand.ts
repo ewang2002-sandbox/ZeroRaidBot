@@ -89,7 +89,6 @@ export class ViewServerProfileCommand extends Command {
         let nameStr: StringBuilder = new StringBuilder();
         let index: number = 0;
         main: for (let listedName of names) {
-            console.log(listedName);
             // check main account
             if (listedName.toLowerCase() === userDb.rotmgLowercaseName) {
                 nameStr.append(`[${++index}] ${listedName} (M)`)
@@ -189,11 +188,11 @@ export class ViewServerProfileCommand extends Command {
             .append(`Helm Rune Popped: ${typeof wc === "undefined" ? 0 : wc.helmRune.popped}`)
             .appendLine();
 
-        mEmbed.addField("Keys Used", StringUtil.applyCodeBlocks(typeof keyPops === "undefined" ? 0 : keyPops.keysPopped), true)
-            .addField("Vial Information", StringUtil.applyCodeBlocks(vvSB.toString()), true)
+        mEmbed.addField("Keys Used", StringUtil.applyCodeBlocks(typeof keyPops === "undefined" ? 0 : keyPops.keysPopped))
+            .addField("Vial Information", StringUtil.applyCodeBlocks(vvSB.toString()))
             .addField("Oryx III Information", StringUtil.applyCodeBlocks(wcSB.toString()))
-            .addField("Runs Completed", StringUtil.applyCodeBlocks(crSB.toString()), true)
-            .addField("Runs Led", StringUtil.applyCodeBlocks(lRSB.toString()), true);
+            .addField("Runs Led", StringUtil.applyCodeBlocks(lRSB.toString()))
+            .addField("Runs Completed", StringUtil.applyCodeBlocks(crSB.toString()));
 
         await dmChannel.send(mEmbed);
     }

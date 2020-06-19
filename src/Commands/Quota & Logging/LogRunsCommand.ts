@@ -94,6 +94,7 @@ export class LogRunsCommand extends Command {
 		}
 
 		if (resultantReactionForRCAsk.name === "✅") {
+			await botMsg.delete().catch(() => { });
 			didRealmClearing = true;
 		}
 
@@ -129,8 +130,8 @@ export class LogRunsCommand extends Command {
 			await botMsg.edit(generalAskEmbed).catch(() => { });
 			const resultantReactionForGeneralAsk: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(botMsg, msg.author, checkXReactions, 2, TimeUnit.MINUTE).react();
 
+			await botMsg.delete().catch(() => { });
 			if (resultantReactionForGeneralAsk === "TIME") {
-				await botMsg.delete().catch(() => { });
 				return;
 			}
 
@@ -232,8 +233,6 @@ export class LogRunsCommand extends Command {
 		mainAssistLeaders: [GuildMember[], GuildMember[]],
 		raidType: RaidTypes
 	): Promise<QuotaLoggingHandler.LeaderLoggingArray | "CANCEL"> {
-		data.main.members.push(...mainAssistLeaders[0]);
-		data.assists.members.push(...mainAssistLeaders[1]);
 		// ask for people
 		const mainLeadersThatContributed: GuildMember[] | "CANCEL" = await this.getAllPeople(
 			msg,
@@ -343,12 +342,13 @@ export class LogRunsCommand extends Command {
 
 			const membersToLog: GuildMember[] = await this.getPeople(coll, guild, guildDb);
 			for (let i = 0; i < membersToLog.length; i++) {
-				if (members.some(x => x.id === membersToLog[i].id)) {
-					members.splice(i, 1);
-					i--;
+				const index: number = members.findIndex(x => x.id === membersToLog[i].id);
+				// add
+				if (index === -1) {
+					members.push(membersToLog[i]);
 				}
 				else {
-					members.push(membersToLog[i]);
+					members.splice(index, 1);
 				}
 			}
 		} // end while loop

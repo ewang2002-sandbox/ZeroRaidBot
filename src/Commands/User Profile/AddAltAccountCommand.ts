@@ -192,8 +192,6 @@ export class AddAltAccountCommand extends Command {
 				return;
 			}
 
-			nameHistory = TestCasesNameHistory.withNames();
-
 			let nameToReplaceWith: string = "";
 			const allNames: string[] = [userDb.rotmgLowercaseName, ...userDb.otherAccountNames.map(x => x.lowercase)];
 			for (const nameEntry of nameHistory) {

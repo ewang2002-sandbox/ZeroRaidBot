@@ -1,5 +1,5 @@
 # ZeroRaidBot
-An open-source [Realm of the Mad God](https://www.realmofthemadgod.com/) (RotMG) Discord Bot designed for cross-serververification, moderation, and raid management.
+An open-source [Realm of the Mad God](https://www.realmofthemadgod.com/) (RotMG) Discord Bot designed for cross-server verification, moderation, and raid management.
 
 ## Requirements (Latest Version)
 - [discord.js](https://discord.js.org/#/)
@@ -7,7 +7,7 @@ An open-source [Realm of the Mad God](https://www.realmofthemadgod.com/) (RotMG)
 - [MongoDB](https://www.mongodb.com/)
 
 ## Purpose
-The main purpose of this bot is to simplify verification and raid management within the the Dungeoneer Exalt Discord server.
+The main purpose of this bot is to simplify verification and raid management within the the Dungeoneer Exalt Discord server. This bot, which represents a huge overhaul of the original Dungeoneer bot, is designed to be easier to use for everyone. 
 
 ## Current Features
 Some of the bot's more prominent features include the following.
@@ -21,7 +21,7 @@ Some of the bot's more prominent features include the following.
         - Dungeons: Any non-endgame dungeons.
     - Endgame
         - Verification Requirements: 2 8/8s, 2500 Base Fame, 50 Stars.
-        - Leader ROles: @Trial Endgame Leader, @Endgame Leader
+        - Leader Roles: @Trial Endgame Leader, @Endgame Leader
         - Dungeons: Lost Halls, Shatters, Fungal Caverns
 - **Moderation:** This bot includes simple moderation commands such as mute, suspend, and blacklist. I plan on adding a warning system later. The idea behind not adding a full-blown moderation system is that there are other bots that can do that better (like Dyno).
 - **Logging/Quota System:** Leaders are able to log the dungeons that they have completed. Furthermore, leaders can log key pops, giving the players that contribute keys credit. There is also a quota system that administrators can set up to ensure all leaders are doing the requirement number of runs. 
@@ -39,7 +39,7 @@ The `stable` branch is where code that generally has no errors will reside. The 
 Please see this [guide](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/master/md_img/SETUP.md).
 
 ## Support the Project
-The best way to support this project is to star it. 
+The best way to support this project is to star it.
 
 ## License
 Please review the license file in this repository.

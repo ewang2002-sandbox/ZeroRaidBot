@@ -1,6 +1,50 @@
-import { MessageEmbed, Message, MessageCollector, Collection, MessageOptions, TextChannel, Guild, Role, GuildMember, Permissions, PartialTextBasedChannelFields, User, GuildChannel } from "discord.js";
+import { MessageEmbed, Message, MessageCollector, Collection, MessageOptions, TextChannel, Guild, Role, GuildMember, Permissions, PartialTextBasedChannelFields, User, GuildChannel, GuildEmoji, EmojiResolvable, ReactionCollector, MessageReaction, Emoji } from "discord.js";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { TimeUnit } from "../../Definitions/TimeUnit";
+import { FastReactionMenuManager } from "../Reaction/FastReactionMenuManager";
+
+type IGenericMsgCollectorArguments = {
+	/**
+	 * The cancel flag. Any message with the cancel flag as its content will force the method to return "CANCEL"
+	 * @default "cancel"
+	 */
+	cancelFlag?: string;
+
+	/**
+	 * Whether to delete any messages the author sends (for the collector) after it has been sent or not.
+	 * @default true
+	 */
+	deleteResponseMessage?: boolean;
+
+	/**
+	 * Reactions to use for the ReactionCollector. If no reactions are specified, the ReactionCollector will not be used.
+	 * @default [] 
+	 */
+	reactions?: EmojiResolvable[];
+	
+	/**
+	 * Whether to react to the message with the reactions defined in `<IGenericMsgCollectorArguments>.reactions`.
+	 * @default false
+	 */
+	reactToMsg?: boolean;
+
+	/**
+	 * If defined, uses an old message instead of sending a new one.
+	 */
+	oldMsg?: Message;
+
+	/**
+	 * Deletes the bot-sent message after the collector expires.
+	 * @default true
+	 */
+	deleteMsg?: boolean;
+
+	/**
+	 * Whether to remove ALL reactions after the collector is done or not. If `deleteMsg` is `true`, `deleteMsg` automatically overwrites whatever value is defined here. NOTE that if a user reacts to a message, the user's reaction will automatically be removed.
+	 * @default false
+	 */
+	removeAllReactionAfterReact?: boolean;
+}
 
 /**
  * A class that sends an embed and resolves a response. Should be used to make code more concise. 
@@ -95,31 +139,48 @@ export class GenericMessageCollector<T> {
 	}
 
 	/**
-	 * A function that takes in a message (from the collector) and does something with it. 
-	 * @name MsgCollectorFunc
-	 * @function
-	 * @param {Message} msg The message object.
-	 * @returns {T} The object type. 
-	 */
-	/**
-	 * An automatic message collector that will return one thing. 
-	 * @param {MsgCollectorFunc} func The function to use. This function will be executed and the resultant (return type `T`) will be resolved. Bear in mind that the `send` method takes care of both time management and user cancellation requests; in other words, you just need to implement the actual message response system.
+	 * An automatic message collector that will return one thing. This particular method will reuse an old message.
+	 * @param func The function to use. This function will be executed and the resultant (return type `T`) will be resolved. Bear in mind that the `send` method takes care of both time management and user cancellation requests; in other words, you just need to implement the actual message response system.
+	 * @param {Message} oldMsg Whether to use an old message or not.
+	 * @param {boolean} [deleteMsg = false] Whether to delete the bot message after the reaction collector expires.
 	 * @param {string} [cancelFlag = "cancel"] The string content that will result in the cancellation of the event.
-	 * @param {boolean} [deleteResponseMessages = true] Whether to delete the person's message after he/she responds. 
+	 * @param {boolean} [deleteResponseMessages = true] Whether to delete the person's message after he/she responds.
+	 * @returns {Promise<T | "CANCEL" | "TIME">} The resolved object, or one of two flags: "CANCEL" if the user canceled their request, or "TIME" if the time ran out.
+	 */
+	public async sendWithOldMessage(
+		func: (collectedMessage: Message, ...otherArgs: any) => Promise<T | void>,
+		oldMsg: Message,
+		deleteMsg: boolean = false,
+		cancelFlag: string = "cancel",
+		deleteResponseMessages: boolean = true
+	): Promise<T | "CANCEL" | "TIME"> {
+		return this.send(func, cancelFlag, deleteResponseMessages, oldMsg, deleteMsg);
+	}
+
+	/**
+	 * An automatic message collector that will return one thing. For the last two arguments, it is recommended that you use the `sendWithOldMessage` method. 
+	 * @param func The function to use. This function will be executed and the resultant (return type `T`) will be resolved. Bear in mind that the `send` method takes care of both time management and user cancellation requests; in other words, you just need to implement the actual message response system.
+	 * @param {string} [cancelFlag = "cancel"] The string content that will result in the cancellation of the event.
+	 * @param {boolean} [deleteResponseMessages = true] Whether to delete the person's message after he/she responds.
+	 * @param {Message} [oldMsg = null] Whether to use an old message or not.
+	 * @param {boolean} [deleteMsg = true] Whether to delete the bot message after the reaction collector expires.  
 	 * @returns {Promise<T | "CANCEL" | "TIME">} The resolved object, or one of two flags: "CANCEL" if the user canceled their request, or "TIME" if the time ran out.
 	 */
 	public async send(
 		func: (collectedMessage: Message, ...otherArgs: any) => Promise<T | void>,
 		cancelFlag: string = "cancel",
 		deleteResponseMessages: boolean = true,
+		oldMsg: Message | null = null,
+		deleteMsg: boolean = true
 	): Promise<T | "CANCEL" | "TIME"> {
 		return new Promise(async (resolve) => {
-			const msg: Message = await this._channel.send({ embed: this._embed, content: this._strContent });
+			const botMsg: Message = oldMsg === null
+				? await this._channel.send({ embed: this._embed, content: this._strContent })
+				: oldMsg;
 			// TODO: textchannel cast appropriate?
 			const msgCollector: MessageCollector = new MessageCollector(this._channel as TextChannel, m => m.author.id === this._originalAuthor.id, {
 				time: this._maxDuration
 			});
-
 			// RECEIVE COLLECTOR 
 			msgCollector.on("collect", async (collectedMsg: Message) => {
 				if (deleteResponseMessages) {
@@ -145,13 +206,139 @@ export class GenericMessageCollector<T> {
 
 			// END COLLECTOR 
 			msgCollector.on("end", async (collected: Collection<string, Message>, reason: string) => {
-				await msg.delete().catch(() => { });
+				if (deleteMsg) {
+					await botMsg.delete().catch(() => { });
+				}
 				if (reason === "time") {
 					resolve("TIME");
 				}
 			});
 		});
 	}
+
+	/**
+	 * A message collector that also doubles as a reaction collector
+	 * @param func The function to use. This function will be executed and the resultant (return type `T`) will be resolved. Bear in mind that the `send` method takes care of both time management and user cancellation requests; in other words, you just need to implement the actual message response system.
+	 * @param {IGenericMsgCollectorArguments} [optArgs] Optional arguments, if any.
+	 * @returns {Promise<T | Emoji | "CANCEL" | "TIME">} The resolved object, or one of two flags: "CANCEL" if the user canceled their request, or "TIME" if the time ran out. This may also return the results of a reaction.
+	 */
+	public async sendWithReactCollector(
+		func: (collectedMessage: Message, ...otherArgs: any) => Promise<T | void>,
+		optArgs?: IGenericMsgCollectorArguments
+	): Promise<T | Emoji | "CANCEL" | "TIME"> {
+		let msgReactions: EmojiResolvable[] = [];
+		let cancelFlag: string = "cancel";
+		let deleteResponseMsg: boolean = true;
+		let reactToMsg: boolean = false; 
+		let botMsg: Message = typeof optArgs !== "undefined" && typeof optArgs.oldMsg !== "undefined"
+			? optArgs.oldMsg
+			: await this._channel.send({ embed: this._embed, content: this._strContent });
+		let deleteBotMsgAfterDone: boolean = true;
+		let removeAllReactionAfterReact: boolean = false; 
+
+		if (typeof optArgs !== "undefined") {
+			if (typeof optArgs.cancelFlag !== "undefined") {
+				cancelFlag = optArgs.cancelFlag;
+			}
+
+			if (typeof optArgs.deleteResponseMessage !== "undefined") {
+				deleteResponseMsg = optArgs.deleteResponseMessage;
+			}
+
+			if (typeof optArgs.reactions !== "undefined") {
+				msgReactions = optArgs.reactions;
+			}
+
+			if (typeof optArgs.reactToMsg !== "undefined") {
+				reactToMsg = optArgs.reactToMsg;
+			}
+
+			if (typeof optArgs.deleteMsg !== "undefined") {
+				deleteBotMsgAfterDone = optArgs.deleteMsg;
+			}
+
+			if (typeof optArgs.removeAllReactionAfterReact !== "undefined") {
+				removeAllReactionAfterReact = optArgs.removeAllReactionAfterReact;
+			}
+		}
+
+		if (deleteBotMsgAfterDone) {
+			removeAllReactionAfterReact = false;
+		}
+
+		return new Promise(async (resolve) => {
+			// TODO: textchannel cast appropriate?
+			const msgCollector: MessageCollector = new MessageCollector(
+				this._channel as TextChannel,
+				m => m.author.id === this._originalAuthor.id,
+				{
+					time: this._maxDuration
+				}
+			);
+
+			let reactCollector: ReactionCollector | undefined;
+			if (msgReactions.length !== 0) {
+				if (reactToMsg) {
+					FastReactionMenuManager.reactFaster(botMsg, msgReactions);
+				}
+
+				reactCollector = new ReactionCollector(
+					botMsg,
+					(reaction: MessageReaction, user: User): boolean => {
+						return msgReactions.includes(reaction.emoji.name) && user.id === this._originalAuthor.id;
+					},
+					{
+						time: this._maxDuration,
+						max: 1
+					}
+				);
+
+				reactCollector.on("collect", async (reaction: MessageReaction, user: User) => {
+					await reaction.remove().catch(e => { });
+					msgCollector.stop();
+					return resolve(reaction.emoji);
+				});
+			}
+
+			// RECEIVE COLLECTOR 
+			msgCollector.on("collect", async (collectedMsg: Message) => {
+				if (deleteResponseMsg) {
+					await collectedMsg.delete().catch(() => { });
+				}
+
+				if (collectedMsg.content.toLowerCase() === cancelFlag.toLowerCase()) {
+					resolve("CANCEL");
+					msgCollector.stop();
+					return;
+				}
+
+				let resolvedInfo: T = await new Promise(async (resolve) => {
+					const response: void | T = await func(collectedMsg, cancelFlag);
+					if (typeof response !== "undefined") {
+						resolve(response);
+					}
+				});
+
+				msgCollector.stop();
+				if (typeof reactCollector !== "undefined") {
+					reactCollector.stop();
+				}
+				resolve(resolvedInfo);
+			});
+
+			// END COLLECTOR 
+			msgCollector.on("end", async (collected: Collection<string, Message>, reason: string) => {
+				if (deleteBotMsgAfterDone) {
+					await botMsg.delete().catch(() => { });
+				}
+				if (reason === "time") {
+					resolve("TIME");
+				}
+			});
+		});
+	}
+
+	// STATIC METHODS BELOW
 
 	/**
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with either a TextChannel mention or ID. THIS FUNCTION MUST ONLY BE USED IN A GUILD.

@@ -363,7 +363,7 @@ export class ConfigureSectionCommand extends Command {
 			embed: nameOfSectionPrompt
 		}, 5, TimeUnit.MINUTE);
 
-		const nameOfSection: string | "CANCEL" | "TIME" = await col0.send(GenericMessageCollector.getStringPrompt(msg.channel));
+		const nameOfSection: string | EmojiResolvable | "CANCEL" | "TIME" = await col0.send(GenericMessageCollector.getStringPrompt(msg.channel));
 		if (nameOfSection === "CANCEL" || nameOfSection === "TIME") {
 			return;
 		}

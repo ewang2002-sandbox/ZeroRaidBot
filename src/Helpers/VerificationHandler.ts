@@ -986,10 +986,10 @@ export module VerificationHandler {
 					// no no no
 					newEntry.general.leaderRuns.push({
 						server: leaderRunData.server,
-						generalRuns: {
-							failed: leaderRunData.generalRuns.failed,
-							completed: leaderRunData.generalRuns.completed,
-							assists: leaderRunData.generalRuns.assists
+						general: {
+							failed: leaderRunData.general.failed,
+							completed: leaderRunData.general.completed,
+							assists: leaderRunData.general.assists
 						},
 						endgame: {
 							failed: leaderRunData.endgame.failed,
@@ -1008,9 +1008,9 @@ export module VerificationHandler {
 					newEntry.general.leaderRuns[index].endgame.completed += leaderRunData.endgame.completed;
 					newEntry.general.leaderRuns[index].endgame.failed += leaderRunData.endgame.failed;
 
-					newEntry.general.leaderRuns[index].generalRuns.assists += leaderRunData.generalRuns.assists;
-					newEntry.general.leaderRuns[index].generalRuns.completed += leaderRunData.generalRuns.completed;
-					newEntry.general.leaderRuns[index].generalRuns.failed += leaderRunData.generalRuns.failed;
+					newEntry.general.leaderRuns[index].general.assists += leaderRunData.general.assists;
+					newEntry.general.leaderRuns[index].general.completed += leaderRunData.general.completed;
+					newEntry.general.leaderRuns[index].general.failed += leaderRunData.general.failed;
 					
 					newEntry.general.leaderRuns[index].realmClearing.assists += leaderRunData.realmClearing.assists;
 					newEntry.general.leaderRuns[index].realmClearing.completed += leaderRunData.realmClearing.completed;

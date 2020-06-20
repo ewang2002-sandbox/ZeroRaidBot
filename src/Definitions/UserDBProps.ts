@@ -80,7 +80,7 @@ export interface ILeaderRuns {
     /**
      * General dungeons (i.e. not endgame)
      */
-    generalRuns: ILeaderLogType;
+    general: ILeaderLogType;
 
     /**
      * Endgame dungeons. These are defined as 

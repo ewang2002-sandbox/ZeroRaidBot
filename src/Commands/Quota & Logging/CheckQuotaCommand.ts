@@ -7,6 +7,7 @@ import { StringBuilder } from "../../Classes/String/StringBuilder";
 import { DateUtil } from "../../Utility/DateUtil";
 import { IQuotaDbInfo } from "../../Definitions/IQuotaDbInfo";
 import { QuotaLoggingHandler } from "../../Helpers/QuotaLoggingHandler";
+import { UserHandler } from "../../Helpers/UserHandler";
 
 export class CheckQuotaCommand extends Command {
     public constructor() {
@@ -14,7 +15,7 @@ export class CheckQuotaCommand extends Command {
             new CommandDetail(
                 "Check Quota Command",
                 "checkquota",
-                ["checkq"],
+                ["checkq", "checkquotas"],
                 "Checks all quotas.",
                 ["checkquota"],
                 ["checkquota"],
@@ -36,14 +37,23 @@ export class CheckQuotaCommand extends Command {
     public async executeCommand(msg: Message, args: string[], guildData: IRaidGuild): Promise<void> {
         const guild: Guild = msg.guild as Guild;
 
+        const personToCheck: GuildMember | null = await UserHandler.resolveMember(
+            msg,
+            guildData
+        );
+
+        const resolvedPerson: GuildMember = personToCheck === null
+            ? guild.member(msg.author.id) as GuildMember 
+            : personToCheck;
+
         const embed: MessageEmbed = new MessageEmbed()
-            .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
-            .setTitle("**Current Quota Status**")
+            .setAuthor(resolvedPerson.user.tag, resolvedPerson.user.displayAvatarURL())
+            .setTitle(`**Current Quota Status**: ${resolvedPerson.displayName}`)
             .setColor("RANDOM")
             .setFooter("Completed / Failed / Assists");
 
         const indexOfAuthor: number = guildData.properties.quotas.quotaDetails
-            .findIndex(x => x.memberId === msg.author.id);
+            .findIndex(x => x.memberId === resolvedPerson.id);
 
         const descSb: StringBuilder = new StringBuilder()
             .append(`⇒ **Last Reset:** ${DateUtil.getTime(guildData.properties.quotas.lastReset)}`)
@@ -53,23 +63,11 @@ export class CheckQuotaCommand extends Command {
             descSb.append(`⇒ **Last Updated:** ${indexOfAuthor === -1 ? "N/A" : DateUtil.getTime(authorQuotaDetails.lastUpdated)}`)
                 .appendLine()
                 .appendLine()
-                .append(`⇒ **General Runs Completed:** ${authorQuotaDetails.general.completed}`)
+                .append(`⇒ **General:** ${authorQuotaDetails.general.completed} / ${authorQuotaDetails.general.failed} / ${authorQuotaDetails.general.assists}`)
                 .appendLine()
-                .append(`⇒ **General Runs Failed:** ${authorQuotaDetails.general.failed}`)
+                .append(`⇒ **Endgame Runs Completed:** ${authorQuotaDetails.endgame.completed} / ${authorQuotaDetails.endgame.failed} / ${authorQuotaDetails.endgame.assists}`)
                 .appendLine()
-                .append(`⇒ **General Runs Assisted:** ${authorQuotaDetails.general.assists}`)
-                .appendLine()
-                .append(`⇒ **Endgame Runs Completed:** ${authorQuotaDetails.endgame.completed}`)
-                .appendLine()
-                .append(`⇒ **Endgame Runs Failed:** ${authorQuotaDetails.endgame.failed}`)
-                .appendLine()
-                .append(`⇒ **Endgame Runs Assisted:** ${authorQuotaDetails.endgame.assists}`)
-                .appendLine()
-                .append(`⇒ **Realm Clearing Runs Completed:** ${authorQuotaDetails.realmClearing.completed}`)
-                .appendLine()
-                .append(`⇒ **Realm Clearing Runs Failed:** ${authorQuotaDetails.realmClearing.failed}`)
-                .appendLine()
-                .append(`⇒ **Realm Clearing Runs Assisted:** ${authorQuotaDetails.realmClearing.assists}`);
+                .append(`⇒ **Realm Clearing Runs Completed:** ${authorQuotaDetails.realmClearing.completed} / ${authorQuotaDetails.realmClearing.failed} / ${authorQuotaDetails.realmClearing.assists}`);
         }
         else {
             descSb.append("⇒ **Notice:** You do not have any runs logged for this quota period.");
@@ -97,7 +95,7 @@ export class CheckQuotaCommand extends Command {
             const person: GuildMember | null = guild.member(logInfo.memberId);
             const introStr: string = person === null
                 ? `${logInfo.memberId} (Not In Server)`
-                : `${person} (${person.displayName})`;
+                : `${person} (${person.displayName}) ${person.id === resolvedPerson.id ? "⭐" : ""}`;
 
             const tempStr: string = new StringBuilder()
                 .append(`**\`[${place}]\`** ${introStr}`)

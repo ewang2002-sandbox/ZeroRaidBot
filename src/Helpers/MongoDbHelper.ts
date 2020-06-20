@@ -10,7 +10,6 @@ import { ClientUser } from "discord.js";
 export module MongoDbHelper {
 	export let MongoBotSettingsClient: Collection<IRaidBot>;
 
-
 	/**
 	 * The base class for MongoDb. This class should be instantiated once at the beginning. 
 	 */

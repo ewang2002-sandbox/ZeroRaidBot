@@ -1,13 +1,14 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, MessageEmbed, GuildMember, EmojiResolvable, GuildEmoji, ReactionEmoji, Guild } from "discord.js";
+import { Message, MessageEmbed, GuildMember, EmojiResolvable, GuildEmoji, ReactionEmoji, Guild, Emoji } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { GenericMessageCollector } from "../../Classes/Message/GenericMessageCollector";
 import { TimeUnit } from "../../Definitions/TimeUnit";
 import { FastReactionMenuManager } from "../../Classes/Reaction/FastReactionMenuManager";
 import { UserHandler } from "../../Helpers/UserHandler";
 import { QuotaLoggingHandler } from "../../Helpers/QuotaLoggingHandler";
+import { MessageUtil } from "../../Utility/MessageUtil";
 
 type RaidTypes = "REALM CLEARING" | "END GAME" | "GENERAL";
 
@@ -18,7 +19,7 @@ export class LogRunsCommand extends Command {
 			new CommandDetail(
 				"Log Runs Command",
 				"logruns",
-				["logr"],
+				["logr", "logrun"],
 				"Logs the runs that you have done.",
 				["logruns"],
 				["logruns"],
@@ -219,6 +220,26 @@ export class LogRunsCommand extends Command {
 			}
 		}
 
+		const allMembers: GuildMember[] = [
+			...generalLeadersLog.main.members,
+			...generalLeadersLog.assists.members,
+			...endgameLeadersLog.main.members,
+			...endgameLeadersLog.assists.members,
+			...realmClearingLeadersLog.main.members,
+			...realmClearingLeadersLog.assists.members,
+		];
+
+		if (allMembers.length === 0) {
+			const noPersonEmbed: MessageEmbed = new MessageEmbed()
+				.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
+				.setTitle("**No Member(s) Selected**")
+				.setDescription("You did not select main or assisting leaders for any dungeon type so there is nothing to log.")
+				.setFooter("Logging Process Canceled.")
+				.setColor("RED");
+			MessageUtil.send({ embed: noPersonEmbed }, msg.channel);
+			return;
+		}
+
 		QuotaLoggingHandler.logRunsAndUpdateQuota(msg.guild as Guild, {
 			general: generalLeadersLog,
 			endgame: endgameLeadersLog,
@@ -264,7 +285,7 @@ export class LogRunsCommand extends Command {
 		// ask how many runs
 		const amtSuccessfulRuns: number | "CANCEL" | "TIME" = await new GenericMessageCollector<number>(
 			msg,
-			{ content: `Type the number of __${raidType.toLowerCase()} runs__ all __main leaders__ have successfully completed.` },
+			{ embed: this.getEmbed(msg, "Logging Successful Runs", `Type the number of __${raidType.toLowerCase()} runs__ all __main leaders__ have successfully completed.`) },
 			1,
 			TimeUnit.MINUTE
 		).send(GenericMessageCollector.getNumber(msg.channel, 0));
@@ -277,7 +298,7 @@ export class LogRunsCommand extends Command {
 
 		const amtFailedRuns: number | "CANCEL" | "TIME" = await new GenericMessageCollector<number>(
 			msg,
-			{ content: `Type the number of __${raidType.toLowerCase()} runs__ all __main leaders__ have __failed__ to complete.` },
+			{ embed: this.getEmbed(msg, "Logging Failed Runs", `Type the number of __${raidType.toLowerCase()} runs__ all __main leaders__ have __failed__ to complete.`) },
 			1,
 			TimeUnit.MINUTE
 		).send(GenericMessageCollector.getNumber(msg.channel, 0));
@@ -287,10 +308,17 @@ export class LogRunsCommand extends Command {
 		}
 
 		data.main.failed = amtFailedRuns;
-
 		data.assists.assists = amtSuccessfulRuns + amtFailedRuns;
-
 		return data;
+	}
+
+	private getEmbed(msg: Message, title: string, desc: string): MessageEmbed {
+		return new MessageEmbed()
+			.setTitle(`**${title}**`)
+			.setDescription(desc)
+			.setColor("RANDOM")
+			.setFooter((msg.guild as Guild).name)
+			.setAuthor(msg.author.tag, msg.author.displayAvatarURL());
 	}
 
 	public async getAllPeople(
@@ -302,11 +330,13 @@ export class LogRunsCommand extends Command {
 	): Promise<GuildMember[] | "CANCEL"> {
 		const guild: Guild = msg.guild as Guild;
 		let members: GuildMember[] = [...leaders];
+		let reactToMsg: boolean = true; 
+		let botMsg: Message | undefined;
 		while (true) {
 			const embed: MessageEmbed = new MessageEmbed()
 				.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 				.setTitle(`Logging Type: ${logType} | ${leaderType === "MAIN" ? "Main Leaders" : "Assisting Leaders"}`)
-				.setDescription(`Please add any __${leaderType.toLowerCase()}__ leaders that contributed to the ${logType.toLowerCase()} runs.\n\n**DIRECTIONS**: To add a person so he or she gets logging credit, either mention their tag, type their Discord ID, or type their in-game name.\n\nTo remove a person so he or she doesn't get logging credit, do the same thing as above, but with a name that is shown below.\n\n\n**FINISHED?** When you are done selecting the leaders, type \`-done\` to move on to the next step.\n\n**CANCEL?** To cancel this logging process, type \`-cancel\`.`)
+				.setDescription(`Please add any __${leaderType.toLowerCase()}__ leaders that contributed to the ${logType.toLowerCase()} runs.\n\n**DIRECTIONS**: To add a person so he or she gets logging credit, either mention their tag, type their Discord ID, or type their in-game name. Separate multiple names/mentions with a space.\n\nTo remove a person so he or she doesn't get logging credit, do the same thing as above, but with a name that is shown below.\n\n\n**FINISHED?** React with ✅ if you are finished. If you want to __cancel__ this process instead, react with ❌ or type \`-cancel\`.`)
 				.setColor("RANDOM")
 				.setFooter(logType);
 
@@ -325,30 +355,56 @@ export class LogRunsCommand extends Command {
 				embed.addField("Logging Credit", str);
 			}
 
-			const coll: string = await new GenericMessageCollector<string>(
+			if (typeof botMsg === "undefined") {
+				botMsg = await msg.channel.send(embed);
+			}
+			else {
+				botMsg = await botMsg.edit(embed);
+			}
+
+			const coll: string | Emoji = await new GenericMessageCollector<string>(
 				msg,
 				{ embed: embed },
 				2,
 				TimeUnit.MINUTE
-			).send(GenericMessageCollector.getStringPrompt(msg.channel), "-cancel");
+			).sendWithReactCollector(GenericMessageCollector.getStringPrompt(msg.channel), {
+				reactions: ["✅", "❌"],
+				cancelFlag: "-cancel",
+				reactToMsg: reactToMsg,
+				deleteMsg: false,
+				removeAllReactionAfterReact: false,
+				oldMsg: botMsg
+			});
 
-			if (coll === "TIME" || coll === "CANCEL") {
-				return "CANCEL";
+			if (reactToMsg) {
+				reactToMsg = false;
 			}
 
-			if (coll === "-done") {
-				break;
-			}
-
-			const membersToLog: GuildMember[] = await this.getPeople(coll, guild, guildDb);
-			for (let i = 0; i < membersToLog.length; i++) {
-				const index: number = members.findIndex(x => x.id === membersToLog[i].id);
-				// add
-				if (index === -1) {
-					members.push(membersToLog[i]);
+			if (coll instanceof Emoji) {
+				await botMsg.delete().catch(e => { });
+				if (coll.name === "✅") {
+					break;
 				}
 				else {
-					members.splice(index, 1);
+					return "CANCEL";
+				}
+			}
+			else {
+				if (coll === "TIME" || coll === "CANCEL") {
+					await botMsg.delete().catch(e => { });
+					return "CANCEL";
+				}
+
+				const membersToLog: GuildMember[] = await this.getPeople(coll, guild, guildDb);
+				for (let i = 0; i < membersToLog.length; i++) {
+					const index: number = members.findIndex(x => x.id === membersToLog[i].id);
+					// add
+					if (index === -1) {
+						members.push(membersToLog[i]);
+					}
+					else {
+						members.splice(index, 1);
+					}
 				}
 			}
 		} // end while loop
@@ -358,7 +414,7 @@ export class LogRunsCommand extends Command {
 
 	public async getPeople(str: string, guild: Guild, guildDb: IRaidGuild): Promise<GuildMember[]> {
 		const members: GuildMember[] = [];
-		const args: string[] = str.split(/ +/); // TODO check if this is correct
+		const args: string[] = str.split(/ +/);
 		for await (const arg of args) {
 			// check if mention
 			const res: string | null = UserHandler.getUserFromMention(arg);

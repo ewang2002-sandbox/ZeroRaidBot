@@ -17,7 +17,7 @@ export class ResetQuotaCommand extends Command {
             new CommandDetail(
                 "Reset Quotas Command",
                 "resetquota",
-                ["resetq"],
+                ["resetq", "resetquotas"],
                 "Resets the quota board.",
                 ["resetquota"],
                 ["resetquota"],

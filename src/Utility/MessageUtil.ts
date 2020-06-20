@@ -36,7 +36,8 @@ export namespace MessageUtil {
 		| "DM_NOT_OPEN"
 		| "ROLE_HIERARCHY_ERROR"
 		| "SAME_PERSON_AS_AUTHOR"
-		| "ROLE_IN_USE";
+		| "ROLE_IN_USE"
+		| "NO_MEMBER_FOUND";
 
 	type EmbedSettings = {
 		authorType: "GUILD" | "AUTHOR" | { name: string, imageUrl?: string };
@@ -269,6 +270,11 @@ export namespace MessageUtil {
 			case ("ROLE_IN_USE"): {
 				embed.setTitle("Role In Use");
 				embed.setDescription("This role is already in use. Please try again.");
+				break;
+			}
+			case ("NO_MEMBER_FOUND"): {
+				embed.setTitle("No Member Found");
+				embed.setDescription("I was unable to find the member you specified. Please ensure the mention, in-game name, or ID of the target member is correct.");
 				break;
 			}
 		}

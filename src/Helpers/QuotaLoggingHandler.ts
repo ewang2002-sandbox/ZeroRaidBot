@@ -96,7 +96,6 @@ export module QuotaLoggingHandler {
             });
         }
 
-
         // next, let's update each individual profile
         for (const logInfo in logData) {
             // main

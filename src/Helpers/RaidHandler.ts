@@ -1681,6 +1681,43 @@ export module RaidHandler {
 		raidInfo: IRaidInfo,
 		amount: number = 1
 	): Promise<void> {
+		// make sure everyone has an entry
+		const filterQueryCheckNoProfile: FilterQuery<IRaidUser> = {};
+		filterQueryCheckNoProfile.$or = [];
+		for (const [id, member] of members) {
+			filterQueryCheckNoProfile.$or.push({
+				discordUserId: member.id
+			});
+		}
+
+		const results: IRaidUser[] = await MongoDbHelper.MongoDbUserManager.MongoUserClient
+			.find(filterQueryCheckNoProfile).toArray();
+
+		// see who needs a profile
+		const pplToAddProfileTo: FilterQuery<IRaidUser> = {};
+		pplToAddProfileTo.$or = [];
+		for (const memberFound of results) {
+			if (memberFound.general.completedRuns.findIndex(x => x.server === guild.id) === -1) {
+				pplToAddProfileTo.$or.push({
+					discordUserId: memberFound.discordUserId
+				});
+			}
+		}
+
+		if (pplToAddProfileTo.$or.length !== 0) {
+			await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateMany(pplToAddProfileTo, {
+				$push: {
+					"general.completedRuns": {
+						general: 0,
+						endgame: 0,
+						realmClearing: 0,
+						server: guild.id
+					}
+				}
+			});
+		}
+
+		// now update all profiles
 		const filterQuery: FilterQuery<IRaidUser> = {
 			"general.completedRuns.server": guild.id
 		};
@@ -1691,7 +1728,6 @@ export module RaidHandler {
 				discordUserId: id
 			});
 		}
-
 		let propToUpdate: string;
 		if (ENDGAME_DUNGEONS.includes(raidInfo.dungeonInfo.id)) {
 			propToUpdate = "general.completedRuns.$.endgame";

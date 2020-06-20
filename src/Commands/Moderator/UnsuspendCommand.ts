@@ -45,7 +45,7 @@ export class UnsuspendCommand extends Command {
         let memberToUnsuspend: GuildMember | null = await UserHandler.resolveMember(msg, guildDb);
 
         if (memberToUnsuspend === null) {
-            await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "NO_MENTIONS_FOUND", null), msg.channel);
+            await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "NO_MEMBER_FOUND", null), msg.channel);
             return;
         }
 

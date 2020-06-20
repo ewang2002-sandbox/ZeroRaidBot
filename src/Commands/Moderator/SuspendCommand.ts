@@ -44,7 +44,7 @@ export class SuspendCommand extends Command {
 		let memberToSuspend: GuildMember | null = await UserHandler.resolveMember(msg, guildDb);
 
 		if (memberToSuspend === null) {
-			await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "NO_MENTIONS_FOUND", null), msg.channel);
+			await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "NO_MEMBER_FOUND", null), msg.channel);
 			return;
 		}
 

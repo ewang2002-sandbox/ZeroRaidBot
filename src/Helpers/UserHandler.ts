@@ -12,15 +12,15 @@ export namespace UserHandler {
      * @param {IRaidGuild} guildData The guild data.
      * @returns {Promise<boolean>} Whether any changes were made. 
      */
-    export async function manageStaffRole(member: GuildMember, guildData: IRaidGuild): Promise<boolean> { 
+	export async function manageStaffRole(member: GuildMember, guildData: IRaidGuild): Promise<boolean> {
 		const teamRole: Role | undefined = member.guild.roles.cache.get(guildData.roles.teamRole);
 
 		if (typeof teamRole === "undefined") {
 			return false;
 		}
 
-        let staffRoles: string[] = [
-            guildData.roles.moderator,
+		let staffRoles: string[] = [
+			guildData.roles.moderator,
 			guildData.roles.headRaidLeader,
 			guildData.roles.officer,
 			guildData.roles.universalRaidLeader,
@@ -34,7 +34,7 @@ export namespace UserHandler {
 		for (const section of [GuildUtil.getDefaultSection(guildData), ...guildData.sections]) {
 			staffRoles.push(section.roles.almostLeaderRole, section.roles.raidLeaderRole, section.roles.trialLeaderRole);
 		}
-		
+
 		const allStaffRoles: Role[] = [];
 		for (const role of staffRoles) {
 			if (member.guild.roles.cache.has(role)) {
@@ -42,21 +42,21 @@ export namespace UserHandler {
 			}
 		}
 
-        for await (let role of allStaffRoles) {
-            if (member.roles.cache.has(role.id)) {
-                // they have the role, add and return 
-                // ? operator used here because "role" has to be defined
-                // or else it wouldn't run here. 
+		for await (let role of allStaffRoles) {
+			if (member.roles.cache.has(role.id)) {
+				// they have the role, add and return 
+				// ? operator used here because "role" has to be defined
+				// or else it wouldn't run here. 
 				await member.roles.add(teamRole, `Has ${role.name} role.`)
 					.catch(() => { });
-                return true;
-            }
-        }
+				return true;
+			}
+		}
 
-        await member.roles.remove(guildData.roles.teamRole, "No longer a staff member").catch(() => { });
-        return true;
+		await member.roles.remove(guildData.roles.teamRole, "No longer a staff member").catch(() => { });
+		return true;
 	}
-	
+
 	/**
 	 * Fetches a user using the `<User>.fetch()` method, optionally fetching the member using the `<GuildMember>.fetch()` method if in a guild.
 	 * @param {Guild | null} guild The guild, if applicable. 
@@ -137,23 +137,88 @@ export namespace UserHandler {
 	 * Finds a user. This will take in a message and only look at the FIRST argument provided. 
 	 * @param {Message} msg The message. While there can be no content (this will return null), there should be at least one argument. The function will ONLY LOOK AT THE FIRST ARGUMENT provided.
 	 * @param {IRaidGuild} guildDb The guild db. 
-	 * @returns {(GuildMember | null)} The member, if any. If no results, null.
+	 * @returns {Promise<GuildMember | null>} The member, if any. If no results, null.
 	 */
 	export async function resolveMember(msg: Message, guildDb: IRaidGuild): Promise<GuildMember | null> {
-		const guild: Guild = msg.guild as Guild;
 		const args: string[] = msg.content.split(/ +/);
 		args.shift(); // this will be the command, not the mention
 		if (args.length === 0) {
 			return null;
 		}
 		const searchQuery: string = args[0];
+		return internalResolveMember(msg.guild as Guild, guildDb, searchQuery);
+	}
 
-		if (msg.mentions.members !== null && typeof msg.mentions.members.first() !== "undefined") {
-			const res: string | null = getUserFromMention(searchQuery);
-			if (res === null) {
-				return null;
+	/**
+	 * Finds a user. This will take in a string and return the guild member. 
+	 * @param {string} str The string content. This should contain a mention, IGN, or ID.
+	 * @param {Guild} guild The guild.
+	 * @param {IRaidGuild} guildDb The guild db. 
+	 * @returns {Promise<GuildMember | null>} The member, if any. If no results, null.
+	 */
+	export async function resolveMemberWithStr(
+		str: string, 
+		guild: Guild, 
+		guildDb: IRaidGuild
+	): Promise<GuildMember | null> {
+		return internalResolveMember(guild, guildDb, str);
+	}
+
+	/**
+	 * Finds one or more users. This will take in an array of string(s) and return the associated guild members. 
+	 * @param {string[]} arr The string array. Each element should contain a mention, IGN, or ID.
+	 * @param {Guild} guild The guild.
+	 * @param {IRaidGuild} guildDb The guild db. 
+	 * @returns {Promise<GuildMember[]>} The members, if any.
+	 */
+	export async function resolveMultipleMembers(
+		arr: string[], 
+		guild: Guild, 
+		guildDb: IRaidGuild
+	): Promise<GuildMember[]> {
+		const members: GuildMember[] = [];
+		for await (const elem of arr) {
+			const possibleMember: GuildMember | null = await internalResolveMember(guild, guildDb, elem);
+			if (possibleMember !== null) {
+				members.push(possibleMember);
 			}
-			
+		}
+		return members;
+	}
+
+	/**
+	 * @param {string} mention The mention (string format). 
+	 * @see https://discordjs.guide/miscellaneous/parsing-mention-arguments.html#using-regular-expressions
+	 */
+	export function getUserFromMention(mention: string): string | null {
+		// The id is the first and only match found by the RegEx.
+		const matches: RegExpMatchArray | null = mention.match(/^<@!?(\d+)>$/);
+
+		// If supplied variable was not a mention, matches will be null instead of an array.
+		if (matches === null) {
+			return null;
+		}
+
+		// However the first element in the matches array will be the entire mention, not just the ID,
+		// so use index 1.
+		const id: string = matches[1];
+		return id;
+	}
+
+	/**
+	 * Finds a user. This will take in a string and return the guild member. 
+	 * @param {Guild} guild The guild. 
+	 * @param {IRaidGuild} guildDb The guild db. 
+	 * @param {string} searchQuery The person to search.
+	 * @returns {Promise<GuildMember | null>} The member, if any. If no results, null.
+	 */
+	async function internalResolveMember(
+		guild: Guild, 
+		guildDb: IRaidGuild, 
+		searchQuery: string
+	): Promise<GuildMember | null> {
+		const res: string | null = getUserFromMention(searchQuery);
+		if (res !== null) {
 			try {
 				return await guild.members.fetch(res);
 			}
@@ -178,25 +243,5 @@ export namespace UserHandler {
 		}
 
 		return null;
-	}
-
-	/**
-	 * @param {string} mention The mention (string format). 
-	 * @see https://discordjs.guide/miscellaneous/parsing-mention-arguments.html#using-regular-expressions
-	 */
-	export function getUserFromMention(mention: string): string | null {
-		// The id is the first and only match found by the RegEx.
-		const matches: RegExpMatchArray | null = mention.match(/^<@!?(\d+)>$/);
-	
-		// If supplied variable was not a mention, matches will be null instead of an array.
-		if (matches === null) {
-			return null;
-		}
-	
-		// However the first element in the matches array will be the entire mention, not just the ID,
-		// so use index 1.
-		const id: string = matches[1];
-	
-		return id;
 	}
 }

@@ -12,7 +12,6 @@ import { MessageUtil } from "../../Utility/MessageUtil";
 
 type RaidTypes = "REALM CLEARING" | "END GAME" | "GENERAL";
 
-
 export class LogRunsCommand extends Command {
 	public constructor() {
 		super(
@@ -395,7 +394,13 @@ export class LogRunsCommand extends Command {
 					return "CANCEL";
 				}
 
-				const membersToLog: GuildMember[] = await this.getPeople(coll, guild, guildDb);
+				const membersToSearch: string[] = coll.split(/ +/);
+				const membersToLog: GuildMember[] = await UserHandler.resolveMultipleMembers(
+					membersToSearch, 
+					guild, 
+					guildDb
+				);
+				
 				for (let i = 0; i < membersToLog.length; i++) {
 					const index: number = members.findIndex(x => x.id === membersToLog[i].id);
 					// add
@@ -409,37 +414,6 @@ export class LogRunsCommand extends Command {
 			}
 		} // end while loop
 
-		return members;
-	}
-
-	public async getPeople(str: string, guild: Guild, guildDb: IRaidGuild): Promise<GuildMember[]> {
-		const members: GuildMember[] = [];
-		const args: string[] = str.split(/ +/);
-		for await (const arg of args) {
-			// check if mention
-			const res: string | null = UserHandler.getUserFromMention(arg);
-			if (res !== null) {
-				try {
-					members.push(await guild.members.fetch(res));
-					continue;
-				}
-				catch (e) { }
-			}
-
-			// check if id
-			if (/^\d+$/.test(arg)) {
-				try {
-					members.push(await guild.members.fetch(arg));
-					continue;
-				}
-				catch (e) { }
-			}
-
-			const nameSearchResults: GuildMember | GuildMember[] = UserHandler.findUserByInGameName(guild, arg, guildDb);
-			if (!Array.isArray(nameSearchResults)) {
-				members.push(nameSearchResults);
-			}
-		}
 		return members;
 	}
 }

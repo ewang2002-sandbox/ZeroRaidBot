@@ -1350,6 +1350,7 @@ export module VerificationHandler {
 
 				for (const [id, role] of res.roles.cache) {
 					await res.roles.remove(role).catch(e => { });
+					await res.setNickname("").catch(e => { });
 				}
 			}
 		}
@@ -1374,6 +1375,12 @@ export module VerificationHandler {
 		let loggingMsg: string = `✅ **\`[${sectionForManualVerif.nameOfSection}]\`** ${manualVerifMember} has been manually verified as \`${manualVerificationProfile.inGameName}\`. This manual verification was done by ${responsibleMember} (${responsibleMember.displayName})`;
 
 		await manualVerifMember.roles.add(sectionForManualVerif.verifiedRole).catch(e => { });
+		await VerificationHandler.findOtherUserAndRemoveVerifiedRole(
+			responsibleMember,
+			guild,
+			guildDb
+		);
+		
 		if (sectionForManualVerif.isMain) {
 			await manualVerifMember.setNickname(manualVerifMember.user.username === manualVerificationProfile.inGameName
 				? `${manualVerificationProfile.inGameName}.`
@@ -1383,11 +1390,6 @@ export module VerificationHandler {
 				manualVerifMember,
 				manualVerificationProfile.inGameName,
 				manualVerificationProfile.nameHistory
-			);
-			await VerificationHandler.findOtherUserAndRemoveVerifiedRole(
-				responsibleMember,
-				guild,
-				guildDb
 			);
 			const successEmbed: MessageEmbed = new MessageEmbed()
 				.setTitle(`Successful Verification: **${guild.name}**`)

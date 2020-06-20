@@ -12,22 +12,7 @@ export module TestCasesNameHistory {
                 to: ""
             },
             {
-                name: "Testing",
-                from: "",
-                to: ""
-            },
-            {
-                name: "BigEpic",
-                from: "",
-                to: ""
-            },
-            {
-                name: "HahaYes",
-                from: "",
-                to: ""
-            },
-            {
-                name: "GoodDay",
+                name: "Opre",
                 from: "",
                 to: ""
             }

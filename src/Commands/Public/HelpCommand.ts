@@ -1,7 +1,7 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, MessageEmbed, ClientApplication, User } from "discord.js";
+import { Message, MessageEmbed, ClientApplication, User, MessageCollector, TextChannel } from "discord.js";
 import { StringUtil } from "../../Utility/StringUtil";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { Zero } from "../../Zero";
@@ -87,7 +87,7 @@ export class HelpCommand extends Command {
                 }
 
                 if (commands.length !== 0) {
-                    cmdEmbed.addField(name, StringUtil.applyCodeBlocks(commands), true);
+                    cmdEmbed.addField(name, StringUtil.applyCodeBlocks(commands));
                     commands = "";
                 }
             }

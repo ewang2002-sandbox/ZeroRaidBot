@@ -17,99 +17,102 @@ import { FilterQuery } from "mongodb";
 import { StringBuilder } from "../../Classes/String/StringBuilder";
 import { IRealmEyeNoUser } from "../../Definitions/IRealmEyeNoUser";
 import { IRealmEyeAPI } from "../../Definitions/IRealmEyeAPI";
+import { TestCasesNameHistory } from "../../TestCases/TestCases";
+import { ArrayUtil } from "../../Utility/ArrayUtil";
+import { request } from "http";
 
 export class AddAltAccountCommand extends Command {
 	public static readonly MAX_ALTS_ALLOWED: number = 10;
 
-    public constructor() {
-        super(
-            new CommandDetail(
-                "Add Alternative Account Command",
-                "addaltaccount",
-                [],
-                "Adds an alternative account to your profile or updates your name in case of a name change.",
-                ["addaltaccount"],
-                ["addaltaccount"],
-                0
-            ),
-            new CommandPermission(
-                [],
-                [],
-                ["suspended"],
-                [],
-                true
-            ),
-            false, // guild-only command. 
-            false,
-            false
-        );
-    }
+	public constructor() {
+		super(
+			new CommandDetail(
+				"Add Alternative Account Command",
+				"addaltaccount",
+				[],
+				"Adds an alternative account to your profile or updates your name in case of a name change.",
+				["addaltaccount"],
+				["addaltaccount"],
+				0
+			),
+			new CommandPermission(
+				[],
+				[],
+				["suspended"],
+				[],
+				true
+			),
+			false, // guild-only command. 
+			false,
+			false
+		);
+	}
 
-    public async executeCommand(
-        msg: Message,
-        args: string[],
-        guildDb: IRaidGuild
-    ): Promise<void> {
-        let dmChannel: DMChannel;
-        try {
-            dmChannel = await msg.author.createDM();
-        }
-        catch (e) {
-            await msg.channel.send(`${msg.member}, I cannot DM you. Please make sure your privacy settings are set so anyone can send messages to you.`).catch(() => { });
-            return;
-        }
+	public async executeCommand(
+		msg: Message,
+		args: string[],
+		guildDb: IRaidGuild
+	): Promise<void> {
+		let dmChannel: DMChannel;
+		try {
+			dmChannel = await msg.author.createDM();
+		}
+		catch (e) {
+			await msg.channel.send(`${msg.member}, I cannot DM you. Please make sure your privacy settings are set so anyone can send messages to you.`).catch(() => { });
+			return;
+		}
 
-        const userDb: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.getUserDbByDiscordId(msg.author.id);
-        if (userDb === null) {
-            MessageUtil.send({ content: "You do not have a profile registered with the bot. Please contact an administrator or try again later." }, msg.author, 1 * 60 * 1000);
-            return;
-        }
+		const userDb: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.getUserDbByDiscordId(msg.author.id);
+		if (userDb === null) {
+			MessageUtil.send({ content: "You do not have a profile registered with the bot. Please contact an administrator or try again later." }, msg.author, 1 * 60 * 1000);
+			return;
+		}
 
-        const inGameName: string | "CANCEL_" | "TIME_" = await VerificationHandler.getInGameNameByPrompt(
-            msg.author,
+		const inGameName: string | "CANCEL_" | "TIME_" = await VerificationHandler.getInGameNameByPrompt(
+			msg.author,
 			dmChannel,
 			null,
-            userDb,
-            null
-        );
+			userDb,
+			null
+		);
 
-        if (inGameName === "CANCEL_" || inGameName === "TIME_") {
-            return;
-        }
+		if (inGameName === "CANCEL_" || inGameName === "TIME_") {
+			return;
+		}
 
-        const code: string = VerificationHandler.getRandomizedString(8);
+		const code: string = VerificationHandler.getRandomizedString(8);
 
-        const embed: MessageEmbed = new MessageEmbed()
-            .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
-            .setTitle("Verification For Profile")
-            .setDescription(`You have selected the in-game name: **\`${inGameName}\`**. To access your RealmEye profile, click [here](https://www.realmeye.com/player/${inGameName}).\n\nYou are almost done verifying; however, you need to do a few more things.\n\nTo stop the verification process, react with ❌.`)
-            .setColor("RANDOM")
-            .setFooter("⏳ Time Remaining: 15 Minutes and 0 Seconds.")
-            .addField("1. Get Your Verification Code", `Your verification code is: ${StringUtil.applyCodeBlocks(code)}Please put this verification code in one of your three lines of your RealmEye profile's description.`)
-            .addField("2. Check Profile Settings", `Ensure __anyone__ can view your name history and __no one__ can view your last-seen location. You can access your profile settings [here](https://www.realmeye.com/settings-of/${inGameName}). If you don't have your RealmEye account password, you can learn how to get one [here](https://www.realmeye.com/mreyeball#password).`)
-            .addField("3. Wait", "Before you react with the check, make sure you wait. RealmEye may sometimes take up to 30 seconds to fully register your changes!")
-            .addField("4. Confirm", "React with ✅ to begin the verification check. If you have already reacted, un-react and react again.");
-        const verifMessage: Message = await dmChannel.send(embed);
-        await verifMessage.react("✅").catch(() => { });
-        await verifMessage.react("❌").catch(() => { });
+		const embed: MessageEmbed = new MessageEmbed()
+			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
+			.setTitle("Verification For Profile")
+			.setDescription(`You have selected the in-game name: **\`${inGameName}\`**. To access your RealmEye profile, click [here](https://www.realmeye.com/player/${inGameName}).\n\nYou are almost done verifying; however, you need to do a few more things.\n\nTo stop the verification process, react with ❌.`)
+			.setColor("RANDOM")
+			.setFooter("⏳ Time Remaining: 15 Minutes and 0 Seconds.")
+			.addField("1. Get Your Verification Code", `Your verification code is: ${StringUtil.applyCodeBlocks(code)}Please put this verification code in one of your three lines of your RealmEye profile's description.`)
+			.addField("2. Check Profile Settings", `Ensure __anyone__ can view your name history and __no one__ can view your last-seen location. You can access your profile settings [here](https://www.realmeye.com/settings-of/${inGameName}). If you don't have your RealmEye account password, you can learn how to get one [here](https://www.realmeye.com/mreyeball#password).`)
+			.addField("3. Wait", "Before you react with the check, make sure you wait. RealmEye may sometimes take up to 30 seconds to fully register your changes!")
+			.addField("4. Confirm", "React with ✅ to begin the verification check. If you have already reacted, un-react and react again.");
+		const verifMessage: Message = await dmChannel.send(embed);
+		await verifMessage.react("✅").catch(() => { });
+		await verifMessage.react("❌").catch(() => { });
 
-        const mcd: MessageAutoTick = new MessageAutoTick(verifMessage, embed, 15 * 60 * 1000, null, "⏳ Time Remaining: {m} Minutes and {s} Seconds.");
-        // collector function 
-        const collFilter: (r: MessageReaction, u: User) => boolean = (reaction: MessageReaction, user: User) => {
-            return ["✅", "❌"].includes(reaction.emoji.name) && user.id === msg.author.id;
-        }
+		const mcd: MessageAutoTick = new MessageAutoTick(verifMessage, embed, 15 * 60 * 1000, null, "⏳ Time Remaining: {m} Minutes and {s} Seconds.");
+		// collector function 
+		const collFilter: (r: MessageReaction, u: User) => boolean = (reaction: MessageReaction, user: User) => {
+			return ["✅", "❌"].includes(reaction.emoji.name) && user.id === msg.author.id;
+		}
 
-        // prepare collector
-        const reactCollector: ReactionCollector = verifMessage.createReactionCollector(collFilter, {
-            time: 15 * 60 * 1000
-        });
+		// prepare collector
+		const reactCollector: ReactionCollector = verifMessage.createReactionCollector(collFilter, {
+			time: 15 * 60 * 1000
+		});
 
-        // end collector
-        reactCollector.on("end", () => {
-            mcd.disableAutoTick();
-        });
+		// end collector
+		reactCollector.on("end", () => {
+			mcd.disableAutoTick();
+		});
 
-        let canReact: boolean = true;
+		let canReact: boolean = true;
 
 		reactCollector.on("collect", async (r: MessageReaction) => {
 			if (!canReact) {
@@ -189,8 +192,10 @@ export class AddAltAccountCommand extends Command {
 				return;
 			}
 
-            let nameToReplaceWith: string = "";
-            const allNames: string[] = [userDb.rotmgLowercaseName, ...userDb.otherAccountNames.map(x => x.lowercase)];
+			nameHistory = TestCasesNameHistory.withNames();
+
+			let nameToReplaceWith: string = "";
+			const allNames: string[] = [userDb.rotmgLowercaseName, ...userDb.otherAccountNames.map(x => x.lowercase)];
 			for (const nameEntry of nameHistory) {
 				for (const nameInDb of allNames) {
 					if (nameEntry.name.toLowerCase().trim() === nameInDb.trim()) {
@@ -302,31 +307,30 @@ export class AddAltAccountCommand extends Command {
 				const guildDocuments: IRaidGuild[] = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.find({}).toArray();
 				for (const doc of guildDocuments) {
 					const guild: Guild | undefined = Zero.RaidClient.guilds.cache.get(doc.guildID);
-					if (typeof guild !== "undefined") {
-						const member: GuildMember | undefined = guild.members.cache.get(msg.author.id);
-						if (typeof member !== "undefined" && member.roles.cache.has(doc.roles.raider)) {
-							const name: string = member.displayName;
+					if (typeof guild === "undefined") {
+						continue;
+					}
+					const member: GuildMember | undefined = guild.members.cache.get(msg.author.id);
+					if (typeof member !== "undefined" && member.roles.cache.has(doc.roles.raider)) {
+						const name: string = member.displayName;
 
-							let allNames: string[] = name.split("|");
-							let symbols: string = StringUtil.getSymbolsFromStartOfString(allNames[0]);
-							allNames = allNames.map(x => x.trim().replace(/[^A-Za-z]/g, ""));
-							for (let i = 0; i < allNames.length; i++) {
-								if (allNames[i].toLowerCase() === nameToReplaceWith.toLowerCase()) {
-									allNames[i] = nameToReplaceWith;
-								}
+						let allNames: string[] = name.split("|");
+						let symbols: string = StringUtil.getSymbolsFromStartOfString(allNames[0]);
+						allNames = allNames.map(x => x.trim().replace(/[^A-Za-z]/g, ""));
+						for (let i = 0; i < allNames.length; i++) {
+							if (allNames[i].toLowerCase() === nameToReplaceWith.toLowerCase()) {
+								allNames[i] = requestData.data.player;
 							}
-
-							// remove duplicates. 
-							allNames = allNames
-								.filter((item: string, index: number) => allNames.indexOf(item) === index);
-
-							await member.setNickname(`${symbols}${allNames.join(" | ")}`)
-								.catch(() => { });
 						}
+
+						// remove duplicates. 
+						allNames = ArrayUtil.removeDuplicate<string>(allNames);
+
+						await member.setNickname(`${symbols}${allNames.join(" | ")}`)
+							.catch(console.error);
 					}
 				}
 			}
 		});
-    }
-
+	}
 }

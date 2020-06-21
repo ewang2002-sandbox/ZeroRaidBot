@@ -36,6 +36,7 @@ import { ResetQuotaCommand } from "../Commands/Quota & Logging/ResetQuotaCommand
 import { CheckQuotaCommand } from "../Commands/Quota & Logging/CheckQuotaCommand";
 import { UnverifyFromServerCommand } from "../Commands/Server Profile/UnverifyFromServerCommand";
 import { LogKeysCommand } from "../Commands/Quota & Logging/LogKeysCommand";
+import { AdminProfileUpdaterCommand } from "../Commands/Bot Owner/AdminProfileUpdaterCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -123,7 +124,8 @@ export class CommandManager {
 		]);
 
 		this.commands.set("Bot Owner", [
-			new ReconnectDBCommand()
+			new ReconnectDBCommand(),
+			new AdminProfileUpdaterCommand()
 		]);
 
 		this.commands.set("Quota & Logging", [

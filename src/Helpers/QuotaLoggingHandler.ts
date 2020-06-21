@@ -1,4 +1,4 @@
-import { GuildMember, Message, Guild, TextChannel, MessageEmbed, MessageManager, Role } from "discord.js";
+import { GuildMember, Message, Guild, TextChannel, MessageEmbed } from "discord.js";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { MongoDbHelper } from "./MongoDbHelper";
 import { FilterQuery, UpdateQuery } from "mongodb";
@@ -365,7 +365,7 @@ export module QuotaLoggingHandler {
 
         // we need to edit the embed
         // so edit it
-        await quotaMsg.edit(quotaEmbed).catch(e => { });
+        await quotaMsg.edit(quotaEmbed).catch(() => { });
         return true;
     }
 

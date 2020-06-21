@@ -302,6 +302,10 @@ export class GenericMessageCollector<T> {
 
 			// RECEIVE COLLECTOR 
 			msgCollector.on("collect", async (collectedMsg: Message) => {
+				if (removeAllReactionAfterReact) {
+					await collectedMsg.reactions.removeAll().catch(e => { });
+				}
+				
 				if (deleteResponseMsg) {
 					await collectedMsg.delete().catch(() => { });
 				}

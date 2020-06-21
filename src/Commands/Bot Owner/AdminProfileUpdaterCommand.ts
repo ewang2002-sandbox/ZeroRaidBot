@@ -9,6 +9,8 @@ import { IRaidUser } from "../../Templates/IRaidUser";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
 import { GenericMessageCollector } from "../../Classes/Message/GenericMessageCollector";
 import { InsertOneWriteOpResult, WithId } from "mongodb";
+import { StringBuilder } from "../../Classes/String/StringBuilder";
+import { UserHandler } from "../../Helpers/UserHandler";
 
 export class AdminProfileUpdaterCommand extends Command {
 	public constructor() {
@@ -107,7 +109,8 @@ export class AdminProfileUpdaterCommand extends Command {
 		// check which members do not have a db entry 
 		const allUsersInDb: IRaidUser[] = await MongoDbHelper.MongoDbUserManager.MongoUserClient.find({}).toArray();
 		const allMembers: Collection<string, GuildMember> = (await guild.members.fetch())
-			.filter(member => rolesToHave.some(role => member.roles.cache.has(role)));
+			.filter(member => rolesToHave.some(role => member.roles.cache.has(role)))
+			.filter(member => !member.user.bot)
 		const membersWithNoDbEntry: [GuildMember, string[]][] = [];
 
 		for (const [id, member] of allMembers) {
@@ -260,7 +263,96 @@ export class AdminProfileUpdaterCommand extends Command {
 	}
 
 	private async addProfileCmd(msg: Message, botMsg: Message, guildData: IRaidGuild): Promise<void> {
+		const guild: Guild = msg.guild as Guild;
+		const verifiedRole: Role | undefined = guild.roles.cache.get(guildData.roles.raider);
+		const suspendedRole: Role | undefined = guild.roles.cache.get(guildData.roles.suspended);
 
+		if (typeof verifiedRole === "undefined") {
+			const editedMsg: Message = await botMsg.edit(this.getNoVerifiedRoleEmbed(msg));
+			await editedMsg.delete({ timeout: 5000 });
+			return;
+		}
+
+		const memberForProfile: GuildMember | "CANCEL" = await this.getPerson(msg, botMsg, guildData);
+		if (memberForProfile === "CANCEL") {
+			await botMsg.delete().catch(e => { });
+			return;
+		}
+
+		const dbProfile: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient
+			.findOne({ discordUserId: memberForProfile.id });
+
+		const responseEmbed: MessageEmbed = new MessageEmbed()
+			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
+			.setColor("GREEN")
+			.setFooter("Administrator: Add Profile");
+
+		if (dbProfile !== null) {
+			responseEmbed.setTitle("Profile Already Exists!")
+				.setDescription(`${memberForProfile} already has a profile!`);
+			await botMsg.edit(responseEmbed).catch(e => { });
+			await botMsg.delete({ timeout: 5000 }).catch(e => { });
+			return;
+		}
+
+		let ignToUse: string = "";
+		let reactToMsg: boolean = true;
+		while (true) {
+			const sb: StringBuilder = new StringBuilder()
+				.append(`Set In-Game Name: ${ignToUse === "" ? "N/A" : ignToUse}`)
+				.appendLine()
+				.appendLine()
+				.append(`**DIRECTIONS:** Please type an in-game name that you want to associate with ${memberForProfile}'s profile. The in-game name must be at least one letter long and no longer than ten letters. There must not be any symbols.`)
+				.appendLine()
+				.appendLine()
+				.append("**FINISHED?** React with the ✅ to use the IGN specified above for the member. This will create the profile. React with the ❌ to cancel this process completely.");
+
+			const ignEmbed: MessageEmbed = new MessageEmbed()
+				.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
+				.setColor("GREEN")
+				.setTitle("Provide In-Game Name")
+				.setDescription(sb.toString())
+				.setFooter("Administrator: Add Profile");
+
+			await botMsg.edit(ignEmbed).catch(e => { });
+
+			const response: string | Emoji | "CANCEL" | "TIME" = await new GenericMessageCollector<string>(
+				msg,
+				{ embed: ignEmbed },
+				2,
+				TimeUnit.MINUTE
+			).sendWithReactCollector(GenericMessageCollector.getStringPrompt(msg.channel), {
+				reactions: ["✅", "❌"],
+				cancelFlag: "-cancel",
+				reactToMsg: reactToMsg,
+				deleteMsg: false,
+				removeAllReactionAfterReact: false,
+				oldMsg: botMsg
+			});
+
+			if (reactToMsg) {
+				reactToMsg = !reactToMsg;
+			}
+
+			if (response instanceof Emoji) {
+				if (response.name === "✅" && ignToUse !== "") {
+					break;
+				}
+
+				if (response.name === "❌") {
+					await botMsg.delete().catch(e => { });
+					return;
+				}
+			}
+			else {
+				if (response === "TIME" || response === "CANCEL") {
+					await botMsg.delete().catch(e => { });
+					return;
+				}
+
+				
+			}
+		}
 	}
 
 	private getNoVerifiedRoleEmbed(msg: Message): MessageEmbed {
@@ -270,5 +362,70 @@ export class AdminProfileUpdaterCommand extends Command {
 			.setDescription("Your server does not have a Member role. As such, this command cannot be used.")
 			.setFooter("Process Canceled")
 			.setColor("RED");
+	}
+
+	private async getPerson(msg: Message, botMsg: Message, guildData: IRaidGuild): Promise<GuildMember | "CANCEL"> {
+		const guild: Guild = msg.guild as Guild;
+		let memberToGenerateProfileFor: GuildMember | undefined;
+
+		let reactToMsg: boolean = true;
+		while (true) {
+			const sb: StringBuilder = new StringBuilder()
+				.append(`You have currently selected: ${typeof memberToGenerateProfileFor === "undefined" ? "N/A" : memberToGenerateProfileFor}`)
+				.appendLine()
+				.appendLine()
+				.append("**DIRECTIONS:** To select a person, either mention him or her, type his or her ID, or type his or her in-game name. The person must be verified (either with the Suspended role or Verified Member role) in order for this to work.")
+				.appendLine()
+				.appendLine()
+				.append("**FINISHED?** React with the ✅ to use the member specified above. React with the ❌ to cancel this process completely.");
+
+			const embed: MessageEmbed = new MessageEmbed()
+				.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
+				.setTitle("**Select Member**")
+				.setFooter("Administrator: Profile Syncer")
+				.setDescription(sb.toString())
+
+			await botMsg.edit(embed).catch(e => { });
+
+			const response: string | Emoji | "CANCEL" | "TIME" = await new GenericMessageCollector<string>(
+				msg,
+				{ embed: embed },
+				2,
+				TimeUnit.MINUTE
+			).sendWithReactCollector(GenericMessageCollector.getStringPrompt(msg.channel), {
+				reactions: ["✅", "❌"],
+				cancelFlag: "-cancel",
+				reactToMsg: reactToMsg,
+				deleteMsg: false,
+				removeAllReactionAfterReact: false,
+				oldMsg: botMsg
+			});
+
+			if (reactToMsg) {
+				reactToMsg = !reactToMsg;
+			}
+
+			if (response instanceof Emoji) {
+				if (response.name === "✅" && typeof memberToGenerateProfileFor !== "undefined") {
+					return memberToGenerateProfileFor;
+				}
+
+				if (response.name === "❌") {
+					return "CANCEL";
+				}
+			}
+			else {
+				if (response === "TIME" || response === "CANCEL") {
+					return "CANCEL";
+				}
+
+				const resolvedMember: GuildMember | null = await UserHandler
+					.resolveMemberWithStr(response, guild, guildData);
+
+				if (resolvedMember !== null) {
+					memberToGenerateProfileFor = resolvedMember;
+				}
+			}
+		}
 	}
 }

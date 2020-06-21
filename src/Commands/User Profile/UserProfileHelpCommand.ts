@@ -48,7 +48,7 @@ export class UserProfileHelpCommand extends Command {
             .appendLine()
             .append("⇒ Remove Alternative Account")
             .appendLine()
-            .append("This command is currently not available.")
+            .append("This command is currently not available. Please contact an administrator for assistance.")
             .appendLine()
             .appendLine()
             .append("⇒ Switch Main & Alternative Accounts")

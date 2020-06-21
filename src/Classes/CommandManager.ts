@@ -31,11 +31,11 @@ import { ServerProfileHelpCommand } from "../Commands/Server Profile/ServerProfi
 import { UserProfileHelpCommand } from "../Commands/User Profile/UserProfileHelpCommand";
 import { ConfigurePrefixCommand } from "../Commands/Configuration/ConfigurePrefixCommand";
 import { ConfigureVerifSuccessCommand } from "../Commands/Configuration/ConfigureVerifSuccessCommand";
-import { LogRunsCommand } from "../Commands/Quota & Logging/LogRunsCommand";
-import { ResetQuotaCommand } from "../Commands/Quota & Logging/ResetQuotaCommand";
-import { CheckQuotaCommand } from "../Commands/Quota & Logging/CheckQuotaCommand";
+import { LogRunsCommand } from "../Commands/Logging/LogRunsCommand";
+import { ResetQuotaCommand } from "../Commands/Logging/ResetQuotaCommand";
+import { CheckQuotaCommand } from "../Commands/Logging/CheckQuotaCommand";
 import { UnverifyFromServerCommand } from "../Commands/Server Profile/UnverifyFromServerCommand";
-import { LogKeysCommand } from "../Commands/Quota & Logging/LogKeysCommand";
+import { LogPoppedKeysCommand } from "../Commands/Logging/LogPoppedKeysCommand";
 import { AdminProfileUpdaterCommand } from "../Commands/Bot Owner/AdminProfileUpdaterCommand";
 
 /**
@@ -132,7 +132,7 @@ export class CommandManager {
 			new LogRunsCommand(),
 			new ResetQuotaCommand(),
 			new CheckQuotaCommand(),
-			new LogKeysCommand()
+			new LogPoppedKeysCommand()
 		])
 
 		this.hasBeenLoaded = true;

@@ -8,7 +8,7 @@ import { MessageUtil } from "../../Utility/MessageUtil";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
 import { IRaidUser } from "../../Templates/IRaidUser";
 
-export class LogKeysCommand extends Command {
+export class LogPoppedKeysCommand extends Command {
 	public constructor() {
 		super(
 			new CommandDetail(

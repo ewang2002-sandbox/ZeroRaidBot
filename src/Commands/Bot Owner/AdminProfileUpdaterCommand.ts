@@ -74,6 +74,18 @@ export class AdminProfileUpdaterCommand extends Command {
 			this.forceSyncCmd(msg, botMsg, guildDb);
 			return;
 		}
+		else if (selectedReaction.name === "🔼") {
+			// TODO
+			return;
+		}
+		else if (selectedReaction.name === "🔽") {
+			// TODO
+			return;
+		}
+		else if (selectedReaction.name === "📩") {
+			// TODO
+			return;
+		}
 	}
 
 	private async forceSyncCmd(msg: Message, botMsg: Message, guildData: IRaidGuild): Promise<void> {
@@ -130,7 +142,7 @@ export class AdminProfileUpdaterCommand extends Command {
 			const memberToGiveProfileEmbed: MessageEmbed = new MessageEmbed()
 				.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 				.setTitle("Members With No Profile")
-				.setDescription("The members below are verified in this server but do not have a profile logged with the bot. The mention is shown first, along with any corresponding IGNs. The first IGN is the main IGN, and any other IGNs will be the alternative IGN.\n\n**DIRECTIONS:** The members shown below will have a profile created for them. Type the number corresponding to the member(s) that you do NOT want to have a profile created for.");
+				.setDescription("The members below are verified in this server but do not have a profile logged with the bot. The mention is shown first, along with any corresponding IGNs. The first IGN is the main IGN, and any other IGNs will be the alternative IGN.\n\n**DIRECTIONS:** The members shown below will have a profile created for them. Type the number corresponding to the member(s) that you do NOT want to have a profile created for.\n\n**FINISHED?** React with the ✅ to begin the syncing process. React with the ❌ to cancel this process completely.");
 
 			// TODO use the format here for other list-based embeds
 			let str: string = "";
@@ -245,6 +257,10 @@ export class AdminProfileUpdaterCommand extends Command {
 			.setTimestamp();
 		await botMsg.edit(finalEmbed);
 		await botMsg.delete({ timeout: 5000 }).catch(e => { });
+	}
+
+	private async addProfileCmd(msg: Message, botMsg: Message, guildData: IRaidGuild): Promise<void> {
+
 	}
 
 	private getNoVerifiedRoleEmbed(msg: Message): MessageEmbed {

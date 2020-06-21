@@ -1,4 +1,4 @@
-import { Message, MessageEmbed, ColorResolvable, MessageOptions, TextChannel, DMChannel, MessageAttachment, PartialTextBasedChannelFields } from "discord.js";
+import { Message, MessageEmbed, ColorResolvable, MessageOptions, MessageAttachment, PartialTextBasedChannelFields } from "discord.js";
 
 export namespace MessageUtil {
 	/**
@@ -37,6 +37,7 @@ export namespace MessageUtil {
 		| "ROLE_HIERARCHY_ERROR"
 		| "SAME_PERSON_AS_AUTHOR"
 		| "ROLE_IN_USE"
+		| "NO_DB_ENTRY_FOUND"
 		| "NO_MEMBER_FOUND";
 
 	type EmbedSettings = {
@@ -275,6 +276,11 @@ export namespace MessageUtil {
 			case ("NO_MEMBER_FOUND"): {
 				embed.setTitle("No Member Found");
 				embed.setDescription("I was unable to find the member you specified. Please ensure the mention, in-game name, or ID of the target member is correct.");
+				break;
+			}
+			case ("NO_DB_ENTRY_FOUND"): {
+				embed.setTitle("Database Entry Not Found!");
+				embed.setDescription("I could not find a database entry corresponding to your Discord ID or in-game name. Please try again.");
 				break;
 			}
 		}

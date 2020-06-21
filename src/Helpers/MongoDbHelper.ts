@@ -1,4 +1,4 @@
-import { MongoClient, Db, Collection, Cursor } from "mongodb";
+import { MongoClient, Collection, FilterQuery } from "mongodb";
 import { BotConfiguration } from "../Configuration/Config";
 import { IRaidUser } from "../Templates/IRaidUser";
 import { IRaidGuild } from "../Templates/IRaidGuild";
@@ -92,7 +92,7 @@ export module MongoDbHelper {
 		 * @returns {Promise<IRaidUser | null>} The data, if it exists; `null` otherwise.
 		 */
 		public static async getUserDbByDiscordId(id: string): Promise<IRaidUser | null> {
-			return new Promise((resolve, reject) => {
+			return new Promise((resolve) => {
 				MongoDbUserManager.MongoUserClient.findOne({ discordUserId: id }).then(x => {
 					resolve(x);
 				});
@@ -113,7 +113,7 @@ export module MongoDbHelper {
 			}
 
 			// make new data
-			return new Promise((resolve, reject) => {
+			return new Promise((resolve) => {
 				MongoDbUserManager.MongoUserClient.insertOne({
 					discordUserId: typeof userID === "undefined" ? "" : userID,
 					rotmgDisplayName: this._inGameName,
@@ -134,13 +134,12 @@ export module MongoDbHelper {
 			});
 		}
 
-
 		/**
 		 * Deletes any data linked to the in-game name from the DB.
 		 * @returns {Promise<number>} The amount of user data deleted.
 		 */
 		public async deleteUserDB(): Promise<number> {
-			return new Promise(async (resolve, reject) => {
+			return new Promise(async (resolve) => {
 				let data: IRaidUser[] = await this.getUserDB();
 
 				if (data.length === 0) {
@@ -164,7 +163,6 @@ export module MongoDbHelper {
 		private _guildID: string;
 		public static MongoGuildClient: Collection<IRaidGuild>;
 
-
 		/**
 		 * The constructor for this class.
 		 * @param {string} guildID The guild ID to manage. 
@@ -185,7 +183,7 @@ export module MongoDbHelper {
 				return data[0];
 			}
 
-			return new Promise((resolve, reject) => {
+			return new Promise((resolve) => {
 				MongoDbGuildManager.MongoGuildClient.insertOne({
 					guildID: this._guildID,
 					verification: {
@@ -292,7 +290,7 @@ export module MongoDbHelper {
  		* @returns {Promise<number>} The amount of guild data deleted.
  		*/
 		public async deleteGuildDB(): Promise<number> {
-			return new Promise((resolve, reject) => {
+			return new Promise((resolve) => {
 				MongoDbGuildManager.MongoGuildClient.deleteMany({ guildID: this._guildID }).then(x => {
 					if (typeof x.deletedCount !== "undefined" && x.deletedCount > 0) {
 						resolve(x.deletedCount);
@@ -309,5 +307,41 @@ export module MongoDbHelper {
 	export async function getBotSettingsDb(): Promise<IRaidBot> {
 		const bot: ClientUser = (Zero.RaidClient.user as ClientUser);
 		return await MongoBotSettingsClient.findOne({ botId: bot.id }) as IRaidBot;
+	}
+
+	/**
+	 * Checks to see whether the user has a profile or not.
+	 * @param id The ID of the user.
+	 * @param ign The IGN of the user.
+	 */
+	export async function userHasProfile(id?: string, ign?: string): Promise<boolean> {
+		const filterQuery: FilterQuery<IRaidUser> = {};
+		filterQuery.$or = [];
+
+		if (typeof id !== "undefined") {
+			filterQuery.$or.push({
+				discordUserId: id
+			});
+		}
+
+		if (typeof ign !== "undefined") {
+			filterQuery.$or.push(
+				{
+					rotmgLowercaseName: ign
+				},
+				{
+					"otherAccountNames.lowercase": ign
+				}
+			);
+		}
+
+		if (filterQuery.$or.length === 0) {
+			return false;
+		}
+
+		const searchResults: IRaidUser[] = await MongoDbUserManager.MongoUserClient
+			.find(filterQuery).toArray();
+
+		return searchResults.length > 0;
 	}
 }

@@ -1,7 +1,7 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, MessageEmbed } from "discord.js";
+import { Message, MessageEmbed, DMChannel } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { StringBuilder } from "../../Classes/String/StringBuilder";
 
@@ -35,6 +35,15 @@ export class ServerProfileHelpCommand extends Command {
         args: string[],
         guildDb: IRaidGuild
     ): Promise<void> {
+        let dmChannel: DMChannel;
+        try {
+            dmChannel = await msg.author.createDM();
+        }
+        catch (e) {
+            await msg.channel.send(`${msg.member}, I cannot DM you. Please make sure your privacy settings are set so anyone can send messages to you.`).catch(() => { });
+            return;
+        }
+        
         const embed: MessageEmbed = new MessageEmbed()
             .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
             .setTitle("Server Profile Help Command")
@@ -60,6 +69,6 @@ export class ServerProfileHelpCommand extends Command {
             .appendLine()
             .append("To unverify yourself from this server, use the `;serverunverify` command. You will no longer be able to manage your server profile for this server and your nickname will be reset.");
         embed.setDescription(commandSB.toString());
-        await msg.channel.send(embed).catch(e => { });
+        await dmChannel.send(embed).catch(e => { });
     }
 }

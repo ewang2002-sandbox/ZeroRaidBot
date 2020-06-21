@@ -1,4 +1,4 @@
-import { Message, MessageCollector, MessageEmbed, GuildMember, Guild, MessageReaction, User, ReactionCollector, TextChannel, EmbedFieldData, Collection, DMChannel, Role, GuildChannel, MessageManager, GuildMemberEditData } from "discord.js";
+import { Message, MessageCollector, MessageEmbed, GuildMember, Guild, MessageReaction, User, ReactionCollector, TextChannel, Collection, DMChannel, Role, GuildChannel } from "discord.js";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { IRaidUser } from "../Templates/IRaidUser";
 import { MessageAutoTick } from "../Classes/Message/MessageAutoTick";
@@ -10,7 +10,7 @@ import { Zero } from "../Zero";
 import { RealmEyeAPILink } from "../Constants/ConstantVars";
 import { StringBuilder } from "../Classes/String/StringBuilder";
 import { AxiosResponse } from "axios";
-import { FilterQuery, UpdateQuery, InsertOneWriteOpResult, WithId } from "mongodb";
+import { FilterQuery, InsertOneWriteOpResult, WithId } from "mongodb";
 import { ArrayUtil } from "../Utility/ArrayUtil";
 import { INameHistory, IAPIError } from "../Definitions/ICustomREVerification";
 import { TestCasesNameHistory } from "../TestCases/TestCases";
@@ -461,7 +461,7 @@ export module VerificationHandler {
 							}
 							descStr += "\n\nWould you like to appeal the decision with a staff member? Unreact and react with ✅ to appeal with a staff member; otherwise, react with ❌.";
 
-							const wantsToBeManuallyVerified: boolean | "TIME" = await new Promise(async (resolve, reject) => {
+							const wantsToBeManuallyVerified: boolean | "TIME" = await new Promise(async (resolve) => {
 								const failedAppealEmbed: MessageEmbed = new MessageEmbed(failedEmbed)
 									.addField("Consider the Following", "⇒ This process may take up to one day.\n⇒ You will not be able to verify while your profile is being reviewed.\n⇒ You are NOT guaranteed to be verified.")
 									.setDescription(descStr)
@@ -659,7 +659,7 @@ export module VerificationHandler {
 						}
 						descStr += "\n\nWould you like to appeal the decision with a staff member? Unreact and react with ✅ to appeal with a staff member; otherwise, react with ❌.";
 
-						const wantsToBeManuallyVerified: boolean | "TIME" = await new Promise(async (resolve, reject) => {
+						const wantsToBeManuallyVerified: boolean | "TIME" = await new Promise(async (resolve) => {
 							const failedAppealEmbed: MessageEmbed = new MessageEmbed(failedEmbed)
 								.setDescription(descStr)
 								.addField("Consider the Following", "⇒ This process may take up to one day.\n⇒ You will not be able to verify while your profile is being reviewed.\n⇒ You are NOT guaranteed to be verified.")
@@ -1290,8 +1290,8 @@ export module VerificationHandler {
 			.setFooter(member.id)
 			.setTimestamp();
 		const m: Message = await manualVerificationChannel.send(manualVerifEmbed);
-		await m.react("☑️").catch(e => { });
-		await m.react("❌").catch(e => { });
+		await m.react("☑️").catch(() => { });
+		await m.react("❌").catch(() => { });
 
 		const filterQuery: FilterQuery<IRaidGuild> = section.isMain
 			? { guildID: guild.id }
@@ -1348,9 +1348,9 @@ export module VerificationHandler {
 					continue;
 				}
 
-				for (const [id, role] of res.roles.cache) {
-					await res.roles.remove(role).catch(e => { });
-					await res.setNickname("").catch(e => { });
+				for (const [, role] of res.roles.cache) {
+					await res.roles.remove(role).catch(() => { });
+					await res.setNickname("").catch(() => { });
 				}
 			}
 		}
@@ -1374,7 +1374,7 @@ export module VerificationHandler {
 		const guild: Guild = manualVerifMember.guild;
 		let loggingMsg: string = `✅ **\`[${sectionForManualVerif.nameOfSection}]\`** ${manualVerifMember} has been manually verified as \`${manualVerificationProfile.inGameName}\`. This manual verification was done by ${responsibleMember} (${responsibleMember.displayName})`;
 
-		await manualVerifMember.roles.add(sectionForManualVerif.verifiedRole).catch(e => { });
+		await manualVerifMember.roles.add(sectionForManualVerif.verifiedRole).catch(() => { });
 		await VerificationHandler.findOtherUserAndRemoveVerifiedRole(
 			responsibleMember,
 			guild,
@@ -1385,7 +1385,7 @@ export module VerificationHandler {
 			await manualVerifMember.setNickname(manualVerifMember.user.username === manualVerificationProfile.inGameName
 				? `${manualVerificationProfile.inGameName}.`
 				: manualVerificationProfile.inGameName
-			).catch(e => { });
+			).catch(() => { });
 			await VerificationHandler.accountInDatabase(
 				manualVerifMember,
 				manualVerificationProfile.inGameName,
@@ -1397,7 +1397,7 @@ export module VerificationHandler {
 				.setDescription(guildDb.properties.successfulVerificationMessage.length === 0 ? "You have been successfully verified. Please make sure you read the rules posted in the server, if any, and any other regulations/guidelines. Good luck and have fun!" : guildDb.properties.successfulVerificationMessage)
 				.setColor("GREEN")
 				.setFooter("Verification Process: Stopped.");
-			await manualVerifMember.send(successEmbed).catch(e => { });
+			await manualVerifMember.send(successEmbed).catch(() => { });
 		}
 		else {
 			await manualVerifMember.send(`**\`[${guild.name}]\`** You have successfully been verified in the **\`${sectionForManualVerif.nameOfSection}\`** section!`).catch(() => { });
@@ -1448,7 +1448,7 @@ export module VerificationHandler {
 		const verificationLoggingChannel: TextChannel | undefined = guild.channels.cache
 			.get(sectionForManualVerif.channels.logging.verificationSuccessChannel) as TextChannel | undefined;
 		if (typeof verificationLoggingChannel !== "undefined") {
-			await verificationLoggingChannel.send(logging).catch(e => { });
+			await verificationLoggingChannel.send(logging).catch(() => { });
 		}
 
 		const filterQuery: FilterQuery<IRaidGuild> = sectionForManualVerif.isMain

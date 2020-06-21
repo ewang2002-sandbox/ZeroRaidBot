@@ -1,7 +1,7 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, ClientUser, MessageEmbed, Guild, Role } from "discord.js";
+import { Message, ClientUser, MessageEmbed, Guild } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { IRaidBot } from "../../Templates/IRaidBot";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
@@ -9,7 +9,6 @@ import { INetworkBlacklistedUser, IBlacklistedUser } from "../../Definitions/IBl
 import { StringBuilder } from "../../Classes/String/StringBuilder";
 import { IRaidUser } from "../../Templates/IRaidUser";
 import { DateUtil } from "../../Utility/DateUtil";
-import { StringUtil } from "../../Utility/StringUtil";
 
 export class CheckBlacklistCommand extends Command {
 	public constructor() {
@@ -207,6 +206,6 @@ export class CheckBlacklistCommand extends Command {
 		}
 
 		embed.setFooter(`Servers Checked: ${guildsChecked}`);
-		await msg.channel.send(embed).catch(e => { });
+		await msg.channel.send(embed).catch(() => { });
 	}
 }

@@ -1,7 +1,6 @@
 // TODO
 // - implement key tier role
 // - prevent duplicate/invalid entries (especially with afk check/control panel)
-// - configure quota channel
 
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";

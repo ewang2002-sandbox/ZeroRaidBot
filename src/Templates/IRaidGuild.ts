@@ -3,7 +3,6 @@ import { IBlacklistedUser } from "../Definitions/IBlacklistedUser";
 import { IModMail } from "../Definitions/IModMail";
 import { ISection } from "./ISection";
 import { IVerification } from "../Definitions/IVerification";
-import { IPunishment } from "../Definitions/IPunishment";
 import { IHeadCountInfo } from "../Definitions/IHeadCountInfo";
 import { IMutedData, ISuspendedData } from "../Definitions/IPunishmentObject";
 import { IManualVerification } from "../Definitions/IManualVerification";

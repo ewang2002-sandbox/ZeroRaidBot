@@ -1,4 +1,4 @@
-import { Collection, VoiceChannel, Message, EmojiResolvable, GuildMember } from "discord.js";
+import { Collection, VoiceChannel, Message, GuildMember } from "discord.js";
 import { Command } from "../Templates/Command/Command";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { ISection } from "../Templates/ISection";
@@ -29,7 +29,7 @@ export module OtherUtil {
      * @param {number} ms The time to wait, in milliseconds. 
      */
     export async function waitFor(ms: number): Promise<void> {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             setTimeout(() => {
                 resolve();
             }, ms);

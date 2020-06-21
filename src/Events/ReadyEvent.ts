@@ -84,7 +84,7 @@ async function mongoPreloader(): Promise<void> {
 	/*
 	await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateMany({}, {
 		$set: {
-			//"generalChannels.quotaChannel": "",
+			"generalChannels.quotaChannel": "",
 			"properties.quotas": {
 				quotaDetails: [],
 				quotaMessage: "",

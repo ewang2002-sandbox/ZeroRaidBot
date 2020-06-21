@@ -1,4 +1,4 @@
-import { Client, Message, MessageReaction, User, PartialUser, GuildMember, PartialGuildMember, Guild, TextChannel, ClientUser } from "discord.js";
+import { Client, Message, MessageReaction, User, PartialUser, GuildMember, PartialGuildMember, Guild, ClientUser } from "discord.js";
 import { MongoDbHelper } from "./Helpers/MongoDbHelper";
 import { CommandManager } from "./Classes/CommandManager";
 import axios, { AxiosInstance } from "axios";
@@ -9,8 +9,6 @@ import { onMessageReactionRemove } from "./Events/MessageReactionRemoveEvent";
 import { onGuildMemberAdd } from "./Events/GuildMemberAddEvent";
 import { onGuildCreate } from "./Events/GuildCreateEvent";
 import { onGuildMemberUpdate } from "./Events/GuildMemberUpdate";
-import { Collection } from "mongodb";
-import { IRaidBot } from "./Templates/IRaidBot";
 import { onError } from "./Events/ErrorEvent";
 
 export class Zero {

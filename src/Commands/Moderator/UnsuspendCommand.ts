@@ -3,7 +3,6 @@ import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
 import { Message, Guild, GuildMember, Role, MessageEmbed, TextChannel } from "discord.js";
 import { MessageUtil } from "../../Utility/MessageUtil";
-import { StringUtil } from "../../Utility/StringUtil";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
 import { UserHandler } from "../../Helpers/UserHandler";
@@ -88,8 +87,8 @@ export class UnsuspendCommand extends Command {
         args.shift();
         let reason: string = args.join(" ").trim().length === 0 ? "No reason provided" : args.join(" ").trim();
 
-        await memberToUnsuspend.roles.remove(role).catch(e => { });
-        await memberToUnsuspend.roles.set(suspensionData.roles).catch(e => { });
+        await memberToUnsuspend.roles.remove(role).catch(() => { });
+        await memberToUnsuspend.roles.set(suspensionData.roles).catch(() => { });
         await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
             $pull: {
                 "moderation.suspended": {
@@ -97,8 +96,8 @@ export class UnsuspendCommand extends Command {
                 }
             }
         });
-        await MessageUtil.send({ content: `${memberToUnsuspend} has been unsuspended successfully.` }, msg.channel).catch(e => { });
-        await memberToUnsuspend.send(`**\`[${guild.name}]\`** You have been unsuspended from \`${guild.name}\` for the following reason: ${reason}\nThank you for your cooperation and please make sure you read the rules again.`).catch(e => { });
+        await MessageUtil.send({ content: `${memberToUnsuspend} has been unsuspended successfully.` }, msg.channel).catch(() => { });
+        await memberToUnsuspend.send(`**\`[${guild.name}]\`** You have been unsuspended from \`${guild.name}\` for the following reason: ${reason}\nThank you for your cooperation and please make sure you read the rules again.`).catch(() => { });
 
 		const suspensionChannel: TextChannel | undefined = guild.channels.cache.get(guildDb.generalChannels.logging.suspensionLogs) as TextChannel | undefined;
 
@@ -110,7 +109,7 @@ export class UnsuspendCommand extends Command {
             .setTimestamp()
             .setFooter("Unsuspended Command Executed At");
         if (typeof suspensionChannel !== "undefined") {
-            await suspensionChannel.send(embed).catch(e => { });
+            await suspensionChannel.send(embed).catch(() => { });
         }
     }
 }

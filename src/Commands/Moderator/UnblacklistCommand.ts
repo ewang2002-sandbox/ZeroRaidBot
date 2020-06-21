@@ -1,14 +1,11 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, Guild, GuildMember, Role, MessageEmbed, TextChannel, User } from "discord.js";
+import { Message, Guild, GuildMember, MessageEmbed, TextChannel, User } from "discord.js";
 import { MessageUtil } from "../../Utility/MessageUtil";
-import { StringUtil } from "../../Utility/StringUtil";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
-import { UserHandler } from "../../Helpers/UserHandler";
 import { StringBuilder } from "../../Classes/String/StringBuilder";
-import { IRaidUser } from "../../Templates/IRaidUser";
 
 export class UnblacklistCommand extends Command {
     public constructor() {
@@ -41,7 +38,6 @@ export class UnblacklistCommand extends Command {
         guildDb: IRaidGuild
     ): Promise<void> {
         const guild: Guild = msg.guild as Guild;
-        const mod: GuildMember = msg.member as GuildMember;
 
         let nameToUnblacklist: string = args[0];
 		const reason: string = args.pop() as string; // there will always be at least 2 elements
@@ -71,7 +67,7 @@ export class UnblacklistCommand extends Command {
         for (const [id, user] of (await guild.fetchBans())) {
             // TODO can <ban>.reason be undefined/null if no reason is inputted? 
             if (user.reason.split("|")[0].trim().toLowerCase() === nameToUnblacklist.toLowerCase()) {
-                await guild.members.unban(id, "Unblacklisted.").catch(e => { });
+                await guild.members.unban(id, "Unblacklisted.").catch(() => { });
                 userToUnban = user.user;
                 desc.append("⇒ The Discord account associated with this member has been unbanned from the server.")
                     .appendLine();
@@ -97,10 +93,10 @@ export class UnblacklistCommand extends Command {
         else {
             embed.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string);
         }
-        await MessageUtil.send(embed, msg.channel).catch(e => { });
+        await MessageUtil.send(embed, msg.channel).catch(() => { });
 
         if (typeof moderationChannel !== "undefined") {
-            await moderationChannel.send(embed).catch(e => { });
+            await moderationChannel.send(embed).catch(() => { });
         }
     }
 }

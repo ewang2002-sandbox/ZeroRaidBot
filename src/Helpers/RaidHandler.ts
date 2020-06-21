@@ -20,7 +20,6 @@ import { MessageAutoTick } from "../Classes/Message/MessageAutoTick";
 import { NumberUtil } from "../Utility/NumberUtil";
 import { MongoDbHelper } from "./MongoDbHelper";
 import { StringBuilder } from "../Classes/String/StringBuilder";
-import { OtherUtil } from "../Utility/OtherUtil";
 import { FilterQuery } from "mongodb";
 import { IRaidUser } from "../Templates/IRaidUser";
 import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuManager";

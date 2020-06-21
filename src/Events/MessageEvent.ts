@@ -3,12 +3,9 @@ import { IRaidGuild } from "../Templates/IRaidGuild";
 import { DefaultPrefix, BotConfiguration } from "../Configuration/Config";
 import { Command } from "../Templates/Command/Command";
 import { Zero } from "../Zero";
-import { RoleNames } from "../Definitions/Types";
 import { StringUtil } from "../Utility/StringUtil";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
 import { MessageUtil } from "../Utility/MessageUtil";
-import { ISection } from "../Templates/ISection";
-import { GuildUtil } from "../Utility/GuildUtil";
 import { OtherUtil } from "../Utility/OtherUtil";
 
 export async function onMessageEvent(msg: Message): Promise<void> {
@@ -102,7 +99,6 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 	// if this command is executed in the server. 
 	if (msg.guild !== null) {
 		// because this is a guild, we have the following vars as NOT null
-		let member: GuildMember = msg.member as GuildMember;
 		guildHandler = guildHandler as IRaidGuild;
 
 		if (command.isServerOwnerOnly() && msg.author.id !== msg.guild.ownerID) {

@@ -5,7 +5,6 @@ import { Message, TextChannel, MessageEmbed, GuildMember } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { ArrayUtil } from "../../Utility/ArrayUtil";
-import { StringUtil } from "../../Utility/StringUtil";
 
 export class PollCommand extends Command {
 

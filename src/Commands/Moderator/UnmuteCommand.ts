@@ -3,7 +3,6 @@ import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
 import { Message, Guild, GuildMember, Role, MessageEmbed, TextChannel } from "discord.js";
 import { MessageUtil } from "../../Utility/MessageUtil";
-import { StringUtil } from "../../Utility/StringUtil";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
 import { UserHandler } from "../../Helpers/UserHandler";
@@ -71,7 +70,7 @@ export class UnmuteCommand extends Command {
         args.shift();
         let reason: string = args.join(" ").trim().length === 0 ? "No reason provided" : args.join(" ").trim();
 
-        await memberToUnmute.roles.remove(role).catch(e => { });
+        await memberToUnmute.roles.remove(role).catch(() => { });
         await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
             $pull: {
                 "moderation.mutedUsers": {
@@ -81,7 +80,7 @@ export class UnmuteCommand extends Command {
         });
 
         const moderationChannel: TextChannel | undefined = guild.channels.cache.get(guildDb.generalChannels.logging.moderationLogs) as TextChannel | undefined;
-        await MessageUtil.send({ content: `${memberToUnmute} has been unmuted successfully.` }, msg.channel).catch(e => { });
+        await MessageUtil.send({ content: `${memberToUnmute} has been unmuted successfully.` }, msg.channel).catch(() => { });
 
         const embed: MessageEmbed = new MessageEmbed()
             .setAuthor(memberToUnmute.user.tag, memberToUnmute.user.displayAvatarURL())
@@ -91,7 +90,7 @@ export class UnmuteCommand extends Command {
             .setTimestamp()
             .setFooter("Unmute Command Executed At");
         if (typeof moderationChannel !== "undefined") {
-            await moderationChannel.send(embed).catch(e => { });
+            await moderationChannel.send(embed).catch(() => { });
         }
     }
 }

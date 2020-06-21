@@ -1,7 +1,7 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, MessageEmbed, MessageCollector, MessageReaction, User, ReactionCollector, Collection, DMChannel, Guild, GuildMember } from "discord.js";
+import { Message, MessageEmbed, MessageReaction, User, ReactionCollector, DMChannel, Guild, GuildMember } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { IRaidUser } from "../../Templates/IRaidUser";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
@@ -17,9 +17,7 @@ import { FilterQuery } from "mongodb";
 import { StringBuilder } from "../../Classes/String/StringBuilder";
 import { IRealmEyeNoUser } from "../../Definitions/IRealmEyeNoUser";
 import { IRealmEyeAPI } from "../../Definitions/IRealmEyeAPI";
-import { TestCasesNameHistory } from "../../TestCases/TestCases";
 import { ArrayUtil } from "../../Utility/ArrayUtil";
-import { request } from "http";
 
 export class AddAltAccountCommand extends Command {
 	public static readonly MAX_ALTS_ALLOWED: number = 10;

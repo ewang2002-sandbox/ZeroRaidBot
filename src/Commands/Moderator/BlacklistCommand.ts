@@ -1,13 +1,11 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, GuildMember, Guild, MessageEmbed, Collection, Role, TextChannel } from "discord.js";
+import { Message, GuildMember, Guild, MessageEmbed, TextChannel } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
-import { StringUtil } from "../../Utility/StringUtil";
 import { UserHandler } from "../../Helpers/UserHandler";
-import { IRaidUser } from "../../Templates/IRaidUser";
 import { StringBuilder } from "../../Classes/String/StringBuilder";
 
 export class BlacklistCommand extends Command {
@@ -153,11 +151,11 @@ export class BlacklistCommand extends Command {
 
 		if (memberToBlacklist !== null) {
 			if (!silent) {
-				await memberToBlacklist.send(`**\`[${guild.name}]\`** You have been blacklisted from the server for the following reason: ${reason}`).catch(e => { });
+				await memberToBlacklist.send(`**\`[${guild.name}]\`** You have been blacklisted from the server for the following reason: ${reason}`).catch(() => { });
 			}
 			await memberToBlacklist.ban({
 				reason: `${nameToBlacklist} | ${reason}`
-			}).catch(e => { });
+			}).catch(() => { });
 			desc.append(`⇒ Banned: ${memberToBlacklist} (ID: ${memberToBlacklist.displayName})`)
 				.appendLine();
 		}
@@ -185,6 +183,6 @@ export class BlacklistCommand extends Command {
 		else {
 			embed.setAuthor(memberToBlacklist.user.tag, memberToBlacklist.user.displayAvatarURL());
 		}
-		await moderationChannel.send(embed).catch(e => { });
+		await moderationChannel.send(embed).catch(() => { });
 	}
 }

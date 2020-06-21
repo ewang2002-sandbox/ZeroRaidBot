@@ -1,11 +1,10 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, GuildMember, Guild, MessageEmbed, Collection, Role, TextChannel } from "discord.js";
+import { Message, GuildMember, Guild, MessageEmbed, Role, TextChannel } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
-import { StringUtil } from "../../Utility/StringUtil";
 import { UserHandler } from "../../Helpers/UserHandler";
 
 export class MuteCommand extends Command {
@@ -133,7 +132,7 @@ export class MuteCommand extends Command {
 			return;
 		}
 
-		await MessageUtil.send({ content: `${memberToMute} has been muted successfully.` }, msg.channel).catch(e => { });
+		await MessageUtil.send({ content: `${memberToMute} has been muted successfully.` }, msg.channel).catch(() => { });
 
 		const embed: MessageEmbed = new MessageEmbed()
 			.setAuthor(memberToMute.user.tag, memberToMute.user.displayAvatarURL())
@@ -143,10 +142,10 @@ export class MuteCommand extends Command {
 			.setTimestamp()
 			.setFooter("Mute Command Executed At");
 		if (typeof moderationChannel !== "undefined") {
-			await moderationChannel.send(embed).catch(e => { });
+			await moderationChannel.send(embed).catch(() => { });
 		}
 
-		for await (const [id, channel] of guild.channels.cache) {
+		for await (const [, channel] of guild.channels.cache) {
 			if (channel.permissionOverwrites.has(resolvedMutedRole.id)) {
 				continue;
 			}
@@ -156,7 +155,7 @@ export class MuteCommand extends Command {
 				CONNECT: false, // can't connect to vc.
 				SPEAK: false, // can't speak in vc (if they can connect).
 				MANAGE_CHANNELS: false // can't manage channel (so they can't just bypass).
-			}, "Muting user.").catch(e => { });
+			}, "Muting user.").catch(() => { });
 		}
 
 		await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
@@ -197,7 +196,7 @@ export class MuteCommand extends Command {
 
 		const to: NodeJS.Timeout = setTimeout(async () => {
 			if (memberToMute.roles.cache.has(mutedRole.id)) {
-				await memberToMute.roles.remove(mutedRole).catch(e => { });
+				await memberToMute.roles.remove(mutedRole).catch(() => { });
 				const embed: MessageEmbed = new MessageEmbed()
 					.setAuthor(memberToMute.user.tag, memberToMute.user.displayAvatarURL())
 					.setTitle("🔈 Member Unmuted")
@@ -206,7 +205,7 @@ export class MuteCommand extends Command {
 					.setTimestamp()
 					.setFooter("Unmuted At");
 				if (typeof moderationChannel !== "undefined") {
-					await moderationChannel.send(embed).catch(e => { });
+					await moderationChannel.send(embed).catch(() => { });
 				}
 			}
 			// run just in case the person's role was taken off manually

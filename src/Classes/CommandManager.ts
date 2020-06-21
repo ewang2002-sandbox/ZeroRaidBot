@@ -34,6 +34,8 @@ import { ConfigureVerifSuccessCommand } from "../Commands/Configuration/Configur
 import { LogRunsCommand } from "../Commands/Quota & Logging/LogRunsCommand";
 import { ResetQuotaCommand } from "../Commands/Quota & Logging/ResetQuotaCommand";
 import { CheckQuotaCommand } from "../Commands/Quota & Logging/CheckQuotaCommand";
+import { UnverifyFromServerCommand } from "../Commands/Server Profile/UnverifyFromServerCommand";
+import { LogKeysCommand } from "../Commands/Quota & Logging/LogKeysCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -116,7 +118,8 @@ export class CommandManager {
 			new ViewServerProfileCommand(),
 			new AddToNicknameCommand(),
 			new RemoveFromNicknameCommand(),
-			new ServerProfileHelpCommand()
+			new ServerProfileHelpCommand(),
+			new UnverifyFromServerCommand()
 		]);
 
 		this.commands.set("Bot Owner", [
@@ -126,7 +129,8 @@ export class CommandManager {
 		this.commands.set("Quota & Logging", [
 			new LogRunsCommand(),
 			new ResetQuotaCommand(),
-			new CheckQuotaCommand()
+			new CheckQuotaCommand(),
+			new LogKeysCommand()
 		])
 
 		this.hasBeenLoaded = true;

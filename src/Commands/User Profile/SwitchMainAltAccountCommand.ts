@@ -83,7 +83,7 @@ export class SwitchMainAltAccountCommand extends Command {
             embed.addField(`Alternative Accounts`, StringUtil.applyCodeBlocks(str));
         }
 
-        const num: number | "TIME" | "CANCEL" = await new GenericMessageCollector<number>(
+        const num: number | "TIME_CMD" | "CANCEL_CMD" = await new GenericMessageCollector<number>(
             msg.author,
             { embed: embed },
             2,
@@ -91,7 +91,7 @@ export class SwitchMainAltAccountCommand extends Command {
             dmChannel
         ).send(GenericMessageCollector.getNumber(dmChannel, 1, userDb.otherAccountNames.length));
 
-        if (num === "CANCEL" || num === "TIME") {
+        if (num === "CANCEL_CMD" || num === "TIME_CMD") {
             return;
         }
 

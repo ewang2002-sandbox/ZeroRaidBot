@@ -52,9 +52,9 @@ export class FastReactionMenuManager {
      * Reacts to the message and starts a ReactionCollector.
      * @param {number} [delay = 1000] The delay between reactions. Minimum is 500.
      * @param {boolean} [clearReactsAfter = true] Whether to clear the reactions after the designated person reacts.
-     * @returns Either the resolved emoji that has been reacted to, or "TIME" if time has been reached.
+     * @returns Either the resolved emoji that has been reacted to, or "TIME_CMD" if time has been reached.
      */
-    public react(delay: number = 500, clearReactsAfter: boolean = true): Promise<GuildEmoji | ReactionEmoji | "TIME"> {
+    public react(delay: number = 500, clearReactsAfter: boolean = true): Promise<GuildEmoji | ReactionEmoji | "TIME_CMD"> {
         if (delay < 500) {
             delay = 500;
         }
@@ -94,7 +94,7 @@ export class FastReactionMenuManager {
                 }
 
                 if (reason === "time") {
-                    return resolve("TIME");
+                    return resolve("TIME_CMD");
                 }
             });
         });
@@ -152,7 +152,7 @@ export class FastReactionMenuManager {
         targetAuthor: User | GuildMember, 
         reactions: EmojiResolvable[],
         time: number = 2 * 60 * 1000
-    ): Promise<GuildEmoji | ReactionEmoji | "TIME"> {
+    ): Promise<GuildEmoji | ReactionEmoji | "TIME_CMD"> {
         return new Promise(async (resolve, reject) => {
             const reactionCollector: ((r: MessageReaction, u: User) => boolean) = (reaction: MessageReaction, user: User): boolean => {
                 return reactions.includes(reaction.emoji.name) && user.id === targetAuthor.id;
@@ -170,7 +170,7 @@ export class FastReactionMenuManager {
             reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
                 await botMessage.reactions.removeAll().catch(e => { });
                 if (reason === "time") {
-                    return resolve("TIME");
+                    return resolve("TIME_CMD");
                 }
             });
         });

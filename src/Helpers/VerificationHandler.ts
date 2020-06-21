@@ -144,7 +144,7 @@ export module VerificationHandler {
 						.setFooter("⏳ Time Remaining: 2 Minutes and 0 Seconds.")
 						.setColor("RANDOM");
 
-					const choice: boolean | "CANCEL" | "TIME" = await new Promise(async (resolve) => {
+					const choice: boolean | "CANCEL_CMD" | "TIME_CMD" = await new Promise(async (resolve) => {
 						botMsg = await botMsg.edit(hasNameEmbed);
 						const mc1: MessageAutoTick = new MessageAutoTick(
 							botMsg,
@@ -161,14 +161,14 @@ export module VerificationHandler {
 						msgCollector.on("end", (collected: Collection<string, Message>, reason: string) => {
 							mc1.disableAutoTick();
 							if (reason === "time") {
-								return resolve("TIME");
+								return resolve("TIME_CMD");
 							}
 						});
 
 						msgCollector.on("collect", async (respMsg: Message) => {
 							if (respMsg.content.toLowerCase() === "cancel") {
 								msgCollector.stop();
-								return resolve("CANCEL");
+								return resolve("CANCEL_CMD");
 							}
 
 							if (["yes", "ye", "y"].includes(respMsg.content.toLowerCase())) {
@@ -183,7 +183,7 @@ export module VerificationHandler {
 						});
 					});
 
-					if (choice === "TIME" || choice === "CANCEL") {
+					if (choice === "TIME_CMD" || choice === "CANCEL_CMD") {
 						await botMsg.delete().catch(() => { });
 						return;
 					}
@@ -461,7 +461,7 @@ export module VerificationHandler {
 							}
 							descStr += "\n\nWould you like to appeal the decision with a staff member? Unreact and react with ✅ to appeal with a staff member; otherwise, react with ❌.";
 
-							const wantsToBeManuallyVerified: boolean | "TIME" = await new Promise(async (resolve) => {
+							const wantsToBeManuallyVerified: boolean | "TIME_CMD" = await new Promise(async (resolve) => {
 								const failedAppealEmbed: MessageEmbed = new MessageEmbed(failedEmbed)
 									.addField("Consider the Following", "⇒ This process may take up to one day.\n⇒ You will not be able to verify while your profile is being reviewed.\n⇒ You are NOT guaranteed to be verified.")
 									.setDescription(descStr)
@@ -487,7 +487,7 @@ export module VerificationHandler {
 								reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
 									mcd.disableAutoTick();
 									if (reason === "time") {
-										return resolve("TIME");
+										return resolve("TIME_CMD");
 									}
 								});
 
@@ -502,7 +502,7 @@ export module VerificationHandler {
 								});
 							});
 
-							if (wantsToBeManuallyVerified === "TIME") {
+							if (wantsToBeManuallyVerified === "TIME_CMD") {
 								if (typeof verificationAttemptsChannel !== "undefined") {
 									verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member}'s verification process has been canceled.\n\t⇒ Reason: TIME`).catch(() => { });
 								}
@@ -659,7 +659,7 @@ export module VerificationHandler {
 						}
 						descStr += "\n\nWould you like to appeal the decision with a staff member? Unreact and react with ✅ to appeal with a staff member; otherwise, react with ❌.";
 
-						const wantsToBeManuallyVerified: boolean | "TIME" = await new Promise(async (resolve) => {
+						const wantsToBeManuallyVerified: boolean | "TIME_CMD" = await new Promise(async (resolve) => {
 							const failedAppealEmbed: MessageEmbed = new MessageEmbed(failedEmbed)
 								.setDescription(descStr)
 								.addField("Consider the Following", "⇒ This process may take up to one day.\n⇒ You will not be able to verify while your profile is being reviewed.\n⇒ You are NOT guaranteed to be verified.")
@@ -685,7 +685,7 @@ export module VerificationHandler {
 							reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
 								mcd.disableAutoTick();
 								if (reason === "time") {
-									return resolve("TIME");
+									return resolve("TIME_CMD");
 								}
 							});
 
@@ -700,7 +700,7 @@ export module VerificationHandler {
 							});
 						});
 
-						if (wantsToBeManuallyVerified === "TIME") {
+						if (wantsToBeManuallyVerified === "TIME_CMD") {
 							if (typeof verificationAttemptsChannel !== "undefined") {
 								verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member}'s verification process has been canceled.\n\t⇒ Reason: TIME`).catch(() => { });
 							}

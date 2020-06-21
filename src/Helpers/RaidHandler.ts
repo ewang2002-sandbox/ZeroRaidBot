@@ -167,7 +167,7 @@ export module RaidHandler {
 			TimeUnit.MINUTE
 		);
 
-		const result: number | "CANCEL" | "TIME" = await collector.send(
+		const result: number | "CANCEL_CMD" | "TIME_CMD" = await collector.send(
 			async (collectedMsg: Message): Promise<number | void> => {
 				const num: number = Number.parseInt(collectedMsg.content);
 				if (Number.isNaN(num)) {
@@ -184,7 +184,7 @@ export module RaidHandler {
 			}
 		);
 
-		if (result === "CANCEL" || result === "TIME") {
+		if (result === "CANCEL_CMD" || result === "TIME_CMD") {
 			return;
 		}
 
@@ -212,7 +212,7 @@ export module RaidHandler {
 				.setColor("RANDOM")
 				.setFooter(guild.name);
 			const receiptEmbed: Message = await member.send(embed);
-			const isApproved: { r: boolean, m: GuildMember } | "TIME" = await new Promise(async (resolve) => {
+			const isApproved: { r: boolean, m: GuildMember } | "TIME_CMD" = await new Promise(async (resolve) => {
 				const resultEmbed: MessageEmbed = new MessageEmbed() // to edit w/ 
 					.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 					.addField("Selected Dungeon", StringUtil.applyCodeBlocks(SELECTED_DUNGEON.dungeonName), true)
@@ -256,7 +256,7 @@ export module RaidHandler {
 							.setTitle("⏰ Trial Leader Raid Request Expired")
 							.setDescription(`The raid request sent by ${member} (${member.displayName}) has expired.`);
 						requestChanMessage.edit(resultEmbed).catch(() => { });
-						return resolve("TIME");
+						return resolve("TIME_CMD");
 					}
 				});
 
@@ -300,7 +300,7 @@ export module RaidHandler {
 				});
 			});
 
-			if (isApproved === "TIME") {
+			if (isApproved === "TIME_CMD") {
 				responseRequesterEmbed
 					.setTitle("⏰ Raid Request Expired")
 					.setDescription("Your raid request has expired. Try to see if a raid leader or head raid leader is willing to approve your next raid request first before you send one! Your raid request details are below.")
@@ -1569,7 +1569,7 @@ export module RaidHandler {
 
 		// we want the user to decide what section he/she wants to run, if any 
 		if (guildDb.sections.length > 0) {
-			let responseToSection: TextChannel | "TIME" | "CANCEL" = await new Promise(async (resolve) => {
+			let responseToSection: TextChannel | "TIME_CMD" | "CANCEL_CMD" = await new Promise(async (resolve) => {
 				let min: number = 1;
 				let max: number = min;
 
@@ -1617,7 +1617,7 @@ export module RaidHandler {
 					TimeUnit.MINUTE
 				);
 
-				const response: number | "CANCEL" | "TIME" = await gmc.send(
+				const response: number | "CANCEL_CMD" | "TIME_CMD" = await gmc.send(
 					async (collectedMsg: Message): Promise<number | void> => {
 						const num: number = Number.parseInt(collectedMsg.content);
 						if (Number.isNaN(num)) {
@@ -1642,7 +1642,7 @@ export module RaidHandler {
 				resolve(response);
 			}); // end of promise 
 
-			if (responseToSection === "TIME" || responseToSection === "CANCEL") {
+			if (responseToSection === "TIME_CMD" || responseToSection === "CANCEL_CMD") {
 				return "ERROR";
 			}
 

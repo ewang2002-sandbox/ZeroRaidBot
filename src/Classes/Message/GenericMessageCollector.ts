@@ -5,7 +5,7 @@ import { FastReactionMenuManager } from "../Reaction/FastReactionMenuManager";
 
 type IGenericMsgCollectorArguments = {
 	/**
-	 * The cancel flag. Any message with the cancel flag as its content will force the method to return "CANCEL"
+	 * The cancel flag. Any message with the cancel flag as its content will force the method to return "CANCEL_CMD"
 	 * @default "cancel"
 	 */
 	cancelFlag?: string;
@@ -145,7 +145,7 @@ export class GenericMessageCollector<T> {
 	 * @param {boolean} [deleteMsg = false] Whether to delete the bot message after the reaction collector expires.
 	 * @param {string} [cancelFlag = "cancel"] The string content that will result in the cancellation of the event.
 	 * @param {boolean} [deleteResponseMessages = true] Whether to delete the person's message after he/she responds.
-	 * @returns {Promise<T | "CANCEL" | "TIME">} The resolved object, or one of two flags: "CANCEL" if the user canceled their request, or "TIME" if the time ran out.
+	 * @returns {Promise<T | "CANCEL_CMD" | "TIME_CMD">} The resolved object, or one of two flags: "CANCEL_CMD" if the user canceled their request, or "TIME_CMD" if the time ran out.
 	 */
 	public async sendWithOldMessage(
 		func: (collectedMessage: Message, ...otherArgs: any) => Promise<T | void>,
@@ -153,7 +153,7 @@ export class GenericMessageCollector<T> {
 		deleteMsg: boolean = false,
 		cancelFlag: string = "cancel",
 		deleteResponseMessages: boolean = true
-	): Promise<T | "CANCEL" | "TIME"> {
+	): Promise<T | "CANCEL_CMD" | "TIME_CMD"> {
 		return this.send(func, cancelFlag, deleteResponseMessages, oldMsg, deleteMsg);
 	}
 
@@ -164,7 +164,7 @@ export class GenericMessageCollector<T> {
 	 * @param {boolean} [deleteResponseMessages = true] Whether to delete the person's message after he/she responds.
 	 * @param {Message} [oldMsg = null] Whether to use an old message or not.
 	 * @param {boolean} [deleteMsg = true] Whether to delete the bot message after the reaction collector expires.  
-	 * @returns {Promise<T | "CANCEL" | "TIME">} The resolved object, or one of two flags: "CANCEL" if the user canceled their request, or "TIME" if the time ran out.
+	 * @returns {Promise<T | "CANCEL_CMD" | "TIME_CMD">} The resolved object, or one of two flags: "CANCEL_CMD" if the user canceled their request, or "TIME_CMD" if the time ran out.
 	 */
 	public async send(
 		func: (collectedMessage: Message, ...otherArgs: any) => Promise<T | void>,
@@ -172,7 +172,7 @@ export class GenericMessageCollector<T> {
 		deleteResponseMessages: boolean = true,
 		oldMsg: Message | null = null,
 		deleteMsg: boolean = true
-	): Promise<T | "CANCEL" | "TIME"> {
+	): Promise<T | "CANCEL_CMD" | "TIME_CMD"> {
 		return new Promise(async (resolve) => {
 			const botMsg: Message = oldMsg === null
 				? await this._channel.send({ embed: this._embed, content: this._strContent })
@@ -188,7 +188,7 @@ export class GenericMessageCollector<T> {
 				}
 
 				if (collectedMsg.content.toLowerCase() === cancelFlag.toLowerCase()) {
-					resolve("CANCEL");
+					resolve("CANCEL_CMD");
 					msgCollector.stop();
 					return;
 				}
@@ -210,7 +210,7 @@ export class GenericMessageCollector<T> {
 					await botMsg.delete().catch(() => { });
 				}
 				if (reason === "time") {
-					resolve("TIME");
+					resolve("TIME_CMD");
 				}
 			});
 		});
@@ -220,12 +220,12 @@ export class GenericMessageCollector<T> {
 	 * A message collector that also doubles as a reaction collector
 	 * @param func The function to use. This function will be executed and the resultant (return type `T`) will be resolved. Bear in mind that the `send` method takes care of both time management and user cancellation requests; in other words, you just need to implement the actual message response system.
 	 * @param {IGenericMsgCollectorArguments} [optArgs] Optional arguments, if any.
-	 * @returns {Promise<T | Emoji | "CANCEL" | "TIME">} The resolved object, or one of two flags: "CANCEL" if the user canceled their request, or "TIME" if the time ran out. This may also return the results of a reaction.
+	 * @returns {Promise<T | Emoji | "CANCEL_CMD" | "TIME_CMD">} The resolved object, or one of two flags: "CANCEL_CMD" if the user canceled their request, or "TIME_CMD" if the time ran out. This may also return the results of a reaction.
 	 */
 	public async sendWithReactCollector(
 		func: (collectedMessage: Message, ...otherArgs: any) => Promise<T | void>,
 		optArgs?: IGenericMsgCollectorArguments
-	): Promise<T | Emoji | "CANCEL" | "TIME"> {
+	): Promise<T | Emoji | "CANCEL_CMD" | "TIME_CMD"> {
 		let msgReactions: EmojiResolvable[] = [];
 		let cancelFlag: string = "cancel";
 		let deleteResponseMsg: boolean = true;
@@ -311,7 +311,7 @@ export class GenericMessageCollector<T> {
 				}
 
 				if (collectedMsg.content.toLowerCase() === cancelFlag.toLowerCase()) {
-					resolve("CANCEL");
+					resolve("CANCEL_CMD");
 					msgCollector.stop();
 					return;
 				}
@@ -336,7 +336,7 @@ export class GenericMessageCollector<T> {
 					await botMsg.delete().catch(() => { });
 				}
 				if (reason === "time") {
-					resolve("TIME");
+					resolve("TIME_CMD");
 				}
 			});
 		});
@@ -350,7 +350,7 @@ export class GenericMessageCollector<T> {
 	 * @param {PartialTextBasedChannelFields} pChan The channel to send any messages to.
 	 * @example 
 	 * const gmc: GenericMessageCollector<TextChannel> = new GenericMessageCollector<TextChannel>(msg, { embed: embed }, 1, TimeUnit.MINUTE);
-	 * const response: TextChannel | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getChannelPrompt(msg)); 
+	 * const response: TextChannel | "TIME_CMD" | "CANCEL_CMD" = await gmc.send(GenericMessageCollector.getChannelPrompt(msg)); 
 	 */
 	public static getChannelPrompt(
 		msg: Message,
@@ -398,7 +398,7 @@ export class GenericMessageCollector<T> {
 	 * @param {number} [max] The maximum, inclusive.
 	 * @example 
 	 * const gmc: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, { embed: embed }, 1, TimeUnit.MINUTE);
-	 * const response: number | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getNumber(msg)); 
+	 * const response: number | "TIME_CMD" | "CANCEL_CMD" = await gmc.send(GenericMessageCollector.getNumber(msg)); 
 	 */
 	public static getNumber(
 		channel: PartialTextBasedChannelFields,
@@ -432,7 +432,7 @@ export class GenericMessageCollector<T> {
 	 * @param {PartialTextBasedChannelFields} pChan The channel to send messages to.
 	 * @example 
 	 * const gmc: GenericMessageCollector<Role> = new GenericMessageCollector<Role>(msg, { embed: embed }, 1, TimeUnit.MINUTE);
-	 * const response: Role | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getRolePrompt(msg)); 
+	 * const response: Role | "TIME_CMD" | "CANCEL_CMD" = await gmc.send(GenericMessageCollector.getRolePrompt(msg)); 
 	 */
 	public static getRolePrompt(msg: Message, pChan: PartialTextBasedChannelFields): (collectedMessage: Message) => Promise<void | Role> {
 		if (msg.guild === null) {
@@ -462,7 +462,7 @@ export class GenericMessageCollector<T> {
 	 * @param {StringPromptOptions} [options] Options, if any.
 	 * @example 
 	 * const gmc: GenericMessageCollector<string> = new GenericMessageCollector<string>(msg, { embed: embed }, 1, TimeUnit.MINUTE);
-	 * const response: string | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getStringPrompt(msg)); 
+	 * const response: string | "TIME_CMD" | "CANCEL_CMD" = await gmc.send(GenericMessageCollector.getStringPrompt(msg)); 
 	 */
 	public static getStringPrompt(pChan: PartialTextBasedChannelFields, options?: StringPromptOptions): (collectedMessage: Message) => Promise<void | string> {
 		return async (m: Message): Promise<void | string> => {
@@ -499,7 +499,7 @@ export class GenericMessageCollector<T> {
 	 * @param {PartialTextBasedChannelFields} pChan The channel where messages should be sent to.
 	 * @example 
 	 * const gmc: GenericMessageCollector<boolean> = new GenericMessageCollector<boolean>(msg, { embed: embed }, 1, TimeUnit.MINUTE);
-	 * const response: boolean | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getYesNoPrompt(msg)); 
+	 * const response: boolean | "TIME_CMD" | "CANCEL_CMD" = await gmc.send(GenericMessageCollector.getYesNoPrompt(msg)); 
 	 */
 	public static getYesNoPrompt(pChan: PartialTextBasedChannelFields): (collectedMessage: Message) => Promise<void | boolean> {
 		return async (m: Message): Promise<void | boolean> => {

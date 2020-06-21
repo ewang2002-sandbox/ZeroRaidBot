@@ -199,14 +199,14 @@ export class ManualVerifyCommand extends Command {
             .setDescription(`You will be manually verifying: ${mention}.\n\nType \`1\` to check if this person needs to be manually verified in any sections.\nType \`2\` to manually verify this person now (in the main section).\nType \`cancel\` to cancel this process.`)
             .setColor("RANDOM")
             .setFooter("Manual Verification");
-        const num: number | "TIME" | "CANCEL" = await new GenericMessageCollector<number>(
+        const num: number | "TIME_CMD" | "CANCEL_CMD" = await new GenericMessageCollector<number>(
             msg,
             { embed: selectionEmbed },
             2,
             TimeUnit.MINUTE
         ).send(GenericMessageCollector.getNumber(msg.channel, 1, 2));
 
-        if (num === "TIME" || num === "CANCEL") {
+        if (num === "TIME_CMD" || num === "CANCEL_CMD") {
             return;
         }
 
@@ -342,7 +342,7 @@ export class ManualVerifyCommand extends Command {
                 .setDescription(`You will be manually verifying: ${mention}. Type the in-game name that you want to verify this person with. To cancel this process, type \`-cancel\`.`)
                 .setColor("RANDOM")
                 .setFooter("Manual Verification");
-            const name: string | "TIME" | "CANCEL" | "ERROR_" = await new GenericMessageCollector<string | "ERROR_">(
+            const name: string | "TIME_CMD" | "CANCEL_CMD" | "ERROR_" = await new GenericMessageCollector<string | "ERROR_">(
                 msg,
                 { embed: selectionEmbed },
                 3,
@@ -383,7 +383,7 @@ export class ManualVerifyCommand extends Command {
                 }, "-cancel"
             );
 
-            if (name === "TIME" || name === "CANCEL") {
+            if (name === "TIME_CMD" || name === "CANCEL_CMD") {
                 return;
             }
 

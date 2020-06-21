@@ -55,7 +55,7 @@ export class AdminProfileUpdaterCommand extends Command {
 			.setFooter("Administrator: Profile Updater");
 		const botMsg: Message = await msg.channel.send(introEmbed);
 		const reactions: EmojiResolvable[] = ["🔄", "🔼", "🔽", "📩", "❌"];
-		const selectedReaction: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(
+		const selectedReaction: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(
 			botMsg,
 			msg.author,
 			reactions,
@@ -63,7 +63,7 @@ export class AdminProfileUpdaterCommand extends Command {
 			TimeUnit.MINUTE
 		).react();
 
-		if (selectedReaction === "TIME") {
+		if (selectedReaction === "TIME_CMD") {
 			return;
 		}
 
@@ -169,7 +169,7 @@ export class AdminProfileUpdaterCommand extends Command {
 
 			await botMsg.edit(memberToGiveProfileEmbed).catch(e => { });
 
-			const response: number | Emoji | "CANCEL" | "TIME" = await new GenericMessageCollector<number>(
+			const response: number | Emoji | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<number>(
 				msg,
 				{ embed: memberToGiveProfileEmbed },
 				2,
@@ -197,7 +197,7 @@ export class AdminProfileUpdaterCommand extends Command {
 				}
 			}
 			else {
-				if (response === "CANCEL" || response === "TIME") {
+				if (response === "CANCEL_CMD" || response === "TIME_CMD") {
 					await botMsg.delete().catch(e => { });
 					return;
 				}
@@ -273,8 +273,8 @@ export class AdminProfileUpdaterCommand extends Command {
 			return;
 		}
 
-		const memberForProfile: GuildMember | "CANCEL" = await this.getPerson(msg, botMsg, guildData);
-		if (memberForProfile === "CANCEL") {
+		const memberForProfile: GuildMember | "CANCEL_CMD" = await this.getPerson(msg, botMsg, guildData);
+		if (memberForProfile === "CANCEL_CMD") {
 			await botMsg.delete().catch(e => { });
 			return;
 		}
@@ -316,7 +316,7 @@ export class AdminProfileUpdaterCommand extends Command {
 
 			await botMsg.edit(ignEmbed).catch(e => { });
 
-			const response: string | Emoji | "CANCEL" | "TIME" = await new GenericMessageCollector<string>(
+			const response: string | Emoji | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<string>(
 				msg,
 				{ embed: ignEmbed },
 				2,
@@ -345,7 +345,7 @@ export class AdminProfileUpdaterCommand extends Command {
 				}
 			}
 			else {
-				if (response === "TIME" || response === "CANCEL") {
+				if (response === "TIME_CMD" || response === "CANCEL_CMD") {
 					await botMsg.delete().catch(e => { });
 					return;
 				}
@@ -364,7 +364,7 @@ export class AdminProfileUpdaterCommand extends Command {
 			.setColor("RED");
 	}
 
-	private async getPerson(msg: Message, botMsg: Message, guildData: IRaidGuild): Promise<GuildMember | "CANCEL"> {
+	private async getPerson(msg: Message, botMsg: Message, guildData: IRaidGuild): Promise<GuildMember | "CANCEL_CMD"> {
 		const guild: Guild = msg.guild as Guild;
 		let memberToGenerateProfileFor: GuildMember | undefined;
 
@@ -387,7 +387,7 @@ export class AdminProfileUpdaterCommand extends Command {
 
 			await botMsg.edit(embed).catch(e => { });
 
-			const response: string | Emoji | "CANCEL" | "TIME" = await new GenericMessageCollector<string>(
+			const response: string | Emoji | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<string>(
 				msg,
 				{ embed: embed },
 				2,
@@ -411,12 +411,12 @@ export class AdminProfileUpdaterCommand extends Command {
 				}
 
 				if (response.name === "❌") {
-					return "CANCEL";
+					return "CANCEL_CMD";
 				}
 			}
 			else {
-				if (response === "TIME" || response === "CANCEL") {
-					return "CANCEL";
+				if (response === "TIME_CMD" || response === "CANCEL_CMD") {
+					return "CANCEL_CMD";
 				}
 
 				const resolvedMember: GuildMember | null = await UserHandler

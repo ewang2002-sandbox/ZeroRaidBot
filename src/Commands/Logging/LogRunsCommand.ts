@@ -53,8 +53,8 @@ export class LogRunsCommand extends Command {
 		const reactionsForInitLogType: EmojiResolvable[] = ["🇦", "🇧", "🇨", "❌"];
 		const botMsg: Message = await msg.channel.send(initiatorLogTypeEmbed);
 
-		const resultantReactionForInit: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(botMsg, msg.author, reactionsForInitLogType, 2, TimeUnit.MINUTE).react();
-		if (resultantReactionForInit === "TIME" || resultantReactionForInit.name === "❌") {
+		const resultantReactionForInit: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(botMsg, msg.author, reactionsForInitLogType, 2, TimeUnit.MINUTE).react();
+		if (resultantReactionForInit === "TIME_CMD" || resultantReactionForInit.name === "❌") {
 			await botMsg.delete().catch(() => { });
 			return;
 		}
@@ -86,9 +86,9 @@ export class LogRunsCommand extends Command {
 			.addField("React With ❌", "If you did __not__ do any realm clearing.")
 			.setColor("RANDOM");
 		await botMsg.edit(realmClearingAskEmbed).catch(() => { });
-		const resultantReactionForRCAsk: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(botMsg, msg.author, checkXReactions, 2, TimeUnit.MINUTE).react();
+		const resultantReactionForRCAsk: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(botMsg, msg.author, checkXReactions, 2, TimeUnit.MINUTE).react();
 
-		if (resultantReactionForRCAsk === "TIME") {
+		if (resultantReactionForRCAsk === "TIME_CMD") {
 			await botMsg.delete().catch(() => { });
 			return;
 		}
@@ -108,9 +108,9 @@ export class LogRunsCommand extends Command {
 				.addField("React With ❌", "If you did __not__ do any endgame dungeons.")
 				.setColor("RANDOM");
 			await botMsg.edit(endgameAskEmbed).catch(() => { });
-			const resultantReactionForEndGameAsk: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(botMsg, msg.author, checkXReactions, 2, TimeUnit.MINUTE).react();
+			const resultantReactionForEndGameAsk: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(botMsg, msg.author, checkXReactions, 2, TimeUnit.MINUTE).react();
 
-			if (resultantReactionForEndGameAsk === "TIME") {
+			if (resultantReactionForEndGameAsk === "TIME_CMD") {
 				await botMsg.delete().catch(() => { });
 				return;
 			}
@@ -128,10 +128,10 @@ export class LogRunsCommand extends Command {
 				.addField("React With ❌", "If you did __not__ do any general dungeons.")
 				.setColor("RANDOM");
 			await botMsg.edit(generalAskEmbed).catch(() => { });
-			const resultantReactionForGeneralAsk: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(botMsg, msg.author, checkXReactions, 2, TimeUnit.MINUTE).react();
+			const resultantReactionForGeneralAsk: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(botMsg, msg.author, checkXReactions, 2, TimeUnit.MINUTE).react();
 
 			await botMsg.delete().catch(() => { });
-			if (resultantReactionForGeneralAsk === "TIME") {
+			if (resultantReactionForGeneralAsk === "TIME_CMD") {
 				return;
 			}
 
@@ -177,42 +177,42 @@ export class LogRunsCommand extends Command {
 
 		// let's get people + run count
 		if (didRealmClearing) {
-			const data: QuotaLoggingHandler.LeaderLoggingArray | "CANCEL" = await this.getData(
+			const data: QuotaLoggingHandler.LeaderLoggingArray | "CANCEL_CMD" = await this.getData(
 				msg, 
 				guildData, 
 				realmClearingLeadersLog,
 				[mainLeaders, assistLeaders],
 				"REALM CLEARING"
 			);
-			if (data === "CANCEL") {
+			if (data === "CANCEL_CMD") {
 				return;
 			}
 			realmClearingLeadersLog = data; 
 		}
 		else {
 			if (didEndgameDungeons) {
-				const data: QuotaLoggingHandler.LeaderLoggingArray | "CANCEL" = await this.getData(
+				const data: QuotaLoggingHandler.LeaderLoggingArray | "CANCEL_CMD" = await this.getData(
 					msg, 
 					guildData, 
 					endgameLeadersLog,
 					[mainLeaders, assistLeaders],
 					"END GAME"
 				);
-				if (data === "CANCEL") {
+				if (data === "CANCEL_CMD") {
 					return;
 				}
 				endgameLeadersLog = data; 
 			}
 
 			if (didGeneralDungeons) {
-				const data: QuotaLoggingHandler.LeaderLoggingArray | "CANCEL" = await this.getData(
+				const data: QuotaLoggingHandler.LeaderLoggingArray | "CANCEL_CMD" = await this.getData(
 					msg, 
 					guildData, 
 					generalLeadersLog,
 					[mainLeaders, assistLeaders],
 					"GENERAL"
 				);
-				if (data === "CANCEL") {
+				if (data === "CANCEL_CMD") {
 					return;
 				}
 				generalLeadersLog = data; 
@@ -252,9 +252,9 @@ export class LogRunsCommand extends Command {
 		data: QuotaLoggingHandler.LeaderLoggingArray,
 		mainAssistLeaders: [GuildMember[], GuildMember[]],
 		raidType: RaidTypes
-	): Promise<QuotaLoggingHandler.LeaderLoggingArray | "CANCEL"> {
+	): Promise<QuotaLoggingHandler.LeaderLoggingArray | "CANCEL_CMD"> {
 		// ask for people
-		const mainLeadersThatContributed: GuildMember[] | "CANCEL" = await this.getAllPeople(
+		const mainLeadersThatContributed: GuildMember[] | "CANCEL_CMD" = await this.getAllPeople(
 			msg,
 			raidType,
 			"MAIN",
@@ -262,11 +262,11 @@ export class LogRunsCommand extends Command {
 			mainAssistLeaders[0]
 		);
 
-		if (mainLeadersThatContributed === "CANCEL") {
-			return "CANCEL";
+		if (mainLeadersThatContributed === "CANCEL_CMD") {
+			return "CANCEL_CMD";
 		}
 
-		const assistLeadersThatContributed: GuildMember[] | "CANCEL" = await this.getAllPeople(
+		const assistLeadersThatContributed: GuildMember[] | "CANCEL_CMD" = await this.getAllPeople(
 			msg,
 			raidType,
 			"ASSISTING",
@@ -274,36 +274,36 @@ export class LogRunsCommand extends Command {
 			mainAssistLeaders[1]
 		);
 
-		if (assistLeadersThatContributed === "CANCEL") {
-			return "CANCEL";
+		if (assistLeadersThatContributed === "CANCEL_CMD") {
+			return "CANCEL_CMD";
 		}
 
 		data.main.members.push(...mainLeadersThatContributed);
 		data.assists.members.push(...assistLeadersThatContributed);
 
 		// ask how many runs
-		const amtSuccessfulRuns: number | "CANCEL" | "TIME" = await new GenericMessageCollector<number>(
+		const amtSuccessfulRuns: number | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<number>(
 			msg,
 			{ embed: this.getEmbed(msg, "Logging Successful Runs", `Type the number of __${raidType.toLowerCase()} runs__ all __main leaders__ have successfully completed.`) },
 			1,
 			TimeUnit.MINUTE
 		).send(GenericMessageCollector.getNumber(msg.channel, 0));
 
-		if (amtSuccessfulRuns === "CANCEL" || amtSuccessfulRuns === "TIME") {
-			return "CANCEL";
+		if (amtSuccessfulRuns === "CANCEL_CMD" || amtSuccessfulRuns === "TIME_CMD") {
+			return "CANCEL_CMD";
 		}
 
 		data.main.completed = amtSuccessfulRuns;
 
-		const amtFailedRuns: number | "CANCEL" | "TIME" = await new GenericMessageCollector<number>(
+		const amtFailedRuns: number | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<number>(
 			msg,
 			{ embed: this.getEmbed(msg, "Logging Failed Runs", `Type the number of __${raidType.toLowerCase()} runs__ all __main leaders__ have __failed__ to complete.`) },
 			1,
 			TimeUnit.MINUTE
 		).send(GenericMessageCollector.getNumber(msg.channel, 0));
 
-		if (amtFailedRuns === "CANCEL" || amtFailedRuns === "TIME") {
-			return "CANCEL";
+		if (amtFailedRuns === "CANCEL_CMD" || amtFailedRuns === "TIME_CMD") {
+			return "CANCEL_CMD";
 		}
 
 		data.main.failed = amtFailedRuns;
@@ -326,7 +326,7 @@ export class LogRunsCommand extends Command {
 		leaderType: "MAIN" | "ASSISTING",
 		guildDb: IRaidGuild,
 		leaders: GuildMember[] = []
-	): Promise<GuildMember[] | "CANCEL"> {
+	): Promise<GuildMember[] | "CANCEL_CMD"> {
 		const guild: Guild = msg.guild as Guild;
 		let members: GuildMember[] = [...leaders];
 		let reactToMsg: boolean = true; 
@@ -385,13 +385,13 @@ export class LogRunsCommand extends Command {
 					break;
 				}
 				else {
-					return "CANCEL";
+					return "CANCEL_CMD";
 				}
 			}
 			else {
-				if (coll === "TIME" || coll === "CANCEL") {
+				if (coll === "TIME_CMD" || coll === "CANCEL_CMD") {
 					await botMsg.delete().catch(e => { });
-					return "CANCEL";
+					return "CANCEL_CMD";
 				}
 
 				const membersToSearch: string[] = coll.split(/ +/);

@@ -60,14 +60,14 @@ export class ConfigureVerifSuccessCommand extends Command {
             .addField("Prompt", "Type the message that you want members that successfully verify to see. This can contain information like important channels, rules, and more. Maximum 1800 characters. To cancel this process, type `-cancel`.")
             .setFooter("The process will automatically stop at")
             .setTimestamp(new Date().getTime() + 600000);
-        const newDesc: string | "CANCEL" | "TIME" = await new GenericMessageCollector<string>(
+        const newDesc: string | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<string>(
             msg,
             { embed: embed },
             10,
             TimeUnit.MINUTE
         ).send(GenericMessageCollector.getStringPrompt(msg.channel, { maxCharacters: 1800 }), "-cancel");
 
-        if (newDesc === "CANCEL" || newDesc === "TIME") {
+        if (newDesc === "CANCEL_CMD" || newDesc === "TIME_CMD") {
             return;
         }
 

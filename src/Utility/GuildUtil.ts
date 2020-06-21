@@ -165,7 +165,7 @@ export namespace GuildUtil {
      * Gets a guild.
      * @param msg The message object.
      */
-	export async function getGuild(msg: Message, dmChannel: DMChannel): Promise<Guild | null | "CANCEL"> {
+	export async function getGuild(msg: Message, dmChannel: DMChannel): Promise<Guild | null | "CANCEL_CMD"> {
 		const allGuilds: IRaidGuild[] = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.find({}).toArray();
 		const embed: MessageEmbed = new MessageEmbed()
 			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
@@ -213,7 +213,7 @@ export namespace GuildUtil {
 			embed.addField("Guild Selection", StringUtil.applyCodeBlocks(str));
 		}
 
-		const num: number | "CANCEL" | "TIME" = await new GenericMessageCollector<number>(
+		const num: number | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<number>(
 			msg.author,
 			{ embed: embed },
 			2,
@@ -221,8 +221,8 @@ export namespace GuildUtil {
 			dmChannel
 		).send(GenericMessageCollector.getNumber(dmChannel, 1, validGuilds.length));
 
-		if (num === "CANCEL" || num === "TIME") {
-			return "CANCEL";
+		if (num === "CANCEL_CMD" || num === "TIME_CMD") {
+			return "CANCEL_CMD";
 		}
 
 		return validGuilds[num - 1];

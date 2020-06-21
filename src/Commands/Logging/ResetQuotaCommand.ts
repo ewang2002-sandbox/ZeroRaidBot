@@ -54,7 +54,7 @@ export class ResetQuotaCommand extends Command {
             return;
         }
 
-        const result: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(
+        const result: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(
             botMsg,
             msg.author,
             ["✅", "❌"],
@@ -63,7 +63,7 @@ export class ResetQuotaCommand extends Command {
         ).react();
 
         await botMsg.delete().catch(() => { });
-        if (result === "TIME") {
+        if (result === "TIME_CMD") {
             return;
         }
 

@@ -59,8 +59,8 @@ export class ViewServerProfileCommand extends Command {
 
         let guild: Guild;
         if (msg.guild === null) {
-            const response: Guild | "CANCEL" | null = await GuildUtil.getGuild(msg, dmChannel);
-            if (response === "CANCEL") {
+            const response: Guild | "CANCEL_CMD" | null = await GuildUtil.getGuild(msg, dmChannel);
+            if (response === "CANCEL_CMD") {
                 return;
             }
 

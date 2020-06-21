@@ -50,8 +50,8 @@ export class UnverifyFromServerCommand extends Command {
 
         let guild: Guild;
         if (msg.guild === null) {
-            const response: Guild | "CANCEL" | null = await GuildUtil.getGuild(msg, dmChannel);
-            if (response === "CANCEL") {
+            const response: Guild | "CANCEL_CMD" | null = await GuildUtil.getGuild(msg, dmChannel);
+            if (response === "CANCEL_CMD") {
                 return;
             }
 
@@ -93,7 +93,7 @@ export class UnverifyFromServerCommand extends Command {
             .setFooter("Unverification Process")
             .setColor("RED");
 
-        const wantsToBeUnverified: boolean | "CANCEL" | "TIME" = await new GenericMessageCollector<boolean>(
+        const wantsToBeUnverified: boolean | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<boolean>(
             msg.author,
             { embed: unverifyEmbed },
             2,
@@ -101,7 +101,7 @@ export class UnverifyFromServerCommand extends Command {
             dmChannel
         ).send(GenericMessageCollector.getYesNoPrompt(dmChannel));
 
-        if (wantsToBeUnverified === "CANCEL" || wantsToBeUnverified === "TIME") {
+        if (wantsToBeUnverified === "CANCEL_CMD" || wantsToBeUnverified === "TIME_CMD") {
             return;
         }
 

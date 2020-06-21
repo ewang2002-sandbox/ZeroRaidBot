@@ -59,8 +59,8 @@ export class AddToNicknameCommand extends Command {
 
         let guild: Guild;
         if (msg.guild === null) {
-            const response: Guild | "CANCEL" | null = await GuildUtil.getGuild(msg, dmChannel);
-            if (response === "CANCEL") {
+            const response: Guild | "CANCEL_CMD" | null = await GuildUtil.getGuild(msg, dmChannel);
+            if (response === "CANCEL_CMD") {
                 return;
             }
 
@@ -121,7 +121,7 @@ export class AddToNicknameCommand extends Command {
             .setFooter(guild.name)
             .addField("Available IGNs", StringUtil.applyCodeBlocks(str));
 
-        const num: number | "CANCEL" | "TIME" = await new GenericMessageCollector<number>(
+        const num: number | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<number>(
             msg.author,
             { embed: embed },
             2,
@@ -129,7 +129,7 @@ export class AddToNicknameCommand extends Command {
             dmChannel
         ).send(GenericMessageCollector.getNumber(msg.author, 1, possibleNames.length));
 
-        if (num === "CANCEL" || num === "TIME") {
+        if (num === "CANCEL_CMD" || num === "TIME_CMD") {
             return;
         }
         

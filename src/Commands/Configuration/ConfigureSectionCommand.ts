@@ -362,8 +362,8 @@ export class ConfigureSectionCommand extends Command {
 			embed: nameOfSectionPrompt
 		}, 5, TimeUnit.MINUTE);
 
-		const nameOfSection: string | EmojiResolvable | "CANCEL" | "TIME" = await col0.send(GenericMessageCollector.getStringPrompt(msg.channel));
-		if (nameOfSection === "CANCEL" || nameOfSection === "TIME") {
+		const nameOfSection: string | EmojiResolvable | "CANCEL_CMD" | "TIME_CMD" = await col0.send(GenericMessageCollector.getStringPrompt(msg.channel));
+		if (nameOfSection === "CANCEL_CMD" || nameOfSection === "TIME_CMD") {
 			return;
 		}
 
@@ -383,9 +383,9 @@ export class ConfigureSectionCommand extends Command {
 			TimeUnit.MINUTE
 		);
 
-		const verifChan: TextChannel | "SKIP" | "CANCEL" | "TIME" | "-" = await col1.send(this.getChannelPrompt(msg));
+		const verifChan: TextChannel | "SKIP" | "CANCEL_CMD" | "TIME_CMD" | "-" = await col1.send(this.getChannelPrompt(msg));
 
-		if (verifChan === "CANCEL" || verifChan === "TIME") {
+		if (verifChan === "CANCEL_CMD" || verifChan === "TIME_CMD") {
 			return;
 		}
 
@@ -404,9 +404,9 @@ export class ConfigureSectionCommand extends Command {
 			TimeUnit.MINUTE
 		);
 
-		const afkCheckChan: TextChannel | "SKIP" | "CANCEL" | "TIME" | "-" = await col2.send(this.getChannelPrompt(msg));
+		const afkCheckChan: TextChannel | "SKIP" | "CANCEL_CMD" | "TIME_CMD" | "-" = await col2.send(this.getChannelPrompt(msg));
 
-		if (afkCheckChan === "CANCEL" || afkCheckChan === "TIME") {
+		if (afkCheckChan === "CANCEL_CMD" || afkCheckChan === "TIME_CMD") {
 			return;
 		}
 
@@ -427,11 +427,11 @@ export class ConfigureSectionCommand extends Command {
 				TimeUnit.MINUTE
 			);
 
-			const controlPanelChannel: TextChannel | "CANCEL" | "TIME" = await col4.send(
+			const controlPanelChannel: TextChannel | "CANCEL_CMD" | "TIME_CMD" = await col4.send(
 				GenericMessageCollector.getChannelPrompt(msg, msg.channel)
 			);
 
-			if (controlPanelChannel === "CANCEL" || controlPanelChannel === "TIME") {
+			if (controlPanelChannel === "CANCEL_CMD" || controlPanelChannel === "TIME_CMD") {
 				return;
 			}
 
@@ -458,11 +458,11 @@ export class ConfigureSectionCommand extends Command {
 			TimeUnit.MINUTE
 		);
 
-		const verifiedRole: Role | "CANCEL" | "TIME" = await col3.send(
+		const verifiedRole: Role | "CANCEL_CMD" | "TIME_CMD" = await col3.send(
 			GenericMessageCollector.getRolePrompt(msg, msg.channel)
 		);
 
-		if (verifiedRole === "CANCEL" || verifiedRole === "TIME") {
+		if (verifiedRole === "CANCEL_CMD" || verifiedRole === "TIME_CMD") {
 			return;
 		}
 
@@ -524,9 +524,9 @@ export class ConfigureSectionCommand extends Command {
 			return guildData;
 		}
 
-		const resp: ISection | "CANCEL" | "TIME" = await this.getSection(msg, guildData, "REMOVE");
+		const resp: ISection | "CANCEL_CMD" | "TIME_CMD" = await this.getSection(msg, guildData, "REMOVE");
 
-		if (resp === "CANCEL" || resp === "TIME") {
+		if (resp === "CANCEL_CMD" || resp === "TIME_CMD") {
 			return guildData;
 		}
 
@@ -543,9 +543,9 @@ export class ConfigureSectionCommand extends Command {
 	 * @param {IRaidGuild} guildData The guild db. 
 	 */
 	private async modify(msg: Message, guildData: IRaidGuild): Promise<void> {
-		const resp: ISection | "CANCEL" | "TIME" = await this.getSection(msg, guildData, "MODIFY");
+		const resp: ISection | "CANCEL_CMD" | "TIME_CMD" = await this.getSection(msg, guildData, "MODIFY");
 
-		if (resp === "CANCEL" || resp === "TIME") {
+		if (resp === "CANCEL_CMD" || resp === "TIME_CMD") {
 			return;
 		}
 		this.modifyMainMenu(msg, guildData, resp);
@@ -631,9 +631,9 @@ export class ConfigureSectionCommand extends Command {
 			m = await msg.channel.send(embed);
 		}
 
-		const r: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(m, msg.author, emojisToReact, 2, TimeUnit.MINUTE).react();
+		const r: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(m, msg.author, emojisToReact, 2, TimeUnit.MINUTE).react();
 
-		if (r === "TIME") {
+		if (r === "TIME_CMD") {
 			await m.delete().catch(() => { });
 			return;
 		}
@@ -745,14 +745,14 @@ export class ConfigureSectionCommand extends Command {
 			botSentMsg = await msg.channel.send(botSentMsg);
 		}
 
-		const r: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(botSentMsg, msg.author, reactions, 2, TimeUnit.MINUTE).react();
+		const r: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(botSentMsg, msg.author, reactions, 2, TimeUnit.MINUTE).react();
 
-		if (r === "TIME") {
+		if (r === "TIME_CMD") {
 			await botSentMsg.delete().catch(() => { });
 			return;
 		}
 
-		let res: IRaidGuild | "CANCEL" | "TIME";
+		let res: IRaidGuild | "CANCEL_CMD" | "TIME_CMD";
 		// go back
 		if (r.name === "⬅️") {
 			this.modifyMainMenu(msg, guildData, section, botSentMsg);
@@ -941,14 +941,14 @@ export class ConfigureSectionCommand extends Command {
 			return; // because of strict typing
 		}
 
-		if (res === "TIME") {
+		if (res === "TIME_CMD") {
 			// cancel ENTIRE process
 			// stop EVERYTHING
 			await botSentMsg.delete().catch(() => { });
 			return;
 		}
 
-		if (res === "CANCEL") {
+		if (res === "CANCEL_CMD") {
 			this.sectionChannelMenuCommand(msg, guildData, section, botSentMsg, channelInfo);
 			return;
 		}
@@ -1035,14 +1035,14 @@ export class ConfigureSectionCommand extends Command {
 			botSentMsg = await msg.channel.send(botSentMsg);
 		}
 
-		const r: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(botSentMsg, msg.author, reactions, 2, TimeUnit.MINUTE).react();
+		const r: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(botSentMsg, msg.author, reactions, 2, TimeUnit.MINUTE).react();
 
-		if (r === "TIME") {
+		if (r === "TIME_CMD") {
 			await botSentMsg.delete().catch(() => { });
 			return;
 		}
 
-		let res: IRaidGuild | "CANCEL" | "TIME";
+		let res: IRaidGuild | "CANCEL_CMD" | "TIME_CMD";
 		// go back
 		if (r.name === "⬅️") {
 			this.modifyMainMenu(msg, guildData, section, botSentMsg);
@@ -1239,14 +1239,14 @@ export class ConfigureSectionCommand extends Command {
 			return; // because of strict typing
 		}
 
-		if (res === "TIME") {
+		if (res === "TIME_CMD") {
 			// cancel ENTIRE process
 			// stop EVERYTHING
 			await botSentMsg.delete().catch(() => { });
 			return;
 		}
 
-		if (res === "CANCEL") {
+		if (res === "CANCEL_CMD") {
 			this.sectionRoleMenuCommand(msg, guildData, section, botSentMsg, roleInfo);
 			return;
 		}
@@ -1268,7 +1268,7 @@ export class ConfigureSectionCommand extends Command {
 		guildData: IRaidGuild,
 		mongoPath: string,
 		currRoles: string[]
-	): Promise<IRaidGuild | "CANCEL" | "TIME"> {
+	): Promise<IRaidGuild | "CANCEL_CMD" | "TIME_CMD"> {
 		const guild: Guild = msg.guild as Guild;
 		guildData = await this.removeDeadElements(guildData, currRoles, mongoPath, guild);
 
@@ -1285,16 +1285,16 @@ export class ConfigureSectionCommand extends Command {
 			.setTitle(`Changing **${roleName}**`)
 			.setDescription(`Current Roles Inputted: ${resolvedRole.length === 0 ? "None" : resolvedRole}.\n Please mention, or type the ID of, the role now. If you select a role that is listed above, the role will be removed; otherwise, it will be added.`);
 
-		const targetRole: Role | "CANCEL" | "TIME" = await (new GenericMessageCollector<Role>(msg, {
+		const targetRole: Role | "CANCEL_CMD" | "TIME_CMD" = await (new GenericMessageCollector<Role>(msg, {
 			embed: embed
 		}, 3, TimeUnit.MINUTE)).send(GenericMessageCollector.getRolePrompt(msg, msg.channel));
 
-		if (targetRole === "CANCEL") {
-			return "CANCEL";
+		if (targetRole === "CANCEL_CMD") {
+			return "CANCEL_CMD";
 		}
 
-		if (targetRole === "TIME") {
-			return "TIME";
+		if (targetRole === "TIME_CMD") {
+			return "TIME_CMD";
 		}
 
 		if (resolvedRole.some(x => x.id === targetRole.id)) {
@@ -1361,14 +1361,14 @@ export class ConfigureSectionCommand extends Command {
 			botSentMsg = await msg.channel.send(botSentMsg);
 		}
 
-		const r: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(botSentMsg, msg.author, reactions, 2, TimeUnit.MINUTE).react();
+		const r: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(botSentMsg, msg.author, reactions, 2, TimeUnit.MINUTE).react();
 
-		if (r === "TIME") {
+		if (r === "TIME_CMD") {
 			await botSentMsg.delete().catch(() => { });
 			return;
 		}
 
-		let res: IRaidGuild | "CANCEL" | "TIME";
+		let res: IRaidGuild | "CANCEL_CMD" | "TIME_CMD";
 		// go back
 		if (r.name === "⬅️") {
 			this.modifyMainMenu(msg, guildData, section, botSentMsg);
@@ -1474,14 +1474,14 @@ export class ConfigureSectionCommand extends Command {
 			return; // because of strict typing
 		}
 
-		if (res === "TIME") {
+		if (res === "TIME_CMD") {
 			// cancel ENTIRE process
 			// stop EVERYTHING
 			await botSentMsg.delete().catch(() => { });
 			return;
 		}
 
-		if (res === "CANCEL") {
+		if (res === "CANCEL_CMD") {
 			this.sectionVerificationMenuCommand(msg, guildData, section, botSentMsg, verifInfo);
 			return;
 		}
@@ -1524,7 +1524,7 @@ export class ConfigureSectionCommand extends Command {
 		verifType: "FAME" | "RANK" | "STATS",
 		mainMongoPath: string[],
 		sectMongoPath: string[]
-	): Promise<IRaidGuild | "CANCEL" | "TIME"> {
+	): Promise<IRaidGuild | "CANCEL_CMD" | "TIME_CMD"> {
 		return new Promise(async (resolve) => {
 			const guild: Guild = msg.guild as Guild;
 			await botMsg.reactions.removeAll().catch(() => { });
@@ -1555,9 +1555,9 @@ export class ConfigureSectionCommand extends Command {
 			botMsg = await botMsg.edit(embed);
 			const reactions: EmojiResolvable[] = ["⬅️", "🔔", "🛠"];
 
-			const r: GuildEmoji | ReactionEmoji | "TIME" = await new FastReactionMenuManager(botMsg, msg.author, reactions, 2, TimeUnit.MINUTE).react();
+			const r: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(botMsg, msg.author, reactions, 2, TimeUnit.MINUTE).react();
 
-			if (r === "TIME") {
+			if (r === "TIME_CMD") {
 				await botMsg.delete().catch(() => { });
 				return;
 			}
@@ -1593,13 +1593,13 @@ export class ConfigureSectionCommand extends Command {
 						embed: promptEmbed.setTitle("**Edit Minimum Fame**").setDescription("Type the minimum amount of fame a person needs to meet the requirements.")
 					}, 2, TimeUnit.MINUTE);
 
-					const n: number | "TIME" | "CANCEL" = await gm0.send(GenericMessageCollector.getNumber(msg.channel, 0));
-					if (n === "TIME") {
-						return resolve("TIME");
+					const n: number | "TIME_CMD" | "CANCEL_CMD" = await gm0.send(GenericMessageCollector.getNumber(msg.channel, 0));
+					if (n === "TIME_CMD") {
+						return resolve("TIME_CMD");
 					}
 
-					if (n === "CANCEL") {
-						return resolve("CANCEL");
+					if (n === "CANCEL_CMD") {
+						return resolve("CANCEL_CMD");
 					}
 
 					guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(filterQuery, {
@@ -1613,13 +1613,13 @@ export class ConfigureSectionCommand extends Command {
 						embed: promptEmbed.setTitle("**Edit Minimum Rank**").setDescription("Type the minimum rank a person needs to meet the requirements.")
 					}, 2, TimeUnit.MINUTE);
 
-					const n: number | "TIME" | "CANCEL" = await gm0.send(GenericMessageCollector.getNumber(msg.channel, 0, 75));
-					if (n === "TIME") {
-						return resolve("TIME");
+					const n: number | "TIME_CMD" | "CANCEL_CMD" = await gm0.send(GenericMessageCollector.getNumber(msg.channel, 0, 75));
+					if (n === "TIME_CMD") {
+						return resolve("TIME_CMD");
 					}
 
-					if (n === "CANCEL") {
-						return resolve("CANCEL");
+					if (n === "CANCEL_CMD") {
+						return resolve("CANCEL_CMD");
 					}
 
 					guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(filterQuery, {
@@ -1632,13 +1632,13 @@ export class ConfigureSectionCommand extends Command {
 					const gmc2: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, {
 						embed: promptEmbed.setTitle("**Edit Required Character Stats**").setDescription("Please type the stats type that you want to modify. For example, to modify the amount of `7/8`s needed to verify, type `7`.")
 					}, 2, TimeUnit.MINUTE);
-					const n: number | "TIME" | "CANCEL" = await gmc2.send(GenericMessageCollector.getNumber(msg.channel, 0, 8));
-					if (n === "TIME") {
-						return resolve("TIME");
+					const n: number | "TIME_CMD" | "CANCEL_CMD" = await gmc2.send(GenericMessageCollector.getNumber(msg.channel, 0, 8));
+					if (n === "TIME_CMD") {
+						return resolve("TIME_CMD");
 					}
 
-					if (n === "CANCEL") {
-						return resolve("CANCEL");
+					if (n === "CANCEL_CMD") {
+						return resolve("CANCEL_CMD");
 					}
 
 					promptEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null);
@@ -1646,13 +1646,13 @@ export class ConfigureSectionCommand extends Command {
 						embed: promptEmbed.setTitle("**Edit Required Character Stats**").setDescription(`You are currently modifying the required amount of ${n}/8 needed. Please type the amount of ${n}/8 characters needed.`)
 					}, 2, TimeUnit.MINUTE);
 
-					const m: number | "TIME" | "CANCEL" = await gmc3.send(GenericMessageCollector.getNumber(msg.channel, 0, 15));
-					if (m === "TIME") {
-						return resolve("TIME");
+					const m: number | "TIME_CMD" | "CANCEL_CMD" = await gmc3.send(GenericMessageCollector.getNumber(msg.channel, 0, 15));
+					if (m === "TIME_CMD") {
+						return resolve("TIME_CMD");
 					}
 
-					if (m === "CANCEL") {
-						return resolve("CANCEL");
+					if (m === "CANCEL_CMD") {
+						return resolve("CANCEL_CMD");
 					}
 
 					guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(filterQuery, {
@@ -1705,12 +1705,12 @@ export class ConfigureSectionCommand extends Command {
 			TimeUnit.MINUTE
 		);
 
-		const result: string | "CANCEL" | "TIME" = await nameColl.send(GenericMessageCollector.getStringPrompt(msg.channel));
-		if (result === "CANCEL") {
+		const result: string | "CANCEL_CMD" | "TIME_CMD" = await nameColl.send(GenericMessageCollector.getStringPrompt(msg.channel));
+		if (result === "CANCEL_CMD") {
 			return guildData;
 		}
 
-		if (result === "TIME") {
+		if (result === "TIME_CMD") {
 			return guildData;
 		}
 
@@ -1736,7 +1736,7 @@ export class ConfigureSectionCommand extends Command {
 		botSentMsg: Message,
 		typeQs: QType[],
 		wizType: "ROLE" | "CHANNEL"
-	): Promise<"CANCEL" | "TIME" | IRaidGuild> {
+	): Promise<"CANCEL_CMD" | "TIME_CMD" | IRaidGuild> {
 		await this.resetBotEmbed(botSentMsg).catch(() => { });
 
 		const guild: Guild = msg.guild as Guild;
@@ -1758,7 +1758,7 @@ export class ConfigureSectionCommand extends Command {
 				.setDescription(`${chanQ.d}\n\nTo skip this selection, simply type \`skip\`.\nTo reset this value to the default (nothing), type \`-\`.`)
 				.setFooter(`Name: ${section.nameOfSection} • Main: ${section.isMain ? "Yes" : "No"}`);
 
-			let resp: (TextChannel | Role) | "-" | "CANCEL" | "TIME" | "SKIP";
+			let resp: (TextChannel | Role) | "-" | "CANCEL_CMD" | "TIME_CMD" | "SKIP";
 			if (wizType === "CHANNEL") {
 				resp = await (new GenericMessageCollector<TextChannel | "SKIP" | "-">(msg, { embed: qEmbed }, 2, TimeUnit.MINUTE)).send(this.getChannelPrompt(msg));
 			}
@@ -1766,8 +1766,8 @@ export class ConfigureSectionCommand extends Command {
 				resp = await (new GenericMessageCollector<Role | "SKIP" | "-">(msg, { embed: qEmbed }, 2, TimeUnit.MINUTE)).send(this.getRolePrompt(msg));
 			}
 
-			if (resp === "CANCEL" || resp === "TIME") {
-				return "CANCEL";
+			if (resp === "CANCEL_CMD" || resp === "TIME_CMD") {
+				return "CANCEL_CMD";
 			}
 
 			if (resp === "SKIP") {
@@ -1805,22 +1805,22 @@ export class ConfigureSectionCommand extends Command {
 		section: ISection,
 		currentChannel: GuildChannel | undefined,
 		mongoPath: string
-	): Promise<IRaidGuild | "TIME" | "CANCEL"> {
+	): Promise<IRaidGuild | "TIME_CMD" | "CANCEL_CMD"> {
 		const guild: Guild = msg.guild as Guild;
 		const embed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", { authorType: "GUILD" })
 			.setTitle(`Changing **${channelName}**`)
 			.setDescription(`Current ${channelName}: ${typeof currentChannel === "undefined" ? "Not Set" : currentChannel}.\n Please mention, or type the ID of, the channel now. To reset this value, type \`-\`.`);
 
-		const chan: TextChannel | "CANCEL" | "TIME" | "-" | "SKIP" = await (new GenericMessageCollector<TextChannel | "-" | "SKIP">(msg, {
+		const chan: TextChannel | "CANCEL_CMD" | "TIME_CMD" | "-" | "SKIP" = await (new GenericMessageCollector<TextChannel | "-" | "SKIP">(msg, {
 			embed: embed
 		}, 3, TimeUnit.MINUTE)).send(this.getChannelPrompt(msg));
 
-		if (chan === "CANCEL" || chan === "SKIP") {
-			return "CANCEL";
+		if (chan === "CANCEL_CMD" || chan === "SKIP") {
+			return "CANCEL_CMD";
 		}
 
-		if (chan === "TIME") {
-			return "TIME";
+		if (chan === "TIME_CMD") {
+			return "TIME_CMD";
 		}
 
 		let query: FilterQuery<IRaidGuild> = section.isMain
@@ -1848,22 +1848,22 @@ export class ConfigureSectionCommand extends Command {
 		section: ISection,
 		currentRole: Role | undefined,
 		mongoPath: string
-	): Promise<IRaidGuild | "TIME" | "CANCEL"> {
+	): Promise<IRaidGuild | "TIME_CMD" | "CANCEL_CMD"> {
 		const guild: Guild = msg.guild as Guild;
 		const embed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", { authorType: "GUILD" })
 			.setTitle(`Changing **${roleName}**`)
 			.setDescription(`Current ${roleName}: ${typeof currentRole === "undefined" ? "Not Set" : currentRole}.\n Please mention, or type the ID of, the role now.`);
 
-		const getRole: Role | "CANCEL" | "TIME" | "-" | "SKIP" = await (new GenericMessageCollector<Role | "-" | "SKIP">(msg, {
+		const getRole: Role | "CANCEL_CMD" | "TIME_CMD" | "-" | "SKIP" = await (new GenericMessageCollector<Role | "-" | "SKIP">(msg, {
 			embed: embed
 		}, 3, TimeUnit.MINUTE)).send(this.getRolePrompt(msg));
 
-		if (getRole === "CANCEL" || getRole === "SKIP") {
-			return "CANCEL";
+		if (getRole === "CANCEL_CMD" || getRole === "SKIP") {
+			return "CANCEL_CMD";
 		}
 
-		if (getRole === "TIME") {
-			return "TIME";
+		if (getRole === "TIME_CMD") {
+			return "TIME_CMD";
 		}
 
 		let query: FilterQuery<IRaidGuild> = section.isMain
@@ -1887,7 +1887,7 @@ export class ConfigureSectionCommand extends Command {
 		msg: Message,
 		guildData: IRaidGuild,
 		actionType: "REMOVE" | "MODIFY"
-	): Promise<ISection | "CANCEL" | "TIME"> {
+	): Promise<ISection | "CANCEL_CMD" | "TIME_CMD"> {
 		const guild: Guild = (msg.guild as Guild);
 		let desc: string = "", action: string = "";
 		if (actionType === "REMOVE") {
@@ -1920,7 +1920,7 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 		}
 
 		const coll: GenericMessageCollector<ISection> = new GenericMessageCollector<ISection>(msg, { embed: removeEmbed }, 2, TimeUnit.MINUTE);
-		const resp: ISection | "CANCEL" | "TIME" = await coll.send(async (collectedMessage: Message): Promise<ISection | void> => {
+		const resp: ISection | "CANCEL_CMD" | "TIME_CMD" = await coll.send(async (collectedMessage: Message): Promise<ISection | void> => {
 			const num: number = Number.parseInt(collectedMessage.content);
 			if (Number.isNaN(num)) {
 				MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_NUMBER_INPUT", null), msg.channel as TextChannel);

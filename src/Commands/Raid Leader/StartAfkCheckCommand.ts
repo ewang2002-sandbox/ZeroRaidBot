@@ -48,7 +48,7 @@ export class StartAfkCheckCommand extends Command {
 				TimeUnit.MINUTE
 			).send(GenericMessageCollector.getStringPrompt(msg.channel), "-cancel");
 
-			if (location === "CANCEL" || location === "TIME") {
+			if (location === "CANCEL_CMD" || location === "TIME_CMD") {
 				return;
 			}
 		}

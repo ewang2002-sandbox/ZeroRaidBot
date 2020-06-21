@@ -484,8 +484,8 @@ export class GenericMessageCollector<T> {
 
 				if (typeof options.regexToPass !== "undefined") {
 					if (!options.regexToPass.test(m.content)) {
-						let errorMessage: string = options.regexFailMessage || "Your input failed to pass the RegExp test. Please try again.";
-						MessageUtil.send({ content: `${m.author}, your input is invalid. Please try again.` }, pChan);
+						let errorMessage: string = options.regexFailMessage || `${m.author}, your input failed to pass the RegExp test. Please try again.`;
+						MessageUtil.send({ content: errorMessage }, pChan);
 						return;
 					}
 				}

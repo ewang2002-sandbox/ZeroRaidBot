@@ -11,6 +11,7 @@ import { GenericMessageCollector } from "../../Classes/Message/GenericMessageCol
 import { InsertOneWriteOpResult, WithId } from "mongodb";
 import { StringBuilder } from "../../Classes/String/StringBuilder";
 import { UserHandler } from "../../Helpers/UserHandler";
+import { OtherUtil } from "../../Utility/OtherUtil";
 
 export class AdminProfileUpdaterCommand extends Command {
 	public constructor() {
@@ -265,7 +266,6 @@ export class AdminProfileUpdaterCommand extends Command {
 	private async addProfileCmd(msg: Message, botMsg: Message, guildData: IRaidGuild): Promise<void> {
 		const guild: Guild = msg.guild as Guild;
 		const verifiedRole: Role | undefined = guild.roles.cache.get(guildData.roles.raider);
-		const suspendedRole: Role | undefined = guild.roles.cache.get(guildData.roles.suspended);
 
 		if (typeof verifiedRole === "undefined") {
 			const editedMsg: Message = await botMsg.edit(this.getNoVerifiedRoleEmbed(msg));
@@ -279,6 +279,7 @@ export class AdminProfileUpdaterCommand extends Command {
 			return;
 		}
 
+		// maybe check for ign as well?
 		const dbProfile: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient
 			.findOne({ discordUserId: memberForProfile.id });
 
@@ -297,12 +298,13 @@ export class AdminProfileUpdaterCommand extends Command {
 
 		let ignToUse: string = "";
 		let reactToMsg: boolean = true;
+		// get ign
 		while (true) {
 			const sb: StringBuilder = new StringBuilder()
-				.append(`Set In-Game Name: ${ignToUse === "" ? "N/A" : ignToUse}`)
+				.append(`Set In-Game Name: **\`${ignToUse === "" ? "N/A" : ignToUse}\`**`)
 				.appendLine()
 				.appendLine()
-				.append(`**DIRECTIONS:** Please type an in-game name that you want to associate with ${memberForProfile}'s profile. The in-game name must be at least one letter long and no longer than ten letters. There must not be any symbols.`)
+				.append(`**DIRECTIONS:** Please type an in-game name that you want to associate with ${memberForProfile}'s profile. The in-game name must be at least one letter long and no longer than ten letters. There must not be any symbols. Furthermore, the name should appear exactly as seen in-game (in other words, take capitalization into account).`)
 				.appendLine()
 				.appendLine()
 				.append("**FINISHED?** React with the ✅ to use the IGN specified above for the member. This will create the profile. React with the ❌ to cancel this process completely.");
@@ -350,9 +352,26 @@ export class AdminProfileUpdaterCommand extends Command {
 					return;
 				}
 
-				
+				if (!/^[a-zA-Z]+$/.test(response) || response.length > 10) {
+					const copyEmbed: MessageEmbed = responseEmbed;
+					copyEmbed.setTitle("Invalid Name")
+						.setDescription(`The name you provided, \`${response}\`, can only have letters. Furthermore, the name can only be 10 letters long or less.`);
+					await botMsg.edit(copyEmbed).catch(e => { });
+					await OtherUtil.waitFor(3 * 1000);
+				}
+
+				ignToUse = response;
 			}
 		}
+
+		await new MongoDbHelper.MongoDbUserManager(ignToUse)
+			.createNewUserDB(memberForProfile.id);
+
+		responseEmbed
+			.setTitle("Profile Creation Successful!")
+			.setDescription(`A profile has been created for ${memberForProfile}.\nIGN: \`${ignToUse}\`.`);
+		await botMsg.edit(responseEmbed).catch(e => { });
+		await botMsg.delete({ timeout: 5000 }).catch(e => { });
 	}
 
 	private getNoVerifiedRoleEmbed(msg: Message): MessageEmbed {

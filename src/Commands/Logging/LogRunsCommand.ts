@@ -350,7 +350,7 @@ export class LogRunsCommand extends Command {
 				}
 			}
 
-			if (embed.fields.length === 0 && str.length !== 0) {
+			if (str.length !== 0) {
 				embed.addField("Logging Credit", str);
 			}
 

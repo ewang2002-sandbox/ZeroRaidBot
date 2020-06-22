@@ -112,21 +112,18 @@ export class ServerInfoCommand extends Command {
         // Begin Emojis
         let str: string = "";
         let index: number = 1;
-        let hasAdded: boolean = false;
         for (const [id, emoji] of guild.emojis.cache) {
             if (str.length + emoji.toString().length > 1024) {
                 embed.addField(`Emojis (${guild.emojis.cache.size}) (Part ${index})`, str);
-                str = "";
-                index++;
-                hasAdded = true;
+                str = emoji.toString();
             }
             else {
                 str += emoji.toString();
             }
         }
 
-        if (!hasAdded) {
-            embed.addField(`Emojis (${guild.emojis.cache.size})`, str);
+        if (str.length !== 0) {
+            embed.addField(`Emojis (${guild.emojis.cache.size}) (Part ${++index})`, str);
         }
 
         await msg.channel.send(embed).catch(e => { });

@@ -59,8 +59,8 @@ export class BlacklistCommand extends Command {
 		}
 
 		const reason: string = args.join(" ") // there will always be at least 2 elements
-		if (reason.length > 500) {
-			await MessageUtil.send({ content: `The reason you provided is too long; your reasoning is ${reason.length} characters long, and the maximum length is 500 characters.` }, msg.channel);
+		if (reason.length > 800) {
+			await MessageUtil.send({ content: `The reason you provided is too long; your reasoning is ${reason.length} characters long, and the maximum length is 800 characters.` }, msg.channel);
 			return;
 		}
 		

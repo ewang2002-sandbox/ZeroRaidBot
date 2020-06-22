@@ -4,7 +4,7 @@ export namespace StringUtil {
 	 * @param {string} msg The string.
 	 * @returns {string} The modified string.
 	 */
-	export function applyCodeBlocks(msg: any): string { 
+	export function applyCodeBlocks(msg: any): string {
 		return "```\n" + msg + "```";
 	}
 
@@ -16,7 +16,7 @@ export namespace StringUtil {
 	export function removeSymbols(str: string): string {
 		return str.replace(/[^A-Z0-9]/ig, "");
 	}
-	
+
 	/**
 	 * Returns a fraction between 0 and 1, which indicates the degree of similarity between the two strings. 0 indicates completely different strings, 1 indicates identical strings. The comparison is case-sensitive. Based on Dice's Coefficient, which is mostly better than Levenshtein Distance.
 	 * @param {string} first The first string.
@@ -73,20 +73,20 @@ export namespace StringUtil {
 	/**	
 	 * Returns a string consisting of all symbols BEFORE any letters.	
 	 * @param {string} str The string. 	
-	 */	
-	export function getSymbolsFromStartOfString(str: string): string {	
-		let symbols: string = "";	
-		for (let i = 0; i < str.length; i++) {	
-			if (!/^[A-Za-z]+$/.test(str[i])) {	
-				symbols += str[i];	
-				continue;	
-			}	
-			else {	
-				break;	
-			}	
-		}	
+	 */
+	export function getSymbolsFromStartOfString(str: string): string {
+		let symbols: string = "";
+		for (let i = 0; i < str.length; i++) {
+			if (!/^[A-Za-z]+$/.test(str[i])) {
+				symbols += str[i];
+				continue;
+			}
+			else {
+				break;
+			}
+		}
 
-		return symbols;	
+		return symbols;
 	}
 
 	/**
@@ -96,13 +96,13 @@ export namespace StringUtil {
 	 * @param {number} [maxLenPerElement = 1016] The maximum length of a string per element in the fields array.
 	 */
 	export function arrayToStringFields<T>(
-		array: T[], 
+		array: T[],
 		func: (i: number, element: T) => string,
 		maxLenPerElement: number = 1016
 	): string[] {
 		const returnArr: string[] = [];
 		let str: string = "";
-		
+
 		for (let i = 0; i < array.length; i++) {
 			const tempString: string = func(i, array[i]);
 			if (str.length + tempString.length > maxLenPerElement) {
@@ -114,7 +114,7 @@ export namespace StringUtil {
 			}
 		}
 
-		if (returnArr.length === 0 && str.length !== 0) {
+		if (str.length !== 0) {
 			returnArr.push(str);
 		}
 

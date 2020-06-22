@@ -8,6 +8,7 @@ import { DateUtil } from "../Utility/DateUtil";
 import { StringBuilder } from "../Classes/String/StringBuilder";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { ArrayUtil } from "../Utility/ArrayUtil";
+import { StringUtil } from "../Utility/StringUtil";
 
 export module QuotaLoggingHandler {
     export type LeaderLogAndTotal = IQuotaDbInfo & { total: number };
@@ -282,7 +283,6 @@ export module QuotaLoggingHandler {
             .setColor("RED");
 
         let str: string = "";
-        let finalAdded: boolean = false;
         for (const entry of leaderboardData) {
             const member: GuildMember | null = guild.member(entry[1].memberId);
             if (member === null) {
@@ -306,18 +306,16 @@ export module QuotaLoggingHandler {
             if (preparedStr.length + str.length > 1016) {
                 quotaEmbed.addField("Leaderboards", str);
                 str = preparedStr;
-                finalAdded = true;
             }
             else {
                 str += preparedStr;
-                finalAdded = false;
             }
         }
 
-        if ((quotaEmbed.fields.length === 0 && str.length !== 0) || !finalAdded) {
+        if (quotaEmbed.fields.length === 0 && quotaEmbed.fields.length !== 0) {
             quotaEmbed.addField("Leaderboards", str);
         }
-
+        
         sendOrUpdateQuotaMessage(guild, guildDb, quotaChannel, quotaEmbed);
     }
 

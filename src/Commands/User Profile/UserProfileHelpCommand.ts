@@ -60,6 +60,6 @@ export class UserProfileHelpCommand extends Command {
             .appendLine()
             .append("Allows you to view your server statistics, make changes to your profile within the server, and more. Run this command in any server or in DMs.\n⇒ Command: `;serverprofile`");
         embed.setDescription(sb.toString());
-        await msg.channel.send(embed).catch(e => { });
+        await msg.author.send(embed).catch(e => { });
     }
 }

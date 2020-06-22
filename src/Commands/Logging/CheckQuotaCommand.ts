@@ -8,6 +8,7 @@ import { DateUtil } from "../../Utility/DateUtil";
 import { IQuotaDbInfo } from "../../Definitions/IQuotaDbInfo";
 import { QuotaLoggingHandler } from "../../Helpers/QuotaLoggingHandler";
 import { UserHandler } from "../../Helpers/UserHandler";
+import { StringUtil } from "../../Utility/StringUtil";
 
 export class CheckQuotaCommand extends Command {
     public constructor() {
@@ -89,38 +90,29 @@ export class CheckQuotaCommand extends Command {
         const leaderBoardQuotas: [number, QuotaLoggingHandler.LeaderLogAndTotal][] = QuotaLoggingHandler
             .generateLeaderboardArray(quotaDbAndTotal);
 
-        let str: string = "";
-        let finalAdded: boolean = false;
-        for (const [place, logInfo] of leaderBoardQuotas) {
-            const person: GuildMember | null = guild.member(logInfo.memberId);
-            const introStr: string = person === null
-                ? `${logInfo.memberId} (Not In Server)`
-                : `${person} (${person.displayName}) ${person.id === resolvedPerson.id ? "⭐" : ""}`;
+        const fieldArr: string[] = StringUtil.arrayToStringFields<[number, QuotaLoggingHandler.LeaderLogAndTotal]>(
+            leaderBoardQuotas,
+            (i, elem) => {
+                const person: GuildMember | null = guild.member(elem[1].memberId);
+                const introStr: string = person === null
+                    ? `${elem[1].memberId} (Not In Server)`
+                    : `${person} (${person.displayName}) ${person.id === resolvedPerson.id ? "⭐" : ""}`;
+    
+                return new StringBuilder()
+                    .append(`**\`[${elem[0]}]\`** ${introStr}`)
+                    .appendLine()
+                    .append(`⇒ **Total**: ${elem[1].total}`)
+                    .appendLine()
+                    .appendLine()
+                    .toString();
+            },
+            1012
+        );
 
-            const tempStr: string = new StringBuilder()
-                .append(`**\`[${place}]\`** ${introStr}`)
-                .appendLine()
-                .append(`⇒ **Total**: ${logInfo.total}`)
-                .appendLine()
-                .appendLine()
-                .toString();
-
-            if (tempStr.length + str.length > 1016) {
-                embed.addField("Quota Information", str);
-                str = tempStr;
-                finalAdded = true;
-            }
-            else {
-                str += tempStr;
-                finalAdded = false;
-            }
-        }
-
-        if (!finalAdded) {
-            embed.addField("Quota Information", str);
+        for (const elem of fieldArr) {
+            embed.addField("Quota Leaderboard", elem);
         }
         embed.setDescription(descSb.toString());
-
         msg.channel.send(embed);
     }
 }

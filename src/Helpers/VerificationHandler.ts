@@ -1512,7 +1512,7 @@ export module VerificationHandler {
 			for await (const [, reaction] of resBotMsg.reactions.cache) {
 				for await (const [, user] of reaction.users.cache) {
 					if (user.bot) {
-						await reaction.remove();
+						await reaction.remove().catch(e => { });
 						break;
 					}
 				}

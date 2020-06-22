@@ -294,7 +294,7 @@ export class GenericMessageCollector<T> {
 				);
 
 				reactCollector.on("collect", async (reaction: MessageReaction, user: User) => {
-					await reaction.remove().catch(e => { });
+					await reaction.users.remove(user).catch(e => { });
 					msgCollector.stop();
 					return resolve(reaction.emoji);
 				});

@@ -37,6 +37,7 @@ import { CheckQuotaCommand } from "../Commands/Logging/CheckQuotaCommand";
 import { UnverifyFromServerCommand } from "../Commands/Server Profile/UnverifyFromServerCommand";
 import { LogPoppedKeysCommand } from "../Commands/Logging/LogPoppedKeysCommand";
 import { AdminProfileUpdaterCommand } from "../Commands/Bot Owner/AdminProfileUpdaterCommand";
+import { LogRuneWCCommand } from "../Commands/Logging/LogRuneWCCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -132,7 +133,8 @@ export class CommandManager {
 			new LogRunsCommand(),
 			new ResetQuotaCommand(),
 			new CheckQuotaCommand(),
-			new LogPoppedKeysCommand()
+			new LogPoppedKeysCommand(),
+			new LogRuneWCCommand()
 		])
 
 		this.hasBeenLoaded = true;

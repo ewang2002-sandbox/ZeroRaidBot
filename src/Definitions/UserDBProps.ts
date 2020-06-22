@@ -43,10 +43,6 @@ export interface IWineCellarOryx {
         amt: number;
         popped: number;
     };
-
-    /**
-     * server
-     */
     server: string;
 }
 

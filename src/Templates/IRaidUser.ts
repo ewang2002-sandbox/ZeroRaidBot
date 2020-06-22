@@ -37,43 +37,45 @@ export interface IRaidUser {
 	/**
 	 * General properties.
 	 */
-	general: {
-		/**
-		 * Amount of keys popped for this server.
-		 */
-		keyPops: IKeyPops[];
+	general: IGeneralProperties;
+}
 
-		/**
-		 * Information on vials.
-		 */
-		voidVials: IVoidVials[];
+export interface IGeneralProperties {
+	/**
+	 * Amount of keys popped for this server.
+	 */
+	keyPops: IKeyPops[];
 
-		/**
-		 * Wine Cellar-related stuffs.
-		 */
-		wcOryx: IWineCellarOryx[];
+	/**
+	 * Information on vials.
+	 */
+	voidVials: IVoidVials[];
 
-		/**
-		 * Total completed runs.
-		 */
-		completedRuns: ICompletedRuns[];
+	/**
+	 * Wine Cellar-related stuffs.
+	 */
+	wcOryx: IWineCellarOryx[];
 
-		/**
-		 * Leader runs
-		 */
-		leaderRuns: ILeaderRuns[];
+	/**
+	 * Total completed runs.
+	 */
+	completedRuns: ICompletedRuns[];
 
-		/**
-		 * Moderation history from all servers.
-		 */
-		moderationHistory: {
-			server: string; // the server id
-			date: number; // exact time in ms 
-			type: string; // moderation type 
-			moderator: string; // id 
-			reason: string; // reason for mod 
-			time: number; // duration, if any.
-			notes: string;
-		}[];
-	}
+	/**
+	 * Leader runs
+	 */
+	leaderRuns: ILeaderRuns[];
+
+	/**
+	 * Moderation history from all servers.
+	 */
+	moderationHistory: {
+		server: string; // the server id
+		date: number; // exact time in ms 
+		type: string; // moderation type 
+		moderator: string; // id 
+		reason: string; // reason for mod 
+		time: number; // duration, if any.
+		notes: string;
+	}[];
 }

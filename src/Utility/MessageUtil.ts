@@ -280,7 +280,7 @@ export namespace MessageUtil {
 			}
 			case ("NO_DB_ENTRY_FOUND"): {
 				embed.setTitle("Database Entry Not Found!");
-				embed.setDescription("I could not find a database entry corresponding to your Discord ID or in-game name. Please try again.");
+				embed.setDescription("I could not find a database entry corresponding to the Discord ID or in-game name provided. You may have to ask an administrator to create a profile for the person. Please try again.");
 				break;
 			}
 		}

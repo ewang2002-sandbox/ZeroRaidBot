@@ -88,7 +88,7 @@ export class UserInfoCommand extends Command {
             }
 
             if (member.user.presence.clientStatus.web !== null) {
-                userSB.append(this.getStatusStr(member.user.presence.clientStatus.mobile, "Web"))
+                userSB.append(this.getStatusStr(member.user.presence.clientStatus.web, "Web"))
                     .appendLine();
             }
         }

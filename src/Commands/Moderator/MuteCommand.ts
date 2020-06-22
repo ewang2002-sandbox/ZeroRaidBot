@@ -16,10 +16,10 @@ export class MuteCommand extends Command {
 				"Mute",
 				"mute",
 				[],
-				"Mutes a user for a specified duration or for an indefinite period of time. This will prevent them from messaging in channels. If no time argument is given, the mute will be indefinite. NOTE THE USE OF ARGUMENT FLAGS!",
-				["mute <@Mention | ID | IGN> [-t Time s | m | h | d] [-r Reason: STRING]"],
-				["mute @Test#1234", "mute @Test#1234 -t 5d", "mute @Test#1234 -t 17h -r Toxic.", "mute @Test#1234 -r Testing."],
-				1
+				"Mutes a user for a specified duration or for an indefinite period of time. This will prevent them from messaging in channels. ",
+				["mute <@Mention | ID | IGN> <X = Time; Xs | Xm | Xh | Xd | perma> <Reason: STRING>"],
+				["mute @Test#1234 30m Read the rules.", "mute 1234567890202010 7d Extreme toxicity", "mute Test perma Only here to troll."],
+				2
 			),
 			new CommandPermission(
 				["MUTE_MEMBERS"],
@@ -58,23 +58,21 @@ export class MuteCommand extends Command {
 			return;
 		}
 
+		// remove member
 		args.shift();
-		const parsedArgs: { time?: string, reason?: string } = this.parseArguments(args);
+		// get other arguments
+		const timeArgument: string = (args.shift() as string).toLowerCase();
+		const reason: string = args.join(" ");
 
-		let time: [number, string];
-		if (typeof parsedArgs.time !== "undefined") {
-			time = this.getMillisecondTime(parsedArgs.time);
-		}
-		else {
-			time = [-1, "Indefinite."];
-		}
+		let time: [number, string] = timeArgument.toLowerCase() === "perma"
+			? [-1, "Indefinite"]
+			: this.getMillisecondTime(timeArgument);
 
 		if (time[0] > 2147483647) {
 			MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null).setTitle("Mute Duration Too Long!").setDescription("The maximum duration you can use is 24.8 days."), msg.channel);
 			return;
 		}
 
-		const reason: string = typeof parsedArgs.reason === "undefined" ? "No reason provided" : parsedArgs.reason;
 		MuteCommand.muteUser(msg, guildDb, memberToMute, msg.member as GuildMember, reason, time);
 	}
 
@@ -144,6 +142,9 @@ export class MuteCommand extends Command {
 		if (typeof moderationChannel !== "undefined") {
 			await moderationChannel.send(embed).catch(() => { });
 		}
+
+		// send to member 
+		await memberToMute.send(`**\`[${guild.name}]\`** You have been muted from \`${guild.name}\`.\n\t⇒ Reason: ${reason}\n\tDuration: ${muteTime[1]}`).catch(() => { });
 
 		for await (const [, channel] of guild.channels.cache) {
 			if (channel.permissionOverwrites.has(resolvedMutedRole.id)) {
@@ -218,54 +219,6 @@ export class MuteCommand extends Command {
 			});
 		}, timeToMute);
 		MuteCommand.currentTimeout.push({ timeout: to, id: memberToMute.id });
-	}
-
-    /**
-     * Parses the arguments needed for this command. Perhaps I could use this method in a formal class...
-     * @param {string[]} args The raw arguments to parse.
-     */
-	private parseArguments(args: string[]): { time?: string, reason?: string } {
-		let strArgs: string = args.join(" ");
-		let returnObj: { time?: string, reason?: string } = {};
-		const func = (strArgs: string, i: number): boolean => strArgs[i] === "-"
-			&& (i + 1 < strArgs.length && strArgs[i + 1] === "r" || strArgs[i + 1] === "t")
-			&& (i + 2 < strArgs.length && strArgs[i + 2] === " ");
-
-		let argType: string = "";
-		for (let i = 0; i < strArgs.length; i++) {
-			if (func(strArgs, i)) {
-				argType = strArgs[i + 1] === "r" ? "r" : "t";
-				i += 2;
-			}
-
-			if (func(strArgs, i)) {
-				argType = "";
-			}
-			else {
-				if (argType === "r") {
-					if (typeof returnObj.reason === "undefined") {
-						returnObj.reason = "";
-					}
-					returnObj.reason += strArgs[i];
-				}
-				else if (argType === "t") {
-					if (typeof returnObj.time === "undefined") {
-						returnObj.time = "";
-					}
-					returnObj.time += strArgs[i];
-				}
-			}
-		}
-
-		if (typeof returnObj.time !== "undefined") {
-			returnObj.time = returnObj.time.trim();
-		}
-
-		if (typeof returnObj.reason !== "undefined") {
-			returnObj.reason = returnObj.reason.trim();
-		}
-
-		return returnObj;
 	}
 
     /**

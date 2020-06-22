@@ -14,10 +14,10 @@ export class UnmuteCommand extends Command {
 				"Unmute",
 				"unmute",
 				[],
-				"Unmutes a user, with a reason if needed. THIS DOES NOT REQUIRE THE USE OF FLAGS!",
-				["unmute <@Mention | ID> [Reason: STRING]"],
+				"Unmutes a user, with a reason if needed.",
+				["unmute <@Mention | ID> <Reason: STRING>"],
 				["unmute @Test#1234 No longer annoying."],
-				1
+				2
 			),
 			new CommandPermission(
                 ["MUTE_MEMBERS"],
@@ -92,5 +92,8 @@ export class UnmuteCommand extends Command {
         if (typeof moderationChannel !== "undefined") {
             await moderationChannel.send(embed).catch(() => { });
         }
+
+        // send to member 
+		await memberToUnmute.send(`**\`[${guild.name}]\`** You have been unmuted from \`${guild.name}\` for the following reason: ${reason}.\nBe sure to abide by the rules next time.`).catch(() => { });
     }
 }

@@ -19,7 +19,7 @@ export class CheckBlacklistCommand extends Command {
 				["cbl", "sbl", "scanblacklist"],
 				"Checks the server's blacklist for a target user.",
 				["checkblacklist <Name>"],
-				["checkblacklist ConsoleMC"],
+				["checkblacklist Deatttthhh"],
 				1
 			),
 			new CommandPermission(

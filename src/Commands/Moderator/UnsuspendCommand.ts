@@ -15,8 +15,8 @@ export class UnsuspendCommand extends Command {
 				"Unsuspend",
 				"unsuspend",
 				[],
-				"Unsuspends a user, with a reason if needed. THIS DOES NOT REQUIRE THE USE OF FLAGS!",
-				["unsuspend <@Mention | ID> [Reason: STRING]"],
+				"Unsuspends a user, with a reason if needed.",
+				["unsuspend <@Mention | ID> <Reason: STRING>"],
 				["unsuspend @Test#1234 For being good."],
 				2
 			),
@@ -97,6 +97,8 @@ export class UnsuspendCommand extends Command {
             }
         });
         await MessageUtil.send({ content: `${memberToUnsuspend} has been unsuspended successfully.` }, msg.channel).catch(() => { });
+
+        // send to member
         await memberToUnsuspend.send(`**\`[${guild.name}]\`** You have been unsuspended from \`${guild.name}\` for the following reason: ${reason}\nThank you for your cooperation and please make sure you read the rules again.`).catch(() => { });
 
 		const suspensionChannel: TextChannel | undefined = guild.channels.cache.get(guildDb.generalChannels.logging.suspensionLogs) as TextChannel | undefined;

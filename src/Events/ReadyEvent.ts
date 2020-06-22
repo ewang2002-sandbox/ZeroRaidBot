@@ -69,7 +69,6 @@ export async function onReadyEvent() {
 		});
 	}
 
-
 	// get info
 	let app: ClientApplication = await Zero.RaidClient.fetchApplication();
 	let owner: User = await Zero.RaidClient.users.fetch((app.owner as User).id);

@@ -13,8 +13,6 @@ import { IWineCellarOryx } from "../../Definitions/UserDBProps";
 
 type KeyLogType = {
     emoji: EmojiResolvable;
-    baseMongoProp: string;
-    fullMongoAmt: string[];
     propType: "WC_SHIELD" | "WC_INC" | "WC_SWORD" | "WC_HELM";
     formalName: string;
 }
@@ -23,29 +21,21 @@ export class LogRuneWCCommand extends Command {
     private readonly _keyData: KeyLogType[] = [
         {
             emoji: "⚔️",
-            baseMongoProp: "general.wcOryx",
-            fullMongoAmt: ["general.wcOryx.$.swordRune.popped", "general.wcOryx.$.swordRune.amt"],
             propType: "WC_SWORD",
             formalName: "Sword Rune(s)"
         },
         {
             emoji: "⛑️",
-            baseMongoProp: "general.wcOryx",
-            fullMongoAmt: ["general.wcOryx.$.helmRune.popped", "general.wcOryx.$.helmRune.amt"],
             propType: "WC_HELM",
             formalName: "Helm Rune(s)"
         },
         {
             emoji: "🛡️",
-            baseMongoProp: "general.wcOryx",
-            fullMongoAmt: ["general.wcOryx.$.shieldRune.popped", "general.wcOryx.$.shieldRune.amt"],
             propType: "WC_SHIELD",
             formalName: "Shield Rune(s)"
         },
         {
             emoji: "🏅",
-            baseMongoProp: "general.wcOryx",
-            fullMongoAmt: ["general.wcOryx.$.wcIncs.popped", "general.wcOryx.$.wcIncs.amt"],
             propType: "WC_INC",
             formalName: "Wine Cellar Incantation(s)"
         }
@@ -135,7 +125,7 @@ export class LogRuneWCCommand extends Command {
         const logTypeEmbed: MessageEmbed = new MessageEmbed()
             .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
             .setTitle("Select Logging Type")
-            .setDescription(`You are going to log ${num} ${keyToUse.formalName.toLowerCase()}. What exactly are you logging?`)
+            .setDescription(`You are going to log ${num} ${keyToUse.formalName.toLowerCase()} for ${member}. Did this person use the ${keyToUse.formalName.toLowerCase()} or did he/she pop it?`)
             .addField(`Stored ${keyToUse.formalName}`, `React with 📥 if ${member} __stored__ ${num} ${keyToUse.formalName.toLowerCase()} for future use (in this server).`)
             .addField(`Used ${keyToUse.formalName}`, `React with 📤 if ${member} __used__ ${num} ${keyToUse.formalName.toLowerCase()} for a server raid.`)
             .addField("Cancel", "React with ❌ to cancel this process. Nothing will be saved.")
@@ -261,7 +251,7 @@ export class LogRuneWCCommand extends Command {
         const embed: MessageEmbed = new MessageEmbed()
             .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
             .setTitle("Keys Logged!")
-            .setDescription(`${num} ${keyToUse.formalName} has been stored for ${member}.`)
+            .setDescription(logType === "POP" ? `${member} has popped ${num} ${keyToUse.formalName} for us.` : `${num} ${keyToUse.formalName} has been stored for ${member}.`)
             .setColor("GREEN")
             .setFooter("Logged Keys")
             .setTimestamp();

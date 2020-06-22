@@ -38,6 +38,7 @@ import { UnverifyFromServerCommand } from "../Commands/Server Profile/UnverifyFr
 import { LogPoppedKeysCommand } from "../Commands/Logging/LogPoppedKeysCommand";
 import { AdminProfileUpdaterCommand } from "../Commands/Bot Owner/AdminProfileUpdaterCommand";
 import { LogRuneWCCommand } from "../Commands/Logging/LogRuneWCCommand";
+import { LogVialCommand } from "../Commands/Logging/LogVialCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -129,12 +130,13 @@ export class CommandManager {
 			new AdminProfileUpdaterCommand()
 		]);
 
-		this.commands.set("Quota & Logging", [
+		this.commands.set("Logging", [
 			new LogRunsCommand(),
 			new ResetQuotaCommand(),
 			new CheckQuotaCommand(),
 			new LogPoppedKeysCommand(),
-			new LogRuneWCCommand()
+			new LogRuneWCCommand(),
+			new LogVialCommand()
 		])
 
 		this.hasBeenLoaded = true;

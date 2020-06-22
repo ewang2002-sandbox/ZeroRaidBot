@@ -5,6 +5,7 @@ import { MongoDbHelper } from "../Helpers/MongoDbHelper";
 import { StringUtil } from "./StringUtil";
 import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollector";
 import { TimeUnit } from "../Definitions/TimeUnit";
+import { ArrayUtil } from "./ArrayUtil";
 
 export namespace GuildUtil {
 	export type RaidLeaderRole = null | "TRL" | "ARL" | "RL" | "HRL";
@@ -209,7 +210,7 @@ export namespace GuildUtil {
 			return null;
 		}
 
-		if (embed.fields.length === 0) {
+		if (str.length !== 0) {
 			embed.addField("Guild Selection", StringUtil.applyCodeBlocks(str));
 		}
 
@@ -238,7 +239,7 @@ export namespace GuildUtil {
 		const universalARL: Role | undefined = guild.roles.cache.get(guildDb.roles.universalAlmostRaidLeader);
 		const universalRL: Role | undefined = guild.roles.cache.get(guildDb.roles.universalRaidLeader);
 		const hrl: Role | undefined = guild.roles.cache.get(guildDb.roles.headRaidLeader);
-		const allLeaders: GuildMember[] = [];
+		let allLeaders: GuildMember[] = [];
 
 		if (typeof universalARL !== "undefined") {
 			allLeaders.push(...universalARL.members.array());
@@ -273,6 +274,9 @@ export namespace GuildUtil {
 				}
 			}
 		}
+
+		// remove any extra duplicates
+		allLeaders = ArrayUtil.removeDuplicate<GuildMember>(allLeaders);
 
 		// Make sure this doesn't return a duplicate
 		return allLeaders;

@@ -79,7 +79,7 @@ export class SwitchMainAltAccountCommand extends Command {
             }
         }
 
-        if (embed.fields.length === 0) {
+        if (str.length !== 0) {
             embed.addField(`Alternative Accounts`, StringUtil.applyCodeBlocks(str));
         }
 

@@ -3,7 +3,6 @@ import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
 import { Message, Guild, GuildMember, Role, MessageEmbed, TextChannel } from "discord.js";
 import { MessageUtil } from "../../Utility/MessageUtil";
-import { StringUtil } from "../../Utility/StringUtil";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
 import { UserHandler } from "../../Helpers/UserHandler";
@@ -15,10 +14,10 @@ export class UnmuteCommand extends Command {
 				"Unmute",
 				"unmute",
 				[],
-				"Unmutes a user, with a reason if needed. THIS DOES NOT REQUIRE THE USE OF FLAGS!",
-				["unmute <@Mention | ID> [Reason: STRING]"],
+				"Unmutes a user, with a reason if needed.",
+				["unmute <@Mention | ID> <Reason: STRING>"],
 				["unmute @Test#1234 No longer annoying."],
-				1
+				2
 			),
 			new CommandPermission(
                 ["MUTE_MEMBERS"],
@@ -43,7 +42,7 @@ export class UnmuteCommand extends Command {
         let memberToUnmute: GuildMember | null = await UserHandler.resolveMember(msg, guildDb);
 
         if (memberToUnmute === null) {
-            await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "NO_MENTIONS_FOUND", null), msg.channel);
+            await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "NO_MEMBER_FOUND", null), msg.channel);
             return;
         }
 
@@ -71,7 +70,7 @@ export class UnmuteCommand extends Command {
         args.shift();
         let reason: string = args.join(" ").trim().length === 0 ? "No reason provided" : args.join(" ").trim();
 
-        await memberToUnmute.roles.remove(role).catch(e => { });
+        await memberToUnmute.roles.remove(role).catch(() => { });
         await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
             $pull: {
                 "moderation.mutedUsers": {
@@ -81,7 +80,7 @@ export class UnmuteCommand extends Command {
         });
 
         const moderationChannel: TextChannel | undefined = guild.channels.cache.get(guildDb.generalChannels.logging.moderationLogs) as TextChannel | undefined;
-        await MessageUtil.send({ content: `${memberToUnmute} has been unmuted successfully.` }, msg.channel).catch(e => { });
+        await MessageUtil.send({ content: `${memberToUnmute} has been unmuted successfully.` }, msg.channel).catch(() => { });
 
         const embed: MessageEmbed = new MessageEmbed()
             .setAuthor(memberToUnmute.user.tag, memberToUnmute.user.displayAvatarURL())
@@ -91,7 +90,10 @@ export class UnmuteCommand extends Command {
             .setTimestamp()
             .setFooter("Unmute Command Executed At");
         if (typeof moderationChannel !== "undefined") {
-            await moderationChannel.send(embed).catch(e => { });
+            await moderationChannel.send(embed).catch(() => { });
         }
+
+        // send to member 
+		await memberToUnmute.send(`**\`[${guild.name}]\`** You have been unmuted from \`${guild.name}\` for the following reason: ${reason}.\nBe sure to abide by the rules next time.`).catch(() => { });
     }
 }

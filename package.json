@@ -1,19 +1,19 @@
 {
 	"name": "raidbot",
-	"version": "0.4.0-PRE",
-	"description": "Zero is a Discord bot written in TypeScript, designed for raid management, moderation, and fun.",
+	"version": "0.5.0",
+	"description": "A simple Discord bot for Realm of the Mad God servers, designed for verification and raid management. ",
 	"main": "index.js",
 	"dependencies": {
 		"axios": "^0.19.2",
 		"discord.js": "^12.2.0",
-		"mongodb": "^3.5.7"
+		"mongodb": "^3.5.9"
 	},
 	"devDependencies": {
 		"@types/axios": "^0.14.0",
-		"@types/mongodb": "^3.5.16",
-		"@types/node": "^12.12.39",
+		"@types/mongodb": "^3.5.23",
+		"@types/node": "^12.12.47",
 		"@types/ws": "^6.0.4",
-		"typescript": "^3.9.2"
+		"typescript": "^3.9.5"
 	},
 	"scripts": {
 		"compile": "tsc -p .",

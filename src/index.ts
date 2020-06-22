@@ -1,7 +1,6 @@
 import { Zero } from "./Zero";
 import { BotConfiguration } from "./Configuration/Config";
 import { DateUtil } from "./Utility/DateUtil";
-import { MessageEmbed } from "discord.js";
 
 const bot: Zero = new Zero(BotConfiguration.token);
 bot.login();
@@ -9,11 +8,11 @@ bot.login();
 process.on("uncaughtException", (error) => {
     console.error(`ERROR OCCURRED AT: ${DateUtil.getTime()}`);
     console.error(error);
-    console.log("=====================");
+    console.info("=====================");
 });
 
 process.on("unhandledRejection", (error) => {
     console.error(`ERROR OCCURRED AT: ${DateUtil.getTime()}`);
     console.error(error);
-    console.log("=====================");
+    console.info("=====================");
 });

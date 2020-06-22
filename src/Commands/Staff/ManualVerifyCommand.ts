@@ -5,19 +5,20 @@ import { Message, GuildMember, Role, Guild, MessageEmbed, MessageReaction, User,
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { UserHandler } from "../../Helpers/UserHandler";
 import { MessageUtil } from "../../Utility/MessageUtil";
-import { ISection } from "../../Definitions/ISection";
+import { ISection } from "../../Templates/ISection";
 import { GuildUtil } from "../../Utility/GuildUtil";
 import { IManualVerification } from "../../Definitions/IManualVerification";
 import { VerificationHandler } from "../../Helpers/VerificationHandler";
 import { GenericMessageCollector } from "../../Classes/Message/GenericMessageCollector";
 import { TimeUnit } from "../../Definitions/TimeUnit";
 import { AxiosResponse } from "axios";
-import { ITiffitRealmEyeProfile, ITiffitNoUser } from "../../Definitions/ITiffitRealmEye";
 import { Zero } from "../../Zero";
-import { TiffitRealmEyeAPI } from "../../Constants/ConstantVars";
+import { RealmEyeAPILink } from "../../Constants/ConstantVars";
 import { INameHistory, IAPIError } from "../../Definitions/ICustomREVerification";
 import { FilterQuery } from "mongodb";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
+import { IRealmEyeNoUser } from "../../Definitions/IRealmEyeNoUser";
+import { IRealmEyeAPI } from "../../Definitions/IRealmEyeAPI";
 
 export class ManualVerifyCommand extends Command {
     private readonly _emojis: EmojiResolvable[] = [
@@ -198,14 +199,14 @@ export class ManualVerifyCommand extends Command {
             .setDescription(`You will be manually verifying: ${mention}.\n\nType \`1\` to check if this person needs to be manually verified in any sections.\nType \`2\` to manually verify this person now (in the main section).\nType \`cancel\` to cancel this process.`)
             .setColor("RANDOM")
             .setFooter("Manual Verification");
-        const num: number | "TIME" | "CANCEL" = await new GenericMessageCollector<number>(
+        const num: number | "TIME_CMD" | "CANCEL_CMD" = await new GenericMessageCollector<number>(
             msg,
             { embed: selectionEmbed },
             2,
             TimeUnit.MINUTE
         ).send(GenericMessageCollector.getNumber(msg.channel, 1, 2));
 
-        if (num === "TIME" || num === "CANCEL") {
+        if (num === "TIME_CMD" || num === "CANCEL_CMD") {
             return;
         }
 
@@ -341,7 +342,7 @@ export class ManualVerifyCommand extends Command {
                 .setDescription(`You will be manually verifying: ${mention}. Type the in-game name that you want to verify this person with. To cancel this process, type \`-cancel\`.`)
                 .setColor("RANDOM")
                 .setFooter("Manual Verification");
-            const name: string | "TIME" | "CANCEL" | "ERROR_" = await new GenericMessageCollector<string | "ERROR_">(
+            const name: string | "TIME_CMD" | "CANCEL_CMD" | "ERROR_" = await new GenericMessageCollector<string | "ERROR_">(
                 msg,
                 { embed: selectionEmbed },
                 3,
@@ -363,10 +364,10 @@ export class ManualVerifyCommand extends Command {
                         return;
                     }
 
-                    let requestData: AxiosResponse<ITiffitNoUser | ITiffitRealmEyeProfile>;
+                    let requestData: AxiosResponse<IRealmEyeNoUser | IRealmEyeAPI>;
                     try {
                         requestData = await Zero.AxiosClient
-                            .get<ITiffitNoUser | ITiffitRealmEyeProfile>(TiffitRealmEyeAPI + collectedMessage.content);
+                            .get<IRealmEyeNoUser | IRealmEyeAPI>(RealmEyeAPILink + collectedMessage.content);
                     }
                     catch (e) {
                         return "ERROR_";
@@ -377,12 +378,12 @@ export class ManualVerifyCommand extends Command {
                         return;
                     }
                     else {
-                        return requestData.data.name;
+                        return requestData.data.player;
                     }
                 }, "-cancel"
             );
 
-            if (name === "TIME" || name === "CANCEL") {
+            if (name === "TIME_CMD" || name === "CANCEL_CMD") {
                 return;
             }
 

@@ -16,9 +16,9 @@ export class SuspendCommand extends Command {
 				"Suspend",
 				"suspend",
 				[],
-				"Suspends a user for a specified duration or for an indefinite period of time. This will prevent them from joining raids. If no time argument is given, the suspension will be indefinite. NOTE THE USE OF ARGUMENT FLAGS!",
-				["suspension <@Mention | ID | IGN> [-t Time s | m | h | d] [-r Reason: STRING]"],
-				["suspension @Test#1234", "suspend @Test#1234 -t 5d", "suspend @Test#1234 -t 17h -r Toxic.", "suspend @Test#1234 -r Testing."],
+				"Suspends a user for a specified duration or for an indefinite period of time. This will prevent them from joining raids.",
+				["suspend <@Mention | ID | IGN> <X = Time; Xs | Xm | Xh | Xd | perma> <Reason: STRING>"],
+				["suspension @Test#1234 30m Read the rules.", "suspend 23131231233123 7d Crashing + intentionally trying to ruin the raid", "suspend Test perma Only here to troll."],
 				1
 			),
 			new CommandPermission(
@@ -44,7 +44,7 @@ export class SuspendCommand extends Command {
 		let memberToSuspend: GuildMember | null = await UserHandler.resolveMember(msg, guildDb);
 
 		if (memberToSuspend === null) {
-			await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "NO_MENTIONS_FOUND", null), msg.channel);
+			await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "NO_MEMBER_FOUND", null), msg.channel);
 			return;
 		}
 
@@ -60,22 +60,19 @@ export class SuspendCommand extends Command {
 		}
 
 		args.shift();
-		const parsedArgs: { time?: string, reason?: string } = this.parseArguments(args);
+		// get other arguments
+		const timeArgument: string = (args.shift() as string).toLowerCase();
+		const reason: string = args.join(" ");
 
-		let time: [number, string];
-		if (typeof parsedArgs.time !== "undefined") {
-			time = this.getMillisecondTime(parsedArgs.time);
-		}
-		else {
-			time = [-1, "Indefinite."];
-		}
+		let time: [number, string] = timeArgument.toLowerCase() === "perma"
+			? [-1, "Indefinite"]
+			: this.getMillisecondTime(timeArgument);
 
 		if (time[0] > 2147483647) {
 			MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null).setTitle("Suspension Duration Too Long!").setDescription("The maximum duration you can use is 24.8 days."), msg.channel);
 			return;
 		}
 
-		const reason: string = typeof parsedArgs.reason === "undefined" ? "No reason provided" : parsedArgs.reason;
 		SuspendCommand.suspendUser(msg, guildDb, memberToSuspend, msg.member as GuildMember, reason, time);
 	}
 
@@ -138,12 +135,14 @@ export class SuspendCommand extends Command {
 			return;
 		}
 		await MessageUtil.send({ content: `${memberToSuspend} has been suspended successfully.` }, msg.channel).catch(() => { });
-		await memberToSuspend.send(`**\`[${guild.name}]\`** You have been suspended from \`${guild.name}\`.\n\t⇒ Reason: ${reason}\n\tDuration: ${suspensionTime[0]}`).catch(() => { });
+		
+		// send to member 
+		await memberToSuspend.send(`**\`[${guild.name}]\`** You have been suspended from \`${guild.name}\`.\n\t⇒ Reason: ${reason}\n\tDuration: ${suspensionTime[1]}`).catch(() => { });
 
 		const embed: MessageEmbed = new MessageEmbed()
 			.setAuthor(memberToSuspend.user.tag, memberToSuspend.user.displayAvatarURL())
 			.setTitle("🚩 Member Suspended")
-			.setDescription(`⇒ Suspended Member: ${memberToSuspend} (${memberToSuspend.displayName})\n⇒ Moderator: ${moderator} (${moderator.displayName})\n⇒ Reason: ${reason}\n⇒ nDuration: ${suspensionTime[1]}`)
+			.setDescription(`⇒ Suspended Member: ${memberToSuspend} (${memberToSuspend.displayName})\n⇒ Moderator: ${moderator} (${moderator.displayName})\n⇒ Reason: ${reason}\n⇒ Duration: ${suspensionTime[1]}`)
 			.setColor("RED")
 			.setTimestamp()
 			.setFooter("Suspension Command Executed At");
@@ -217,54 +216,6 @@ export class SuspendCommand extends Command {
 			});
 		}, timeTosuspend);
 		SuspendCommand.currentTimeout.push({ timeout: to, id: memberToSuspend.id });
-	}
-
-    /**
-     * Parses the arguments needed for this command. Perhaps I could use this method in a formal class...
-     * @param {string[]} args The raw arguments to parse.
-     */
-	private parseArguments(args: string[]): { time?: string, reason?: string } {
-		let strArgs: string = args.join(" ");
-		let returnObj: { time?: string, reason?: string } = {};
-		const func = (strArgs: string, i: number): boolean => strArgs[i] === "-"
-			&& (i + 1 < strArgs.length && strArgs[i + 1] === "r" || strArgs[i + 1] === "t")
-			&& (i + 2 < strArgs.length && strArgs[i + 2] === " ");
-
-		let argType: string = "";
-		for (let i = 0; i < strArgs.length; i++) {
-			if (func(strArgs, i)) {
-				argType = strArgs[i + 1] === "r" ? "r" : "t";
-				i += 2;
-			}
-
-			if (func(strArgs, i)) {
-				argType = "";
-			}
-			else {
-				if (argType === "r") {
-					if (typeof returnObj.reason === "undefined") {
-						returnObj.reason = "";
-					}
-					returnObj.reason += strArgs[i];
-				}
-				else if (argType === "t") {
-					if (typeof returnObj.time === "undefined") {
-						returnObj.time = "";
-					}
-					returnObj.time += strArgs[i];
-				}
-			}
-		}
-
-		if (typeof returnObj.time !== "undefined") {
-			returnObj.time = returnObj.time.trim();
-		}
-
-		if (typeof returnObj.reason !== "undefined") {
-			returnObj.reason = returnObj.reason.trim();
-		}
-
-		return returnObj;
 	}
 
     /**

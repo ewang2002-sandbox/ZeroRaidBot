@@ -1,7 +1,11 @@
+import { PRIVATE_BOT, APIUrl } from "../Configuration/Config";
+
 /**
- * Tiffit API Link.
+ * RealmEye API to use. 
  */
-export const TiffitRealmEyeAPI: string = "http://www.tiffit.net/RealmInfo/api/user?u="; 
+export const RealmEyeAPILink: string = PRIVATE_BOT 
+    ? APIUrl
+    : "https://nightfirec.at/realmeye-api/?player=";  
 
 /**
  * The default prefix for the bot.

@@ -5,7 +5,6 @@ import { Message, TextChannel, MessageEmbed, GuildMember } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { ArrayUtil } from "../../Utility/ArrayUtil";
-import { StringUtil } from "../../Utility/StringUtil";
 
 export class PollCommand extends Command {
 
@@ -193,7 +192,7 @@ export class PollCommand extends Command {
 				.setDescription("You can only have 1 question and 20 choices.")
 				.setAuthor(`${(msg.member as GuildMember).displayName} • ${msg.author.tag}`, msg.author.displayAvatarURL())
 				.setColor("RANDOM")
-				.setFooter("Zero")
+				.setFooter(msg.guild === null ? "Zero" : msg.guild.name)
 				.setTimestamp();
 			MessageUtil.send(embed, msg.channel as TextChannel).catch(e => { });
 			return;
@@ -211,7 +210,7 @@ export class PollCommand extends Command {
 				MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "MSG_TOO_LONG", null, "poll option", "1000"), msg.channel as TextChannel);
 				return;
 			}
-			pollEmbed.addField(`Choice ${selectedReaction[i]}`, StringUtil.applyCodeBlocks(args[i]), true);
+			pollEmbed.addField(`Choice ${selectedReaction[i]}`, args[i]);
 			toReactWith.push(selectedReaction[i]);
 		}
 		const pollMsg: Message | void = await msg.channel.send(pollEmbed).catch(e => { });

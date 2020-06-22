@@ -1,18 +1,29 @@
+import { IConfigurationSettings } from "./IConfigurationSettings";
+
 /**
  * True -- uses production settings.
  * False -- uses testing settings.
  */
-const PRODUCTION_BOT: boolean = false;
+const PRODUCTION_BOT: boolean = true;
+
+/**
+ * True -- use private settings.
+ * False -- use public settings.
+ * 
+ * UNLESS you are using the official version of the bot, this should be FALSE.
+ */
+export const PRIVATE_BOT: boolean = false;
 
 export const BotConfiguration: IConfigurationSettings = PRODUCTION_BOT
     ? {
-        token: "",
+        token: "", 
         dbURL: "",
         dbName: "",
         userCollectionName: "",
         guildCollectionName: "",
         botCollectionName: "",
-        botOwners: []
+        botOwners: [],
+        botColors: []
     } : {
         token: "",
         dbURL: "",
@@ -20,7 +31,8 @@ export const BotConfiguration: IConfigurationSettings = PRODUCTION_BOT
         userCollectionName: "",
         guildCollectionName: "",
         botCollectionName: "",
-        botOwners: []
+        botOwners: [],
+        botColors: []
     };
 
 /**
@@ -34,43 +46,6 @@ export const DefaultPrefix: string = ";";
 export const DeleteEmbedTime: number = 5000;
 
 /**
- * Configuration Interface. Do not alter unless you know what you are doing.
+ * Private RealmEye API URL. Don't fill this field out.
  */
-interface IConfigurationSettings {
-    /**
-     * The token for the bot.
-     * @type {string}
-     */
-    token: string;
-    /**
-     * URL that the bot will connect to.
-     *  @type {string}
-     */
-    dbURL: string;
-    /**
-     * The database name to use for MongoDB.
-     * 
-     * @type {string} 
-     */
-    dbName: string;
-    /**
-     * The user collection name. 
-     * 
-     * @type {string} 
-     */
-    userCollectionName: string;
-    /**
-     * The guild collection name. 
-     * 
-     * @type {string}
-     */
-    guildCollectionName: string;
-    /**
-     * Bot settings collection name.
-     */
-    botCollectionName: string;
-    /**
-     * Bot owners.
-     */
-    botOwners: string[];
-}
+export const APIUrl: string = "";

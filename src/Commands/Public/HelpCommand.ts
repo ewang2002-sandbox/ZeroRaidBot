@@ -1,11 +1,13 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, MessageEmbed } from "discord.js";
+import { Message, MessageEmbed, ClientApplication, User, MessageCollector, TextChannel } from "discord.js";
 import { StringUtil } from "../../Utility/StringUtil";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { Zero } from "../../Zero";
 import { RoleNames } from "../../Definitions/Types";
+import { OtherUtil } from "../../Utility/OtherUtil";
+import { BotConfiguration } from "../../Configuration/Config";
 
 export class HelpCommand extends Command {
     public constructor() {
@@ -50,13 +52,46 @@ export class HelpCommand extends Command {
                 .setDescription(`${commandToLookFor === "" ? "Below are a list of bot commands" : `The command, \`${commandToLookFor}\`, could not be found. Try one of the below commands`}. To learn how to use a command, type \`;help <Command Name>\` (do not include the < >).`);
 
             let cmdCount: number = 0;
-            for (const [name, cmd] of Zero.CmdManager.getCommands()) {
-                cmdEmbed.addField(name, StringUtil.applyCodeBlocks(
-                    cmd.map(x => x.getMainCommandName()
-                    ).join(", ")));
-                cmdCount += cmd.length;
+            let app: ClientApplication = await msg.client.fetchApplication();
+            const owners: string[] = [(app.owner as User).id, ...BotConfiguration.botOwners];
+            
+            for (const [name, cmds] of Zero.CmdManager.getCommands()) {
+                let commands: string = "";
+                for (const command of cmds) {
+                    cmdCount += cmds.length;
+                    // guild only command but not in guild
+                    // so we skip
+                    if (msg.guild === null) {
+                        if (!command.isGuildOnly()) {
+                            commands += command.getMainCommandName() + "\n";
+                        }
+                        continue;
+                    }
+
+                    if (command.isBotOwnerOnly() && !owners.some(x => x === msg.author.id)) {
+                        continue;
+                    }
+
+                    const cmdUserPerm: [boolean, boolean, boolean] = OtherUtil.checkCommandPerms(msg, command, guildDb);
+                    let canRunCommand: boolean;
+                    if (cmdUserPerm[2]) {
+                        canRunCommand = cmdUserPerm[0] || cmdUserPerm[1];
+                    }
+                    else {
+                        canRunCommand = cmdUserPerm[1];
+                    }
+                    
+                    if (canRunCommand) {
+                        commands += command.getMainCommandName() + "\n";
+                    }
+                }
+
+                if (commands.length !== 0) {
+                    cmdEmbed.addField(name, StringUtil.applyCodeBlocks(commands));
+                    commands = "";
+                }
             }
-            cmdEmbed.setFooter(`${cmdCount} Commands Available.`);
+            cmdEmbed.setFooter(`${cmdCount} Total Commands.`);
             await msg.channel.send(cmdEmbed).catch(e => { });
             return;
         }

@@ -11,7 +11,7 @@ export class StartHeadcountCommand extends Command {
 			new CommandDetail(
 				"Start Headcount Command",
 				"startheadcount",
-				["starthc"],
+				["starthc", "headcount", "hc", "shc"],
 				"Starts a new headcount.",
 				["startheadcount"],
 				["startheadcount"],

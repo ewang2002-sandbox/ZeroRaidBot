@@ -9,6 +9,7 @@ export const Samurai: string = "585616163078275102";
 export const Priest: string = "585616162411249691";
 export const Mystic: string = "585616161773977621";
 export const Trickster: string = "585616162415575060";
+export const Bard: string = "714015181679624203";
 
 // Any specific status effects.
 export const Paralyze: string = "678792068906352642";
@@ -18,6 +19,7 @@ export const ArmorBreak: string = "561334399635816448";
 export const MSeal: string = "678792284682190884";
 export const Puri: string = "678792412067266562";
 export const ScholarSeal: string = "678792068935450634";
+export const BrainPrism: string = "708927848076935218";
 
 // reactions i guess
 export const AllEmoji: string = "561605182153031680";

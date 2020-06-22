@@ -4,7 +4,7 @@ export namespace StringUtil {
 	 * @param {string} msg The string.
 	 * @returns {string} The modified string.
 	 */
-	export function applyCodeBlocks(msg: string): string { 
+	export function applyCodeBlocks(msg: any): string { 
 		return "```\n" + msg + "```";
 	}
 
@@ -46,18 +46,18 @@ export namespace StringUtil {
 		let firstBigrams: Map<string, any> = new Map();
 
 		for (let i = 0; i < first.length - 1; i++) {
-			const bigram = first.substring(i, i + 2);
-			const count = firstBigrams.has(bigram)
+			const bigram: string = first.substring(i, i + 2);
+			const count: number = firstBigrams.has(bigram)
 				? firstBigrams.get(bigram) + 1
 				: 1;
 
 			firstBigrams.set(bigram, count);
 		}
 
-		let intersectionSize = 0;
+		let intersectionSize: number = 0;
 		for (let i = 0; i < second.length - 1; i++) {
-			const bigram = second.substring(i, i + 2);
-			const count = firstBigrams.has(bigram)
+			const bigram: string = second.substring(i, i + 2);
+			const count: number = firstBigrams.has(bigram)
 				? firstBigrams.get(bigram)
 				: 0;
 
@@ -68,5 +68,56 @@ export namespace StringUtil {
 		}
 
 		return (2.0 * intersectionSize) / (first.length + second.length - 2);
+	}
+
+	/**	
+	 * Returns a string consisting of all symbols BEFORE any letters.	
+	 * @param {string} str The string. 	
+	 */	
+	export function getSymbolsFromStartOfString(str: string): string {	
+		let symbols: string = "";	
+		for (let i = 0; i < str.length; i++) {	
+			if (!/^[A-Za-z]+$/.test(str[i])) {	
+				symbols += str[i];	
+				continue;	
+			}	
+			else {	
+				break;	
+			}	
+		}	
+
+		return symbols;	
+	}
+
+	/**
+	 * Breaks up an array of elements into an array of human-readable string content with a specific length restriction per element.
+	 * @param {T[]} array The array of elements.
+	 * @param func The function to convert an element into a string.
+	 * @param {number} [maxLenPerElement = 1016] The maximum length of a string per element in the fields array.
+	 */
+	export function arrayToStringFields<T>(
+		array: T[], 
+		func: (i: number, element: T) => string,
+		maxLenPerElement: number = 1016
+	): string[] {
+		const returnArr: string[] = [];
+		let str: string = "";
+		
+		for (let i = 0; i < array.length; i++) {
+			const tempString: string = func(i, array[i]);
+			if (str.length + tempString.length > maxLenPerElement) {
+				returnArr.push(str);
+				str = tempString;
+			}
+			else {
+				str += tempString;
+			}
+		}
+
+		if (returnArr.length === 0 && str.length !== 0) {
+			returnArr.push(str);
+		}
+
+		return returnArr;
 	}
 }

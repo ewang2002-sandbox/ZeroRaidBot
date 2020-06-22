@@ -1,23 +1,25 @@
-import { Message, MessageCollector, MessageEmbed, GuildMember, Guild, MessageReaction, User, ReactionCollector, TextChannel, EmbedFieldData, Collection, DMChannel, Role, GuildChannel, MessageManager, GuildMemberEditData } from "discord.js";
+import { Message, MessageCollector, MessageEmbed, GuildMember, Guild, MessageReaction, User, ReactionCollector, TextChannel, Collection, DMChannel, Role, GuildChannel } from "discord.js";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { IRaidUser } from "../Templates/IRaidUser";
 import { MessageAutoTick } from "../Classes/Message/MessageAutoTick";
 import { StringUtil } from "../Utility/StringUtil";
-import { ISection } from "../Definitions/ISection";
+import { ISection } from "../Templates/ISection";
 import { MongoDbHelper } from "./MongoDbHelper";
 import { MessageUtil } from "../Utility/MessageUtil";
-import { ITiffitRealmEyeProfile, ITiffitNoUser } from "../Definitions/ITiffitRealmEye";
 import { Zero } from "../Zero";
-import { TiffitRealmEyeAPI } from "../Constants/ConstantVars";
+import { RealmEyeAPILink } from "../Constants/ConstantVars";
 import { StringBuilder } from "../Classes/String/StringBuilder";
 import { AxiosResponse } from "axios";
-import { FilterQuery, UpdateQuery } from "mongodb";
+import { FilterQuery, InsertOneWriteOpResult, WithId } from "mongodb";
 import { ArrayUtil } from "../Utility/ArrayUtil";
 import { INameHistory, IAPIError } from "../Definitions/ICustomREVerification";
 import { TestCasesNameHistory } from "../TestCases/TestCases";
 import { UserHandler } from "./UserHandler";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { IManualVerification } from "../Definitions/IManualVerification";
+import { IRealmEyeNoUser } from "../Definitions/IRealmEyeNoUser";
+import { IRealmEyeAPI } from "../Definitions/IRealmEyeAPI";
+import { PRIVATE_BOT } from "../Configuration/Config";
 
 export module VerificationHandler {
 	interface ICheckResults {
@@ -142,7 +144,7 @@ export module VerificationHandler {
 						.setFooter("⏳ Time Remaining: 2 Minutes and 0 Seconds.")
 						.setColor("RANDOM");
 
-					const choice: boolean | "CANCEL" | "TIME" = await new Promise(async (resolve) => {
+					const choice: boolean | "CANCEL_CMD" | "TIME_CMD" = await new Promise(async (resolve) => {
 						botMsg = await botMsg.edit(hasNameEmbed);
 						const mc1: MessageAutoTick = new MessageAutoTick(
 							botMsg,
@@ -159,14 +161,14 @@ export module VerificationHandler {
 						msgCollector.on("end", (collected: Collection<string, Message>, reason: string) => {
 							mc1.disableAutoTick();
 							if (reason === "time") {
-								return resolve("TIME");
+								return resolve("TIME_CMD");
 							}
 						});
 
 						msgCollector.on("collect", async (respMsg: Message) => {
 							if (respMsg.content.toLowerCase() === "cancel") {
 								msgCollector.stop();
-								return resolve("CANCEL");
+								return resolve("CANCEL_CMD");
 							}
 
 							if (["yes", "ye", "y"].includes(respMsg.content.toLowerCase())) {
@@ -181,7 +183,7 @@ export module VerificationHandler {
 						});
 					});
 
-					if (choice === "TIME" || choice === "CANCEL") {
+					if (choice === "TIME_CMD" || choice === "CANCEL_CMD") {
 						await botMsg.delete().catch(() => { });
 						return;
 					}
@@ -193,75 +195,13 @@ export module VerificationHandler {
 				}
 
 				if (inGameName === "") { // TODO implement
-					const nameToUse: string | "CANCEL_" | "TIME_" = await new Promise(async (resolve) => {
-						const nameEmbed: MessageEmbed = new MessageEmbed()
-							.setAuthor(member.user.tag, member.user.displayAvatarURL())
-							.setTitle(`Verification For: **${guild.name}**`)
-							.setDescription("Please type your in-game name now. Your in-game name should be spelled exactly as seen in-game; however, capitalization does NOT matter.\n\nTo cancel this process, simply react with ❌.")
-							.setColor("RANDOM")
-							.setFooter("⏳ Time Remaining: 2 Minutes and 0 Seconds.");
-						botMsg = await botMsg.edit(nameEmbed);
-						for await (const [, reaction] of botMsg.reactions.cache) {
-							for await (const [, user] of reaction.users.cache) {
-								if (user.bot) {
-									await reaction.remove();
-									break;
-								}
-							}
-						}
-						await botMsg.react("❌");
-
-						const mcd: MessageAutoTick = new MessageAutoTick(botMsg, nameEmbed, 2 * 60 * 1000, null, "⏳ Time Remaining: {m} Minutes and {s} Seconds.");
-						const msgCollector: MessageCollector = new MessageCollector(dmChannel, m => m.author.id === member.user.id, {
-							time: 2 * 60 * 1000
-						});
-
-						//#region reaction collector
-						const reactFilter: ((r: MessageReaction, u: User) => boolean) = (reaction: MessageReaction, user: User) => {
-							return reaction.emoji.name === "❌" && user.id === member.user.id;
-						}
-
-						const reactCollector: ReactionCollector = botMsg.createReactionCollector(reactFilter, {
-							time: 2 * 60 * 1000,
-							max: 1
-						});
-
-						reactCollector.on("collect", async () => {
-							msgCollector.stop();
-							await botMsg.delete().catch(() => { });
-							return resolve("CANCEL_");
-						});
-
-						//#endregion
-
-						msgCollector.on("collect", async (msg: Message) => {
-							if (!/^[a-zA-Z]+$/.test(msg.content)) {
-								await MessageUtil.send({ content: "Please type a __valid__ in-game name." }, member.user);
-								return;
-							}
-
-							if (msg.content.length > 10) {
-								await MessageUtil.send({ content: "Your in-game name should not exceed 10 characters. Please try again." }, member.user);
-								return;
-							}
-
-							if (msg.content.length === 0) {
-								await MessageUtil.send({ content: "Please type in a valid in-game name." }, member.user);
-								return;
-							}
-
-							msgCollector.stop();
-							reactCollector.stop();
-							return resolve(msg.content);
-						});
-
-						msgCollector.on("end", (collected: Collection<string, Message>, reason: string) => {
-							mcd.disableAutoTick();
-							if (reason === "time") {
-								return resolve("TIME_");
-							}
-						});
-					});
+					const nameToUse: string | "CANCEL_" | "TIME_" = await getInGameNameByPrompt(
+						member.user,
+						dmChannel,
+						guild,
+						null,
+						botMsg
+					);
 
 					if (nameToUse === "CANCEL_" || nameToUse === "TIME_") {
 						if (typeof verificationAttemptsChannel !== "undefined") {
@@ -340,10 +280,10 @@ export module VerificationHandler {
 					canReact = false;
 					// begin verification time
 
-					let requestData: AxiosResponse<ITiffitNoUser | ITiffitRealmEyeProfile>;
+					let requestData: AxiosResponse<IRealmEyeNoUser | IRealmEyeAPI>;
 					try {
 						requestData = await Zero.AxiosClient
-							.get<ITiffitNoUser | ITiffitRealmEyeProfile>(TiffitRealmEyeAPI + inGameName);
+							.get<IRealmEyeNoUser | IRealmEyeAPI>(RealmEyeAPILink + inGameName);
 					}
 					catch (e) {
 						reactCollector.stop();
@@ -373,7 +313,7 @@ export module VerificationHandler {
 					// get name history
 					let nameHistory: INameHistory[] | IAPIError;
 					try {
-						nameHistory = await getRealmEyeNameHistory(requestData.data.name);
+						nameHistory = await getRealmEyeNameHistory(requestData.data.player);
 					} catch (e) {
 						reactCollector.stop();
 						if (typeof verificationAttemptsChannel !== "undefined") {
@@ -399,11 +339,18 @@ export module VerificationHandler {
 						return;
 					}
 
-					const nameFromProfile: string = requestData.data.name;
+					nameHistory = TestCasesNameHistory.withNames();
+
+					const nameFromProfile: string = requestData.data.player;
 					if (!isOldProfile) {
 						let codeFound: boolean = false;
-						for (let i = 0; i < requestData.data.description.length; i++) {
-							if (requestData.data.description[i].includes(code)) {
+						let description: string[] = [
+							requestData.data.desc1,
+							requestData.data.desc2,
+							requestData.data.desc3
+						]
+						for (let i = 0; i < description.length; i++) {
+							if (description[i].includes(code)) {
 								codeFound = true;
 							}
 						}
@@ -441,7 +388,7 @@ export module VerificationHandler {
 					}
 
 					// now back to regular checking
-					if (requestData.data.last_seen !== "hidden") {
+					if (requestData.data.player_last_seen !== "hidden") {
 						if (typeof verificationAttemptsChannel !== "undefined") {
 							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her last-seen location is not hidden.`).catch(() => { });
 						}
@@ -514,7 +461,7 @@ export module VerificationHandler {
 							}
 							descStr += "\n\nWould you like to appeal the decision with a staff member? Unreact and react with ✅ to appeal with a staff member; otherwise, react with ❌.";
 
-							const wantsToBeManuallyVerified: boolean | "TIME" = await new Promise(async (resolve, reject) => {
+							const wantsToBeManuallyVerified: boolean | "TIME_CMD" = await new Promise(async (resolve) => {
 								const failedAppealEmbed: MessageEmbed = new MessageEmbed(failedEmbed)
 									.addField("Consider the Following", "⇒ This process may take up to one day.\n⇒ You will not be able to verify while your profile is being reviewed.\n⇒ You are NOT guaranteed to be verified.")
 									.setDescription(descStr)
@@ -540,7 +487,7 @@ export module VerificationHandler {
 								reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
 									mcd.disableAutoTick();
 									if (reason === "time") {
-										return resolve("TIME");
+										return resolve("TIME_CMD");
 									}
 								});
 
@@ -555,7 +502,7 @@ export module VerificationHandler {
 								});
 							});
 
-							if (wantsToBeManuallyVerified === "TIME") {
+							if (wantsToBeManuallyVerified === "TIME_CMD") {
 								if (typeof verificationAttemptsChannel !== "undefined") {
 									verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member}'s verification process has been canceled.\n\t⇒ Reason: TIME`).catch(() => { });
 								}
@@ -594,7 +541,7 @@ export module VerificationHandler {
 
 					// success!
 					await member.roles.add(verifiedRole);
-					await member.setNickname(member.user.username === requestData.data.name ? `${requestData.data.name}.` : requestData.data.name).catch(() => { });
+					await member.setNickname(member.user.username === requestData.data.player ? `${requestData.data.player}.` : requestData.data.player).catch(() => { });
 
 					reactCollector.stop();
 					const successEmbed: MessageEmbed = new MessageEmbed()
@@ -639,8 +586,8 @@ export module VerificationHandler {
 					return;
 				}
 
-				const requestData: AxiosResponse<ITiffitNoUser | ITiffitRealmEyeProfile> = await Zero.AxiosClient
-					.get<ITiffitNoUser | ITiffitRealmEyeProfile>(TiffitRealmEyeAPI + name);
+				const requestData: AxiosResponse<IRealmEyeNoUser | IRealmEyeAPI> = await Zero.AxiosClient
+					.get<IRealmEyeNoUser | IRealmEyeAPI>(RealmEyeAPILink + name);
 				if ("error" in requestData.data) {
 					if (typeof verificationAttemptsChannel !== "undefined") {
 						verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${name}\`, but the name could not be found on RealmEye.`).catch(() => { });
@@ -712,7 +659,7 @@ export module VerificationHandler {
 						}
 						descStr += "\n\nWould you like to appeal the decision with a staff member? Unreact and react with ✅ to appeal with a staff member; otherwise, react with ❌.";
 
-						const wantsToBeManuallyVerified: boolean | "TIME" = await new Promise(async (resolve, reject) => {
+						const wantsToBeManuallyVerified: boolean | "TIME_CMD" = await new Promise(async (resolve) => {
 							const failedAppealEmbed: MessageEmbed = new MessageEmbed(failedEmbed)
 								.setDescription(descStr)
 								.addField("Consider the Following", "⇒ This process may take up to one day.\n⇒ You will not be able to verify while your profile is being reviewed.\n⇒ You are NOT guaranteed to be verified.")
@@ -738,7 +685,7 @@ export module VerificationHandler {
 							reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
 								mcd.disableAutoTick();
 								if (reason === "time") {
-									return resolve("TIME");
+									return resolve("TIME_CMD");
 								}
 							});
 
@@ -753,7 +700,7 @@ export module VerificationHandler {
 							});
 						});
 
-						if (wantsToBeManuallyVerified === "TIME") {
+						if (wantsToBeManuallyVerified === "TIME_CMD") {
 							if (typeof verificationAttemptsChannel !== "undefined") {
 								verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member}'s verification process has been canceled.\n\t⇒ Reason: TIME`).catch(() => { });
 							}
@@ -829,13 +776,21 @@ export module VerificationHandler {
 		};
 		const resolvedUserDbIGN: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient
 			.findOne(ignFilterQuery);
+
+		// they somehow have two profile
+		// probably because they had an alt account w/ an alt discord account
+		if (resolvedUserDbDiscord !== null && resolvedUserDbIGN !== null) {
+			await verifyMoreThanOneIGNProfile(member, nameFromProfile);
+		}
 		// completely new profile
-		if (resolvedUserDbDiscord === null && resolvedUserDbIGN === null) {
+		else if (resolvedUserDbDiscord === null && resolvedUserDbIGN === null) {
 			const userMongo: MongoDbHelper.MongoDbUserManager = new MongoDbHelper.MongoDbUserManager(nameFromProfile);
 			await userMongo.createNewUserDB(member.id);
 		}
 		else {
 			// discord id found; ign NOT found in db
+			// probably means name history changed? 
+			// or separate account.
 			if (resolvedUserDbDiscord !== null && resolvedUserDbIGN === null) {
 				let names: string[] = [
 					resolvedUserDbDiscord.rotmgLowercaseName,
@@ -899,6 +854,186 @@ export module VerificationHandler {
 	}
 
 	/**
+	 * Checks and see if a user has two profiles in the database; if so, merge both profiles together. 
+	 * @param {(GuildMember | User)} member The guild member that has been verified. 
+	 * @param {string} nameFromProfile The name associated with the guild member. 
+	 * @param {INameHistory[]} nameHistory The person's name history. 
+	 */
+	export async function verifyMoreThanOneIGNProfile(
+		member: GuildMember | User,
+		nameFromProfile: string
+	): Promise<IRaidUser> {
+		const filterQuery: FilterQuery<IRaidUser> = {
+			$or: [
+				{
+					rotmgLowercaseName: nameFromProfile.toLowerCase()
+				},
+				{
+					"otherAccountNames.lowercase": nameFromProfile.toLowerCase()
+				},
+				{
+					discordUserId: member.id
+				}
+			]
+		};
+		const allPossibleEntries: IRaidUser[] = await MongoDbHelper.MongoDbUserManager.MongoUserClient
+			.find(filterQuery).toArray();
+
+		if (allPossibleEntries.length === 0) {
+			throw new Error("no profiles found");
+		}
+
+		if (allPossibleEntries.length === 1) {
+			return allPossibleEntries[0];
+		}
+
+		// have multiple entries
+		const newEntry: IRaidUser = {
+			discordUserId: member.id,
+			rotmgDisplayName: nameFromProfile,
+			rotmgLowercaseName: nameFromProfile.toLowerCase(),
+			otherAccountNames: [],
+			lastModified: new Date().getTime(),
+			general: {
+				keyPops: [],
+				voidVials: [],
+				wcOryx: [],
+				completedRuns: [],
+				leaderRuns: [],
+				moderationHistory: []
+			}
+		};
+
+		const isNotListed: (name: string) => boolean = (name: string) => newEntry.rotmgLowercaseName !== name.toLowerCase()
+			&& !newEntry.otherAccountNames.some(x => x.lowercase === name.toLowerCase());
+
+		// start transferring data
+		for (const entry of allPossibleEntries) {
+			// main acc name of entry different from name of profile
+			if (isNotListed(entry.rotmgDisplayName)) {
+				newEntry.otherAccountNames.push({
+					lowercase: entry.rotmgLowercaseName,
+					displayName: entry.rotmgDisplayName
+				});
+			}
+
+			for (const altAcc of entry.otherAccountNames) {
+				if (isNotListed(altAcc.displayName)) {
+					newEntry.otherAccountNames.push({
+						lowercase: altAcc.lowercase,
+						displayName: altAcc.displayName
+					});
+				}
+			}
+
+			for (const keyPopData of entry.general.keyPops) {
+				const index: number = newEntry.general.keyPops.findIndex(x => x.server === keyPopData.server);
+				if (index === -1) {
+					// data doesn't exist
+					newEntry.general.keyPops.push({ server: keyPopData.server, keysPopped: keyPopData.keysPopped });
+				}
+				else {
+					newEntry.general.keyPops[index].keysPopped += keyPopData.keysPopped;
+				}
+			}
+
+			for (const voidVialData of entry.general.voidVials) {
+				const index: number = newEntry.general.voidVials.findIndex(x => x.server === voidVialData.server);
+				if (index === -1) {
+					// not found
+					newEntry.general.voidVials.push({ popped: voidVialData.popped, stored: voidVialData.stored, server: voidVialData.server });
+				}
+				else {
+					newEntry.general.voidVials[index].popped += voidVialData.popped;
+					newEntry.general.voidVials[index].stored += voidVialData.stored;
+				}
+			}
+
+			for (const wcRunData of entry.general.wcOryx) {
+				const index: number = newEntry.general.wcOryx.findIndex(x => x.server === wcRunData.server);
+				if (index === -1) {
+					// nope
+					newEntry.general.wcOryx.push({ wcIncs: { amt: wcRunData.wcIncs.amt, popped: wcRunData.wcIncs.popped }, swordRune: { amt: wcRunData.swordRune.amt, popped: wcRunData.swordRune.popped }, helmRune: { amt: wcRunData.helmRune.amt, popped: wcRunData.helmRune.popped }, shieldRune: { amt: wcRunData.shieldRune.amt, popped: wcRunData.shieldRune.popped }, server: wcRunData.server });
+				}
+				else {
+					newEntry.general.wcOryx[index].helmRune.amt += wcRunData.helmRune.amt;
+					newEntry.general.wcOryx[index].helmRune.popped += wcRunData.helmRune.popped;
+					newEntry.general.wcOryx[index].shieldRune.amt += wcRunData.shieldRune.amt;
+					newEntry.general.wcOryx[index].shieldRune.popped += wcRunData.shieldRune.popped;
+					newEntry.general.wcOryx[index].swordRune.amt += wcRunData.swordRune.amt;
+					newEntry.general.wcOryx[index].swordRune.popped += wcRunData.swordRune.popped;
+					newEntry.general.wcOryx[index].wcIncs.amt += wcRunData.wcIncs.amt;
+					newEntry.general.wcOryx[index].wcIncs.popped += wcRunData.wcIncs.popped;
+				}
+			}
+
+			for (const completedRunData of entry.general.completedRuns) {
+				const index: number = newEntry.general.completedRuns.findIndex(x => x.server === completedRunData.server);
+				if (index === -1) {
+					// no no no
+					newEntry.general.completedRuns.push({ server: completedRunData.server, general: completedRunData.general, endgame: completedRunData.endgame, realmClearing: completedRunData.realmClearing });
+				}
+				else {
+					newEntry.general.completedRuns[index].endgame += completedRunData.endgame;
+					newEntry.general.completedRuns[index].general += completedRunData.general;
+					newEntry.general.completedRuns[index].realmClearing += completedRunData.realmClearing;
+				}
+			}
+
+			for (const leaderRunData of entry.general.leaderRuns) {
+				const index: number = newEntry.general.leaderRuns.findIndex(x => x.server === leaderRunData.server);
+				if (index === -1) {
+					// no no no
+					newEntry.general.leaderRuns.push({
+						server: leaderRunData.server,
+						general: {
+							failed: leaderRunData.general.failed,
+							completed: leaderRunData.general.completed,
+							assists: leaderRunData.general.assists
+						},
+						endgame: {
+							failed: leaderRunData.endgame.failed,
+							completed: leaderRunData.endgame.completed,
+							assists: leaderRunData.endgame.assists
+						},
+						realmClearing: {
+							failed: leaderRunData.realmClearing.failed,
+							completed: leaderRunData.realmClearing.completed,
+							assists: leaderRunData.realmClearing.assists
+						}
+					});
+				}
+				else {
+					newEntry.general.leaderRuns[index].endgame.assists += leaderRunData.endgame.assists;
+					newEntry.general.leaderRuns[index].endgame.completed += leaderRunData.endgame.completed;
+					newEntry.general.leaderRuns[index].endgame.failed += leaderRunData.endgame.failed;
+
+					newEntry.general.leaderRuns[index].general.assists += leaderRunData.general.assists;
+					newEntry.general.leaderRuns[index].general.completed += leaderRunData.general.completed;
+					newEntry.general.leaderRuns[index].general.failed += leaderRunData.general.failed;
+					
+					newEntry.general.leaderRuns[index].realmClearing.assists += leaderRunData.realmClearing.assists;
+					newEntry.general.leaderRuns[index].realmClearing.completed += leaderRunData.realmClearing.completed;
+					newEntry.general.leaderRuns[index].realmClearing.failed += leaderRunData.realmClearing.failed;
+				}
+			}
+
+			for (const punishmentData of entry.general.moderationHistory) {
+				newEntry.general.moderationHistory.push(punishmentData);
+			}
+		}
+
+		await MongoDbHelper.MongoDbUserManager.MongoUserClient.deleteMany(filterQuery);
+		const results: InsertOneWriteOpResult<WithId<IRaidUser>> = await MongoDbHelper.MongoDbUserManager.MongoUserClient
+			.insertOne(newEntry);
+
+		if (results.ops.length === 0) {
+			throw new Error("something went wrong when trying to create a new profile.");
+		}
+		return (results.ops[0]);
+	}
+
+	/**
 	 * Replaces the current main name with the new name and puts the old main name as an alternative account.
 	 * @param {IRaidUser} resolvedUserDbDiscord The found DB based on Discord ID. 
 	 * @param {(GuildMember | User)} member The guild member. 
@@ -940,7 +1075,7 @@ export module VerificationHandler {
 			.setTitle(`Verification For: **${guild.name}**`)
 			.setDescription(`You have selected the in-game name: **\`${inGameName}\`**. To access your RealmEye profile, click [here](https://www.realmeye.com/player/${inGameName}).\n\nYou are almost done verifying; however, you need to do a few more things.\n\nTo stop the verification process, react with ❌.`)
 			.setColor("RANDOM")
-			.addField("1. Meet the Requirements", `Ensure you meet the requirements posted. For your convenience, the requirements for the server are listed below.${StringUtil.applyCodeBlocks(reqs.toString())}`)
+			.addField("1. Meet the Requirements", `Ensure you meet the requirements posted. For your convenience, the requirements are listed below.${StringUtil.applyCodeBlocks(reqs.toString())}`)
 			.setFooter("⏳ Time Remaining: 15 Minutes and 0 Seconds.");
 		if (isOldProfile) {
 			verifEmbed.addField("2. Get Your Verification Code", "Normally, I would require a verification code for your RealmEye profile; however, because I recognize you from a different server, you can skip this process completely.");
@@ -956,7 +1091,7 @@ export module VerificationHandler {
 
 	function preliminaryCheck(
 		sec: ISection,
-		reapi: ITiffitRealmEyeProfile
+		reapi: IRealmEyeAPI
 	): ICheckResults {
 		// char pts 
 		let zero: number = 0;
@@ -970,7 +1105,7 @@ export module VerificationHandler {
 		let eight: number = 0;
 
 		for (let character of reapi.characters) {
-			const maxedStat: number = Number.parseInt(character.stats_maxed.split("/")[0]);
+			const maxedStat: number = character.stats_maxed;
 			switch (maxedStat) {
 				case (0): zero++; break;
 				case (1): one++; break;
@@ -1035,7 +1170,7 @@ export module VerificationHandler {
 			characters: {
 				amt: [zero, one, two, three, four, five, six, seven, eight],
 				passed: charPassed,
-				hidden: reapi.characterCount === -1
+				hidden: reapi.characters_hidden
 			},
 			passedAll: rankPassed && famePassed && charPassed
 		};
@@ -1045,12 +1180,14 @@ export module VerificationHandler {
 	 * Returns the name history of a person.
 	 * @param {string} ign The in-game name. 
 	 */
-	export async function getRealmEyeNameHistory(ign: string): Promise<IAPIError | INameHistory[]> {
+	export async function getRealmEyeNameHistory(
+		ign: string
+	): Promise<IAPIError | INameHistory[]> {
 		const resp: AxiosResponse<string> = await Zero.AxiosClient.get(
 			`https://www.realmeye.com/name-history-of-player/${ign}`,
 			{
 				headers: {
-					"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.103 Safari/537.36"
+					"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.61 Safari/537.36"
 				}
 			}
 		);
@@ -1116,7 +1253,7 @@ export module VerificationHandler {
 	async function manualVerification(
 		guild: Guild,
 		member: GuildMember,
-		verificationInfo: ITiffitRealmEyeProfile,
+		verificationInfo: IRealmEyeAPI,
 		manualVerificationChannel: TextChannel,
 		section: ISection,
 		reqsFailedToMeet: StringBuilder,
@@ -1125,7 +1262,7 @@ export module VerificationHandler {
 		if (section.isMain) {
 			// we can safely assume
 			// that the id = the person.
-			await accountInDatabase(member, verificationInfo.name, nameHistoryInfo);
+			await accountInDatabase(member, verificationInfo.player, nameHistoryInfo);
 		}
 
 		const desc: StringBuilder = new StringBuilder()
@@ -1133,28 +1270,28 @@ export module VerificationHandler {
 			.appendLine()
 			.append(`⇒ **User:** ${member}`)
 			.appendLine()
-			.append(`⇒ **IGN:** ${verificationInfo.name}`)
+			.append(`⇒ **IGN:** ${verificationInfo.player}`)
 			.appendLine()
-			.append(`⇒ **First Seen**: ${verificationInfo.created}`)
+			.append(`⇒ **First Seen**: ${PRIVATE_BOT ? verificationInfo.player_first_seen : "Not Available"}`)
 			.appendLine()
-			.append(`⇒ **Last Seen**: ${verificationInfo.last_seen}`)
+			.append(`⇒ **Last Seen**: ${verificationInfo.player_last_seen}`)
 			.appendLine()
-			.append(`⇒ **RealmEye:** [Profile](https://www.realmeye.com/player/${verificationInfo.name})`)
+			.append(`⇒ **RealmEye:** [Profile](https://www.realmeye.com/player/${verificationInfo.player})`)
 			.appendLine()
 			.appendLine()
 			.append(`React with ☑️ to manually verify this person; otherwise, react with ❌.`)
 
 		const manualVerifEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(member.user.tag, member.user.displayAvatarURL())
-			.setTitle(`Manual Verification Request: **${verificationInfo.name}**`)
+			.setTitle(`Manual Verification Request: **${verificationInfo.player}**`)
 			.setDescription(desc.toString())
 			.addField("Unmet Requirements", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()), true)
 			.setColor("YELLOW")
 			.setFooter(member.id)
 			.setTimestamp();
 		const m: Message = await manualVerificationChannel.send(manualVerifEmbed);
-		await m.react("☑️").catch(e => { });
-		await m.react("❌").catch(e => { });
+		await m.react("☑️").catch(() => { });
+		await m.react("❌").catch(() => { });
 
 		const filterQuery: FilterQuery<IRaidGuild> = section.isMain
 			? { guildID: guild.id }
@@ -1171,7 +1308,7 @@ export module VerificationHandler {
 			$push: {
 				[updateKey]: {
 					userId: member.id,
-					inGameName: verificationInfo.name,
+					inGameName: verificationInfo.player,
 					rank: verificationInfo.rank,
 					aFame: verificationInfo.fame,
 					nameHistory: nameHistoryInfo,
@@ -1211,8 +1348,9 @@ export module VerificationHandler {
 					continue;
 				}
 
-				for (const [id, role] of res.roles.cache) {
-					await res.roles.remove(role).catch(e => { });
+				for (const [, role] of res.roles.cache) {
+					await res.roles.remove(role).catch(() => { });
+					await res.setNickname("").catch(() => { });
 				}
 			}
 		}
@@ -1236,21 +1374,22 @@ export module VerificationHandler {
 		const guild: Guild = manualVerifMember.guild;
 		let loggingMsg: string = `✅ **\`[${sectionForManualVerif.nameOfSection}]\`** ${manualVerifMember} has been manually verified as \`${manualVerificationProfile.inGameName}\`. This manual verification was done by ${responsibleMember} (${responsibleMember.displayName})`;
 
-		await manualVerifMember.roles.add(sectionForManualVerif.verifiedRole).catch(e => { });
+		await manualVerifMember.roles.add(sectionForManualVerif.verifiedRole).catch(() => { });
+		await VerificationHandler.findOtherUserAndRemoveVerifiedRole(
+			responsibleMember,
+			guild,
+			guildDb
+		);
+		
 		if (sectionForManualVerif.isMain) {
 			await manualVerifMember.setNickname(manualVerifMember.user.username === manualVerificationProfile.inGameName
 				? `${manualVerificationProfile.inGameName}.`
 				: manualVerificationProfile.inGameName
-			).catch(e => { });
+			).catch(() => { });
 			await VerificationHandler.accountInDatabase(
 				manualVerifMember,
 				manualVerificationProfile.inGameName,
 				manualVerificationProfile.nameHistory
-			);
-			await VerificationHandler.findOtherUserAndRemoveVerifiedRole(
-				responsibleMember,
-				guild,
-				guildDb
 			);
 			const successEmbed: MessageEmbed = new MessageEmbed()
 				.setTitle(`Successful Verification: **${guild.name}**`)
@@ -1258,7 +1397,7 @@ export module VerificationHandler {
 				.setDescription(guildDb.properties.successfulVerificationMessage.length === 0 ? "You have been successfully verified. Please make sure you read the rules posted in the server, if any, and any other regulations/guidelines. Good luck and have fun!" : guildDb.properties.successfulVerificationMessage)
 				.setColor("GREEN")
 				.setFooter("Verification Process: Stopped.");
-			await manualVerifMember.send(successEmbed).catch(e => { });
+			await manualVerifMember.send(successEmbed).catch(() => { });
 		}
 		else {
 			await manualVerifMember.send(`**\`[${guild.name}]\`** You have successfully been verified in the **\`${sectionForManualVerif.nameOfSection}\`** section!`).catch(() => { });
@@ -1309,7 +1448,7 @@ export module VerificationHandler {
 		const verificationLoggingChannel: TextChannel | undefined = guild.channels.cache
 			.get(sectionForManualVerif.channels.logging.verificationSuccessChannel) as TextChannel | undefined;
 		if (typeof verificationLoggingChannel !== "undefined") {
-			await verificationLoggingChannel.send(logging).catch(e => { });
+			await verificationLoggingChannel.send(logging).catch(() => { });
 		}
 
 		const filterQuery: FilterQuery<IRaidGuild> = sectionForManualVerif.isMain
@@ -1328,6 +1467,117 @@ export module VerificationHandler {
 					userId: manualVerifMember.id
 				}
 			}
+		});
+	}
+
+	/**
+	 * Asks the user for their in-game name.
+	 * @param {User} user The user that initiated the function.
+	 * @param {DMChannel} dmChannel The DM channel.
+	 * @param {Guild} [guild = null] The guild.
+	 * @param {IRaidUser} [userDb = null] The user DB.
+	 * @param {Message} [botMsg = null] The bot message, if any.
+	 */
+	export async function getInGameNameByPrompt(
+		initUser: User,
+		dmChannel: DMChannel,
+		guild: Guild | null = null,
+		userDb: IRaidUser | null = null,
+		botMsg: Message | null = null
+	): Promise<string> {
+		return new Promise(async (resolve) => {
+			let desc: string;
+			if (guild === null) {
+				desc = "Please type your in-game name now. This in-game name can either be one of your alternative accounts OR your new name (if you recently got a name change). Your in-game name should be spelled exactly as seen in-game; however, capitalization does NOT matter.";
+			}
+			else {
+				desc = "Please type your in-game name now. Your in-game name should be spelled exactly as seen in-game; however, capitalization does NOT matter.";
+			}
+
+			const nameEmbed: MessageEmbed = new MessageEmbed()
+				.setAuthor(initUser.tag, initUser.displayAvatarURL())
+				.setTitle(guild === null ? "Verification For **User Profile**" : `Verification For **${guild.name}**`)
+				.setDescription(`${desc}\n\nTo cancel this process, simply react with ❌.`)
+				.setColor("RANDOM")
+				.setFooter("⏳ Time Remaining: 2 Minutes and 0 Seconds.");
+
+			let resBotMsg: Message;
+			if (botMsg === null) {
+				resBotMsg = await dmChannel.send(nameEmbed);
+			}
+			else {
+				resBotMsg = await botMsg.edit(nameEmbed);
+			}
+
+			for await (const [, reaction] of resBotMsg.reactions.cache) {
+				for await (const [, user] of reaction.users.cache) {
+					if (user.bot) {
+						await reaction.remove().catch(e => { });
+						break;
+					}
+				}
+			}
+			await resBotMsg.react("❌");
+
+			const mcd: MessageAutoTick = new MessageAutoTick(resBotMsg, nameEmbed, 2 * 60 * 1000, null, "⏳ Time Remaining: {m} Minutes and {s} Seconds.");
+			const msgCollector: MessageCollector = new MessageCollector(dmChannel, m => m.author.id === initUser.id, {
+				time: 2 * 60 * 1000
+			});
+
+			//#region reaction collector
+			const reactFilter: ((r: MessageReaction, u: User) => boolean) = (reaction: MessageReaction, user: User) => {
+				return reaction.emoji.name === "❌" && user.id === initUser.id;
+			}
+
+			const reactCollector: ReactionCollector = resBotMsg.createReactionCollector(reactFilter, {
+				time: 2 * 60 * 1000,
+				max: 1
+			});
+
+			reactCollector.on("collect", async () => {
+				msgCollector.stop();
+				await resBotMsg.delete().catch(() => { });
+				return resolve("CANCEL_");
+			});
+
+			msgCollector.on("collect", async (msg: Message) => {
+				if (!/^[a-zA-Z]+$/.test(msg.content)) {
+					await MessageUtil.send({ content: "Please type a __valid__ in-game name." }, msg.author);
+					return;
+				}
+
+				if (msg.content.length > 10) {
+					await MessageUtil.send({ content: "Your in-game name should not exceed 10 characters. Please try again." }, msg.author);
+					return;
+				}
+
+				if (msg.content.length === 0) {
+					await MessageUtil.send({ content: "Please type in a valid in-game name." }, msg.author);
+					return;
+				}
+
+				if (userDb !== null) {
+					const hasBeenUsedBefore: boolean = userDb.rotmgLowercaseName === msg.content.toLowerCase()
+						|| userDb.otherAccountNames.some(x => x.lowercase === msg.content.toLowerCase());
+
+					if (hasBeenUsedBefore) {
+						await MessageUtil.send({ content: "The in-game name you have chosen is already being used, either as your main account or as an alternative account." }, msg.author);
+						return;
+					}
+				}
+
+
+				msgCollector.stop();
+				reactCollector.stop();
+				return resolve(msg.content);
+			});
+
+			msgCollector.on("end", (collected: Collection<string, Message>, reason: string) => {
+				mcd.disableAutoTick();
+				if (reason === "time") {
+					return resolve("TIME_");
+				}
+			});
 		});
 	}
 }

@@ -2,7 +2,7 @@ import { MessageReaction, User, Message, Guild, GuildMember, TextChannel, RoleRe
 import { GuildUtil } from "../Utility/GuildUtil";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
-import { ISection } from "../Definitions/ISection";
+import { ISection } from "../Templates/ISection";
 import { VerificationHandler } from "../Helpers/VerificationHandler";
 import { IRaidInfo } from "../Definitions/IRaidInfo";
 import { RaidStatus } from "../Definitions/RaidStatus";
@@ -167,12 +167,6 @@ export async function onMessageReactionAdd(
         guildDb.roles.universalAlmostRaidLeader,
         guildDb.roles.universalRaidLeader,
         guildDb.roles.headRaidLeader
-    ];
-
-    let staffRoles: RoleResolvable[] = [
-        guildDb.roles.support,
-        guildDb.roles.officer,
-        guildDb.roles.moderator
     ];
 
     if (typeof sectionFromControlPanel !== "undefined"  // from control panel

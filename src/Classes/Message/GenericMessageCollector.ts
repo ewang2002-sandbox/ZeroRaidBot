@@ -1,6 +1,50 @@
-import { MessageEmbed, Message, MessageCollector, Collection, MessageOptions, TextChannel, Guild, Role, GuildMember, Permissions, TextBasedChannelFields, User, PartialTextBasedChannelFields, GuildChannel } from "discord.js";
+import { MessageEmbed, Message, MessageCollector, Collection, MessageOptions, TextChannel, Guild, Role, GuildMember, Permissions, PartialTextBasedChannelFields, User, GuildChannel, GuildEmoji, EmojiResolvable, ReactionCollector, MessageReaction, Emoji } from "discord.js";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { TimeUnit } from "../../Definitions/TimeUnit";
+import { FastReactionMenuManager } from "../Reaction/FastReactionMenuManager";
+
+type IGenericMsgCollectorArguments = {
+	/**
+	 * The cancel flag. Any message with the cancel flag as its content will force the method to return "CANCEL_CMD"
+	 * @default "cancel"
+	 */
+	cancelFlag?: string;
+
+	/**
+	 * Whether to delete any messages the author sends (for the collector) after it has been sent or not.
+	 * @default true
+	 */
+	deleteResponseMessage?: boolean;
+
+	/**
+	 * Reactions to use for the ReactionCollector. If no reactions are specified, the ReactionCollector will not be used.
+	 * @default [] 
+	 */
+	reactions?: EmojiResolvable[];
+	
+	/**
+	 * Whether to react to the message with the reactions defined in `<IGenericMsgCollectorArguments>.reactions`.
+	 * @default false
+	 */
+	reactToMsg?: boolean;
+
+	/**
+	 * If defined, uses an old message instead of sending a new one.
+	 */
+	oldMsg?: Message;
+
+	/**
+	 * Deletes the bot-sent message after the collector expires.
+	 * @default true
+	 */
+	deleteMsg?: boolean;
+
+	/**
+	 * Whether to remove ALL reactions after the collector is done or not. If `deleteMsg` is `true`, `deleteMsg` automatically overwrites whatever value is defined here. NOTE that if a user reacts to a message, the user's reaction will automatically be removed.
+	 * @default false
+	 */
+	removeAllReactionAfterReact?: boolean;
+}
 
 /**
  * A class that sends an embed and resolves a response. Should be used to make code more concise. 
@@ -24,7 +68,7 @@ export class GenericMessageCollector<T> {
 	/**
 	 * The channel to send the message w/ collector to. 
 	 */
-	private readonly _channel: TextBasedChannelFields;
+	private readonly _channel: PartialTextBasedChannelFields;
 
 	/**
 	 * The duration to wait. 
@@ -37,14 +81,14 @@ export class GenericMessageCollector<T> {
 	 * @param {MessageOptions} msgToSend What to send. This will be a message, an embed, or both, that a bot will send. 
 	 * @param {number} maxDuration The duration of the collector. If you want to do 3 minutes, for example, type `3`.
 	 * @param {TimeUnit} timeUnit The unit of time of `maxDuration`. For the previous example of 3 minutes, you would do `TimeUnit.MINUTE`.
-	 * @param {TextBasedChannelFields} targetChannel The channel to send the message to, if applicable. Defaults to the same channel where the message was sent.
+	 * @param {PartialTextBasedChannelFields} targetChannel The channel to send the message to, if applicable. Defaults to the same channel where the message was sent.
 	 */
 	public constructor(
 		obj: Message | User | GuildMember,
 		msgToSend: MessageOptions,
 		maxDuration: number,
 		timeUnit: TimeUnit,
-		targetChannel?: TextBasedChannelFields
+		targetChannel?: PartialTextBasedChannelFields
 	) {
 		if (obj instanceof Message) {
 			this._originalAuthor = obj.author;
@@ -95,31 +139,48 @@ export class GenericMessageCollector<T> {
 	}
 
 	/**
-	 * A function that takes in a message (from the collector) and does something with it. 
-	 * @name MsgCollectorFunc
-	 * @function
-	 * @param {Message} msg The message object.
-	 * @returns {T} The object type. 
-	 */
-	/**
-	 * An automatic message collector that will return one thing. 
-	 * @param {MsgCollectorFunc} func The function to use. This function will be executed and the resultant (return type `T`) will be resolved. Bear in mind that the `send` method takes care of both time management and user cancellation requests; in other words, you just need to implement the actual message response system.
+	 * An automatic message collector that will return one thing. This particular method will reuse an old message.
+	 * @param func The function to use. This function will be executed and the resultant (return type `T`) will be resolved. Bear in mind that the `send` method takes care of both time management and user cancellation requests; in other words, you just need to implement the actual message response system.
+	 * @param {Message} oldMsg Whether to use an old message or not.
+	 * @param {boolean} [deleteMsg = false] Whether to delete the bot message after the reaction collector expires.
 	 * @param {string} [cancelFlag = "cancel"] The string content that will result in the cancellation of the event.
-	 * @param {boolean} [deleteResponseMessages = true] Whether to delete the person's message after he/she responds. 
-	 * @returns {Promise<T | "CANCEL" | "TIME">} The resolved object, or one of two flags: "CANCEL" if the user canceled their request, or "TIME" if the time ran out.
+	 * @param {boolean} [deleteResponseMessages = true] Whether to delete the person's message after he/she responds.
+	 * @returns {Promise<T | "CANCEL_CMD" | "TIME_CMD">} The resolved object, or one of two flags: "CANCEL_CMD" if the user canceled their request, or "TIME_CMD" if the time ran out.
+	 */
+	public async sendWithOldMessage(
+		func: (collectedMessage: Message, ...otherArgs: any) => Promise<T | void>,
+		oldMsg: Message,
+		deleteMsg: boolean = false,
+		cancelFlag: string = "cancel",
+		deleteResponseMessages: boolean = true
+	): Promise<T | "CANCEL_CMD" | "TIME_CMD"> {
+		return this.send(func, cancelFlag, deleteResponseMessages, oldMsg, deleteMsg);
+	}
+
+	/**
+	 * An automatic message collector that will return one thing. For the last two arguments, it is recommended that you use the `sendWithOldMessage` method. 
+	 * @param func The function to use. This function will be executed and the resultant (return type `T`) will be resolved. Bear in mind that the `send` method takes care of both time management and user cancellation requests; in other words, you just need to implement the actual message response system.
+	 * @param {string} [cancelFlag = "cancel"] The string content that will result in the cancellation of the event.
+	 * @param {boolean} [deleteResponseMessages = true] Whether to delete the person's message after he/she responds.
+	 * @param {Message} [oldMsg = null] Whether to use an old message or not.
+	 * @param {boolean} [deleteMsg = true] Whether to delete the bot message after the reaction collector expires.  
+	 * @returns {Promise<T | "CANCEL_CMD" | "TIME_CMD">} The resolved object, or one of two flags: "CANCEL_CMD" if the user canceled their request, or "TIME_CMD" if the time ran out.
 	 */
 	public async send(
 		func: (collectedMessage: Message, ...otherArgs: any) => Promise<T | void>,
 		cancelFlag: string = "cancel",
-		deleteResponseMessages: boolean = true
-	): Promise<T | "CANCEL" | "TIME"> {
+		deleteResponseMessages: boolean = true,
+		oldMsg: Message | null = null,
+		deleteMsg: boolean = true
+	): Promise<T | "CANCEL_CMD" | "TIME_CMD"> {
 		return new Promise(async (resolve) => {
-			const msg: Message = await this._channel.send({ embed: this._embed, content: this._strContent });
+			const botMsg: Message = oldMsg === null
+				? await this._channel.send({ embed: this._embed, content: this._strContent })
+				: oldMsg;
 			// TODO: textchannel cast appropriate?
 			const msgCollector: MessageCollector = new MessageCollector(this._channel as TextChannel, m => m.author.id === this._originalAuthor.id, {
 				time: this._maxDuration
 			});
-
 			// RECEIVE COLLECTOR 
 			msgCollector.on("collect", async (collectedMsg: Message) => {
 				if (deleteResponseMessages) {
@@ -127,7 +188,7 @@ export class GenericMessageCollector<T> {
 				}
 
 				if (collectedMsg.content.toLowerCase() === cancelFlag.toLowerCase()) {
-					resolve("CANCEL");
+					resolve("CANCEL_CMD");
 					msgCollector.stop();
 					return;
 				}
@@ -145,25 +206,155 @@ export class GenericMessageCollector<T> {
 
 			// END COLLECTOR 
 			msgCollector.on("end", async (collected: Collection<string, Message>, reason: string) => {
-				await msg.delete().catch(() => { });
+				if (deleteMsg) {
+					await botMsg.delete().catch(() => { });
+				}
 				if (reason === "time") {
-					resolve("TIME");
+					resolve("TIME_CMD");
 				}
 			});
 		});
 	}
 
 	/**
+	 * A message collector that also doubles as a reaction collector
+	 * @param func The function to use. This function will be executed and the resultant (return type `T`) will be resolved. Bear in mind that the `send` method takes care of both time management and user cancellation requests; in other words, you just need to implement the actual message response system.
+	 * @param {IGenericMsgCollectorArguments} [optArgs] Optional arguments, if any.
+	 * @returns {Promise<T | Emoji | "CANCEL_CMD" | "TIME_CMD">} The resolved object, or one of two flags: "CANCEL_CMD" if the user canceled their request, or "TIME_CMD" if the time ran out. This may also return the results of a reaction.
+	 */
+	public async sendWithReactCollector(
+		func: (collectedMessage: Message, ...otherArgs: any) => Promise<T | void>,
+		optArgs?: IGenericMsgCollectorArguments
+	): Promise<T | Emoji | "CANCEL_CMD" | "TIME_CMD"> {
+		let msgReactions: EmojiResolvable[] = [];
+		let cancelFlag: string = "cancel";
+		let deleteResponseMsg: boolean = true;
+		let reactToMsg: boolean = false; 
+		let botMsg: Message = typeof optArgs !== "undefined" && typeof optArgs.oldMsg !== "undefined"
+			? optArgs.oldMsg
+			: await this._channel.send({ embed: this._embed, content: this._strContent });
+		let deleteBotMsgAfterDone: boolean = true;
+		let removeAllReactionAfterReact: boolean = false; 
+
+		if (typeof optArgs !== "undefined") {
+			if (typeof optArgs.cancelFlag !== "undefined") {
+				cancelFlag = optArgs.cancelFlag;
+			}
+
+			if (typeof optArgs.deleteResponseMessage !== "undefined") {
+				deleteResponseMsg = optArgs.deleteResponseMessage;
+			}
+
+			if (typeof optArgs.reactions !== "undefined") {
+				msgReactions = optArgs.reactions;
+			}
+
+			if (typeof optArgs.reactToMsg !== "undefined") {
+				reactToMsg = optArgs.reactToMsg;
+			}
+
+			if (typeof optArgs.deleteMsg !== "undefined") {
+				deleteBotMsgAfterDone = optArgs.deleteMsg;
+			}
+
+			if (typeof optArgs.removeAllReactionAfterReact !== "undefined") {
+				removeAllReactionAfterReact = optArgs.removeAllReactionAfterReact;
+			}
+		}
+
+		if (deleteBotMsgAfterDone) {
+			removeAllReactionAfterReact = false;
+		}
+
+		return new Promise(async (resolve) => {
+			// TODO: textchannel cast appropriate?
+			const msgCollector: MessageCollector = new MessageCollector(
+				this._channel as TextChannel,
+				m => m.author.id === this._originalAuthor.id,
+				{
+					time: this._maxDuration
+				}
+			);
+
+			let reactCollector: ReactionCollector | undefined;
+			if (msgReactions.length !== 0) {
+				if (reactToMsg) {
+					FastReactionMenuManager.reactFaster(botMsg, msgReactions);
+				}
+
+				reactCollector = new ReactionCollector(
+					botMsg,
+					(reaction: MessageReaction, user: User): boolean => {
+						return msgReactions.includes(reaction.emoji.name) && user.id === this._originalAuthor.id;
+					},
+					{
+						time: this._maxDuration,
+						max: 1
+					}
+				);
+
+				reactCollector.on("collect", async (reaction: MessageReaction, user: User) => {
+					await reaction.users.remove(user).catch(e => { });
+					msgCollector.stop();
+					return resolve(reaction.emoji);
+				});
+			}
+
+			// RECEIVE COLLECTOR 
+			msgCollector.on("collect", async (collectedMsg: Message) => {
+				if (removeAllReactionAfterReact) {
+					await collectedMsg.reactions.removeAll().catch(e => { });
+				}
+				
+				if (deleteResponseMsg) {
+					await collectedMsg.delete().catch(() => { });
+				}
+
+				if (collectedMsg.content.toLowerCase() === cancelFlag.toLowerCase()) {
+					resolve("CANCEL_CMD");
+					msgCollector.stop();
+					return;
+				}
+
+				let resolvedInfo: T = await new Promise(async (resolve) => {
+					const response: void | T = await func(collectedMsg, cancelFlag);
+					if (typeof response !== "undefined") {
+						resolve(response);
+					}
+				});
+
+				msgCollector.stop();
+				if (typeof reactCollector !== "undefined") {
+					reactCollector.stop();
+				}
+				resolve(resolvedInfo);
+			});
+
+			// END COLLECTOR 
+			msgCollector.on("end", async (collected: Collection<string, Message>, reason: string) => {
+				if (deleteBotMsgAfterDone) {
+					await botMsg.delete().catch(() => { });
+				}
+				if (reason === "time") {
+					resolve("TIME_CMD");
+				}
+			});
+		});
+	}
+
+	// STATIC METHODS BELOW
+
+	/**
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with either a TextChannel mention or ID. THIS FUNCTION MUST ONLY BE USED IN A GUILD.
 	 * @param {Message} msg The message that triggered this class. This is generally a message that results in the exeuction of the command. 
-	 * @param {TextBasedChannelFields} pChan The channel to send any messages to.
+	 * @param {PartialTextBasedChannelFields} pChan The channel to send any messages to.
 	 * @example 
 	 * const gmc: GenericMessageCollector<TextChannel> = new GenericMessageCollector<TextChannel>(msg, { embed: embed }, 1, TimeUnit.MINUTE);
-	 * const response: TextChannel | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getChannelPrompt(msg)); 
+	 * const response: TextChannel | "TIME_CMD" | "CANCEL_CMD" = await gmc.send(GenericMessageCollector.getChannelPrompt(msg)); 
 	 */
 	public static getChannelPrompt(
 		msg: Message,
-		pChan: TextBasedChannelFields
+		pChan: PartialTextBasedChannelFields
 	): (m: Message) => Promise<void | TextChannel> {
 		if (msg.guild === null) {
 			throw new Error("The message object provided for this method was not sent from a guild.");
@@ -202,15 +393,15 @@ export class GenericMessageCollector<T> {
 
 	/**
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with a number.
-	 * @param {TextBasedChannelFields} channel The channel to send messages to.
+	 * @param {PartialTextBasedChannelFields} channel The channel to send messages to.
 	 * @param {number} [min] The minimum, inclusive.
 	 * @param {number} [max] The maximum, inclusive.
 	 * @example 
 	 * const gmc: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, { embed: embed }, 1, TimeUnit.MINUTE);
-	 * const response: number | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getNumber(msg)); 
+	 * const response: number | "TIME_CMD" | "CANCEL_CMD" = await gmc.send(GenericMessageCollector.getNumber(msg)); 
 	 */
 	public static getNumber(
-		channel: TextBasedChannelFields,
+		channel: PartialTextBasedChannelFields,
 		min?: number,
 		max?: number
 	): (m: Message) => Promise<void | number> {
@@ -238,12 +429,12 @@ export class GenericMessageCollector<T> {
 	/**
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with a role ID or mention. THIS FUNCTION MUST ONLY BE USED IN A GUILD.
 	 * @param {Message} msg The message that triggered this class. This is generally a message that results in the exeuction of the command. 
-	 * @param {TextBasedChannelFields} pChan The channel to send messages to.
+	 * @param {PartialTextBasedChannelFields} pChan The channel to send messages to.
 	 * @example 
 	 * const gmc: GenericMessageCollector<Role> = new GenericMessageCollector<Role>(msg, { embed: embed }, 1, TimeUnit.MINUTE);
-	 * const response: Role | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getRolePrompt(msg)); 
+	 * const response: Role | "TIME_CMD" | "CANCEL_CMD" = await gmc.send(GenericMessageCollector.getRolePrompt(msg)); 
 	 */
-	public static getRolePrompt(msg: Message, pChan: TextBasedChannelFields): (collectedMessage: Message) => Promise<void | Role> {
+	public static getRolePrompt(msg: Message, pChan: PartialTextBasedChannelFields): (collectedMessage: Message) => Promise<void | Role> {
 		if (msg.guild === null) {
 			throw new Error("The message object provided for this method was not sent from a guild.");
 		}
@@ -267,13 +458,13 @@ export class GenericMessageCollector<T> {
 
 	/**
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond and return the response.
-	 * @param {TextBasedChannelFields} pChan The channel where messages should be sent to.
+	 * @param {PartialTextBasedChannelFields} pChan The channel where messages should be sent to.
 	 * @param {StringPromptOptions} [options] Options, if any.
 	 * @example 
 	 * const gmc: GenericMessageCollector<string> = new GenericMessageCollector<string>(msg, { embed: embed }, 1, TimeUnit.MINUTE);
-	 * const response: string | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getStringPrompt(msg)); 
+	 * const response: string | "TIME_CMD" | "CANCEL_CMD" = await gmc.send(GenericMessageCollector.getStringPrompt(msg)); 
 	 */
-	public static getStringPrompt(pChan: TextBasedChannelFields, options?: StringPromptOptions): (collectedMessage: Message) => Promise<void | string> {
+	public static getStringPrompt(pChan: PartialTextBasedChannelFields, options?: StringPromptOptions): (collectedMessage: Message) => Promise<void | string> {
 		return async (m: Message): Promise<void | string> => {
 			if (m.content === null) {
 				MessageUtil.send({ content: `${m.author}, you did not provide any content. Try again. ` }, pChan);
@@ -293,8 +484,8 @@ export class GenericMessageCollector<T> {
 
 				if (typeof options.regexToPass !== "undefined") {
 					if (!options.regexToPass.test(m.content)) {
-						let errorMessage: string = options.regexFailMessage || "Your input failed to pass the RegExp test. Please try again.";
-						MessageUtil.send({ content: `${m.author}, your input is invalid. Please try again.` }, pChan);
+						let errorMessage: string = options.regexFailMessage || `${m.author}, your input failed to pass the RegExp test. Please try again.`;
+						MessageUtil.send({ content: errorMessage }, pChan);
 						return;
 					}
 				}
@@ -305,12 +496,12 @@ export class GenericMessageCollector<T> {
 
 	/**
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with `yes` or `no` and return a boolean value associated with that choice.
-	 * @param {TextBasedChannelFields} pChan The channel where messages should be sent to.
+	 * @param {PartialTextBasedChannelFields} pChan The channel where messages should be sent to.
 	 * @example 
 	 * const gmc: GenericMessageCollector<boolean> = new GenericMessageCollector<boolean>(msg, { embed: embed }, 1, TimeUnit.MINUTE);
-	 * const response: boolean | "TIME" | "CANCEL" = await gmc.send(GenericMessageCollector.getYesNoPrompt(msg)); 
+	 * const response: boolean | "TIME_CMD" | "CANCEL_CMD" = await gmc.send(GenericMessageCollector.getYesNoPrompt(msg)); 
 	 */
-	public static getYesNoPrompt(pChan: TextBasedChannelFields): (collectedMessage: Message) => Promise<void | boolean> {
+	public static getYesNoPrompt(pChan: PartialTextBasedChannelFields): (collectedMessage: Message) => Promise<void | boolean> {
 		return async (m: Message): Promise<void | boolean> => {
 			if (m.content === null) {
 				MessageUtil.send({ content: `${m.author}, you did not provide any content. Try again. ` }, pChan);

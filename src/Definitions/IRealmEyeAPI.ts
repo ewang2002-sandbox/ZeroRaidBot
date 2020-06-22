@@ -1,8 +1,11 @@
-export interface IDarkMatterAPI {
+export interface IRealmEyeAPI {
     account_fame: number;
     account_fame_rank: number;
-    characters: IDarkMatterCharactersAPI[];
-    characters_hidden: false;
+    /**
+     * The public API cannot access most of the information here.
+     */
+    characters: IRealmEyeCharacters[];
+    characters_hidden: boolean;
     chars: 1;
     desc1: string;
     desc2: string;
@@ -16,6 +19,9 @@ export interface IDarkMatterAPI {
     guild_confirmed: boolean;
     guild_rank: string;
     player: string;
+    /**
+     * This is NOT available in the public API.
+     */
     player_first_seen: string;
     player_last_seen: string;
     rank: number;
@@ -23,7 +29,7 @@ export interface IDarkMatterAPI {
     skins_rank: number   
 }
 
-export interface IDarkMatterCharactersAPI  {
+export interface IRealmEyeCharacters  {
     backpack: boolean;
     character_dyes: {
         accessory_dye: string;
@@ -54,5 +60,5 @@ export interface IDarkMatterCharactersAPI  {
         vitality: number;
         wisdom: number;
     };
-    stats_maxed: string;
+    stats_maxed: number;
 }

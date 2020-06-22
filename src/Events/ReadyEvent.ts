@@ -69,16 +69,26 @@ export async function onReadyEvent() {
 		});
 	}
 
-
 	// get info
 	let app: ClientApplication = await Zero.RaidClient.fetchApplication();
 	let owner: User = await Zero.RaidClient.users.fetch((app.owner as User).id);
-	console.log('\x1b[36m%s\x1b[0m', `${(Zero.RaidClient.user as ClientUser).tag} has started.\nBOT TAG: ${(Zero.RaidClient.user as ClientUser).tag}\nBOT ID: ${(Zero.RaidClient.user as ClientUser).id}\nOWNER TAG: ${owner.tag}\nOWNER ID: ${owner.id}\nTIME: ${DateUtil.getTime()}`);
+	console.info('\x1b[36m%s\x1b[0m', `${(Zero.RaidClient.user as ClientUser).tag} has started.\nBOT TAG: ${(Zero.RaidClient.user as ClientUser).tag}\nBOT ID: ${(Zero.RaidClient.user as ClientUser).id}\nOWNER TAG: ${owner.tag}\nOWNER ID: ${owner.id}\nTIME: ${DateUtil.getTime()}`);
 }
 
 /**
  * Preloads any new data. Make sure to update this before running! :) 
  */
 async function mongoPreloader(): Promise<void> {
-	
+	// UNCOMMENT BEFORE GOING TO PRODUCTION
+	/*
+	await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateMany({}, {
+		$set: {
+			"generalChannels.quotaChannel": "",
+			"properties.quotas": {
+				quotaDetails: [],
+				quotaMessage: "",
+				lastReset: 0
+			} 
+		}
+	});*/
 }

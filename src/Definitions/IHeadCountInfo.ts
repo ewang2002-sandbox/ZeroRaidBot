@@ -1,4 +1,4 @@
-import { ISection } from "./ISection";
+import { ISection } from "../Templates/ISection";
 
 export interface IHeadCountInfo {
     /**

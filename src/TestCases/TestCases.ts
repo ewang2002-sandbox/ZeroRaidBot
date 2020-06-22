@@ -7,17 +7,12 @@ export module TestCasesNameHistory {
     export function withNames(): INameHistory[] {
         return [
             {
-                name: "ConsoleMC",
+                name: "",
                 from: "",
                 to: ""
             },
             {
-                name: "Testing",
-                from: "",
-                to: ""
-            },
-            {
-                name: "BigEpic",
+                name: "",
                 from: "",
                 to: ""
             }
@@ -27,7 +22,7 @@ export module TestCasesNameHistory {
     export function withDefaultName(): INameHistory[] {
         return [
             {
-                name: "ConsoleMC",
+                name: "",
                 from: "",
                 to: ""
             } 
@@ -41,17 +36,17 @@ export module TestCasesNameHistory {
     export function withNoCorrespondingNames(): INameHistory[] {
         return [
             {
-                name: "ConsoleMC",
+                name: "",
                 from: "",
                 to: ""
             },
             {
-                name: "AOsakmdad",
+                name: "",
                 from: "",
                 to: ""
             },
             {
-                name: "OWEkisdS",
+                name: "",
                 from: "",
                 to: ""
             }

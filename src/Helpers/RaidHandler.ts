@@ -1,11 +1,11 @@
-import { CategoryChannel, ChannelCreationOverwrites, ClientUser, Collection, Guild, GuildMember, Message, MessageCollector, MessageEmbed, MessageReaction, ReactionCollector, TextChannel, User, VoiceChannel, GuildEmoji, EmojiResolvable, ColorResolvable, DMChannel, Role } from "discord.js";
+import { CategoryChannel, ChannelCreationOverwrites, ClientUser, Collection, Guild, GuildMember, Message, MessageCollector, MessageEmbed, MessageReaction, ReactionCollector, TextChannel, User, VoiceChannel, GuildEmoji, EmojiResolvable, ColorResolvable, DMChannel, Role, PermissionOverwriteOptions, OverwriteResolvable } from "discord.js";
 import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollector";
 import { MessageSimpleTick } from "../Classes/Message/MessageSimpleTick";
 import { AFKDungeon } from "../Constants/AFKDungeon";
 import { AllEmoji, NitroEmoji } from "../Constants/EmojiData";
 import { IDungeonData } from "../Definitions/IDungeonData";
 import { IRaidInfo } from "../Definitions/IRaidInfo";
-import { ISection } from "../Definitions/ISection";
+import { ISection } from "../Templates/ISection";
 import { RaidStatus } from "../Definitions/RaidStatus";
 import { RaidDbHelper } from "./RaidDbHelper";
 import { Zero } from "../Zero";
@@ -20,8 +20,21 @@ import { MessageAutoTick } from "../Classes/Message/MessageAutoTick";
 import { NumberUtil } from "../Utility/NumberUtil";
 import { MongoDbHelper } from "./MongoDbHelper";
 import { StringBuilder } from "../Classes/String/StringBuilder";
+import { FilterQuery } from "mongodb";
+import { IRaidUser } from "../Templates/IRaidUser";
+import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuManager";
 
 export module RaidHandler {
+	/**
+	 * All dungeons that are considered "endgame."
+	 */
+	const ENDGAME_DUNGEONS: number[] = [38, 36, 35, 34, 32, 30];
+
+	/**
+	 * All dungeons that are considered "realm clearing."
+	 */
+	const REALM_CLEARING_DUNGEONS: number[] = [];
+
 	/**
 	 * The maximum time that an AFK check should last for. 
 	 */
@@ -154,7 +167,7 @@ export module RaidHandler {
 			TimeUnit.MINUTE
 		);
 
-		const result: number | "CANCEL" | "TIME" = await collector.send(
+		const result: number | "CANCEL_CMD" | "TIME_CMD" = await collector.send(
 			async (collectedMsg: Message): Promise<number | void> => {
 				const num: number = Number.parseInt(collectedMsg.content);
 				if (Number.isNaN(num)) {
@@ -171,7 +184,7 @@ export module RaidHandler {
 			}
 		);
 
-		if (result === "CANCEL" || result === "TIME") {
+		if (result === "CANCEL_CMD" || result === "TIME_CMD") {
 			return;
 		}
 
@@ -199,7 +212,7 @@ export module RaidHandler {
 				.setColor("RANDOM")
 				.setFooter(guild.name);
 			const receiptEmbed: Message = await member.send(embed);
-			const isApproved: { r: boolean, m: GuildMember } | "TIME" = await new Promise(async (resolve) => {
+			const isApproved: { r: boolean, m: GuildMember } | "TIME_CMD" = await new Promise(async (resolve) => {
 				const resultEmbed: MessageEmbed = new MessageEmbed() // to edit w/ 
 					.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 					.addField("Selected Dungeon", StringUtil.applyCodeBlocks(SELECTED_DUNGEON.dungeonName), true)
@@ -243,7 +256,7 @@ export module RaidHandler {
 							.setTitle("⏰ Trial Leader Raid Request Expired")
 							.setDescription(`The raid request sent by ${member} (${member.displayName}) has expired.`);
 						requestChanMessage.edit(resultEmbed).catch(() => { });
-						return resolve("TIME");
+						return resolve("TIME_CMD");
 					}
 				});
 
@@ -287,7 +300,7 @@ export module RaidHandler {
 				});
 			});
 
-			if (isApproved === "TIME") {
+			if (isApproved === "TIME_CMD") {
 				responseRequesterEmbed
 					.setTitle("⏰ Raid Request Expired")
 					.setDescription("Your raid request has expired. Try to see if a raid leader or head raid leader is willing to approve your next raid request first before you send one! Your raid request details are below.")
@@ -319,7 +332,7 @@ export module RaidHandler {
 
 		// first, let's determine the numbers that have been used
 		// by previous vcs
-		let allNums: number[] = SECTION_CATEGORY.children
+		const allNums: number[] = SECTION_CATEGORY.children
 			.filter(x => x.type === "voice")
 			.filter(y => vcEndsWithNumber(y as VoiceChannel)
 				&& (y.name.startsWith("🚦")
@@ -440,7 +453,7 @@ export module RaidHandler {
 		}
 
 		if (SELECTED_DUNGEON.keyEmojIDs.length !== 0) {
-			optionalReactsField += `⇒ If you have ${SELECTED_DUNGEON.keyEmojIDs.length === 1 ? `a ${SELECTED_DUNGEON.keyEmojIDs[0].keyEmojiName}` : "one of the following keys"}, react accordingly with ${SELECTED_DUNGEON.keyEmojIDs.map(x => guild.client.emojis.cache.get(x.keyEmojID)).join(" ")}\n`;
+			optionalReactsField += `⇒ If you have ${SELECTED_DUNGEON.keyEmojIDs.length === 1 ? `a ${SELECTED_DUNGEON.keyEmojIDs[0].keyEmojiName}` : "one of the following keys"}, react accordingly with ${SELECTED_DUNGEON.keyEmojIDs.map(x => msg.client.emojis.cache.get(x.keyEmojID)).join(" ")}\n`;
 		}
 		optionalReactsField += `⇒ React with the emoji(s) corresponding to your class and gear choices.`;
 
@@ -466,20 +479,15 @@ export module RaidHandler {
 		}, MAX_TIME_LEFT);
 
 		// pin & react
-		await afkCheckMessage.pin().catch(() => { });
-		await afkCheckMessage.react(SELECTED_DUNGEON.portalEmojiID).catch(() => { });
+		afkCheckMessage.pin().catch(() => { });
+		let emojisToReactTo: EmojiResolvable[] = [SELECTED_DUNGEON.portalEmojiID];
 		if (reactWithNitroBoosterEmoji) {
-			await afkCheckMessage.react(earlyLocationEmoji).catch(e => { });
+			emojisToReactTo.push(earlyLocationEmoji);
 		}
 		// TODO make it so when ppl react to key while bot is still reacting
 		// it still works 
-		for await (const keyId of SELECTED_DUNGEON.keyEmojIDs) {
-			await afkCheckMessage.react(keyId.keyEmojID).catch(() => { });
-		}
-
-		for await (const reaction of SELECTED_DUNGEON.reactions) {
-			await afkCheckMessage.react(reaction).catch(() => { });
-		}
+		emojisToReactTo.push(...SELECTED_DUNGEON.keyEmojIDs.map(x => x.keyEmojID), ...SELECTED_DUNGEON.reactions);
+		FastReactionMenuManager.reactFaster(afkCheckMessage, emojisToReactTo);
 
 		// ==================================
 		// control panel stuff
@@ -523,7 +531,8 @@ export module RaidHandler {
 			startedBy: msg.author.id,
 			status: RaidStatus.AFKCheck,
 			keyReacts: [],
-			earlyReacts: []
+			earlyReacts: [],
+			dungeonsDone: 0
 		};
 
 		// add to db 
@@ -1010,7 +1019,7 @@ export module RaidHandler {
 		});
 		// control panel 
 		const initiator: GuildMember | null = guild.member(rs.startedBy);
-		let descStr: string = `Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the raid.\nRaid Section: ${rs.section.nameOfSection}\nInitiator: ${initiator === null ? "Unknown" : initiator} (${initiator === null ? "Unknown" : initiator.displayName})\nDungeon: ${rs.dungeonInfo.dungeonName} ${Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID)}\nVoice Channel: Raiding ${rs.raidNum}`;
+		let descStr: string = `Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the raid.\n\nRaid Section: ${rs.section.nameOfSection}\nInitiator: ${initiator === null ? "Unknown" : initiator} (${initiator === null ? "Unknown" : initiator.displayName})\nDungeon: ${rs.dungeonInfo.dungeonName} ${Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID)}\nVoice Channel: Raiding ${rs.raidNum}\nDungeons Completed: ${rs.dungeonsDone}`;
 		if (peopleThatGotLocEarly.length !== 0) {
 			descStr += `\n\n__**Early Locations**__\n${peopleThatGotLocEarly.join(" ")}`;
 		}
@@ -1067,7 +1076,7 @@ export module RaidHandler {
 		const controlPanelChannel: TextChannel = guild.channels.cache.get(rs.section.channels.controlPanelChannel) as TextChannel;
 		let cpMsg: Message = await controlPanelChannel.messages.fetch(rs.controlPanelMsgId);
 		const raidVC: VoiceChannel = guild.channels.cache.get(rs.vcID) as VoiceChannel;
-		const membersLeft: number = raidVC.members.size;
+		const membersLeft: Collection<string, GuildMember> = raidVC.members;
 
 		// if we're in post afk 
 		if (typeof raidMsg.embeds[0].description !== "undefined" && raidMsg.embeds[0].description.includes("Join any available voice channel and then")) {
@@ -1078,13 +1087,14 @@ export module RaidHandler {
 
 		const endedRun: MessageEmbed = new MessageEmbed()
 			.setAuthor(`${memberThatEnded.displayName} has ended the ${rs.dungeonInfo.dungeonName} raid.`, rs.dungeonInfo.portalLink)
-			.setDescription(`The ${rs.dungeonInfo.dungeonName} raid is now finished.\n${membersLeft} members have stayed with us throughout the entire raid.`)
+			.setDescription(`The ${rs.dungeonInfo.dungeonName} raid is now finished.\n${membersLeft.size} members have stayed with us throughout the entire raid.`)
 			.setImage("https://static.drips.pw/rotmg/wiki/Enemies/Event%20Chest.png")
-			.setColor(ArrayUtil.getRandomElement(rs.dungeonInfo.colors))
+			.setColor(ArrayUtil.getRandomElement<ColorResolvable>(rs.dungeonInfo.colors))
 			.setFooter(guild.name);
 		await raidMsg.edit("The raid is now over. Thanks to everyone for attending!", endedRun);
 		await raidMsg.unpin().catch(() => { });
 		await cpMsg.delete().catch(() => { });
+		await logCompletedRunsForRaiders(guild, membersLeft, rs, 1);
 		await movePeopleOutAndDeleteRaidVc(guild, raidVC);
 	}
 
@@ -1096,6 +1106,16 @@ export module RaidHandler {
 			.filter(x => x.type === "voice")
 			.filter(x => x.parentID === raidVC.parentID)
 			.find(x => x.name.toLowerCase().includes("lounge") || x.name.toLowerCase().includes("queue")) as VoiceChannel | undefined;
+		// set perms so rls cant move ppl in
+		const permsToUpdate: OverwriteResolvable[] = [];
+		for (const [id, perm] of raidVC.permissionOverwrites) {
+			permsToUpdate.push({
+				id: perm.id,
+				deny: ["MOVE_MEMBERS"]
+			});
+		}
+		await raidVC.overwritePermissions(permsToUpdate).catch(e => { });
+
 		// move people out if there is a lounge vc 
 		if (typeof loungeVC !== "undefined") {
 			const promises: Promise<void>[] = raidVC.members.map(async (x) => {
@@ -1108,6 +1128,21 @@ export module RaidHandler {
 		else {
 			await raidVC.delete().catch(() => { });
 		}
+
+		// check vc to see if we can delete it
+		const interval: NodeJS.Timeout = setInterval(async () => {
+			// vc doesnt exist
+			if (!guild.channels.cache.has(raidVC.id)) {
+				clearInterval(interval);
+				return;
+			}
+
+			if (raidVC.members.size <= 0) {
+				await raidVC.delete().catch(e => { });
+				clearInterval(interval);
+				return;
+			}
+		}, 5 * 1000);
 	}
 
 	/**
@@ -1234,28 +1269,23 @@ export module RaidHandler {
 				return;
 			}
 
-			const num: number = Number.parseInt(m.content);
-			if (Number.isNaN(num)) {
-				MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_NUMBER_INPUT", null), msg.channel as TextChannel);
-				return;
-			}
-
-			if (typeof allDungeons[num - 1] === "undefined") {
-				MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_INDEX", null), msg.channel as TextChannel);
-				return;
-			}
-
-			// if not included, let's make sure
-			// we can add it 
-			if (!allDungeons[num - 1].isIncluded) {
-				if (canAddAnother(allDungeons, allDungeons[num - 1].data.keyEmojIDs.length)) {
-					allDungeons[num - 1].isIncluded = true;
+			const nums: number[] = NumberUtil.parseNumbersFromString(m.content);
+			for (const num of nums) {
+				if (num - 1 < 0 || num - 1 >= allDungeons.length) {
+					return; // out of index
 				}
-			}
-			else {
-				allDungeons[num - 1].isIncluded = false;
-			}
 
+				// if not included, let's make sure
+				// we can add it 
+				if (!allDungeons[num - 1].isIncluded) {
+					if (canAddAnother(allDungeons, allDungeons[num - 1].data.keyEmojIDs.length)) {
+						allDungeons[num - 1].isIncluded = true;
+					}
+				}
+				else {
+					allDungeons[num - 1].isIncluded = false;
+				}
+			} // end loop
 			sentHeadCountMessage.edit(getHeadCountEmbed(msg, allDungeons));
 		});
 
@@ -1309,7 +1339,7 @@ export module RaidHandler {
 			.setDescription(`⇒ **React** with ${Zero.RaidClient.emojis.cache.get(AllEmoji)} if you want to participate in a raid with us.\n⇒ If you have a key and are willing to use it, then react with the corresponding key(s).`);
 
 		const emojis: EmojiResolvable[] = [
-			Zero.RaidClient.emojis.cache.get(AllEmoji) as GuildEmoji
+			Zero.RaidClient.emojis.cache.get(AllEmoji) as GuildEmoji,
 		];
 		for (const dungeon of dungeonsForHc) {
 			for (const key of dungeon.keyEmojIDs) {
@@ -1321,9 +1351,7 @@ export module RaidHandler {
 		const mst: MessageSimpleTick = new MessageSimpleTick(hcMessage, "@here, a headcount is currently in progress. There are {m} minutes and {s} seconds remaining on this headcount.", MAX_TIME_LEFT * 2); // 10 min
 		await hcMessage.pin().catch(() => { });
 
-		for await (const emoji of emojis) {
-			await hcMessage.react(emoji).catch(() => { });
-		}
+		FastReactionMenuManager.reactFaster(hcMessage, emojis);
 
 		const hcInfo: IHeadCountInfo = {
 			section: section,
@@ -1407,11 +1435,11 @@ export module RaidHandler {
 		CURRENT_HEADCOUNT_DATA.delete(hcInfo.msgID);
 
 		// let's now get the data, if any 
-		const reactionsFromHeadcount: Collection<string, MessageReaction> = hcMsg.reactions.cache;
+		const reactionsFromHeadcount: Collection<string, MessageReaction> = (await hcMsg.fetch()).reactions.cache;
 		const newEmbed: MessageEmbed = new MessageEmbed()
-			.setTitle(`🔕 The **Headcount** Has Been Ended ${endedBy === "AUTO" ? "Automatically" : `By: ${endedBy.displayName}`}`)
+			.setTitle(`🔕 The headcount has been ended ${endedBy === "AUTO" ? "automatically" : `by ${endedBy.displayName}`}`)
 			.setColor("RANDOM")
-			.setDescription(`There are currently ${(reactionsFromHeadcount.get(AllEmoji) as MessageReaction).users.cache.size - 1} raiders ready.`)
+			.setDescription(`There are currently ${(reactionsFromHeadcount.get(AllEmoji) as MessageReaction).users.cache.size} raiders ready.`)
 			.setTimestamp();
 
 		const newControlPanelEmbed: MessageEmbed = new MessageEmbed()
@@ -1473,12 +1501,18 @@ export module RaidHandler {
 	 * Precondition: The dungeons in `ihcpi` must have at least one key. 
 	 */
 	function getHeadCountEmbed(msg: Message, ihcpi: { data: IDungeonData, isIncluded: boolean }[]): MessageEmbed {
+		let amtKeys: number = 0;
+		for (const included of ihcpi) {
+			if (included.isIncluded) {
+				amtKeys += included.data.keyEmojIDs.length;
+			}
+		}
 		const configureHeadCountEmbed: MessageEmbed = new MessageEmbed()
 			.setTitle("⚙️ Configuring Headcount: Dungeon Selection")
 			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
-			.setDescription("You are close to starting a headcount! However, you need to select dungeons from the below list. To begin, please type the number corresponding to the dungeon(s) you want to add to the headcount. To send this headcount, type `send`. To cancel, type `cancel`.\n\nA ☑️ next to the dungeon means the dungeon will be included in the headcount.\nA ❌ means the dungeon will not be part of the overall headcount.")
+			.setDescription("You are close to starting a headcount! However, you need to select dungeons from the below list. To begin, please type the number (e.g. `2`, `15`) or range of numbers (e.g. `5-10`, `11-16`) corresponding to the dungeon(s) you want to add to the headcount. To send this headcount, type `send`. To cancel, type `cancel`.\n\nA ☑️ next to the dungeon means the dungeon will be included in the headcount.\nA ❌ means the dungeon will not be part of the overall headcount.")
 			.setColor("RANDOM")
-			.setFooter(`${(msg.guild as Guild).name} | ${ihcpi.filter(x => x.isIncluded).length}/19 Remaining Slots`);
+			.setFooter(`${(msg.guild as Guild).name} | ${amtKeys}/19 Remaining Slots`);
 		let i: number = 0;
 		let k: number = 0;
 		let l: number = 0;
@@ -1535,7 +1569,7 @@ export module RaidHandler {
 
 		// we want the user to decide what section he/she wants to run, if any 
 		if (guildDb.sections.length > 0) {
-			let responseToSection: TextChannel | "TIME" | "CANCEL" = await new Promise(async (resolve) => {
+			let responseToSection: TextChannel | "TIME_CMD" | "CANCEL_CMD" = await new Promise(async (resolve) => {
 				let min: number = 1;
 				let max: number = min;
 
@@ -1547,8 +1581,8 @@ export module RaidHandler {
 					.setColor("RANDOM");
 				for (let i = 0; i < sections.length; i++) {
 					const rlInfo: GuildUtil.RaidLeaderStatus = GuildUtil.getRaidLeaderStatus(
-						msg.member as GuildMember, 
-						guildDb, 
+						msg.member as GuildMember,
+						guildDb,
 						sections[i]
 					);
 					const hasPermission: boolean = rlInfo.roleType !== null || rlInfo.isUniversal;
@@ -1583,7 +1617,7 @@ export module RaidHandler {
 					TimeUnit.MINUTE
 				);
 
-				const response: number | "CANCEL" | "TIME" = await gmc.send(
+				const response: number | "CANCEL_CMD" | "TIME_CMD" = await gmc.send(
 					async (collectedMsg: Message): Promise<number | void> => {
 						const num: number = Number.parseInt(collectedMsg.content);
 						if (Number.isNaN(num)) {
@@ -1608,7 +1642,7 @@ export module RaidHandler {
 				resolve(response);
 			}); // end of promise 
 
-			if (responseToSection === "TIME" || responseToSection === "CANCEL") {
+			if (responseToSection === "TIME_CMD" || responseToSection === "CANCEL_CMD") {
 				return "ERROR";
 			}
 
@@ -1634,45 +1668,80 @@ export module RaidHandler {
 	}
 
 	/**
-	 * 
-	 * @param member The member that initiated the command (usually, the person that ended the run) 
-	 * @param db The db. 
-	 * @param rs The raid info.
+	 * Logs the run for all raiders that attended.
+	 * @param {Guild} guild The guild.
+	 * @param {Collection<string, GuildMember>} members The members that attended the raid.
+	 * @param {IRaidInfo} raidInfo The raid information.
+	 * @param {number} [amount = 1] The amount to log.
 	 */
-	export async function logRuns(
-		member: GuildMember,
-		db: IRaidGuild,
-		rs: IRaidInfo
+	export async function logCompletedRunsForRaiders(
+		guild: Guild,
+		members: Collection<string, GuildMember>,
+		raidInfo: IRaidInfo,
+		amount: number = 1
 	): Promise<void> {
-		let dmChannel: DMChannel;
-		try {
-			dmChannel = await member.createDM();
-		}
-		catch (e) {
-			return;
-		}
-
-		const promptEmbed: MessageEmbed = new MessageEmbed()
-			.setAuthor(member.guild.name, member.guild.iconURL() === null ? undefined : member.guild.iconURL() as string)
-			.setColor("GREEN")
-			.setTitle(`${rs.dungeonInfo.dungeonName} Raid Log`)
-			.setThumbnail(ArrayUtil.getRandomElement<string>(rs.dungeonInfo.bossLink))
-			.setDescription("Type the amount of runs you did. Please be honest; failure to be honest will result in demotion.")
-			.setFooter("Log Raids Command")
-			.setTimestamp();
-
-		const resp: number | "TIME" | "CANCEL" = await new GenericMessageCollector<number>(
-			member,
-			{ embed: promptEmbed },
-			2,
-			TimeUnit.MINUTE,
-			dmChannel
-		).send(GenericMessageCollector.getNumber(dmChannel, 1));
-
-		if (resp === "TIME" || resp === "CANCEL") {
-			return;
+		// make sure everyone has an entry
+		const filterQueryCheckNoProfile: FilterQuery<IRaidUser> = {};
+		filterQueryCheckNoProfile.$or = [];
+		for (const [id, member] of members) {
+			filterQueryCheckNoProfile.$or.push({
+				discordUserId: member.id
+			});
 		}
 
-		// get guild member next
+		const results: IRaidUser[] = await MongoDbHelper.MongoDbUserManager.MongoUserClient
+			.find(filterQueryCheckNoProfile).toArray();
+
+		// see who needs a profile
+		const pplToAddProfileTo: FilterQuery<IRaidUser> = {};
+		pplToAddProfileTo.$or = [];
+		for (const memberFound of results) {
+			if (memberFound.general.completedRuns.findIndex(x => x.server === guild.id) === -1) {
+				pplToAddProfileTo.$or.push({
+					discordUserId: memberFound.discordUserId
+				});
+			}
+		}
+
+		if (pplToAddProfileTo.$or.length !== 0) {
+			await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateMany(pplToAddProfileTo, {
+				$push: {
+					"general.completedRuns": {
+						general: 0,
+						endgame: 0,
+						realmClearing: 0,
+						server: guild.id
+					}
+				}
+			});
+		}
+
+		// now update all profiles
+		const filterQuery: FilterQuery<IRaidUser> = {
+			"general.completedRuns.server": guild.id
+		};
+		filterQuery.$or = [];
+
+		for (const [id, member] of members) {
+			filterQuery.$or.push({
+				discordUserId: id
+			});
+		}
+		let propToUpdate: string;
+		if (ENDGAME_DUNGEONS.includes(raidInfo.dungeonInfo.id)) {
+			propToUpdate = "general.completedRuns.$.endgame";
+		}
+		else if (REALM_CLEARING_DUNGEONS.includes(raidInfo.dungeonInfo.id)) {
+			propToUpdate = "general.completedRuns.$.realmClearing";
+		}
+		else {
+			propToUpdate = "general.completedRuns.$.general";
+		}
+
+		await MongoDbHelper.MongoDbUserManager.MongoUserClient.updateMany(filterQuery, {
+			$inc: {
+				[propToUpdate]: amount
+			}
+		});
 	}
 }

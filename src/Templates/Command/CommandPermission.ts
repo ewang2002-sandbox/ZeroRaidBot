@@ -32,6 +32,7 @@ export class CommandPermission {
 	/**
 	 * The constructor for this class.
 	 * @param {PermissionResolvable[]} generalPermissions Any general permissions that the user has to have in order to execute the command.
+	 * @param {PermissionResolvable[]} botPermissions Any general permissions that the bot has to have in order to run the command.
 	 * @param {RoleNames[]} rolePermissions The list of roles that can use this command.
 	 * @param {LeaderPermType} accountForSectionLeaderRoles Which other non-universal RLs can use this command.
 	 * @param {boolean} roleInclusive  Whether the command can be used by higher roles (higher than the highest listed role in `rolePermissions`).

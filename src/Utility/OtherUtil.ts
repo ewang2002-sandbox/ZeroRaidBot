@@ -1,4 +1,9 @@
-import { Collection, VoiceChannel } from "discord.js";
+import { Collection, VoiceChannel, Message, GuildMember } from "discord.js";
+import { Command } from "../Templates/Command/Command";
+import { IRaidGuild } from "../Templates/IRaidGuild";
+import { ISection } from "../Templates/ISection";
+import { GuildUtil } from "./GuildUtil";
+import { RoleNames } from "../Definitions/Types";
 
 export module OtherUtil {
     /**
@@ -19,4 +24,115 @@ export module OtherUtil {
         return nums.sort();
     }
 
+    /**
+     * Waits a certain amount of time before resolving the promise.
+     * @param {number} ms The time to wait, in milliseconds. 
+     */
+    export async function waitFor(ms: number): Promise<void> {
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                resolve();
+            }, ms);
+        });
+    }
+
+    /**
+     * Checks to see if you have permission to run a command.
+     * @param {Message} msg The message that is supposed to execute the command. THIS MESSAGE MUST BE SENT IN A GUILD.
+     * @param {Command} command The command to check.
+     * @param {IRaidGuild} guildHandler The guild document.
+     * @returns Three boolean values. The first boolean value is whether the person has server permissions. The second boolean value is whether the person has role permissions. And the third boolean value is whether there are any server permissions whatsoever defined for the command.
+     */
+    export function checkCommandPerms(msg: Message, command: Command, guildHandler: IRaidGuild): [boolean, boolean, boolean] {
+        const member: GuildMember = msg.member as GuildMember;
+        let hasServerPerms: boolean = member.permissions.has("ADMINISTRATOR")
+            ? true
+            : command.getGeneralPermissions().length === 0
+                ? false
+                : command.getGeneralPermissions().every(x => member.hasPermission(x));
+
+        // check to see if the member has role perms
+        let hasRolePerms: boolean = true;
+        if (command.getRolePermissions().length !== 0 && !member.permissions.has("ADMINISTRATOR")) {
+            const allSections: ISection[] = [GuildUtil.getDefaultSection(guildHandler), ...guildHandler.sections];
+
+            // role define
+            const raider: string = guildHandler.roles.raider;
+            const universalAlmostRaidLeader: string = guildHandler.roles.universalAlmostRaidLeader;
+            const universalRaidLeader: string = guildHandler.roles.universalRaidLeader;
+            const officer: string = guildHandler.roles.officer;
+            const headRaidLeader: string = guildHandler.roles.headRaidLeader;
+            const moderator: string = guildHandler.roles.moderator;
+            const support: string = guildHandler.roles.support;
+            const verifier: string = guildHandler.roles.verifier;
+            const suspended: string = guildHandler.roles.suspended;
+            // rl
+            const roleOrder: [string, RoleNames][] = [
+                [moderator, "moderator"],
+                [headRaidLeader, "headRaidLeader"],
+                [officer, "officer"],
+                [universalRaidLeader, "universalRaidLeader"],
+            ];
+
+            if (command.getSecRLAccountType().includes("ALL_RL_TYPE")
+                || command.getSecRLAccountType().includes("SECTION_RL")) {
+                // rl
+                for (const sec of allSections) {
+                    roleOrder.push([sec.roles.raidLeaderRole, "universalRaidLeader"]);
+                }
+            }
+
+            roleOrder.push([universalAlmostRaidLeader, "universalAlmostRaidLeader"]);
+            if (command.getSecRLAccountType().includes("ALL_RL_TYPE")
+                || command.getSecRLAccountType().includes("SECTION_ARL")) {
+                // arl
+                for (const sec of allSections) {
+                    roleOrder.push([sec.roles.almostLeaderRole, "universalAlmostRaidLeader"]);
+                }
+            }
+
+            if (command.getSecRLAccountType().includes("ALL_RL_TYPE")
+                || command.getSecRLAccountType().includes("SECTION_TRL")) {
+                // trl
+                for (const sec of allSections) {
+                    roleOrder.push([sec.roles.trialLeaderRole, "universalAlmostRaidLeader"]); // for now
+                }
+            }
+
+            // add the rest of the roles.
+            roleOrder.push(
+                [support, "support"],
+                [verifier, "verifier"],
+                [raider, "raider"],
+                [suspended, "suspended"]
+            );
+
+            let hasPermArr: boolean[] = [];
+            if (command.isRoleInclusive()) {
+                for (let [roleID, roleName] of roleOrder) {
+                    hasPermArr.push(member.roles.cache.has(roleID));
+                    // we reached the minimum role
+                    // break out since we no longer need to check 
+                    if (roleName === command.getRolePermissions()[0]) {
+                        break;
+                    }
+                }
+            }
+            // not inclusive
+            // you either have it or you dont 
+            else {
+                for (let i = 0; i < command.getRolePermissions().length; i++) {
+                    for (let [roleID, roleName] of roleOrder) {
+                        if (command.getRolePermissions()[i] === roleName) {
+                            hasPermArr.push(member.roles.cache.has(roleID));
+                        }
+                    }
+                }
+            }
+
+            hasRolePerms = hasPermArr.some(x => x);
+        }
+
+        return [hasServerPerms, hasRolePerms, command.getGeneralPermissions().length !== 0];
+    }
 }

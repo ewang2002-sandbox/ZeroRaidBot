@@ -1,9 +1,12 @@
 import { IRaidGuild } from "../Templates/IRaidGuild";
-import { ISection } from "../Definitions/ISection";
-import { Guild, Collection, Role, GuildMember } from "discord.js";
-import { RoleNames } from "../Definitions/Types";
+import { ISection } from "../Templates/ISection";
+import { GuildMember, Message, DMChannel, Guild, MessageEmbed, Role } from "discord.js";
+import { MongoDbHelper } from "../Helpers/MongoDbHelper";
+import { StringUtil } from "./StringUtil";
+import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollector";
+import { TimeUnit } from "../Definitions/TimeUnit";
 
-export namespace GuildUtil { 
+export namespace GuildUtil {
 	export type RaidLeaderRole = null | "TRL" | "ARL" | "RL" | "HRL";
 	export type RaidLeaderStatus = {
 		isUniversal: boolean; // this will override any other setting
@@ -20,8 +23,8 @@ export namespace GuildUtil {
 	 * @returns {boolean} True if the leader can start AFK check without approval.
 	 */
 	export function getRaidLeaderStatus(
-		member: GuildMember, 
-		guildData: IRaidGuild, 
+		member: GuildMember,
+		guildData: IRaidGuild,
 		section: ISection
 	): RaidLeaderStatus {
 		const allowedRoles: string[] = [
@@ -68,8 +71,8 @@ export namespace GuildUtil {
 	 * @param {ISection} section The section where the command was executed
 	 */
 	export function getHighestRaidLeaderRole(
-		member: GuildMember, 
-		guildData: IRaidGuild, 
+		member: GuildMember,
+		guildData: IRaidGuild,
 		section: ISection
 	): RaidLeaderRole {
 		if (member.roles.cache.has(guildData.roles.headRaidLeader)) {
@@ -158,78 +161,120 @@ export namespace GuildUtil {
 		return [section.roles.trialLeaderRole, section.roles.almostLeaderRole, section.roles.raidLeaderRole];
 	}
 
-	/* WORKING ON AUTOMATIC ROLE ORDER ORGANIZATION
-	export function getRoleOrder(guild: Guild, db: IRaidGuild): [string, RoleNames][] {
-		const returnVal: [string, RoleNames][] = [];
-		// roles will be sorted
-		// from highest pos to lowest pos
-		const sortedRoles: Role[] = guild.roles.cache
-			.sort((a, b) => b.position - a.position)
-			.array();
-		let i: number = 0;
+	/**
+     * Gets a guild.
+     * @param msg The message object.
+     */
+	export async function getGuild(msg: Message, dmChannel: DMChannel): Promise<Guild | null | "CANCEL_CMD"> {
+		const allGuilds: IRaidGuild[] = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.find({}).toArray();
+		const embed: MessageEmbed = new MessageEmbed()
+			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
+			.setDescription("Please select the server that you want to configure your server profile for.")
+			.setColor("RANDOM")
+			.setFooter("Server Profile Management");
 
-		for (i = 0; i < sortedRoles.length; i++) {
-			const result: RoleNames | null = resolveRole(db, sortedRoles[i]);
-			if (result === null) {
-				continue;
+		let str: string = "";
+		let index: number = 0;
+		const validGuilds: Guild[] = [];
+		for (const guildEntry of allGuilds) {
+			for (const [id, guild] of msg.client.guilds.cache) {
+				if (guild.id !== guildEntry.guildID) {
+					continue; // guild associated with db not right
+				}
+
+				if (!guild.roles.cache.has(guildEntry.roles.raider)
+					|| !guild.members.cache.has(msg.author.id)) {
+					break; // found guild but no verified role OR not a member of the server
+				}
+
+				const resolvedMember: GuildMember = guild.member(msg.author) as GuildMember;
+
+				if (!resolvedMember.roles.cache.has(guildEntry.roles.raider)) {
+					break; // not verified
+				}
+
+				validGuilds.push(guild);
+				const tempStr: string = `[${++index}] ${guild.name}`;
+				if (str.length + tempStr.length > 1000) {
+					embed.addField("Guild Selection", StringUtil.applyCodeBlocks(str));
+					str = tempStr;
+				}
+				else {
+					str += tempStr;
+				}
 			}
+		} // end major loop
 
-
-		}
-		for (const [id, role] of sortedRoles) {
-			const result: RoleNames | null = resolveRole(db, role);
-			if (result === null) {
-				continue;
-			}
-			returnVal.push([id, result]);
+		if (validGuilds.length === 0) {
+			return null;
 		}
 
-		return returnVal;
+		if (embed.fields.length === 0) {
+			embed.addField("Guild Selection", StringUtil.applyCodeBlocks(str));
+		}
+
+		const num: number | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<number>(
+			msg.author,
+			{ embed: embed },
+			2,
+			TimeUnit.MINUTE,
+			dmChannel
+		).send(GenericMessageCollector.getNumber(dmChannel, 1, validGuilds.length));
+
+		if (num === "CANCEL_CMD" || num === "TIME_CMD") {
+			return "CANCEL_CMD";
+		}
+
+		return validGuilds[num - 1];
 	}
 
-	function resolveRole(guildDb: IRaidGuild, role: Role | string): RoleNames | null {
-		const id: string = typeof role === "string" ? role : role.id;
-		
-		if (guildDb.roles.moderator === id) {
-			return "moderator";
-		}
-		else if (guildDb.roles.officer === id) {
-			return "officer";
-		}
-		else if (guildDb.roles.headRaidLeader === id) {
-			return "headRaidLeader";
-		}
-		else if (guildDb.roles.support === id) {
-			return "support";
-		}
-		else if (guildDb.roles.raider === id) {
-			return "raider";
-		}
-		else if (guildDb.roles.pardonedRaidLeader === id) {
-			return "pardonedRaidLeader";
-		}
-		else if (guildDb.roles.suspended === id) {
-			return "suspended";
-		}
-		else if (guildDb.roles.universalAlmostRaidLeader === id) {
-			return "universalAlmostRaidLeader";
-		}
-		else if (guildDb.roles.universalRaidLeader === id) {
-			return "universalRaidLeader";
+	/**
+	 * Gets the total number of leaders in the server.
+	 * @param guild The guild object.
+	 * @param guildDb The guild db.
+	 */
+	export function getAllLeaders(guild: Guild, guildDb: IRaidGuild): GuildMember[] {
+		// get leader count
+		const universalARL: Role | undefined = guild.roles.cache.get(guildDb.roles.universalAlmostRaidLeader);
+		const universalRL: Role | undefined = guild.roles.cache.get(guildDb.roles.universalRaidLeader);
+		const hrl: Role | undefined = guild.roles.cache.get(guildDb.roles.headRaidLeader);
+		const allLeaders: GuildMember[] = [];
+
+		if (typeof universalARL !== "undefined") {
+			allLeaders.push(...universalARL.members.array());
 		}
 
-		for (const sec of [getDefaultSection(guildDb), ...guildDb.sections]) {
-			if (sec.roles.almostLeaderRole === id) {
-				return "universalAlmostRaidLeader";
-			}
-			else if (sec.roles.raidLeaderRole === id) {
-				return "universalRaidLeader";
-			}
-			else if (sec.roles.trialLeaderRole === id) {
-				return "trialLeader";
+		if (typeof universalRL !== "undefined") {
+			allLeaders.push(...universalRL.members.array());
+		}
+
+		if (typeof hrl !== "undefined") {
+			allLeaders.push(...hrl.members.array());
+		}
+
+		for (const section of [GuildUtil.getDefaultSection(guildDb), ...guildDb.sections]) {
+			const leaderRoles: (Role | undefined)[] = [
+				guild.roles.cache.get(section.roles.almostLeaderRole),
+				guild.roles.cache.get(section.roles.raidLeaderRole),
+				guild.roles.cache.get(section.roles.trialLeaderRole)
+			];
+
+			for (const leaderRole of leaderRoles) {
+				if (typeof leaderRole === "undefined") {
+					continue;
+				}
+
+				const membersOfRole: GuildMember[] = leaderRole.members.array();
+				for (const member of membersOfRole) {
+					const index: number = allLeaders.findIndex(x => x.id === member.id);
+					if (index === -1) {
+						allLeaders.push(member);
+					}
+				}
 			}
 		}
 
-		return null;
-	}*/
+		// Make sure this doesn't return a duplicate
+		return allLeaders;
+	}
 }

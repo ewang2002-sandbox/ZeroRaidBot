@@ -1,91 +1,44 @@
-# Zero
-**NOTE: This repository is a newer repository; the older one is currently not public due to some sensitive credentials being leaked (we have since changed the passwords). If you would like to view the original repository, please submit an issue. Thanks.**
-
-A [Realm of the Mad God](https://www.realmofthemadgod.com/) Discord Bot designed for verification, moderation, and raid management.
-
-Looking through the internet, I was unable to find many open source RotMG Discord bots related to raid management; however, there are numerous raid management bots out there -- most of them, superior to mine -- that are not open source. 
-
-This project is centered around a few major goals.
-- Clear, concise, and complete documentation: To ensure the intent and purpose of various functions, constants, and properties are clear.
-- Fast, efficient, and easy-to-use: To ensure the bot will not only be good at what it does, but also easy for server owners to configure.
-- Unique: To ensure the bot stands out from the crowd.
-
-I hope to make a bot that is not only efficient and good at its job, but also open source so the community can contribute to its development. 
+# ZeroRaidBot
+An open-source [Realm of the Mad God](https://www.realmofthemadgod.com/) (RotMG) Discord Bot designed for cross-server verification, moderation, and raid management.
 
 ## Purpose
-The main purpose of this bot is for the Dungeoneer Exalt Discord server, where I will be the co-owner and Administrator. This server is a complete rework of the original Dungeoneer server. 
+The main purpose of this bot is to simplify verification and raid management within the the Dungeoneer Exalt Discord server. This bot, which represents a huge overhaul of the original Dungeoneer bot, is designed to be easier to use for everyone. 
 
-I am working very closely with both the server's other co-owner and staff members. REMEMBER that this bot was created in mind for a particular server -- the Dungeoneer Exalt server. This server is also being created under the assumption that there will be a network; that is, a group of servers under one or more owner(s) working together towards a common goal.
+## Requirements (Latest Version)
+- [discord.js](https://discord.js.org/#/)
+- [axios](https://www.npmjs.com/package/axios)
+- [MongoDB](https://www.mongodb.com/)
 
-THEREFORE, there will be no official public version of this bot.
+## APIs Used
+- [RealmEye API](https://github.com/Nightfirecat/RealmEye-API)
 
-## Use of Source Code
-Since this is an open-source project, I don't generally mind, or care, about how you use this bot. However, I would *greatly* appreciate it if you used this bot in a private manner. 
-
-I encourage you to use the bot's source code for the following:
-- For the use of guild verification/runs.
-- Server of friends.
-
-I do not encourage (in fact, I will frown upon) the use of the bot's source code for the following:
-- To start a public server (think Fungal, Pub Halls, Dungeoneer).
+## Current Features
+Some of the bot's more prominent features include the following.
+- **Verification:** Using a public API, the bot is able to get informaton about a RotMG player and is able to link a Discord account to a RotMG account. Verification requirements can be customized.
+- **Raid Management:** The ability for raid leaders to start AFK checks and headcounts for various dungeons, including Lost Halls, Shatters, Oryx 3, and 30 other dungeons. As opposed to having 5+ different comments, raid leaders will use a control panel to access all commands and information about a raid. 
+- **Customization:** Server administrators are able to customize channels and roles according to their needs through the Configure Section command.
+- **Sections:** Server administrators are able to set up sections. Sections are essentially "parts" of a server with separate (from the main server) verification requirements, roles, channels, and permitted dungeons (that a leader can run). You can have up to 8 sections! An example layout would be the following.
+    - Main (Server)
+        - Verification Requirements: 2 6/8s, 1000 Base Fame, 20 Stars.
+        - Leader Roles: @Almost Raid Leader, @Raid Leader.
+        - Dungeons: Any non-endgame dungeons.
+    - Endgame
+        - Verification Requirements: 2 8/8s, 2500 Base Fame, 50 Stars.
+        - Leader Roles: @Trial Endgame Leader, @Endgame Leader
+        - Dungeons: Lost Halls, Shatters, Fungal Caverns
+- **Moderation:** This bot includes simple moderation commands such as mute, suspend, and blacklist. I plan on adding a warning system later. The idea behind not adding a full-blown moderation system is that there are other bots that can do that better (like Dyno).
+- **Logging/Quota System:** Leaders are able to log the dungeons that they have completed. Furthermore, leaders can log key pops, giving the players that contribute keys credit. There is also a quota system that administrators can set up to ensure all leaders are doing the requirement number of runs. 
+- **User/Member Manager**: Every person is given a profile (one person = one Discord account). Within a profile, the person can add alternative accounts, and can make minor changes to their profile. 
 
 ## Project Layout
-For this repository, the `master` branch is the developer's branch. In other words, the branch where unstable code -- code that either won't compile, has numerous errors, is incomplete, etc. -- will be pushed. 
+- [`master`](https://github.com/DungeoneerExalt/ZeroRaidBot/tree/master) - The developer's branch. Incomplete, unstable, and untested code will live here. 
+- [`stable`](https://github.com/DungeoneerExalt/ZeroRaidBot/tree/stable) - Safe for production code. Code that is *generally* tested will live here. 
 
-The `stable` branch is where code that generally has no errors will reside. The code in the `stable` branch have been tested so there should not be any errors. The official, live bot will be using the code in the `stable` branch.
-
-## Installation Guide
-**Creating the Bot Application**
-1. Head over to `https://discordapp.com/developers/applications/` and click "New Application."
-2. Configure the bot's name, profile picture, and description.
-3. Go to `Bot` and click `Add Bot`. Then, click `Yes, do it!` to the prompt.
-4. Configure your bot's username.
-5. Right below `TOKEN`, click `Copy`. Keep this token in a safe place and DO NOT GIVE THIS TOKEN TO OTHER PEOPLE.
-6. Go back to the Developer page and go to the `OAuth` tab. Under `SCOPES`, check `bot`. Then, under `BOT PERMISSIONS`, check `Administrator`. After you did this, copy the invite link. This is how you will invite the bot.
-
-**MongoDB Configuration**
-- You will need to configure MongoDB. More information will come later.
-
-**Download Node.JS**
-- Download Node.JS from https://nodejs.org/en/. Go with the LTS download. Follow all directions.
-
-**Getting the Bot Files**
-1. Download or clone this repository. To make it easier, click `Clone or download` to open a dropdown menu. Then, click `Donwload ZIP`. Extract the downloaded files.
-2. In the root directory (where the `src` folder and `package.json` file exists) of the bot files, open your terminal or command prompt and run `npm i`. This will install all required dependencies.
-3. Look for the folder containing the code. Go to the bot's configuration folder ("./src/Configuration") and look for the `Config.Example.ts` file. Fill out all applicable information there. Rename the file to `Config.ts`. 
-4. Now, head over to `./src/Constants/AFKDungeon.ts`. This file contains all of the dungeons that the bot currently supports. For each element (dungeon data), change the value of `portalEmojiID` to the ID of the emoji of the dungeon's portal (you will need to add your own emojis on your own server). You also want to go to `keyEmojIDs`, and for each element in this array, change the value of `keyEmojID` to the ID of the dungeon key. FAILURE TO DO THIS WILL RESULT IN ERRORS! 
-5. In your terminal or command prompt, run `npm run start`. This will compile and, hopefully, run the file.
-
-## Support
-I will be more than happy to help you setup the bot. However, this does come at a cost -- I would like to know how you plan on using this bot. 
-
-Please remember that this bot was created in mind for a particular server; however, this bot is cross-compatible, meaning it will work across any server(s) it is in. I will provide very limited support, if any at all, if your question in mind has to do with altering/removing a particular feature that was designed for the server.
-
-Eventually, if the demand arises, I'll make a support server for this bot. 
-
-## Other Stuff
-This [repository](https://github.com/DungeoneerExalt/ZeroRaidBot) represents the OFFICIAL repository of Zero. All code written and published in this repository were written by members of the [organization](https://github.com/DungeoneerExalt) unless otherwise said. 
+## Setup Guide
+Please see this [guide](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/master/md_img/SETUP.md).
 
 ## Support the Project
-The best way to support this project is to star it! And if you'd like, submit an issue describing what you will be using the bot for. I am very interested in seeing how the community uses this bot.
+The best way to support this project is to star (⭐) it.
 
 ## License
-Copyright (c) 2020 Edward Wang
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+Please review the license file in this repository.

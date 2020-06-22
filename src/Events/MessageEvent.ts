@@ -3,14 +3,12 @@ import { IRaidGuild } from "../Templates/IRaidGuild";
 import { DefaultPrefix, BotConfiguration } from "../Configuration/Config";
 import { Command } from "../Templates/Command/Command";
 import { Zero } from "../Zero";
-import { RoleNames } from "../Definitions/Types";
 import { StringUtil } from "../Utility/StringUtil";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
 import { MessageUtil } from "../Utility/MessageUtil";
-import { ISection } from "../Definitions/ISection";
-import { GuildUtil } from "../Utility/GuildUtil";
+import { OtherUtil } from "../Utility/OtherUtil";
 
-export async function onMessageEvent(msg: Message) {
+export async function onMessageEvent(msg: Message): Promise<void> {
 	// make sure we have a regular message to handle
 	if (msg.type === "PINS_ADD") {
 		await msg.delete().catch(() => { });
@@ -48,14 +46,27 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 		return; // no webhooks
 	}
 
-	if (msg.content.indexOf(DefaultPrefix) !== 0) {
+	const prefixes: string[] = [DefaultPrefix];
+	if (guildHandler !== null) {
+		prefixes.push(guildHandler.prefix);
+	}
+
+	let prefix: string | undefined;
+	for (const possPrefix of prefixes) {
+		if (msg.content.indexOf(possPrefix) === 0) {
+			prefix = possPrefix;
+			break;
+		}
+	}
+
+	if (typeof prefix === "undefined") {
 		return;
 	}
 
 	let messageArray: string[] = msg.content.split(/ +/);
 	let cmd: string = messageArray[0];
 	let args: string[] = messageArray.slice(1);
-	let commandfile: string = cmd.slice(DefaultPrefix.length);
+	let commandfile: string = cmd.slice(prefix.length);
 
 	// make sure the command exists
 	let command: Command | null = Zero.CmdManager.findCommand(commandfile);
@@ -73,7 +84,7 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 	if (command.isBotOwnerOnly() && !owners.some(x => x === msg.author.id)) {
 		embed.setTitle("**Bot Owner Command Only**")
 			.setDescription("This command can only be used by the bot owner.");
-		msg.author.send(embed).catch(() => { });
+		msg.channel.send(embed).catch(() => { });
 		return;
 	}
 
@@ -81,14 +92,13 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 	if (msg.guild === null && command.isGuildOnly()) {
 		embed.setTitle("**Server Command Only**")
 			.setDescription("This command only works in a server. Please try executing this command in a server.");
-		msg.author.send(embed).catch(() => { });
+		msg.channel.send(embed).catch(() => { });
 		return;
 	}
 
 	// if this command is executed in the server. 
 	if (msg.guild !== null) {
 		// because this is a guild, we have the following vars as NOT null
-		let member: GuildMember = msg.member as GuildMember;
 		guildHandler = guildHandler as IRaidGuild;
 
 		if (command.isServerOwnerOnly() && msg.author.id !== msg.guild.ownerID) {
@@ -98,102 +108,16 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 			return;
 		}
 
-		let hasServerPerms: boolean = true;
-		if (command.getGeneralPermissions().length !== 0) {
-			for (let i = 0; i < command.getGeneralPermissions().length; i++) {
-				if (!member.hasPermission(command.getGeneralPermissions()[i])) {
-					// no server perms
-					hasServerPerms = false;
-					break;
-				}
-			}
+		const [hasServerPerms, hasRolePerms, considerServerPerms]: [boolean, boolean, boolean] = OtherUtil.checkCommandPerms(msg, command, guildHandler);
+		
+		let canRunCommand: boolean;
+		if (considerServerPerms) {
+			canRunCommand = hasServerPerms || hasRolePerms;
 		}
-
-		// check to see if the member has role perms
-		let hasRolePerms: boolean = false;
-		if (command.getRolePermissions().length !== 0 && !member.permissions.has("ADMINISTRATOR")) {
-			const allSections: ISection[] = [GuildUtil.getDefaultSection(guildHandler), ...guildHandler.sections];
-
-			// role define
-			const raider: string = guildHandler.roles.raider;
-			const universalAlmostRaidLeader: string = guildHandler.roles.universalAlmostRaidLeader;
-			const universalRaidLeader: string = guildHandler.roles.universalRaidLeader;
-			const officer: string = guildHandler.roles.officer;
-			const headRaidLeader: string = guildHandler.roles.headRaidLeader;
-			const moderator: string = guildHandler.roles.moderator;
-			const support: string = guildHandler.roles.support;
-			const verifier: string = guildHandler.roles.verifier;
-			const suspended: string = guildHandler.roles.suspended;
-			// rl
-			const roleOrder: [string, RoleNames][] = [
-				[moderator, "moderator"],
-				[headRaidLeader, "headRaidLeader"],
-				[officer, "officer"],
-				[universalRaidLeader, "universalRaidLeader"],
-			];
-
-			if (command.getSecRLAccountType().includes("ALL_RL_TYPE")
-				|| command.getSecRLAccountType().includes("SECTION_RL")) {
-				// rl
-				for (const sec of allSections) {
-					roleOrder.push([sec.roles.raidLeaderRole, "universalRaidLeader"]);
-				}
-			}
-
-			roleOrder.push([universalAlmostRaidLeader, "universalAlmostRaidLeader"]);
-			if (command.getSecRLAccountType().includes("ALL_RL_TYPE")
-				|| command.getSecRLAccountType().includes("SECTION_ARL")) {
-				// arl
-				for (const sec of allSections) {
-					roleOrder.push([sec.roles.almostLeaderRole, "universalAlmostRaidLeader"]);
-				}
-			}
-
-			if (command.getSecRLAccountType().includes("ALL_RL_TYPE")
-				|| command.getSecRLAccountType().includes("SECTION_TRL")) {
-				// trl
-				for (const sec of allSections) {
-					roleOrder.push([sec.roles.trialLeaderRole, "universalAlmostRaidLeader"]); // for now
-				}
-			}
-
-			// add the rest of the roles.
-			roleOrder.push(
-				[support, "support"],
-				[verifier, "verifier"],
-				[raider, "raider"],
-				[suspended, "suspended"]
-			);
-
-			if (command.isRoleInclusive()) {
-				for (let [roleID, roleName] of roleOrder) {
-					if (member.roles.cache.has(roleID)) {
-						hasRolePerms = true;
-						// break out of THIS loop 
-						break;
-					}
-
-					// we reached the minimum role
-					// break out since we no longer need to check 
-					if (roleName === command.getRolePermissions()[0]) {
-						break;
-					}
-				}
-			}
-			else {
-				for (let i = 0; i < command.getRolePermissions().length; i++) {
-					for (let [roleID, roleName] of roleOrder) {
-						if (command.getRolePermissions()[i] === roleName
-							&& member.roles.cache.has(roleID)) {
-							hasRolePerms = true;
-							break;
-						}
-					}
-				}
-			}
+		else {
+			canRunCommand = hasRolePerms;
 		}
-
-		if (!hasServerPerms && !hasRolePerms) {
+		if (!canRunCommand) {
 			embed.setTitle("**Missing Permissions**")
 				.setDescription("You are missing either server or role permissions. Please use the help command to look up the permissions needed to run this command.")
 			MessageUtil.send(embed, msg.channel, 8 * 1000).catch(() => { });
@@ -231,7 +155,6 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 					}
 				]);
 			MessageUtil.send(embed, msg.channel, 8 * 1000).catch(() => { });
-
 			return;
 		}
 	}
@@ -258,7 +181,6 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 				}
 			]);
 		MessageUtil.send(embed, msg.channel, 8 * 1000).catch(() => { });
-
 		return;
 	}
 

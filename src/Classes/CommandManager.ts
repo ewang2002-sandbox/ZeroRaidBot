@@ -32,13 +32,14 @@ import { UserProfileHelpCommand } from "../Commands/User Profile/UserProfileHelp
 import { ConfigurePrefixCommand } from "../Commands/Configuration/ConfigurePrefixCommand";
 import { ConfigureVerifSuccessCommand } from "../Commands/Configuration/ConfigureVerifSuccessCommand";
 import { LogRunsCommand } from "../Commands/Logging/LogRunsCommand";
-import { ResetQuotaCommand } from "../Commands/Logging/ResetQuotaCommand";
+import { ResetQuotaCommand } from "../Commands/Moderator/ResetQuotaCommand";
 import { CheckQuotaCommand } from "../Commands/Logging/CheckQuotaCommand";
 import { UnverifyFromServerCommand } from "../Commands/Server Profile/UnverifyFromServerCommand";
 import { LogPoppedKeysCommand } from "../Commands/Logging/LogPoppedKeysCommand";
 import { AdminProfileUpdaterCommand } from "../Commands/Bot Owner/AdminProfileUpdaterCommand";
 import { LogRuneWCCommand } from "../Commands/Logging/LogRuneWCCommand";
 import { LogVialCommand } from "../Commands/Logging/LogVialCommand";
+import { NoLoggedRunsCommand } from "../Commands/Moderator/NoLoggedRunsCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -107,7 +108,9 @@ export class CommandManager {
 			new SuspendCommand(), 
 			new UnsuspendCommand(),
 			new BlacklistCommand(),
-			new UnblacklistCommand()
+			new UnblacklistCommand(),
+			new ResetQuotaCommand(),
+			new NoLoggedRunsCommand()
 		]);
 		
 		this.commands.set("User Profile", [
@@ -132,7 +135,6 @@ export class CommandManager {
 
 		this.commands.set("Logging", [
 			new LogRunsCommand(),
-			new ResetQuotaCommand(),
 			new CheckQuotaCommand(),
 			new LogPoppedKeysCommand(),
 			new LogRuneWCCommand(),

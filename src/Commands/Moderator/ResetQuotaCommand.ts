@@ -82,7 +82,7 @@ export class ResetQuotaCommand extends Command {
                 .appendLine()
                 .append(`⇒ **Leaders Accounted:** 0`)
                 .appendLine()
-                .append(`⇒ **Total Leaders:** ${GuildUtil.getNumberOfLeaders(guild, guildData)}`);
+                .append(`⇒ **Total Leaders:** ${GuildUtil.getAllLeaders(guild, guildData).length}`);
             const quotaEmbed: MessageEmbed = new MessageEmbed()
                 .setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
                 .setTitle("**Quota Leaderboard**")

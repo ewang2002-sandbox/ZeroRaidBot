@@ -273,7 +273,7 @@ export module QuotaLoggingHandler {
             .appendLine()
             .append(`⇒ **Leaders Accounted:** ${leaderboardData.length}`)
             .appendLine()
-            .append(`⇒ **Total Leaders:** ${GuildUtil.getNumberOfLeaders(guild, guildDb)}`);
+            .append(`⇒ **Total Leaders:** ${GuildUtil.getAllLeaders(guild, guildDb).length}`);
         const quotaEmbed: MessageEmbed = new MessageEmbed()
             .setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
             .setTitle("**Quota Leaderboard**")

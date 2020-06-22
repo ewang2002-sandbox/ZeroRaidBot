@@ -233,23 +233,23 @@ export namespace GuildUtil {
 	 * @param guild The guild object.
 	 * @param guildDb The guild db.
 	 */
-	export function getNumberOfLeaders(guild: Guild, guildDb: IRaidGuild): number {
+	export function getAllLeaders(guild: Guild, guildDb: IRaidGuild): GuildMember[] {
 		// get leader count
 		const universalARL: Role | undefined = guild.roles.cache.get(guildDb.roles.universalAlmostRaidLeader);
 		const universalRL: Role | undefined = guild.roles.cache.get(guildDb.roles.universalRaidLeader);
 		const hrl: Role | undefined = guild.roles.cache.get(guildDb.roles.headRaidLeader);
-		const allLeaders: string[] = [];
+		const allLeaders: GuildMember[] = [];
 
 		if (typeof universalARL !== "undefined") {
-			allLeaders.push(...universalARL.members.map(x => x.id));
+			allLeaders.push(...universalARL.members.array());
 		}
 
 		if (typeof universalRL !== "undefined") {
-			allLeaders.push(...universalRL.members.map(x => x.id));
+			allLeaders.push(...universalRL.members.array());
 		}
 
 		if (typeof hrl !== "undefined") {
-			allLeaders.push(...hrl.members.map(x => x.id));
+			allLeaders.push(...hrl.members.array());
 		}
 
 		for (const section of [GuildUtil.getDefaultSection(guildDb), ...guildDb.sections]) {
@@ -266,13 +266,15 @@ export namespace GuildUtil {
 
 				const membersOfRole: GuildMember[] = leaderRole.members.array();
 				for (const member of membersOfRole) {
-					if (!allLeaders.includes(member.id)) {
-						allLeaders.push(member.id);
+					const index: number = allLeaders.findIndex(x => x.id === member.id);
+					if (index === -1) {
+						allLeaders.push(member);
 					}
 				}
 			}
 		}
 
-		return allLeaders.length;
+		// Make sure this doesn't return a duplicate
+		return allLeaders;
 	}
 }

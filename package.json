@@ -10,7 +10,7 @@
 	},
 	"devDependencies": {
 		"@types/axios": "^0.14.0",
-		"@types/mongodb": "^3.5.22",
+		"@types/mongodb": "^3.5.23",
 		"@types/node": "^12.12.47",
 		"@types/ws": "^6.0.4",
 		"typescript": "^3.9.5"

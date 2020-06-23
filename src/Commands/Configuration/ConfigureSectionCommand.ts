@@ -5,7 +5,7 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, MessageEmbed, Role, Collection, Guild, TextChannel, MessageReaction, User, ReactionCollector, EmojiResolvable, GuildChannel, MessageCollector, GuildEmoji, ReactionEmoji } from "discord.js";
+import { Message, MessageEmbed, Role, Collection, Guild, TextChannel, MessageReaction, User, ReactionCollector, EmojiResolvable, GuildChannel, MessageCollector, GuildEmoji, ReactionEmoji, Emoji } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
@@ -21,6 +21,7 @@ import { Zero } from "../../Zero";
 import { StringUtil } from "../../Utility/StringUtil";
 import { NumberUtil } from "../../Utility/NumberUtil";
 import { FastReactionMenuManager } from "../../Classes/Reaction/FastReactionMenuManager";
+import { OtherUtil } from "../../Utility/OtherUtil";
 
 type QType = {
 	q: string;
@@ -42,13 +43,20 @@ type DungeonSelectionType = {
 };
 
 export class ConfigureSectionCommand extends Command {
-	private readonly _flags: ("ADD" | "REMOVE" | "MODIFY")[] = [
-		"ADD",
-		"REMOVE",
-		"MODIFY"
-	];
-
 	private static MAX_SECTIONS: number = 8;
+
+	private readonly _emojiToReaction: EmojiResolvable[] = [
+		"1⃣", // main
+		"2⃣",
+		"3⃣",
+		"4⃣",
+		"5⃣",
+		"6⃣",
+		"7⃣",
+		"8⃣",
+		"9⃣", // 8th section
+		"🔟"
+	];
 
 	/**
 	 * q = question/title
@@ -285,9 +293,9 @@ export class ConfigureSectionCommand extends Command {
 				"configsection",
 				["configsections"],
 				"Opens a wizard where you can add, remove, or modify existing sections.",
-				["configsection [add | remove | modify]"],
-				["configsection add"],
-				1
+				["configsection"],
+				["configsection"],
+				0
 			),
 			new CommandPermission(
 				["MANAGE_GUILD"],
@@ -306,30 +314,62 @@ export class ConfigureSectionCommand extends Command {
 	 * @inheritdoc
 	 */
 	public async executeCommand(msg: Message, args: string[], guildData: IRaidGuild): Promise<void> {
-		let foundFlag: "ADD" | "REMOVE" | "MODIFY" | undefined;
-		for (const flag of this._flags) {
-			if (flag === args[0].toUpperCase()) {
-				foundFlag = flag;
-			}
+		this.configSectionMainMenu(msg, guildData);
+	}
+
+	private async configSectionMainMenu(msg: Message, guildData: IRaidGuild, botMsg?: Message): Promise<void> {
+		const embed: MessageEmbed = new MessageEmbed()
+			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
+			.setTitle("Configure Section Main Menu")
+			.setDescription("Please select an action.")
+			.setFooter("Configure Section")
+			.setColor("RANDOM");
+		const emojis: EmojiResolvable[] = [];
+		if (guildData.sections.length + 2 <= ConfigureSectionCommand.MAX_SECTIONS) {
+			embed.addField("Create New Section", "React with ➕ to create a new section. All you need is a Verified role for this particular section!");
+			emojis.push("➕");
 		}
 
-		if (typeof foundFlag === "undefined") {
-			await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_CHOICE_CHOICE", null, "ADD", "REMOVE", "MODIFY"), msg.channel as TextChannel);
+		embed.addField("Modify Existing Section", "React with ⚙️ to modify an existing section. You will be able to modify channels, roles, and verification requirements for the main section (i.e. bot settings for the entire server) and specific sections. Furthermore, you will also be able to delete user-created sections.");
+		emojis.push("⚙️");
+
+		embed.addField("Exit Command", "React with ❌ to exit this command.");
+		emojis.push("❌");
+
+		botMsg = typeof botMsg === "undefined"
+			? await msg.channel.send(embed)
+			: await botMsg.edit(embed);
+
+		const chosenReaction: Emoji | "TIME_CMD" = await new FastReactionMenuManager(
+			botMsg,
+			msg.author,
+			emojis,
+			5,
+			TimeUnit.MINUTE
+		).react();
+
+		if (chosenReaction === "TIME_CMD" || chosenReaction.name === "❌") {
+			await botMsg.delete().catch(e => { });
 			return;
 		}
 
-		switch (foundFlag) {
-			case "ADD":
-				this.add(msg, guildData);
-				break;
-			case "REMOVE":
-				this.remove(msg, guildData);
-				break;
-			case "MODIFY":
-				this.modify(msg, guildData);
-				break;
-			default:
-				break;
+		if (chosenReaction.name === "➕") {
+			this.add(msg, guildData, botMsg);
+			return;
+		}
+		else if (chosenReaction.name === "⚙️") {
+			const section: ISection | "BACK_CMD" | "CANCEL_CMD" = await this.getSection(msg, guildData, botMsg);
+			if (section === "BACK_CMD") {
+				this.configSectionMainMenu(msg, guildData, botMsg);
+				return;
+			}
+			else if (section === "CANCEL_CMD") {
+				await botMsg.delete().catch(e => { });
+				return;
+			}
+			else {
+				this.modifyMainMenu(msg, guildData, section, botMsg);
+			}
 		}
 	}
 
@@ -344,17 +384,15 @@ export class ConfigureSectionCommand extends Command {
 	 * @param {Message} msg The message object.
 	 * @param {IRaidGuild} guildData The guild db.
 	 */
-	private async add(msg: Message, guildData: IRaidGuild): Promise<void> {
-		// + 2 b/c we also include the main section
-		if (guildData.sections.length + 2 > ConfigureSectionCommand.MAX_SECTIONS) {
-			await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "MAX_LIMIT_REACHED", null, ConfigureSectionCommand.MAX_SECTIONS.toString()), msg.channel as TextChannel);
-			return;
-		}
+	private async add(msg: Message, guildData: IRaidGuild, botMsg: Message): Promise<void> {
+		await botMsg.delete().catch(e => { });
+		// TODO do something with botmsg
 
 		// get name
 		const nameOfSectionPrompt: MessageEmbed = new MessageEmbed()
+			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 			.setTitle("**Set Section Name**")
-			.setDescription("Please type the desired name of the section.")
+			.setDescription("Please type the desired name of the section. The name of the section cannot be used by another section.")
 			.setColor("RANDOM")
 			.setFooter((msg.guild as Guild).name)
 			.setTimestamp();
@@ -367,9 +405,25 @@ export class ConfigureSectionCommand extends Command {
 			return;
 		}
 
+		const allSections: ISection[] = [GuildUtil.getDefaultSection(guildData), ...guildData.sections];
+		for (const section of allSections) {
+			if (section.nameOfSection.toLowerCase().trim() === nameOfSection.toLowerCase().trim()) {
+				const noMatchAllowedEmbed: MessageEmbed = new MessageEmbed()
+					.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
+					.setTitle("Duplicate Name Detected")
+					.setDescription("The name that you attempted to use is already being used by another section. Your new section name must not match another section's name (case-insensitive). This process has been canceled; please try again later.")
+					.setColor("RED")
+					.setFooter("Invalid Name.");
+				const tempMsg: Message = await msg.channel.send(noMatchAllowedEmbed);
+				await tempMsg.delete({ timeout: 5000 }).catch(e => { });
+				return;
+			}
+		}
+
 		// ===============================================
 		// get channel 
 		const verificationPromptChannel: MessageEmbed = new MessageEmbed()
+			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 			.setTitle("**Configure Verification Channel**")
 			.setDescription("Please either tag the verification channel or type the ID of the verification channel for this new section.")
 			.setColor("RANDOM")
@@ -391,6 +445,7 @@ export class ConfigureSectionCommand extends Command {
 
 		// ===============================================
 		const afkCheckPromptChannel: MessageEmbed = new MessageEmbed()
+			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 			.setTitle("**Configure AFK Check Channel**")
 			.setDescription("Please either tag the AFK check channel or type the ID of the AFK check channel for this new section. If you want to skip this process, type `skip`.")
 			.setColor("RANDOM")
@@ -412,6 +467,7 @@ export class ConfigureSectionCommand extends Command {
 
 		// ===============================================
 		const controlPanelPrompt: MessageEmbed = new MessageEmbed()
+			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 			.setTitle("**Configure Control Panel Channel**")
 			.setDescription("Please either tag the control panel channel or type the ID of the control panel channel for this new section. This is __required__ since you have chosen an AFK check channel. The control panel channel CANNOT be the AFK check channel.")
 			.setColor("RANDOM")
@@ -445,6 +501,7 @@ export class ConfigureSectionCommand extends Command {
 		// ===============================================
 		// get role now
 		const rolePromptChannel: MessageEmbed = new MessageEmbed()
+			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 			.setTitle("**Configure Role**")
 			.setDescription("Please either ping the role or type the ID of the role for this new section. ")
 			.setColor("RANDOM")
@@ -513,52 +570,6 @@ export class ConfigureSectionCommand extends Command {
 		});
 	}
 
-	/**
-	 * Removes a section from the guild db.
-	 * @param {Message} msg The message object. 
-	 * @param {IRaidGuild} guildData The guild document. 
-	 */
-	private async remove(msg: Message, guildData: IRaidGuild): Promise<IRaidGuild> {
-		if (guildData.sections.length === 0) {
-			await MessageUtil.send({ content: "There is nothing to remove because there are no sections currently available." }, msg.channel as TextChannel);
-			return guildData;
-		}
-
-		const resp: ISection | "CANCEL_CMD" | "TIME_CMD" = await this.getSection(msg, guildData, "REMOVE");
-
-		if (resp === "CANCEL_CMD" || resp === "TIME_CMD") {
-			return guildData;
-		}
-
-		return (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: (msg.guild as Guild).id }, {
-			$pull: {
-				"sections.verifiedRole": resp.verifiedRole
-			}
-		}, { returnOriginal: false })).value as IRaidGuild
-	}
-
-	/**
-	 * Modifies a section.
-	 * @param {Message} msg The message obj. 
-	 * @param {IRaidGuild} guildData The guild db. 
-	 */
-	private async modify(msg: Message, guildData: IRaidGuild): Promise<void> {
-		const resp: ISection | "CANCEL_CMD" | "TIME_CMD" = await this.getSection(msg, guildData, "MODIFY");
-
-		if (resp === "CANCEL_CMD" || resp === "TIME_CMD") {
-			return;
-		}
-		this.modifyMainMenu(msg, guildData, resp);
-	}
-
-	/**
-	 * TODO: Implement
-	 */
-	private async list(): Promise<void> {
-		// TODO implement
-	}
-
-
 
 	// ================================================ //
 	//													//
@@ -572,15 +583,13 @@ export class ConfigureSectionCommand extends Command {
 	 * @param {IRaidGuild} guildData The guild data. 
 	 * @param {ISection} section The section. 
 	 * @param {Message} [botSentMsg] The message that the bot sent (if we want to edit the old bot message). 
-	 * @param {boolean} [isOriginalBotMessage] Whether the message defined in the previous argument was NOT modified (true) in any way or not
 	 */
 	private async modifyMainMenu(
 		msg: Message,
 		guildData: IRaidGuild,
 		section: ISection,
-		botSentMsg?: Message,
-		isOriginalBotMessage?: boolean
-	) {
+		botSentMsg?: Message
+	): Promise<void> {
 		const guild: Guild = msg.guild as Guild;
 		const sbGetter: SBGetterType = this.getStringRepOfGuildDoc(msg, section, guildData);
 		const afkCheckChannel: GuildChannel | undefined = guild.channels.cache.get(section.channels.afkCheckChannel);
@@ -596,7 +605,10 @@ export class ConfigureSectionCommand extends Command {
 			.setDescription(`${roleStr}\n\n${channelStr}\n\n${verificationStr}`)
 			.setTimestamp()
 			.setFooter(guild.name)
-			.setColor("RANDOM");
+			.setColor("RANDOM")
+			.addField("Go Back", "React with ⬅️ if you want to go back to the main menu.");
+
+		emojisToReact.push("⬅️");
 
 		if (!section.isMain) {
 			embed.addField("Change Section Name", "React with 📋 if you want to change the name of this section.");
@@ -613,19 +625,20 @@ export class ConfigureSectionCommand extends Command {
 			embed.addField("Configure Section Dungeon", "React with 🏃 to configure the dungeons that a raid leader can or cannot start an AFK check for.");
 			emojisToReact.push("🏃");
 		}
+
+		if (!section.isMain) {
+			embed.addField("Delete Section", "React with 🗑️ if you want to delete this section.");
+			emojisToReact.push("🗑️");
+		}
+
 		embed.addField("Cancel Process", "React with ❌ to cancel this process.");
 		emojisToReact.push("❌");
 
 		// send out msg and react.
 		let m: Message;
 		if (typeof botSentMsg !== "undefined") {
-			if (isOriginalBotMessage) { // better boolean logic? 
-				m = botSentMsg;
-			}
-			else {
-				m = await botSentMsg.edit(embed);
-				await botSentMsg.reactions.removeAll();
-			}
+			m = await botSentMsg.edit(embed);
+			await botSentMsg.reactions.removeAll();
 		}
 		else {
 			m = await msg.channel.send(embed);
@@ -650,7 +663,7 @@ export class ConfigureSectionCommand extends Command {
 				// so we know that the role should be constant 
 				section = guildData.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
 			}
-			this.modifyMainMenu(msg, guildData, section, m, false);
+			this.modifyMainMenu(msg, guildData, section, m);
 			return;
 		}
 		// change channels
@@ -669,8 +682,51 @@ export class ConfigureSectionCommand extends Command {
 		else if (r.name === "🏃") {
 			await this.resetBotEmbed(m).catch(() => { });
 			guildData = await this.configDungeonCommand(msg, section, guildData);
-			this.modifyMainMenu(msg, guildData, section, m, false);
+			this.modifyMainMenu(msg, guildData, section, m);
 			return;
+		}
+		else if (r.name === "⬅️") {
+			await m.reactions.removeAll().catch(() => { });
+			this.configSectionMainMenu(msg, guildData, m);
+			return;
+		}
+		else if (r.name === "🗑️") {
+			await m.reactions.removeAll().catch(() => { });
+			const confirmEmbed: MessageEmbed = new MessageEmbed()
+				.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
+				.setTitle("Confirm Deletion of Section")
+				.setDescription(`Are you sure you want to delete the \`${section.nameOfSection}\` section?`)
+				.setColor("RED")
+				.setFooter("Section Deletion");
+			await m.edit(confirmEmbed).catch(e => { });
+
+			const result: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(
+				m,
+				msg.author,
+				["✅", "❌"],
+				1,
+				TimeUnit.MINUTE
+			).react();
+
+			if (result === "TIME_CMD") {
+				await m.delete().catch(() => { });
+				return;
+			}
+			else if (result.name === "❌") {
+				this.modifyMainMenu(msg, guildData, section, m);
+				return;
+			}
+			else {
+				const updatedDb: IRaidGuild = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id }, {
+					$pull: {
+						sections: {
+							nameOfSection: section.nameOfSection
+						}
+					}
+				}, { returnOriginal: false })).value as IRaidGuild;
+				this.configSectionMainMenu(msg, updatedDb, m);
+				return;
+			}
 		}
 		// cancel
 		else if (r.name === "❌") {
@@ -1270,7 +1326,7 @@ export class ConfigureSectionCommand extends Command {
 		currRoles: string[]
 	): Promise<IRaidGuild | "CANCEL_CMD" | "TIME_CMD"> {
 		const guild: Guild = msg.guild as Guild;
-		guildData = await this.removeDeadElements(guildData, currRoles, mongoPath, guild);
+		guildData = await this.removeDeadElements(currRoles, mongoPath, guild);
 
 		const roles: (Role | undefined)[] = currRoles.map(x => guild.roles.cache.get(x));
 
@@ -1691,37 +1747,84 @@ export class ConfigureSectionCommand extends Command {
 		section: ISection,
 		botSentMsg: Message
 	): Promise<IRaidGuild> {
-		const promptEmbed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null);
 		const guild: Guild = msg.guild as Guild;
-		await this.resetBotEmbed(botSentMsg).catch(() => { });
+		const allSections: ISection[] = [GuildUtil.getDefaultSection(guildData), ...guildData.sections];
 
-		//#region name of section
-		promptEmbed.setTitle("**Change Name of Section**")
-			.setDescription(`The current name of the section is ${section.nameOfSection}. Type the name of the new section, or type \`cancel\` to cancel the process.`);
-		const nameColl: GenericMessageCollector<string> = new GenericMessageCollector<string>(
-			msg,
-			{ embed: promptEmbed },
-			5,
-			TimeUnit.MINUTE
-		);
+		let newNameForSection: string | undefined;
+		let hasReacted: boolean = false;
 
-		const result: string | "CANCEL_CMD" | "TIME_CMD" = await nameColl.send(GenericMessageCollector.getStringPrompt(msg.channel));
-		if (result === "CANCEL_CMD") {
-			return guildData;
+		while (true) {
+			const promptEmbed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null)
+				.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
+				.setTitle("**Change Name of Section**")
+				.setFooter("Changing Name of Section.")
+				.setDescription(`Selected Name: \`${typeof newNameForSection === "undefined" ? "N/A" : newNameForSection}\`\nOriginal Name: \`${section.nameOfSection}\`\n\n**DIRECTIONS:** Type the name of the new section. This name must not be used in a previous section. \n\n**REACTIONS:**\n⇒ React with ⬅️ if you want to go back and keep the old name.\n⇒ React with ✅ to change the name of the section to the one defined above.`);
+
+			await botSentMsg.edit(promptEmbed).catch(e => { });
+			const response: string | Emoji | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<string>(
+				msg,
+				{ embed: promptEmbed },
+				2,
+				TimeUnit.MINUTE
+			).sendWithReactCollector(GenericMessageCollector.getStringPrompt(msg.channel), {
+				reactions: ["⬅️", "✅"],
+				cancelFlag: "-cancel",
+				reactToMsg: !hasReacted,
+				deleteMsg: false,
+				removeAllReactionAfterReact: false,
+				oldMsg: botSentMsg
+			});
+
+			if (hasReacted) {
+				hasReacted = !hasReacted;
+			}
+
+			if (response instanceof Emoji) {
+				if (response.name === "⬅️") {
+					return guildData;
+				}
+
+				if (response.name === "✅" && typeof newNameForSection !== "undefined") {
+					break;
+				}
+			}
+			else {
+				let hasMatch: boolean = false;
+				for (const section of allSections) {
+					if (section.nameOfSection.toLowerCase().trim() === response.toLowerCase().trim()) {
+						hasMatch = true;
+						break;
+					}
+				}
+
+				if (hasMatch) {
+					const noMatchAllowedEmbed: MessageEmbed = new MessageEmbed()
+						.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
+						.setTitle("Invalid Name")
+						.setDescription("The name that you attempted to use is already being used by another section. Your new section name must not match another section's name (case-insensitive).")
+						.setColor("RED")
+						.setFooter("Invalid Name Detected.");
+					await botSentMsg.edit(noMatchAllowedEmbed).catch(e => { });
+					await OtherUtil.waitFor(5000);
+				}
+				else {
+					newNameForSection = response;
+				}
+			}
 		}
 
-		if (result === "TIME_CMD") {
+		// final check
+		if (typeof newNameForSection === "undefined") {
 			return guildData;
 		}
 
 		guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "sections.verifiedRole": section.verifiedRole }, {
 			$set: {
-				"sections.$.nameOfSection": result
+				"sections.$.nameOfSection": newNameForSection
 			}
 		}, { returnOriginal: false })).value as IRaidGuild;
 
 		return guildData;
-		//#endregion
 	}
 
 	/**
@@ -1881,58 +1984,60 @@ export class ConfigureSectionCommand extends Command {
 	 * Determines whether a section should be removed or modified through a user's choice. 
 	 * @param {Message} msg The message object. 
 	 * @param {IRaidGuild} guildData The guild doc. 
-	 * @param {"REMOVE" | "MODIFY"} actionType The type of action. 
+	 * @param {Message} botMsg The bot message. 
 	 */
 	private async getSection(
 		msg: Message,
 		guildData: IRaidGuild,
-		actionType: "REMOVE" | "MODIFY"
-	): Promise<ISection | "CANCEL_CMD" | "TIME_CMD"> {
+		botMsg: Message
+	): Promise<ISection | "BACK_CMD" | "CANCEL_CMD"> {
 		const guild: Guild = (msg.guild as Guild);
-		let desc: string = "", action: string = "";
-		if (actionType === "REMOVE") {
-			desc = "Please select the number corresponding to the section you want to remove. To cancel this process, type `cancel`.";
-			action = "Removal";
-		}
-		else if (actionType === "MODIFY") {
-			desc = "Please select the number corresponding to the section you want to modify.";
-			action = "Modify";
-		}
 
-		const removeEmbed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null)
-			.setTitle(`**Section Configuration**: ${action}.`)
-			.setDescription(desc);
-		let configuredSections: ISection[] = [];
-		if (actionType === "MODIFY") {
-			configuredSections.push(GuildUtil.getDefaultSection(guildData));
-		}
+		const embed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null)
+			.setTitle(`**Section Configuration: Selection**`)
+			.setColor("RANDOM")
+			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
+			.setFooter("Section Selection.")
+			.setDescription("Please react to the emoji corresponding to the section that you want to configure.\n⇒ React with ⬅️ if you want to go back to the main menu.\n⇒ React with ❌ if you want to cancel this entire process.");
+		let configuredSections: ISection[] = [GuildUtil.getDefaultSection(guildData), ...guildData.sections];
+		const reactions: EmojiResolvable[] = ["⬅️", "❌"];
 
-		configuredSections.push(...guildData.sections);
 		for (let i = 0; i < configuredSections.length; i++) {
+			reactions.push(this._emojiToReaction[i]);
+
 			const afkCheckChannel: GuildChannel | undefined = guild.channels.cache.get(configuredSections[i].channels.afkCheckChannel);
 			const verificationChannel: GuildChannel | undefined = guild.channels.cache.get(configuredSections[i].channels.verificationChannel);
 			const verifiedRole: Role | undefined = guild.roles.cache.get(configuredSections[i].verifiedRole);
 
-			removeEmbed.addField(`[${i + 1}] Section: ${configuredSections[i].nameOfSection}`, `Verified Role: ${typeof verifiedRole !== "undefined" ? verifiedRole : "Not Set."}
+			embed.addField(`[${i + 1}] Section: ${configuredSections[i].nameOfSection}`, `Verified Role: ${typeof verifiedRole !== "undefined" ? verifiedRole : "Not Set."}
 AFK Check Channel: ${typeof afkCheckChannel !== "undefined" ? afkCheckChannel : "Not Set."}
 Verification Channel: ${typeof verificationChannel !== "undefined" ? verificationChannel : "Not Set"}`);
 			//}
 		}
 
-		const coll: GenericMessageCollector<ISection> = new GenericMessageCollector<ISection>(msg, { embed: removeEmbed }, 2, TimeUnit.MINUTE);
-		const resp: ISection | "CANCEL_CMD" | "TIME_CMD" = await coll.send(async (collectedMessage: Message): Promise<ISection | void> => {
-			const num: number = Number.parseInt(collectedMessage.content);
-			if (Number.isNaN(num)) {
-				MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_NUMBER_INPUT", null), msg.channel as TextChannel);
-				return;
-			}
-			if (typeof configuredSections[num - 1] === "undefined") {
-				MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_INDEX", null), msg.channel as TextChannel);
-				return;
-			}
-			return configuredSections[num - 1];
-		});
-		return resp;
+		await botMsg.edit(embed).catch(e => { });
+		const selectedReaction: Emoji | "TIME_CMD" = await new FastReactionMenuManager(
+			botMsg,
+			msg.author,
+			reactions,
+			2,
+			TimeUnit.MINUTE
+		).react();
+
+		if (selectedReaction === "TIME_CMD" || selectedReaction.name === "❌") {
+			return "CANCEL_CMD";
+		}
+
+		if (selectedReaction.name === "⬅️") {
+			return "BACK_CMD";
+		}
+
+		const selectedIndex: number = this._emojiToReaction.findIndex(x => x === selectedReaction.name);
+		if (selectedIndex === -1) {
+			return "CANCEL_CMD";
+		}
+
+		return configuredSections[selectedIndex];
 	}
 
 	/**
@@ -2348,13 +2453,11 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 
 	/**
 	 * Removes any dead roles. Dead roles are roles that exist in the db but not in the server.
-	 * @param {IRaidGuild} guildDb The document.
 	 * @param {string[]} roleArray The array of roles to check. 
 	 * @param {string} field The Mongo path to the array specified above. 
 	 * @param {Guild} guild The guild. 
 	 */
 	private async removeDeadElements(
-		guildDb: IRaidGuild,
 		roleArray: string[],
 		field: string,
 		guild: Guild

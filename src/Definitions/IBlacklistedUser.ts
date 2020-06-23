@@ -1,6 +1,6 @@
 export interface IBlacklistedUser {
 	/**
-	 * The in-game name of the person. This should be exactly as seen in Realm (i.e. not lowercase).
+	 * The in-game name of the person. This should be lowercase.
 	 */
 	inGameName: string;
 	/**
@@ -12,7 +12,7 @@ export interface IBlacklistedUser {
 	 */
 	date: number;
 	/**
-	 * The in-game name of the moderator. This should be exactly as seen in Realm (i.e. not lowercase).
+	 * The in-game name of the moderator. This should be lowercase.
 	 */
 	moderator: string;
 }

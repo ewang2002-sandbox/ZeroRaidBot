@@ -12,8 +12,6 @@ import { FilterQuery } from "mongodb";
 import { ArrayUtil } from "../../Utility/ArrayUtil";
 
 export class BlacklistCommand extends Command {
-	public static currentTimeout: { timeout: NodeJS.Timeout, id: string }[] = [];
-
 	public constructor() {
 		super(
 			new CommandDetail(

@@ -1,8 +1,15 @@
 # ZeroRaidBot
 An open-source [Realm of the Mad God](https://www.realmofthemadgod.com/) (RotMG) Discord Bot designed for cross-server verification, moderation, and raid management.
 
+**NOTICE:** Please see [this issue](https://github.com/DungeoneerExalt/ZeroRaidBot/issues/43), which talks about the future of this project.
+
 ## Purpose
 The main purpose of this bot is to simplify verification and raid management within the the Dungeoneer Exalt Discord server. This bot, which represents a huge overhaul of the original Dungeoneer bot, is designed to be easier to use for everyone. 
+
+
+## Technologies
+- [TypeScript](https://www.typescriptlang.org/)
+- [Node.JS](https://nodejs.org/en/)
 
 ## Requirements (Latest Version)
 - [discord.js](https://discord.js.org/#/)
@@ -11,6 +18,7 @@ The main purpose of this bot is to simplify verification and raid management wit
 
 ## APIs Used
 - [RealmEye API](https://github.com/Nightfirecat/RealmEye-API)
+    - A private instance of this API is being used for the private version of the bot. 
 
 ## Current Features
 Some of the bot's more prominent features include the following.

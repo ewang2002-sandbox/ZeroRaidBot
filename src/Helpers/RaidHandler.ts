@@ -1,4 +1,4 @@
-import { CategoryChannel, ChannelCreationOverwrites, ClientUser, Collection, Guild, GuildMember, Message, MessageCollector, MessageEmbed, MessageReaction, ReactionCollector, TextChannel, User, VoiceChannel, GuildEmoji, EmojiResolvable, ColorResolvable, DMChannel, Role, PermissionOverwriteOptions, OverwriteResolvable } from "discord.js";
+import { CategoryChannel, ChannelCreationOverwrites, ClientUser, Collection, Guild, GuildMember, Message, MessageCollector, MessageEmbed, MessageReaction, ReactionCollector, TextChannel, User, VoiceChannel, GuildEmoji, EmojiResolvable, ColorResolvable, DMChannel, Role, OverwriteResolvable } from "discord.js";
 import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollector";
 import { MessageSimpleTick } from "../Classes/Message/MessageSimpleTick";
 import { AFKDungeon } from "../Constants/AFKDungeon";
@@ -504,6 +504,7 @@ export module RaidHandler {
 			.setTimestamp()
 			.setFooter(`Control Panel • AFK Check • R${newRaidNum}`);
 		const controlPanelMsg: Message = await CONTROL_PANEL_CHANNEL.send(controlPanelEmbed);
+		await controlPanelMsg.pin().catch(e => { });
 
 		// create collector for key filtering
 		const collFilter = (reaction: MessageReaction, user: User) => {
@@ -1108,13 +1109,13 @@ export module RaidHandler {
 			.find(x => x.name.toLowerCase().includes("lounge") || x.name.toLowerCase().includes("queue")) as VoiceChannel | undefined;
 		// set perms so rls cant move ppl in
 		const permsToUpdate: OverwriteResolvable[] = [];
-		for (const [id, perm] of raidVC.permissionOverwrites) {
+		for (const [, perm] of raidVC.permissionOverwrites) {
 			permsToUpdate.push({
 				id: perm.id,
 				deny: ["MOVE_MEMBERS"]
 			});
 		}
-		await raidVC.overwritePermissions(permsToUpdate).catch(e => { });
+		await raidVC.overwritePermissions(permsToUpdate).catch(() => { });
 
 		// move people out if there is a lounge vc 
 		if (typeof loungeVC !== "undefined") {
@@ -1138,7 +1139,7 @@ export module RaidHandler {
 			}
 
 			if (raidVC.members.size <= 0) {
-				await raidVC.delete().catch(e => { });
+				await raidVC.delete().catch(() => { });
 				clearInterval(interval);
 				return;
 			}
@@ -1330,6 +1331,8 @@ export module RaidHandler {
 			.setTimestamp()
 			.setFooter("Control Panel • Headcount Pending");
 		const controlPanelMsgEntry: Message = await CONTROL_PANEL_CHANNEL.send(hcControlPanelEmbed);
+		await controlPanelMsgEntry.pin().catch(e => { });
+
 		await controlPanelMsgEntry.react("❌").catch(() => { });
 
 		const hcEmbed: MessageEmbed = new MessageEmbed()
@@ -1683,7 +1686,7 @@ export module RaidHandler {
 		// make sure everyone has an entry
 		const filterQueryCheckNoProfile: FilterQuery<IRaidUser> = {};
 		filterQueryCheckNoProfile.$or = [];
-		for (const [id, member] of members) {
+		for (const [, member] of members) {
 			filterQueryCheckNoProfile.$or.push({
 				discordUserId: member.id
 			});
@@ -1722,7 +1725,7 @@ export module RaidHandler {
 		};
 		filterQuery.$or = [];
 
-		for (const [id, member] of members) {
+		for (const [id] of members) {
 			filterQuery.$or.push({
 				discordUserId: id
 			});

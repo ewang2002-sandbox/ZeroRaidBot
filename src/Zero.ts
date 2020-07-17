@@ -15,7 +15,13 @@ export class Zero {
 	/** 
 	 * The bot client.
 	 */
-	public static readonly RaidClient: Client = new Client({ partials: ['MESSAGE', 'CHANNEL', 'REACTION'] });;
+	public static readonly RaidClient: Client = new Client({ 
+		partials: [
+			"MESSAGE", 
+			"CHANNEL", 
+			"REACTION"
+		]
+	});;
 
 	/**
 	 * The token for the bot.

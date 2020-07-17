@@ -649,85 +649,15 @@ export module VerificationHandler {
 						}
 						else {
 							failedEmbed
-								.setDescription("You have failed to meet the requirements for the section. If you feel this is in error, please contact a staff member or go to #help-desk");
+								.setDescription("You have failed one or more requirements for the section. Requirements are generally hidden for multiple reasons; one of the most prominent reasons is to combat alternative accounts. If you feel this is in error, please contact a staff member or go to #help-desk");
 						}
 					}
 					else {
-						let descStr: string = "You did not meet the requirements for this server. ";
-						if (section.properties.showVerificationRequirements) {
-							descStr += `The requirements are: ${StringUtil.applyCodeBlocks(reqs.toString())}\nThe requirements you have failed to meet are listed below:\n${StringUtil.applyCodeBlocks(reqsFailedToMeet.toString())}`;
-						}
-						descStr += "\n\nWould you like to appeal the decision with a staff member? Unreact and react with ✅ to appeal with a staff member; otherwise, react with ❌.";
-
-						const wantsToBeManuallyVerified: boolean | "TIME_CMD" = await new Promise(async (resolve) => {
-							const failedAppealEmbed: MessageEmbed = new MessageEmbed(failedEmbed)
-								.setDescription(descStr)
-								.addField("Consider the Following", "⇒ This process may take up to one day.\n⇒ You will not be able to verify while your profile is being reviewed.\n⇒ You are NOT guaranteed to be verified.")
-								.setFooter("⏳ Time Remaining: 2 Minutes and 0 Seconds.");
-							const manaulVerifMsg: Message = await botMsg.edit(failedAppealEmbed);
-							await manaulVerifMsg.react("✅").catch(() => { });
-							await manaulVerifMsg.react("❌").catch(() => { });
-
-
-							const mcd: MessageAutoTick = new MessageAutoTick(manaulVerifMsg, failedAppealEmbed, 2 * 60 * 1000, null, "⏳ Time Remaining: {m} Minutes and {s} Seconds.");
-							// collector function 
-							const collFilter: (r: MessageReaction, u: User) => boolean = (reaction: MessageReaction, user: User) => {
-								return ["✅", "❌"].includes(reaction.emoji.name) && user.id === member.id;
-							}
-
-							// prepare collector
-							const reactCollector: ReactionCollector = manaulVerifMsg.createReactionCollector(collFilter, {
-								time: 2 * 60 * 1000,
-								max: 1
-							});
-
-							// end collector
-							reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
-								mcd.disableAutoTick();
-								if (reason === "time") {
-									return resolve("TIME_CMD");
-								}
-							});
-
-							reactCollector.on("collect", async (r: MessageReaction) => {
-								if (r.emoji.name === "❌") {
-									return resolve(false);
-								}
-
-								if (r.emoji.name === "✅") {
-									return resolve(true);
-								}
-							});
-						});
-
-						if (wantsToBeManuallyVerified === "TIME_CMD") {
-							if (typeof verificationAttemptsChannel !== "undefined") {
-								verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member}'s verification process has been canceled.\n\t⇒ Reason: TIME`).catch(() => { });
-							}
-							const embed: MessageEmbed = new MessageEmbed()
-								.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
-								.setTitle(`Verification For: **${guild.name}**`)
-								.setColor("RED")
-								.setDescription("Your verification process has been stopped because the time limit has been reached.")
-								.setFooter(guild.name)
-								.setTimestamp();
-							await botMsg.edit(embed);
-							return;
-						}
-
-						if (wantsToBeManuallyVerified) {
-							failedEmbed
-								.setDescription("You have chosen to have your profile manually reviewed by a staff member. Please be patient while a staff member checks your profile.")
-								.setFooter("Verification Process: Stopped.");
-							manualVerification(guild, member, requestData.data, manualVerificationChannel, section, reqsFailedToMeet);
-							outputLogs += `\nThis profile has been sent to the manual verification channel for further review.`;
-						}
-						else {
-							failedEmbed
-								.setDescription(`You have failed to meet the requirements for the section, and have chosen not to accept the manual verification offer. The section's verification requirements are below. ${StringUtil.applyCodeBlocks(reqs.toString())}`)
-								.addField("Missed Requirements", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()))
-								.setFooter("Verification Process: Stopped.");
-						}
+						failedEmbed
+							.setDescription("Your account is now under manual review by staff. Please do not attempt to verify again. If your account is not reviewed within the next 48 hours, please contact the staff through #help-desk or message an online helper or moderator. Otherwise, please refrain from messaging staff about your application review status. ")
+							.setFooter("Verification Process: Stopped.");
+						manualVerification(guild, member, requestData.data, manualVerificationChannel, section, reqsFailedToMeet);
+						outputLogs += `\nThis profile has been sent to the manual verification channel for further review.`;
 					}
 
 					await botMsg.edit(failedEmbed).catch(() => { });
@@ -1011,7 +941,7 @@ export module VerificationHandler {
 					newEntry.general.leaderRuns[index].general.assists += leaderRunData.general.assists;
 					newEntry.general.leaderRuns[index].general.completed += leaderRunData.general.completed;
 					newEntry.general.leaderRuns[index].general.failed += leaderRunData.general.failed;
-					
+
 					newEntry.general.leaderRuns[index].realmClearing.assists += leaderRunData.realmClearing.assists;
 					newEntry.general.leaderRuns[index].realmClearing.completed += leaderRunData.realmClearing.completed;
 					newEntry.general.leaderRuns[index].realmClearing.failed += leaderRunData.realmClearing.failed;
@@ -1380,7 +1310,7 @@ export module VerificationHandler {
 			guild,
 			guildDb
 		);
-		
+
 		if (sectionForManualVerif.isMain) {
 			await manualVerifMember.setNickname(manualVerifMember.user.username === manualVerificationProfile.inGameName
 				? `${manualVerificationProfile.inGameName}.`

@@ -1,5 +1,5 @@
 import { IDungeonData } from "../Definitions/IDungeonData";
-import { RushingClass, Daze, ArmorBreak, Knight, Warrior, Paladin, Priest, Slow, Paralyze, Samurai, Mystic, MSeal, Trickster, Puri, Bard, BrainPrism } from "./EmojiData";
+import { RushingClass, Daze, ArmorBreak, Knight, Warrior, Paladin, Priest, Slow, Paralyze, Samurai, Mystic, MSeal, Trickster, Puri, Bard, BrainPrism, SnakeOilEmoji } from "./EmojiData";
 
 export const AFKDungeon: IDungeonData[] = [
 	{
@@ -1050,8 +1050,9 @@ export const AFKDungeon: IDungeonData[] = [
 			Bard,
 			BrainPrism,
 			Puri,
-			Daze,
-			ArmorBreak
+			Slow,
+			ArmorBreak,
+			SnakeOilEmoji
 		],
 		portalLink: "https://i.imgur.com/nKKvJsv.png",
 		bossLink: [

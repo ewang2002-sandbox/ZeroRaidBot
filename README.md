@@ -41,6 +41,7 @@ Some of the bot's more prominent features include the following.
 ## Project Layout
 - [`master`](https://github.com/DungeoneerExalt/ZeroRaidBot/tree/master) - The developer's branch. Incomplete, unstable, and untested code will live here. 
 - [`stable`](https://github.com/DungeoneerExalt/ZeroRaidBot/tree/stable) - Safe for production code. Code that is *generally* tested will live here. 
+- [`preview`](https://github.com/DungeoneerExalt/ZeroRaidBot/tree/preview) - Similar to the `master` branch, but code that is in this branch should be able to compile. This branch contains preview features (testing features) that will probably make it to the `stable` branch. 
 
 ## Setup Guide
 Please see this [guide](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/master/md_img/SETUP.md).

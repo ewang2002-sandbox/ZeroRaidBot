@@ -1,6 +1,6 @@
 import { Collection } from "discord.js";
 
-export module UserAvailability {
+export module UserAvailabilityHelper {
 	/**
 	 * Different types of "menus" that a person could be working with.
 	 */
@@ -25,7 +25,12 @@ export module UserAvailability {
 		/**
 		 * The person is currently working with server profile. 
 		 */
-		SERVER_PROFILE
+		SERVER_PROFILE,
+
+		/**
+		 * Pre-modmail stuff (asking for guild, etc.)
+		 */
+		PRE_MODMAIL
 	}
 
 	/**
@@ -41,5 +46,5 @@ export module UserAvailability {
 	 * 
 	 * The key is the user ID, and the value is the menu the person is in.
 	 */
-	export const IN_MENU: Collection<string, MenuType> = new Collection<string, MenuType>();
+	export const InMenuCollection: Collection<string, MenuType> = new Collection<string, MenuType>();
 }

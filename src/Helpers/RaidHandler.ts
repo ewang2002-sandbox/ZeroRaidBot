@@ -563,7 +563,8 @@ export module RaidHandler {
 			// check on this
 			if (rs.dungeonInfo.keyEmojIDs.some(x => x.keyEmojID === reaction.emoji.id)
 				&& !hasUserReactedWithKey(keysThatReacted, reaction.emoji.id, member.id)) {
-				if (getAmountOfKeys(keysThatReacted, reaction.emoji.id) + 1 > 10) {
+				// only want 8 keys
+				if (getAmountOfKeys(keysThatReacted, reaction.emoji.id) + 1 > 8) {
 					await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** Thank you for your interest in contributing a key to the raid. However, we have enough people for now! A leader will give instructions if keys are needed; please ensure you are paying attention to the leader.`).catch(() => { });
 					return;
 				}

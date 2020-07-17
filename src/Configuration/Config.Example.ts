@@ -16,11 +16,23 @@ export const PRIVATE_BOT: boolean = false;
 
 export const BotConfiguration: IConfigurationSettings = PRODUCTION_BOT
     ? {
-        token: "", 
-        dbURL: "",
-        dbName: "",
-        userCollectionName: "",
-        guildCollectionName: "",
+		// your bot token
+		token: "", 
+		// the base db url
+		// it should look like this:
+		// mongodb+srv://<username>:<password>@something.ghgy8.mongodb.net
+		// where <username> and <password> are filled out. 
+		dbURL: "",
+		// the name of the database. 
+		dbName: "",
+		// the name of the user collection
+		// a good one is just "users." 
+		userCollectionName: "",
+		// the name of the guild/server collection
+		// a good one is just "guilds."
+		guildCollectionName: "",
+		// the name of the bot collection.
+		// a good one is just "botsettings."
         botCollectionName: "",
         botOwners: [],
         botColors: []

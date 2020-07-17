@@ -19,28 +19,38 @@ The following is a setup guide for this bot. Steps here are most likely incomple
 
 For the purpose of this guide, I will be using a free service online. 
 1. Head over to the official MongoDB website, which you can find [here](https://www.mongodb.com/).
+![Step 1](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/master/md_img/1.PNG)
 2. Click on "Start free." Create a new account.
 3. Now, click "Create a cluster." 
+![Step 3](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/master/md_img/2.PNG)
 4. Configure the `Cloud Provider` & Region and `Cluster Name`. Leave `Cluster Tier` and `Additional Settings` alone as you may have to pay. 
 	- For `Cloud Provider`, pick the region that is closest to your general location. 
 	- For `Cluster Name`, please pick a name that you don't mind using forever. For the purpose of this guide, I will name the cluster `DiscordBot`. 
+![Step 4](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/master/md_img/3.PNG)
 5. Click `Create Cluster`. 
 6. You should be presented with a Control Panel-like interface. First, let's begin by making sure you can access the database. Go to `Network Access`. 
+![Step 6](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/master/md_img/4.PNG)
 7. Let's add an IP address. Click `Add IP Address`.
 8. Select `ALLOW ACCESS FROM ANYWHERE`. Then, click `Confirm`. 
+![Step 8](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/master/md_img/5.PNG)
 9. Now, let's move on to making a new user. Go to `Database Access`. Then, click `Add New Database User`. 
+![Step 9](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/master/md_img/6.PNG)
 10. Create a new account by typing a username and password. In my case, I will do `raidbot` as my username.
 	- Make sure this user can read and write to any database (below `Database User Privileges`). 
+![Step 10](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/master/md_img/7.PNG)
 11. Go back to `Clusters`. Then, below your cluster, click `CONNECT`. 
+![Step 11](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/master/md_img/8.PNG)
 12. A popup should show up with the title `Connect to <Cluster Name>`, where `<Cluster Name>` is the name of the cluster that you specified in step 4. Click `Connect your application`. 
+![Step 12](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/master/md_img/9.PNG)
 13. Your `DRIVER` should be `Node.js` and your `VERSION` should be the latest. 
 	- Copy the connection string.
 	- Once you are done, click `Close`. 
+![Step 13](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/master/md_img/10.PNG)
 14. Your connection string is going to look something like this: `mongodb+srv://raidbot:<password>@discordbot.ghgy8.mongodb.net/<dbname>?retryWrites=true&w=majority`.
 	- You will be removing everything past `.net/` (or something equivalent). In other words, remove `<dbname>` and anything past it. In our case, the connection string will look like this: `mongodb+srv://raidbot:<password>@discordbot.ghgy8.mongodb.net/`. **Keep the `/`**. 
 15.  With your connection string, replace `<password>` with the password specified in step 10.
 	- For example, if my password is `1234`, my connection string would look like this: `mongodb+srv://raidbot:1234@discordbot.ghgy8.mongodb.net/`.
-15. Head over to the next section! 
+15. Head over to the next section! Note that I'll be using my examples here in the `Getting the Bot Files` section. 
 
 **Download Node.JS**
 - Download Node.JS from https://nodejs.org/en/. 

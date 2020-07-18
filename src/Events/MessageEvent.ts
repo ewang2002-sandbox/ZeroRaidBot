@@ -7,6 +7,8 @@ import { StringUtil } from "../Utility/StringUtil";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
 import { MessageUtil } from "../Utility/MessageUtil";
 import { OtherUtil } from "../Utility/OtherUtil";
+import { ModMailHandler } from "../Helpers/ModMailHandler";
+import { UserAvailabilityHelper } from "../Helpers/UserAvailabilityHelper";
 
 export async function onMessageEvent(msg: Message): Promise<void> {
 	// make sure we have a regular message to handle
@@ -59,7 +61,9 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 		}
 	}
 
+	// no prefix = modmail
 	if (typeof prefix === "undefined") {
+		checkModMail(msg);
 		return;
 	}
 
@@ -74,6 +78,7 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 	if (command === null) {
 		return;
 	}
+
 	const embed: MessageEmbed = new MessageEmbed()
 		.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 		.setColor("RED")
@@ -186,4 +191,20 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 
 	await msg.delete().catch(() => { });
 	command.executeCommand(msg, args, guildHandler);
+}
+
+/**
+ * Initiates modmail. 
+ * @param msg The message.
+ */
+async function checkModMail(msg: Message): Promise<void> {
+	if (msg.guild !== null) {
+		return;
+	}
+	
+	// in menu so dont say anything
+	if (UserAvailabilityHelper.InMenuCollection.has(msg.author.id)) {
+		return;
+	}
+	ModMailHandler.initiateModMailContact(msg.author, msg);
 }

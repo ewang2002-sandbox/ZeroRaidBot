@@ -1,14 +1,11 @@
 import { IRaidGuild } from "../Templates/IRaidGuild";
-import { User, Guild, Message, MessageEmbed, MessageEmbedThumbnail, TextChannel, GuildMemberEditData, GuildMember, MessageEmbedFooter, MessageAttachment, FileOptions, EmbedField, Collection, Emoji } from "discord.js";
+import { User, Guild, Message, MessageEmbed, TextChannel, GuildMember, MessageEmbedFooter, MessageAttachment, FileOptions, EmbedField, Collection, Emoji } from "discord.js";
 import { MongoDbHelper } from "./MongoDbHelper";
 import { StringUtil } from "../Utility/StringUtil";
 import { UserAvailabilityHelper } from "./UserAvailabilityHelper";
 import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollector";
 import { TimeUnit } from "../Definitions/TimeUnit";
-import { resolve } from "dns";
 import { MessageUtil } from "../Utility/MessageUtil";
-import { userInfo } from "os";
-import { UserHandler } from "./UserHandler";
 import { DateUtil } from "../Utility/DateUtil";
 
 export module ModMailHandler {
@@ -21,7 +18,7 @@ export module ModMailHandler {
 	 * @param discordId The Discord ID.
 	 * @param guildDb The guild document.
 	 */
-	export function isInThreadConversation(discordId: string, guildDb: IRaidGuild): boolean {
+	function isInThreadConversation(discordId: string, guildDb: IRaidGuild): boolean {
 		return guildDb.properties.modMail.some(x => x.sender === discordId);
 	}
 
@@ -30,12 +27,12 @@ export module ModMailHandler {
 	 * @param guild The guild.
 	 * @param guildDb The guild document.
 	 */
-	export function canUseModMail(guild: Guild, guildDb: IRaidGuild): boolean {
+	function canUseModMail(guild: Guild, guildDb: IRaidGuild): boolean {
 		return guild.channels.cache.has(guildDb.generalChannels.modMailChannel);
 	}
 
 	/**
-	 * Initiates modmail. I know, best descriptiob ever. :) 
+	 * Initiates modmail. I know, best description ever. :) 
 	 * @param initiator The person responsible for this mod mail.
 	 * @param message The message content.
 	 */
@@ -46,10 +43,11 @@ export module ModMailHandler {
 				.setTitle("No Valid Servers")
 				.setDescription("The servers you are in have not configured their moderation mail module yet. As such, there is no one to message.")
 				.setFooter("No Servers Found!");
-			await MessageUtil.send({ embed: errorEmbed }, initiator).catch(e => { });
+			await MessageUtil.send({ embed: errorEmbed }, initiator).catch(() => { });
 			return;
 		}
 		const guildDb: IRaidGuild = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOne({ guildID: selectedGuild.id })) as IRaidGuild;
+
 		const modmailChannel: TextChannel = selectedGuild.channels.cache.get(guildDb.generalChannels.modMailChannel) as TextChannel;
 
 		const modMailEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(initiator)
@@ -68,11 +66,11 @@ export module ModMailHandler {
 			.setTitle("❌ Modmail Entry");
 		const modMailMessage: Message = await modmailChannel.send(modMailEmbed);
 		// respond reaction
-		await modMailMessage.react("📝").catch(e => { });
+		await modMailMessage.react("📝").catch(() => { });
 		// garbage reaction
-		await modMailMessage.react("🗑️").catch(e => { });
+		await modMailMessage.react("🗑️").catch(() => { });
 		// blacklist
-		await modMailMessage.react("🚫").catch(e => { });
+		await modMailMessage.react("🚫").catch(() => { });
 	}
 
 	/**
@@ -121,7 +119,7 @@ export module ModMailHandler {
 				.setFooter("Modmail");
 			await originalModMailMessage.edit(noUserFoundEmbed)
 				.then(x => x.delete({ timeout: 10 * 1000 }))
-				.catch(e => { });
+				.catch(() => { });
 			return;
 		}
 
@@ -181,7 +179,7 @@ export module ModMailHandler {
 		const introMsg: Message = await responseChannel.send(memberThatWillRespond, {
 			embed: introEmbed
 		});
-		await introMsg.pin().catch(e => { });
+		await introMsg.pin().catch(() => { });
 
 		let responseToMail: string = "";
 		let attachments: (string | MessageAttachment | FileOptions)[] = [];
@@ -221,11 +219,11 @@ export module ModMailHandler {
 
 			if (response instanceof Emoji) {
 				if (response.name === "❌") {
-					await originalModMailMessage.edit(oldEmbed).catch(e => { });
-					await originalModMailMessage.react("📝").catch(e => { });
-					await originalModMailMessage.react("🗑️").catch(e => { });
-					await originalModMailMessage.react("🚫").catch(e => { });
-					await responseChannel.delete().catch(e => { });
+					await originalModMailMessage.edit(oldEmbed).catch(() => { });
+					await originalModMailMessage.react("📝").catch(() => { });
+					await originalModMailMessage.react("🗑️").catch(() => { });
+					await originalModMailMessage.react("🚫").catch(() => { });
+					await responseChannel.delete().catch(() => { });
 					CurrentlyRespondingToModMail.delete(memberThatWillRespond.id);
 					return;
 				}
@@ -241,7 +239,7 @@ export module ModMailHandler {
 			}
 			else {
 				if (response === "CANCEL_CMD" || response === "TIME_CMD") {
-					await botMsg.delete().catch(e => { });
+					await botMsg.delete().catch(() => { });
 					return;
 				}
 
@@ -260,14 +258,14 @@ export module ModMailHandler {
 			.setFooter("Modmail Response");
 
 		await authorOfModmail.send(replyEmbed);
-		await responseChannel.delete().catch(e => { });
+		await responseChannel.delete().catch(() => { });
 		CurrentlyRespondingToModMail.delete(memberThatWillRespond.id);
 		oldEmbed.fields.splice(oldEmbed.fields.findIndex(x => x.name === "Last Response By"), 1);
 		oldEmbed.addField("Last Response By", `${memberThatWillRespond} (${DateUtil.getTime()})`);
 		await originalModMailMessage.edit(oldEmbed.setTitle("✅ Modmail Entry"));
-		await originalModMailMessage.react("📝").catch(e => { });
-		await originalModMailMessage.react("🗑️").catch(e => { });
-		await originalModMailMessage.react("🚫").catch(e => { });
+		await originalModMailMessage.react("📝").catch(() => { });
+		await originalModMailMessage.react("🗑️").catch(() => { });
+		await originalModMailMessage.react("🚫").catch(() => { });
 	}
 
 	/**
@@ -299,7 +297,7 @@ export module ModMailHandler {
 			return guildsToChoose[0];
 		}
 
-		const selectedGuild: Guild | "CANCEL" = await new Promise(async (resolve, reject) => {
+		const selectedGuild: Guild | "CANCEL" = await new Promise(async (resolve) => {
 			const embed: MessageEmbed = new MessageEmbed()
 				.setAuthor(user.tag, user.displayAvatarURL())
 				.setTitle("Select Server")

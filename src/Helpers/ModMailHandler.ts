@@ -1,13 +1,20 @@
 import { IRaidGuild } from "../Templates/IRaidGuild";
-import { User, Guild, Message, MessageEmbed } from "discord.js";
+import { User, Guild, Message, MessageEmbed, MessageEmbedThumbnail, TextChannel, GuildMemberEditData, GuildMember, MessageEmbedFooter, MessageAttachment, FileOptions, EmbedField, Collection, Emoji } from "discord.js";
 import { MongoDbHelper } from "./MongoDbHelper";
 import { StringUtil } from "../Utility/StringUtil";
 import { UserAvailabilityHelper } from "./UserAvailabilityHelper";
 import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollector";
 import { TimeUnit } from "../Definitions/TimeUnit";
 import { resolve } from "dns";
+import { MessageUtil } from "../Utility/MessageUtil";
+import { userInfo } from "os";
+import { UserHandler } from "./UserHandler";
 
 export module ModMailHandler {
+	// K = the mod that is responding
+	// V = the person the mod is responding to. 
+	export const CurrentlyRespondingToModMail: Collection<string, string> = new Collection<string, string>();
+
 	/**
 	 * Checks whether the person is already engaged in a modmail conversation. 
 	 * @param discordId The Discord ID.
@@ -26,9 +33,205 @@ export module ModMailHandler {
 		return guild.channels.cache.has(guildDb.generalChannels.modMailChannel);
 	}
 
-
+	/**
+	 * Initiates modmail. I know, best descriptiob ever. :) 
+	 * @param initiator The person responsible for this mod mail.
+	 * @param message The message content.
+	 */
 	export async function initiateModMailContact(initiator: User, message: Message): Promise<void> {
-		
+		const selectedGuild: Guild | null = await chooseGuild(initiator);
+		if (selectedGuild === null) {
+			const errorEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(initiator, "RED")
+				.setTitle("No Valid Servers")
+				.setDescription("The servers you are in have not configured their moderation mail module yet. As such, there is no one to message.")
+				.setFooter("No Servers Found!");
+			await MessageUtil.send({ embed: errorEmbed }, initiator).catch(e => { });
+			return;
+		}
+		const guildDb: IRaidGuild = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOne({ guildID: selectedGuild.id })) as IRaidGuild;
+		const modmailChannel: TextChannel = selectedGuild.channels.cache.get(guildDb.generalChannels.modMailChannel) as TextChannel;
+
+		const modMailEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(initiator)
+			.setTimestamp()
+			// so we can find the id 
+			.setFooter(`${initiator.id} • Modmail Message`)
+			// the content of the modmail msg
+			.setDescription(message.content)
+			// attach files
+			.attachFiles(message.attachments.array())
+			// sender info 
+			.addField("Sender Information", `⇒ Mention: ${initiator}\n⇒ Tag: ${initiator.tag}\n⇒ ID: ${initiator.id}`)
+			// responses -- any mods that have responded
+			.addField("Responses", "N/A")
+			// title -- ❌ means no responses
+			.setTitle("❌ Modmail Entry");
+		const modMailMessage: Message = await modmailChannel.send(modMailEmbed);
+		// respond reaction
+		await modMailMessage.react("📝").catch(e => { });
+		// garbage reaction
+		await modMailMessage.react("🗑️").catch(e => { });
+		// blacklist
+		await modMailMessage.react("🚫").catch(e => { });
+	}
+
+	/**
+	 * Allows a person to respond to a modmail message. 
+	 * @param originalModMailMessage The message from the mod mail channel that the person is going to respond to.
+	 * @param memberThatWillRespond The person that will be responding to the modmail sender/initator. 
+	 */
+	export async function respondToModmail(originalModMailMessage: Message, memberThatWillRespond: GuildMember): Promise<void> {
+		// check if msg even has an embed
+		if (originalModMailMessage.embeds.length === 0) {
+			return;
+		}
+
+		const footer: MessageEmbedFooter | null = originalModMailMessage.embeds[0].footer;
+
+		// check if footer is valid 
+		if (footer === null
+			|| typeof footer.text === "undefined"
+			|| !footer.text.endsWith("• Modmail Message")) {
+			return;
+		}
+
+		// no permission
+		if (memberThatWillRespond.guild.me !== null && !memberThatWillRespond.guild.me.hasPermission("MANAGE_CHANNELS")) {
+			return;
+		}
+
+		// get old embed + prepare
+		const authorOfModmailId: string = footer.text.split("•")[0].trim();
+		const oldEmbed: MessageEmbed = originalModMailMessage.embeds[0];
+		await originalModMailMessage.reactions.removeAll().catch(e => { });
+		CurrentlyRespondingToModMail.set(memberThatWillRespond.id, authorOfModmailId);
+
+		const originalModMailContent: string = typeof originalModMailMessage.embeds[0].description === "undefined"
+			? ""
+			: originalModMailMessage.embeds[0].description;
+
+		let authorOfModmail: GuildMember;
+
+		try {
+			authorOfModmail = await memberThatWillRespond.guild.members.fetch(authorOfModmailId);
+		}
+		catch (e) {
+			const noUserFoundEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(memberThatWillRespond.user)
+				.setTitle("User Not Found")
+				.setDescription("The person you were trying to find wasn't found. The person may have left the server. This modmail entry will be deleted in 10 seconds.")
+				.setFooter("Modmail");
+			await originalModMailMessage.edit(noUserFoundEmbed)
+				.then(x => x.delete({ timeout: 10 * 1000 }))
+				.catch(e => { });
+			return;
+		}
+
+		const files: (string | MessageAttachment | FileOptions)[] = originalModMailMessage.embeds[0].files;
+		const senderInfo: string = (originalModMailMessage.embeds[0].fields.find(x => x.name === "Sender Information") as EmbedField).value;
+
+		// create channel
+		const responseChannel: TextChannel = await memberThatWillRespond.guild.channels.create(`respond-${authorOfModmail.user.username}`, {
+			type: "text",
+			permissionOverwrites: [
+				{
+					id: memberThatWillRespond.guild.roles.everyone,
+					deny: ["VIEW_CHANNEL"]
+				},
+				{
+					id: memberThatWillRespond,
+					allow: ["VIEW_CHANNEL"]
+				},
+				{
+					// when is this null
+					id: memberThatWillRespond.guild.me as GuildMember,
+					allow: ["VIEW_CHANNEL"]
+				}
+			]
+		});
+
+		// function declaration that returns embed that
+		// contains response
+		function getRespEmbed(resp: string, attachments: (string | MessageAttachment | FileOptions)[], anony: boolean): MessageEmbed {
+			const e: MessageEmbed = MessageUtil.generateBlankEmbed(memberThatWillRespond.user)
+				.setTitle("Your Response")
+				.setDescription(resp === "" ? "N/A" : resp)
+				.setFooter("Modmail Response System")
+				.addField("Instructions", `Please respond to the above message by typing a message here. When you are finished, simply send it here. You will have 10 minutes.\n⇒ React with ✅ once you are satisfied with your response above. This will send the message.\n⇒ React with ❌ to cancel this process.\n⇒ React with 👀 to either show or hide your identity to the person that sent the modmail message. **Identity:** ${anony ? "Private" : "Public"}`);
+			if (attachments.length !== 0) {
+				e.attachFiles(attachments);
+			}
+
+			return e;
+		}
+
+		const introEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(memberThatWillRespond.user)
+			.setTimestamp()
+			.setTitle("Modmail: Respond")
+			.setFooter(`Modmail Response System`)
+			.setDescription(originalModMailContent)
+			.attachFiles(files)
+			.addField("Sender Information", senderInfo);
+		const introMsg: Message = await responseChannel.send(memberThatWillRespond, {
+			embed: introEmbed
+		});
+		await introMsg.pin().catch(e => { });
+
+		let responseToMail: string = "";
+		let attachments: (string | MessageAttachment | FileOptions)[] = [];
+		let botMsg: Message | null = null;
+		let hasReactedToMessage: boolean = false;
+		while (true) {
+			const responseEmbed: MessageEmbed = getRespEmbed(responseToMail, attachments, true);
+
+			if (botMsg === null) {
+				botMsg = await responseChannel.send(responseEmbed);
+			}
+			else {
+				// this should be awaitable, right? 
+				botMsg = await botMsg.edit(responseEmbed);
+			}
+
+			const response: string | Emoji | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<string>(
+				memberThatWillRespond,
+				{ embed: responseEmbed },
+				10,
+				TimeUnit.MINUTE,
+				responseChannel
+			).sendWithReactCollector(GenericMessageCollector.getStringPrompt(responseChannel), {
+				reactions: ["✅", "❌", "👀"],
+				cancelFlag: "--cancel",
+				reactToMsg: !hasReactedToMessage,
+				deleteMsg: false,
+				removeAllReactionAfterReact: false,
+				oldMsg: botMsg
+			});
+
+			if (hasReactedToMessage) {
+				hasReactedToMessage = !hasReactedToMessage;
+			}
+
+			if (response instanceof Emoji) {
+				if (response.name === "❌") {
+					await originalModMailMessage.edit(oldEmbed).catch(e => { });
+					await originalModMailMessage.react("📝").catch(e => { });
+					await originalModMailMessage.react("🗑️").catch(e => { });
+					await originalModMailMessage.react("🚫").catch(e => { });
+					return;
+				}
+				else {
+					if (responseToMail.length !== 0) {
+						// send
+					}
+				}
+			}
+			else {
+				if (response === "CANCEL_CMD" || response === "TIME_CMD") {
+					await botMsg.delete().catch(e => { });
+					return;
+				}
+
+				let tempRespText: string = response; 
+			}
+		}
 	}
 
 	/**

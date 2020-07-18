@@ -494,6 +494,17 @@ export class GenericMessageCollector<T> {
 		}
 	}
 
+	
+	/**
+	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond and return the Message object. 
+	 * @param {PartialTextBasedChannelFields} pChan The channel where messages should be sent to.
+	 */
+	public static getPureMessage(pChan: PartialTextBasedChannelFields): (collectedMessage: Message) => Promise<void | Message> {
+		return async (m: Message): Promise<void | Message> => {
+			return m; 
+		}
+	}
+
 	/**
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with `yes` or `no` and return a boolean value associated with that choice.
 	 * @param {PartialTextBasedChannelFields} pChan The channel where messages should be sent to.

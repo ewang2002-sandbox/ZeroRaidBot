@@ -9,6 +9,7 @@ import { resolve } from "dns";
 import { MessageUtil } from "../Utility/MessageUtil";
 import { userInfo } from "os";
 import { UserHandler } from "./UserHandler";
+import { DateUtil } from "../Utility/DateUtil";
 
 export module ModMailHandler {
 	// K = the mod that is responding
@@ -62,7 +63,7 @@ export module ModMailHandler {
 			// sender info 
 			.addField("Sender Information", `⇒ Mention: ${initiator}\n⇒ Tag: ${initiator.tag}\n⇒ ID: ${initiator.id}`)
 			// responses -- any mods that have responded
-			.addField("Responses", "N/A")
+			.addField("Last Response By", "None.")
 			// title -- ❌ means no responses
 			.setTitle("❌ Modmail Entry");
 		const modMailMessage: Message = await modmailChannel.send(modMailEmbed);
@@ -102,7 +103,6 @@ export module ModMailHandler {
 		// get old embed + prepare
 		const authorOfModmailId: string = footer.text.split("•")[0].trim();
 		const oldEmbed: MessageEmbed = originalModMailMessage.embeds[0];
-		await originalModMailMessage.reactions.removeAll().catch(e => { });
 		CurrentlyRespondingToModMail.set(memberThatWillRespond.id, authorOfModmailId);
 
 		const originalModMailContent: string = typeof originalModMailMessage.embeds[0].description === "undefined"
@@ -127,6 +127,14 @@ export module ModMailHandler {
 
 		const files: (string | MessageAttachment | FileOptions)[] = originalModMailMessage.embeds[0].files;
 		const senderInfo: string = (originalModMailMessage.embeds[0].fields.find(x => x.name === "Sender Information") as EmbedField).value;
+
+		const noUserFoundEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(memberThatWillRespond.user)
+			.setTitle("📝 Response In Progress")
+			.setDescription(originalModMailContent)
+			.addField("Sender Info", senderInfo)
+			.addField("Current Responder", `${memberThatWillRespond}: \`${DateUtil.getTime()}\``)
+			.setFooter("Modmail In Progress!");
+		await originalModMailMessage.edit(noUserFoundEmbed);
 
 		// create channel
 		const responseChannel: TextChannel = await memberThatWillRespond.guild.channels.create(`respond-${authorOfModmail.user.username}`, {
@@ -177,10 +185,12 @@ export module ModMailHandler {
 
 		let responseToMail: string = "";
 		let attachments: (string | MessageAttachment | FileOptions)[] = [];
+		let anonymous: boolean = true;
+
 		let botMsg: Message | null = null;
 		let hasReactedToMessage: boolean = false;
 		while (true) {
-			const responseEmbed: MessageEmbed = getRespEmbed(responseToMail, attachments, true);
+			const responseEmbed: MessageEmbed = getRespEmbed(responseToMail, attachments, anonymous);
 
 			if (botMsg === null) {
 				botMsg = await responseChannel.send(responseEmbed);
@@ -190,13 +200,13 @@ export module ModMailHandler {
 				botMsg = await botMsg.edit(responseEmbed);
 			}
 
-			const response: string | Emoji | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<string>(
+			const response: Message | Emoji | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<Message>(
 				memberThatWillRespond,
 				{ embed: responseEmbed },
 				10,
 				TimeUnit.MINUTE,
 				responseChannel
-			).sendWithReactCollector(GenericMessageCollector.getStringPrompt(responseChannel), {
+			).sendWithReactCollector(GenericMessageCollector.getPureMessage(responseChannel), {
 				reactions: ["✅", "❌", "👀"],
 				cancelFlag: "--cancel",
 				reactToMsg: !hasReactedToMessage,
@@ -215,11 +225,17 @@ export module ModMailHandler {
 					await originalModMailMessage.react("📝").catch(e => { });
 					await originalModMailMessage.react("🗑️").catch(e => { });
 					await originalModMailMessage.react("🚫").catch(e => { });
+					await responseChannel.delete().catch(e => { });
+					CurrentlyRespondingToModMail.delete(memberThatWillRespond.id);
 					return;
+				}
+				else if (response.name === "👀") {
+					anonymous = !anonymous;
+
 				}
 				else {
 					if (responseToMail.length !== 0) {
-						// send
+						break;
 					}
 				}
 			}
@@ -229,9 +245,29 @@ export module ModMailHandler {
 					return;
 				}
 
-				let tempRespText: string = response; 
+				if (response.content.length !== 0) {
+					responseToMail = response.content;
+					attachments = response.attachments.array();
+				}
 			}
 		}
+
+		const replyEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(anonymous ? memberThatWillRespond.guild : memberThatWillRespond.user)
+			.setTitle("Modmail Response")
+			.setDescription(responseToMail)
+			.attachFiles(attachments)
+			.addField("Original Message", originalModMailContent.length === 0 ? "N/A" : (originalModMailContent.length > 1012 ? originalModMailContent.substring(0, 1000) + "..." : originalModMailContent))
+			.setFooter("Modmail Response");
+
+		await authorOfModmail.send(replyEmbed);
+		await responseChannel.delete().catch(e => { });
+		CurrentlyRespondingToModMail.delete(memberThatWillRespond.id);
+		oldEmbed.fields.splice(oldEmbed.fields.findIndex(x => x.name === "Last Response By"), 1);
+		oldEmbed.addField("Last Response By", `${memberThatWillRespond} (${DateUtil.getTime()})`);
+		await originalModMailMessage.edit(oldEmbed.setTitle("✅ Modmail Entry"));
+		await originalModMailMessage.react("📝").catch(e => { });
+		await originalModMailMessage.react("🗑️").catch(e => { });
+		await originalModMailMessage.react("🚫").catch(e => { });
 	}
 
 	/**

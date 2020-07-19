@@ -23,6 +23,7 @@ import { StringBuilder } from "../Classes/String/StringBuilder";
 import { FilterQuery } from "mongodb";
 import { IRaidUser } from "../Templates/IRaidUser";
 import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuManager";
+import { UserAvailabilityHelper } from "./UserAvailabilityHelper";
 
 export module RaidHandler {
 	/**
@@ -569,7 +570,9 @@ export module RaidHandler {
 					return;
 				}
 				// key react 
+				UserAvailabilityHelper.InMenuCollection.set(user.id, UserAvailabilityHelper.MenuType.KEY_ASK);
 				let hasAccepted: boolean = await keyReact(user, guild, NEW_RAID_VC, rs, reaction);
+				UserAvailabilityHelper.InMenuCollection.delete(user.id);
 				if (hasAccepted) {
 					const currData: IStoredRaidData | undefined = CURRENT_RAID_DATA.get(rs.vcID);
 					if (typeof currData === "undefined") {

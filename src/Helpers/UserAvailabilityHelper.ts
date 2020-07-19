@@ -30,7 +30,12 @@ export module UserAvailabilityHelper {
 		/**
 		 * Pre-modmail stuff (asking for guild, etc.)
 		 */
-		PRE_MODMAIL
+		PRE_MODMAIL,
+
+		/**
+		 * AFK check key
+		 */
+		KEY_ASK
 	}
 
 	/**

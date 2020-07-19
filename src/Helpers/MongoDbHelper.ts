@@ -210,6 +210,7 @@ export module MongoDbHelper {
 							botUpdatesChannel: "",
 							reactionLoggingChannel: ""
 						},
+						modMailStorage: "",
 						quotaChannel: "",
 						manualVerification: "",
 						modMailChannel: "",

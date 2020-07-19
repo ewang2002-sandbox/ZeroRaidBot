@@ -205,6 +205,11 @@ export interface IRaidGuild {
 		modMailChannel: string;
 
 		/**
+		 * Modmail storage channel.
+		 */
+		modMailStorage: string; 
+
+		/**
 		 * The general AFK check channel, where raid checks will be posted.
 		 */
 		generalRaidAfkCheckChannel: string;

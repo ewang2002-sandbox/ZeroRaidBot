@@ -1,5 +1,5 @@
 import { IRaidGuild } from "../Templates/IRaidGuild";
-import { User, Guild, Message, MessageEmbed, TextChannel, GuildMember, MessageEmbedFooter, MessageAttachment, FileOptions, EmbedField, Collection, Emoji, EmojiResolvable } from "discord.js";
+import { User, Guild, Message, MessageEmbed, TextChannel, GuildMember, MessageEmbedFooter, MessageAttachment, FileOptions, EmbedField, Collection, Emoji, EmojiResolvable, SystemChannelFlags } from "discord.js";
 import { MongoDbHelper } from "./MongoDbHelper";
 import { StringUtil } from "../Utility/StringUtil";
 import { UserAvailabilityHelper } from "./UserAvailabilityHelper";
@@ -8,6 +8,8 @@ import { TimeUnit } from "../Definitions/TimeUnit";
 import { MessageUtil } from "../Utility/MessageUtil";
 import { DateUtil } from "../Utility/DateUtil";
 import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuManager";
+import { createWriteStream, WriteStream } from "fs";
+import { StringBuilder } from "../Classes/String/StringBuilder";
 
 export module ModMailHandler {
 	// K = the mod that is responding
@@ -79,7 +81,7 @@ export module ModMailHandler {
 		if (attachments.length !== 0) {
 			modMailEmbed.addField("Attachments", attachments);
 		}
-		
+
 		modMailEmbed.addField("Sender Information", `⇒ Mention: ${initiator}\n⇒ Tag: ${initiator.tag}\n⇒ ID: ${initiator.id}`)
 			// responses -- any mods that have responded
 			.addField("Last Response By", "None.")
@@ -186,7 +188,7 @@ export module ModMailHandler {
 		// get old embed + prepare
 		const oldEmbed: MessageEmbed = originalModMailMessage.embeds[0];
 		const authorOfModmailId: string = ((oldEmbed.footer as MessageEmbedFooter).text as string).split("•")[0].trim();
-
+		const guildDb: IRaidGuild = await new MongoDbHelper.MongoDbGuildManager(memberThatWillRespond.guild.id).findOrCreateGuildDb();
 		const originalModMailContent: string = typeof originalModMailMessage.embeds[0].description === "undefined"
 			? ""
 			: originalModMailMessage.embeds[0].description;
@@ -380,8 +382,56 @@ export module ModMailHandler {
 		await authorOfModmail.send(replyEmbed).catch(e => { });
 		await responseChannel.delete().catch(() => { });
 		CurrentlyRespondingToModMail.delete(memberThatWillRespond.id);
-		oldEmbed.fields.splice(oldEmbed.fields.findIndex(x => x.name === "Last Response By"), 1);
-		oldEmbed.addField("Last Response By", `${memberThatWillRespond} (${DateUtil.getTime()})`);
+
+		// save response
+		let respString: StringBuilder = new StringBuilder()
+			.append("========== RESPONSE ==========")
+			.appendLine()
+			.append(responseToMail)
+			.appendLine()
+			.appendLine()
+			.appendLine()
+			.append("========== ORIGINAL MESSAGE ==========")
+			.appendLine()
+			.append(originalModMailContent);
+
+		// see if we should store 
+		const modMailStorage: TextChannel | undefined = memberThatWillRespond.guild.channels.cache
+			.get(guildDb.generalChannels.modMailStorage) as TextChannel | undefined;
+
+		let addLogStr: string = "";
+		if (typeof modMailStorage !== "undefined") {
+			const m: Message | void = await modMailStorage.send(DateUtil.getTime(), new MessageAttachment(Buffer.from(respString.toString(), "utf8"), "log.txt")).catch(console.error);
+			if (typeof m !== "undefined" && m.attachments.size > 0) {
+				addLogStr = `[[Response](${(m.attachments.first() as MessageAttachment).url})]`;
+			}
+		}
+
+		// get old responses
+		const oldRespArr: EmbedField[] = oldEmbed.fields.splice(oldEmbed.fields.findIndex(x => x.name === "Last Response By"), 1);
+		const lastResponse: EmbedField = oldRespArr[0];
+		
+		let tempLastResp: string = `${memberThatWillRespond} (${DateUtil.getTime()}) ${addLogStr}`;
+		let lastRespByStr: string = "";
+		if (lastResponse.value === "None.") {
+			lastRespByStr = tempLastResp;
+		}
+		// already had content 
+		else {
+			if (lastResponse.value.length + tempLastResp.length > 1012) {
+				const t: string[] = lastResponse.value.split("\n");
+				while (t.join("\n").length + tempLastResp.length > 1012) {
+					t.shift();
+				}
+				lastRespByStr = `${t.join("\n")}\n${tempLastResp}`;
+			}
+			else {
+				lastRespByStr = `${lastResponse.value}\n${tempLastResp}`;
+			}
+		}
+
+		// update embed + re-react 
+		oldEmbed.addField("Last Response By", lastRespByStr);
 		await originalModMailMessage.edit(oldEmbed.setTitle("✅ Modmail Entry").setColor("GREEN"));
 		await originalModMailMessage.react("📝").catch(() => { });
 		await originalModMailMessage.react("🗑️").catch(() => { });
@@ -417,6 +467,7 @@ export module ModMailHandler {
 			return guildsToChoose[0];
 		}
 
+		UserAvailabilityHelper.InMenuCollection.set(user.id, UserAvailabilityHelper.MenuType.PRE_MODMAIL);
 		const selectedGuild: Guild | "CANCEL" = await new Promise(async (resolve) => {
 			const embed: MessageEmbed = new MessageEmbed()
 				.setAuthor(user.tag, user.displayAvatarURL())
@@ -428,8 +479,6 @@ export module ModMailHandler {
 			for (const elem of arrFieldsContent) {
 				embed.addField("Possible Guilds", elem);
 			}
-
-			UserAvailabilityHelper.InMenuCollection.set(user.id, UserAvailabilityHelper.MenuType.PRE_MODMAIL);
 
 			const numSelected: number | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<number>(
 				user,
@@ -445,8 +494,8 @@ export module ModMailHandler {
 			else {
 				resolve(guildsToChoose[numSelected - 1]);
 			}
-			UserAvailabilityHelper.InMenuCollection.delete(user.id)
 		});
+		UserAvailabilityHelper.InMenuCollection.delete(user.id)
 
 		return selectedGuild === "CANCEL" ? null : selectedGuild;
 	}

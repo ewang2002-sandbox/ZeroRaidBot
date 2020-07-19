@@ -1,7 +1,7 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, DMChannel, Guild, GuildMember, MessageEmbed } from "discord.js";
+import { Message, DMChannel, Guild, GuildMember, MessageEmbed, User } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { IRaidUser } from "../../Templates/IRaidUser";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
@@ -10,6 +10,7 @@ import { GuildUtil } from "../../Utility/GuildUtil";
 import { StringUtil } from "../../Utility/StringUtil";
 import { GenericMessageCollector } from "../../Classes/Message/GenericMessageCollector";
 import { TimeUnit } from "../../Definitions/TimeUnit";
+import { UserAvailabilityHelper } from "../../Helpers/UserAvailabilityHelper";
 
 export class AddToNicknameCommand extends Command {
     public constructor() {
@@ -56,16 +57,19 @@ export class AddToNicknameCommand extends Command {
             return;
         }
 
+		UserAvailabilityHelper.InMenuCollection.set(msg.author.id, UserAvailabilityHelper.MenuType.SERVER_PROFILE);
 
         let guild: Guild;
         if (msg.guild === null) {
             const response: Guild | "CANCEL_CMD" | null = await GuildUtil.getGuild(msg, dmChannel);
             if (response === "CANCEL_CMD") {
+				UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
                 return;
             }
 
             if (response === null) {
-                MessageUtil.send({ content: "You are unable to use this command because you are not verified in any servers that the bot is in." }, msg.channel);
+				MessageUtil.send({ content: "You are unable to use this command because you are not verified in any servers that the bot is in." }, msg.channel);
+				UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
                 return;
             }
 
@@ -78,6 +82,7 @@ export class AddToNicknameCommand extends Command {
         // first, get nickname
         const resolvedMember: GuildMember | null = guild.member(msg.author.id);
         if (resolvedMember === null) {
+			UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
             return;
         }
 
@@ -87,7 +92,8 @@ export class AddToNicknameCommand extends Command {
             .map(x => x.replace(/[^a-zA-Z0-9]/g, "").trim());
 
         if (names.length + 1 > 2) {
-            MessageUtil.send({ content: "You may only have two IGNs per server. Consider removing one of your IGNs first." }, dmChannel, 6000);
+			MessageUtil.send({ content: "You may only have two IGNs per server. Consider removing one of your IGNs first." }, dmChannel, 6000);
+			UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
             return;
         }
 
@@ -109,7 +115,8 @@ export class AddToNicknameCommand extends Command {
         }
 
         if (possibleNames.length === 0) {
-            MessageUtil.send({ content: "You do not have any linked alternative accounts, or the alternative accounts you have linked are currently in use. To add another alternative account, use this command: `;addaltaccount`." }, dmChannel, 6000);
+			MessageUtil.send({ content: "You do not have any linked alternative accounts, or the alternative accounts you have linked are currently in use. To add another alternative account, use this command: `;addaltaccount`." }, dmChannel, 6000);
+			UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
             return;
         }
 
@@ -130,6 +137,7 @@ export class AddToNicknameCommand extends Command {
         ).send(GenericMessageCollector.getNumber(msg.author, 1, possibleNames.length));
 
         if (num === "CANCEL_CMD" || num === "TIME_CMD") {
+			UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
             return;
         }
         
@@ -139,6 +147,7 @@ export class AddToNicknameCommand extends Command {
         }
         catch (e) {
             await msg.author.send("Something went wrong when trying to change your nickname in the server. This is most likely due to a permission error.");
-        }
+		}
+		UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
     }
 }

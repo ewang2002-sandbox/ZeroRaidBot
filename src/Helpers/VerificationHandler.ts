@@ -20,6 +20,7 @@ import { IManualVerification } from "../Definitions/IManualVerification";
 import { IRealmEyeNoUser } from "../Definitions/IRealmEyeNoUser";
 import { IRealmEyeAPI } from "../Definitions/IRealmEyeAPI";
 import { PRIVATE_BOT } from "../Configuration/Config";
+import { UserAvailabilityHelper } from "./UserAvailabilityHelper";
 
 export module VerificationHandler {
 	interface ICheckResults {
@@ -129,6 +130,7 @@ export module VerificationHandler {
 
 			// within the server we will be checking for other major reqs.
 			if (section.isMain) {
+				UserAvailabilityHelper.InMenuCollection.set(member.id, UserAvailabilityHelper.MenuType.VERIFICATION);
 				let isOldProfile: boolean = false;
 				let botMsg: Message = await member.send(new MessageEmbed());
 
@@ -185,6 +187,7 @@ export module VerificationHandler {
 
 					if (choice === "TIME_CMD" || choice === "CANCEL_CMD") {
 						await botMsg.delete().catch(() => { });
+						UserAvailabilityHelper.InMenuCollection.delete(member.id);
 						return;
 					}
 
@@ -207,6 +210,7 @@ export module VerificationHandler {
 						if (typeof verificationAttemptsChannel !== "undefined") {
 							verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member}'s verification process has been canceled.\n\t⇒ Reason: ${nameToUse.substring(0, nameToUse.length - 1)}`).catch(() => { });
 						}
+						UserAvailabilityHelper.InMenuCollection.delete(member.id);
 						return;
 					}
 
@@ -252,6 +256,7 @@ export module VerificationHandler {
 							.setTimestamp();
 						await botMsg.edit(embed);
 					}
+					UserAvailabilityHelper.InMenuCollection.delete(member.id);
 				});
 
 				let canReact: boolean = true;

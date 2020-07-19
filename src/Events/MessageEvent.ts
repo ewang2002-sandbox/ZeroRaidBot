@@ -198,6 +198,7 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
  * @param msg The message.
  */
 async function checkModMail(msg: Message): Promise<void> {
+	// has to be in dms + cannot be in another menu
 	if (msg.guild !== null || UserAvailabilityHelper.InMenuCollection.has(msg.author.id)) {
 		return;
 	}

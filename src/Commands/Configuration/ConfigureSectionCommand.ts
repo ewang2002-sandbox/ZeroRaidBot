@@ -99,13 +99,6 @@ export class ConfigureSectionCommand extends Command {
 			sectMongo: "sections.$.channels.logging.verificationSuccessChannel"
 		},
 		{
-			q: "Configure Reaction Logging Channel",
-			d: "Mention, or type the ID of, the channel that you want the bot to use as the logging channel for reactions. When someone reacts (to a key, class emoji, etc.), it will be logged in this channel.",
-			m: false,
-			mainMongo: "generalChannels.logging.reactionLoggingChannel",
-			sectMongo: "sections.$.channels.logging.reactionLoggingChannel"
-		},
-		{
 			q: "Configure Manual Verification Channel",
 			d: "Mention, or type the ID of, the channel that you want the bot to use for manual verifications. If someone's profile is suspicious or missing something, then the bot will forward a summary of the profile to this channel to be reviewed.",
 			m: false,
@@ -134,17 +127,17 @@ export class ConfigureSectionCommand extends Command {
 			sectMongo: ""
 		},
 		{
-			q: "Configure Bot Updates Channel",
-			d: "Mention, or type the ID of, the channel that you want to make the bot updates channel. Any changelogs by the developer will be sent to this channel.",
-			m: true,
-			mainMongo: "generalChannels.logging.botUpdatesChannel",
-			sectMongo: ""
-		},
-		{
 			q: "Configure Moderation Mail Channel",
 			d: "Mention, or type the ID of, the channel that you want to make the moderation mail channel.",
 			m: true,
 			mainMongo: "generalChannels.modMailChannel",
+			sectMongo: ""
+		},
+		{
+			q: "Configure Modmail Storage Channel",
+			d: "Mention, or type the ID of, the channel that you want to make the modmail storage channel. This channel will be the channel where modmail responses will be stored. If this channel isn't defined, you won't be able to look at past responses.",
+			m: true,
+			mainMongo: "generalChannels.modMailStorageChannel",
 			sectMongo: ""
 		},
 		{
@@ -763,23 +756,22 @@ export class ConfigureSectionCommand extends Command {
 			.addField("Configure Verification Channel", "React with ✅ to configure the verification channel.")
 			.addField("Configure Manual Verification Channel", "React with 🔍 to configure the manual verification channel.")
 			.addField("Configure Verification Attempts Channel", "React with 🥈 to configure the verification attempts channel. The bot will forward all verification attempts here.")
-			.addField("Configure Verification Success Channel", "React with 🥇 to configure the verification success channel. The bot will forward successful verification attempts here.")
-			.addField("Configure Reaction Logging Channel", "React with 😄 to configure the reaction logging channel. The bot will forward any major reaction events (like a user reacting to a key or class emoji on an AFK check) here.");
+			.addField("Configure Verification Success Channel", "React with 🥇 to configure the verification success channel. The bot will forward successful verification attempts here.");
 
-		reactions.push("⬅️", "🚥", "💻", "✅", "🔍", "🥈", "🥇", "😄");
+		reactions.push("⬅️", "🚥", "💻", "✅", "🔍", "🥈", "🥇");
 
 		if (section.isMain) {
 			embed
 				.addField("Configure Moderation Logging Channel", "React with ⚒️ to configure the moderation logging channel. Blacklist and mute notifications will be forwarded to this channel")
 				.addField("Configure Suspension Logging Channel", "React with ⚠️ to configure the suspension logging command.")
 				.addField("Configure Join & Leave Logging Channel", "React with 📥 to configure join & leave logs.")
-				.addField("Configure Bot Updates Channel", "React with 🤖 to configure the bot updates channel. Any bot changelog information will be forwarded to this channel.")
 				.addField("Configure Moderation Mail Channel", "React with 📬 to configure the moderation mail channel.")
+				.addField("Configure Moderation Mail Storage Chanel", "React with ✏️ to configure the moderation mail storage channel. All modmail responses will be stored in this channel.")
 				.addField("Configure Raid Requests Channel", "React with ❓ to configure the raid requests channel.")
 				.addField("Configure Network Announcements Channel", "React with to configure the network announcements channel.")
 				.addField("Configure Quota Channel", "React with 📋 to configure the quota leaderboard channel.");
 
-			reactions.push("⚒️", "⚠️", "📥", "🤖", "📬", "❓", "📢", "📋");
+			reactions.push("⚒️", "⚠️", "📥", "📬", "✏️", "❓", "📢", "📋");
 		}
 
 		embed
@@ -885,19 +877,6 @@ export class ConfigureSectionCommand extends Command {
 					: "sections.$.channels.logging.verificationSuccessChannel"
 			);
 		}
-		// reaction logging
-		else if (r.name === "😄") {
-			await this.resetBotEmbed(botSentMsg).catch(() => { });
-			res = await this.updateChannelCommand(
-				msg,
-				"Reaction Logging Channel",
-				section,
-				guild.channels.cache.get(section.channels.logging.reactionLoggingChannel),
-				section.isMain
-					? "generalChannels.logging.reactionLoggingChannel"
-					: "sections.$.channels.logging.reactionLoggingChannel"
-			);
-		}
 		// mod log channel
 		else if (r.name === "⚒️") {
 			await this.resetBotEmbed(botSentMsg).catch(() => { });
@@ -907,6 +886,16 @@ export class ConfigureSectionCommand extends Command {
 				section,
 				guild.channels.cache.get(guildData.generalChannels.logging.moderationLogs),
 				"generalChannels.logging.moderationLogs"
+			);
+		}
+		else if (r.name === "✏️") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateChannelCommand(
+				msg,
+				"Moderation Mail Storage Channel",
+				section,
+				guild.channels.cache.get(guildData.generalChannels.modMailStorage),
+				"generalChannels.modMailStorage"
 			);
 		}
 		// suspension cmd
@@ -929,17 +918,6 @@ export class ConfigureSectionCommand extends Command {
 				section,
 				guild.channels.cache.get(guildData.generalChannels.logging.joinLeaveChannel),
 				"generalChannels.logging.joinLeaveChannel"
-			);
-		}
-		// bot updates
-		else if (r.name === "🤖") {
-			await this.resetBotEmbed(botSentMsg).catch(() => { });
-			res = await this.updateChannelCommand(
-				msg,
-				"Bot Updates Channel",
-				section,
-				guild.channels.cache.get(guildData.generalChannels.logging.botUpdatesChannel),
-				"generalChannels.logging.botUpdatesChannel"
 			);
 		}
 		// mod mail
@@ -1663,7 +1641,7 @@ export class ConfigureSectionCommand extends Command {
 						embed: promptEmbed.setTitle("**Edit Minimum Rank**").setDescription("Type the minimum rank a person needs to meet the requirements.")
 					}, 2, TimeUnit.MINUTE);
 
-					const n: number | "TIME_CMD" | "CANCEL_CMD" = await gm0.send(GenericMessageCollector.getNumber(msg.channel, 0, 75));
+					const n: number | "TIME_CMD" | "CANCEL_CMD" = await gm0.send(GenericMessageCollector.getNumber(msg.channel, 0, 80));
 					if (n === "TIME_CMD") {
 						return resolve("TIME_CMD");
 					}
@@ -2187,14 +2165,13 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 		// logging channels for section
 		const verificationAttemptsChan: GuildChannel | undefined = guild.channels.cache.get(section.channels.logging.verificationAttemptsChannel);
 		const verificationSuccessChan: GuildChannel | undefined = guild.channels.cache.get(section.channels.logging.verificationSuccessChannel);
-		const reactionLoggingChannel: GuildChannel | undefined = guild.channels.cache.get(section.channels.logging.reactionLoggingChannel);
 
 		// general channels for guild
 		const moderationLoggingChannel: GuildChannel | undefined = guild.channels.cache.get(guildData.generalChannels.logging.moderationLogs);
 		const suspensionLoggingChannel: GuildChannel | undefined = guild.channels.cache.get(guildData.generalChannels.logging.suspensionLogs);
 		const joinLeaveLoggingChannel: GuildChannel | undefined = guild.channels.cache.get(guildData.generalChannels.logging.joinLeaveChannel);
-		const botUpdatesChannel: GuildChannel | undefined = guild.channels.cache.get(guildData.generalChannels.logging.botUpdatesChannel);
 		const modMailChannel: GuildChannel | undefined = guild.channels.cache.get(guildData.generalChannels.modMailChannel);
+		const modMailStorageChannel: GuildChannel | undefined = guild.channels.cache.get(guildData.generalChannels.modMailStorage);
 		const raidRequestsChannel: GuildChannel | undefined = guild.channels.cache.get(guildData.generalChannels.raidRequestChannel);
 		const quotaLeaderboardChannel: GuildChannel | undefined = guild.channels.cache.get(guildData.generalChannels.quotaChannel);
 
@@ -2254,9 +2231,7 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 			.appendLine()
 			.append(`Verification Attempts Channel: ${typeof verificationAttemptsChan === "undefined" ? "N/A" : verificationAttemptsChan}`)
 			.appendLine()
-			.append(`Verification Success Channels: ${typeof verificationSuccessChan === "undefined" ? "N/A" : verificationSuccessChan}`)
-			.appendLine()
-			.append(`Reaction Logging Channels: ${typeof reactionLoggingChannel === "undefined" ? "N/A" : reactionLoggingChannel}`);
+			.append(`Verification Success Channels: ${typeof verificationSuccessChan === "undefined" ? "N/A" : verificationSuccessChan}`);
 
 		const roleSB: StringBuilder = new StringBuilder("__Role__")
 			.appendLine()
@@ -2305,9 +2280,9 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 				.appendLine()
 				.append(`Join & Leave Channel: ${typeof joinLeaveLoggingChannel === "undefined" ? "N/A" : joinLeaveLoggingChannel}`)
 				.appendLine()
-				.append(`Bot Updates Channel: ${typeof botUpdatesChannel === "undefined" ? "N/A" : botUpdatesChannel}`)
-				.appendLine()
 				.append(`Mod Mail Channel: ${typeof modMailChannel === "undefined" ? "N/A" : modMailChannel}`)
+				.appendLine()
+				.append(`Mod Mail Storage Channel: ${typeof modMailStorageChannel === "undefined" ? "N/A" : modMailStorageChannel}`)
 				.appendLine()
 				.append(`Raid Requests Channel: ${typeof raidRequestsChannel === "undefined" ? "N/A" : raidRequestsChannel}`)
 				.appendLine()

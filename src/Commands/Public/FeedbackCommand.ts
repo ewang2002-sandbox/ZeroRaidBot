@@ -39,8 +39,8 @@ export class FeedbackCommand extends Command {
 
 	private readonly _questions: string[][] = [
 		// general idea AKA title
-		["What is the General Idea of this Feedback?", "The general idea is a short \"summary\" (preferably less than 10 words) of what your idea is. This should NOT be an essay; that will be for the next step. Valid submissions are:\n- \"Add Pirate Cave AFK check\"\n- \"Add more moderation tools.\"\n- \"Suggestions to improve modmail\""],
-		["Please Describe the Feedback In Detail.", "Now is the time for you to fully describe your suggestion or feedback! Use this opportunity to give me an idea of what you want. In other words, expand on the \"General Idea.\""]
+		["What is the general idea of this feedback?", "The general idea is a short \"summary\" (preferably less than 10 words) of what your idea is. This should NOT be an essay; that will be for the next step. Examples of valid submissions are:\n- \"Add Pirate Cave AFK check\"\n- \"Add more moderation tools.\"\n- \"Suggestions to improve modmail\""],
+		["Please describe your suggestion or feedback in detail.", "Now is the time for you to fully describe your suggestion or feedback! Use this opportunity to give me an idea of what you want. In other words, expand on the \"General Idea.\""]
 	];
 
 	public async executeCommand(
@@ -158,7 +158,6 @@ export class FeedbackCommand extends Command {
 		};
 
 		let resp: GithubHandler.IssuesResponse = await GithubHandler.createIssue("FEEDBACK", feedback);
-		console.log(resp); 
 		await MongoDbHelper.MongoBotSettingsClient.updateOne({ botId: (msg.client.user as ClientUser).id }, {
 			$push: {
 				"dev.feedback": feedback
@@ -166,6 +165,14 @@ export class FeedbackCommand extends Command {
 		});
 
 		UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
+
+		const embed: MessageEmbed = MessageUtil.generateBlankEmbed(msg.author)
+			.setTitle("Feedback Submitted Successfully")
+			.setDescription("Thank you for submitting your feedback! It has been submitted successfully.")
+			.addField("Information", `- Database: Saved\n- Online: ${resp === GithubHandler.IssuesResponse.SUCCESS ? "Saved" : "Not Saved"}`)
+			.setFooter("Successfully Submitted Feedback.");
+		await msg.author.send(embed)
+			.catch(e => { });
 	}
 
 	private generateEmbed(author: User, question: string, response: string, directions: string): MessageEmbed {

@@ -44,6 +44,7 @@ import { ModmailBlacklistCommand } from "../Commands/Moderator/ModmailBlacklistC
 import { ModmailUnblacklistCommand } from "../Commands/Moderator/ModmailUnblacklistCommand";
 import { CheckModmailBlacklistCommand } from "../Commands/Staff/CheckModmailBlacklistCommand";
 import { FeedbackCommand } from "../Commands/Public/FeedbackCommand";
+import { BugReportCommand } from "../Commands/Public/BugReportCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -78,7 +79,8 @@ export class CommandManager {
 		this.commands.set("Public", [
 			new HelpCommand(),
 			new PingCommand(),
-			new FeedbackCommand()
+			new FeedbackCommand(),
+			new BugReportCommand()
 		]);
 
 		this.commands.set("Server Information", [

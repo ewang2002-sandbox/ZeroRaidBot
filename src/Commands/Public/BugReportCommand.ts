@@ -153,7 +153,16 @@ export class BugReportCommand extends Command {
 		} // end for
 
 		let bugReport: GithubHandler.IBugReport = {
-			
+			time: new Date().getTime(),
+			authorId: DEVELOPER_ID.includes(msg.author.id) ? (PRODUCTION_BOT ? "Developer" : "Developer Testing") : msg.author.id,
+			authorTag: DEVELOPER_ID.includes(msg.author.id) ? (PRODUCTION_BOT ? "Developer" : "Developer Testing") : msg.author.tag,
+			version: BOT_VERSION,
+			title: `[BUG REPORT] ${responses[0][1]}`,
+			errorMsg: responses[1][1],
+			location: responses[2][1],
+			description: responses[3][1],
+			reproduceSteps: responses[4][1],
+			otherInfo: responses[5][1]
 		}
 
 		let resp: GithubHandler.IssuesResponse = await GithubHandler.createIssue("BUG_REPORT", bugReport);
@@ -178,7 +187,7 @@ export class BugReportCommand extends Command {
 		return MessageUtil.generateBlankEmbed(author)
 			.setTitle(question)
 			.setDescription(response.length === 0 ? "N/A" : response)
-			.setFooter("Feedback")
+			.setFooter("Bug Report")
 			.addField("General Instructions", `Please respond to the question posed above. Please see the specific directions below for this question. You will have up to 1500 characters, and will have 10 minutes to respond. Note that you cannot submit images.\n⇒ React with ✅ once you are satisfied with your response above. You will be moved to the next step.\n⇒ React with ❌ to cancel this process.\n\n⚠️ WARNING: Your Discord tag and ID will be shared with the developer.\nℹ️ NOTE: Once you submit your response to this question, you cannot view your response again!`)
 			.addField("Specific Directions", directions);
 	}

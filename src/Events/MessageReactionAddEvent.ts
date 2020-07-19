@@ -1,4 +1,4 @@
-import { MessageReaction, User, Message, Guild, GuildMember, TextChannel, RoleResolvable, MessageCollector, DMChannel, VoiceChannel, Collection, PartialUser, Role } from "discord.js";
+import { MessageReaction, User, Message, Guild, GuildMember, TextChannel, RoleResolvable, MessageCollector, DMChannel, VoiceChannel, Collection, PartialUser, Role, MessageEmbedFooter } from "discord.js";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
@@ -82,7 +82,29 @@ export async function onMessageReactionAdd(
 		if (ModMailHandler.CurrentlyRespondingToModMail.has(member.id)) {
 			return;
 		}
-		ModMailHandler.respondToModmail(reaction.message, member);
+
+		if (reaction.message.embeds.length === 0) {
+			return;
+		}
+		// check if msg even has an embed
+		const footer: MessageEmbedFooter | null = reaction.message.embeds[0].footer;
+
+		// check if footer is valid 
+		if (footer === null
+			|| typeof footer.text === "undefined"
+			|| !footer.text.endsWith("• Modmail Message")) {
+			return;
+		}
+		
+		if (reaction.emoji.name === "📝") {
+			ModMailHandler.respondToModmail(reaction.message, member);
+		}
+		else if (reaction.emoji.name === "🗑️") {
+			await reaction.message.delete().catch(e => { });
+		}
+		else if (reaction.emoji.name === "🚫") {
+			ModMailHandler.blacklistFromModmail(reaction.message, member, guildDb);
+		}
 		return;
 	}
 	//#endregion

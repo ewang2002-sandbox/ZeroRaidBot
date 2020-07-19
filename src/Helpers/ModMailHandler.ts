@@ -1,5 +1,5 @@
 import { IRaidGuild } from "../Templates/IRaidGuild";
-import { User, Guild, Message, MessageEmbed, TextChannel, GuildMember, MessageEmbedFooter, MessageAttachment, FileOptions, EmbedField, Collection, Emoji } from "discord.js";
+import { User, Guild, Message, MessageEmbed, TextChannel, GuildMember, MessageEmbedFooter, MessageAttachment, FileOptions, EmbedField, Collection, Emoji, EmojiResolvable } from "discord.js";
 import { MongoDbHelper } from "./MongoDbHelper";
 import { StringUtil } from "../Utility/StringUtil";
 import { UserAvailabilityHelper } from "./UserAvailabilityHelper";
@@ -7,6 +7,7 @@ import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollec
 import { TimeUnit } from "../Definitions/TimeUnit";
 import { MessageUtil } from "../Utility/MessageUtil";
 import { DateUtil } from "../Utility/DateUtil";
+import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuManager";
 
 export module ModMailHandler {
 	// K = the mod that is responding
@@ -48,22 +49,40 @@ export module ModMailHandler {
 		}
 		const guildDb: IRaidGuild = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOne({ guildID: selectedGuild.id })) as IRaidGuild;
 
+		if (guildDb.moderation.blacklistedModMailUsers.some(x => x.id === initiator.id)) {
+			await message.react("⛔").catch(e => { });
+			return;
+		}
+
+		await message.react("📧").catch(e => { });
 		const modmailChannel: TextChannel = selectedGuild.channels.cache.get(guildDb.generalChannels.modMailChannel) as TextChannel;
 
-		const modMailEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(initiator)
+		let attachments: string = "";
+		let index: number = 0;
+		for (let [id, attachment] of message.attachments) {
+			if (index > 6) {
+				break;
+			}
+			// [attachment](url) (type of attachment)
+			attachments += `[Attachment ${index + 1}](${attachment.url}) (\`${attachment.url.split(".")[attachment.url.split(".").length - 1]}\`)\n`;
+			++index;
+		}
+
+		const modMailEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(initiator, "RED")
 			.setTimestamp()
 			// so we can find the id 
 			.setFooter(`${initiator.id} • Modmail Message`)
 			// the content of the modmail msg
 			.setDescription(message.content)
-			// attach files
-			.attachFiles(message.attachments.array())
-			// sender info 
-			.addField("Sender Information", `⇒ Mention: ${initiator}\n⇒ Tag: ${initiator.tag}\n⇒ ID: ${initiator.id}`)
-			// responses -- any mods that have responded
-			.addField("Last Response By", "None.")
 			// title -- ❌ means no responses
 			.setTitle("❌ Modmail Entry");
+		if (attachments.length !== 0) {
+			modMailEmbed.addField("Attachments", attachments);
+		}
+		
+		modMailEmbed.addField("Sender Information", `⇒ Mention: ${initiator}\n⇒ Tag: ${initiator.tag}\n⇒ ID: ${initiator.id}`)
+			// responses -- any mods that have responded
+			.addField("Last Response By", "None.")
 		const modMailMessage: Message = await modmailChannel.send(modMailEmbed);
 		// respond reaction
 		await modMailMessage.react("📝").catch(() => { });
@@ -74,34 +93,99 @@ export module ModMailHandler {
 	}
 
 	/**
+	 * Blacklists the author of amodmail message from using modmail.
+	 * @param originalModMailMessage The message from the modmail channel.
+	 * @param mod The moderator. 
+	 * @param guildDb The guild doc.
+	 */
+	export async function blacklistFromModmail(originalModMailMessage: Message, mod: GuildMember, guildDb: IRaidGuild): Promise<void> {
+		const oldEmbed: MessageEmbed = originalModMailMessage.embeds[0];
+		const authorOfModmailId: string = ((oldEmbed.footer as MessageEmbedFooter).text as string).split("•")[0].trim();
+
+		await originalModMailMessage.reactions.removeAll().catch(e => { });
+		const confirmBlacklist: MessageEmbed = MessageUtil.generateBlankEmbed(mod.user)
+			.setTitle("Blacklist From Modmail")
+			.setDescription(`Are you sure you want to blacklist the user (with ID \`${authorOfModmailId}\`) from using modmail? He or she won't be notified.`)
+			.setFooter("Confirmation");
+		await originalModMailMessage.edit(confirmBlacklist).catch(e => { });
+		const checkXReactions: EmojiResolvable[] = ["✅", "❌"];
+		const resultantReaction: Emoji | "TIME_CMD" = await new FastReactionMenuManager(
+			originalModMailMessage,
+			mod,
+			checkXReactions,
+			1,
+			TimeUnit.MINUTE
+		).react();
+		if (resultantReaction === "TIME_CMD" || resultantReaction.name === "❌") {
+			await originalModMailMessage.edit(oldEmbed).catch(e => { });
+			// respond reaction
+			await originalModMailMessage.react("📝").catch(() => { });
+			// garbage reaction
+			await originalModMailMessage.react("🗑️").catch(() => { });
+			// blacklist
+			await originalModMailMessage.react("🚫").catch(() => { });
+			return;
+		}
+
+		let wasAlreadyBlacklisted: boolean = false;
+		const index: number = guildDb.moderation.blacklistedModMailUsers.findIndex(x => x.id === authorOfModmailId);
+		if (index === -1) {
+			await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: mod.guild.id }, {
+				$push: {
+					"moderation.blacklistedModMailUsers": {
+						id: authorOfModmailId,
+						mod: mod.displayName,
+						time: new Date().getTime(),
+						reason: "AUTO: Blacklisted from Modmail Control Panel."
+					}
+				}
+			});
+		}
+		else {
+			wasAlreadyBlacklisted = true;
+		}
+
+		if (wasAlreadyBlacklisted) {
+			await originalModMailMessage.delete().catch(e => { });
+			return;
+		}
+
+		const embedToReplaceOld: MessageEmbed = MessageUtil.generateBlankEmbed(mod.user)
+			.setTitle("Blacklisted From Modmail")
+			.setDescription(`The user with ID \`${authorOfModmailId}\` has been blacklisted from using modmail. This message will delete in 10 seconds.`)
+			.setFooter("Blacklisted from Modmail.");
+		await originalModMailMessage.edit(embedToReplaceOld)
+			.then(x => x.delete({ timeout: 10000 }))
+			.catch(e => { });
+
+		const moderationChannel: TextChannel | undefined = mod.guild.channels.cache.get(guildDb.generalChannels.logging.moderationLogs) as TextChannel | undefined;
+
+		if (typeof moderationChannel === "undefined") {
+			return;
+		}
+
+		const modEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(mod.user)
+			.setTitle("Blacklisted From Modmail")
+			.setDescription(`⇒ **Blacklisted ID:** ${authorOfModmailId}\n⇒ **Moderator:** ${mod} (${mod.id})`)
+			.addField("⇒ Reason", "AUTOMATIC: Blacklisted from Modmail Control Panel.")
+			.setFooter("Blacklisted from Modmail.");
+		await moderationChannel.send(modEmbed).catch(e => { });
+	}
+
+	/**
 	 * Allows a person to respond to a modmail message. 
 	 * @param originalModMailMessage The message from the mod mail channel that the person is going to respond to.
 	 * @param memberThatWillRespond The person that will be responding to the modmail sender/initator. 
 	 */
 	export async function respondToModmail(originalModMailMessage: Message, memberThatWillRespond: GuildMember): Promise<void> {
-		// check if msg even has an embed
-		if (originalModMailMessage.embeds.length === 0) {
-			return;
-		}
-
-		const footer: MessageEmbedFooter | null = originalModMailMessage.embeds[0].footer;
-
-		// check if footer is valid 
-		if (footer === null
-			|| typeof footer.text === "undefined"
-			|| !footer.text.endsWith("• Modmail Message")) {
-			return;
-		}
-
 		// no permission
 		if (memberThatWillRespond.guild.me !== null && !memberThatWillRespond.guild.me.hasPermission("MANAGE_CHANNELS")) {
 			return;
 		}
 
 		// get old embed + prepare
-		const authorOfModmailId: string = footer.text.split("•")[0].trim();
 		const oldEmbed: MessageEmbed = originalModMailMessage.embeds[0];
-		CurrentlyRespondingToModMail.set(memberThatWillRespond.id, authorOfModmailId);
+		const authorOfModmailId: string = ((oldEmbed.footer as MessageEmbedFooter).text as string).split("•")[0].trim();
 
 		const originalModMailContent: string = typeof originalModMailMessage.embeds[0].description === "undefined"
 			? ""
@@ -123,15 +207,54 @@ export module ModMailHandler {
 			return;
 		}
 
-		const files: (string | MessageAttachment | FileOptions)[] = originalModMailMessage.embeds[0].files;
-		const senderInfo: string = (originalModMailMessage.embeds[0].fields.find(x => x.name === "Sender Information") as EmbedField).value;
+		await originalModMailMessage.reactions.removeAll().catch(e => { });
+
+		// make sure the modmail wasn't already responded to
+		const indexOfLastResponse: number = oldEmbed.fields.findIndex(x => x.name === "Last Response By");
+		if (indexOfLastResponse === -1) {
+			return;
+		}
+		else if (oldEmbed.fields[indexOfLastResponse].value !== "None.") {
+			const confirmWantToRespond: MessageEmbed = MessageUtil.generateBlankEmbed(memberThatWillRespond.user)
+				.setTitle("Respond to Modmail")
+				.setDescription("This modmail entry has already been answered. Are you sure you want to answer this?")
+				.setFooter("Confirmation");
+			await originalModMailMessage.edit(confirmWantToRespond).catch(e => { });
+			const checkXReactions: EmojiResolvable[] = ["✅", "❌"];
+			const resultantReaction: Emoji | "TIME_CMD" = await new FastReactionMenuManager(
+				originalModMailMessage,
+				memberThatWillRespond,
+				checkXReactions,
+				1,
+				TimeUnit.MINUTE
+			).react();
+			if (resultantReaction === "TIME_CMD" || resultantReaction.name === "❌") {
+				await originalModMailMessage.edit(oldEmbed).catch(e => { });
+				// respond reaction
+				await originalModMailMessage.react("📝").catch(() => { });
+				// garbage reaction
+				await originalModMailMessage.react("🗑️").catch(() => { });
+				// blacklist
+				await originalModMailMessage.react("🚫").catch(() => { });
+				return;
+			}
+		}
+
+		CurrentlyRespondingToModMail.set(memberThatWillRespond.id, authorOfModmailId);
+
+		const attachments: EmbedField | undefined = oldEmbed.fields.find(x => x.name === "Attachments");
+		const senderInfo: string = (oldEmbed.fields.find(x => x.name === "Sender Information") as EmbedField).value;
 
 		const noUserFoundEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(memberThatWillRespond.user)
 			.setTitle("📝 Response In Progress")
 			.setDescription(originalModMailContent)
-			.addField("Sender Info", senderInfo)
-			.addField("Current Responder", `${memberThatWillRespond}: \`${DateUtil.getTime()}\``)
 			.setFooter("Modmail In Progress!");
+		if (typeof attachments !== "undefined") {
+			noUserFoundEmbed.addField(attachments.name, attachments.value);
+		}
+		noUserFoundEmbed.addField("Sender Info", senderInfo)
+			.addField("Current Responder", `${memberThatWillRespond}: \`${DateUtil.getTime()}\``);
+
 		await originalModMailMessage.edit(noUserFoundEmbed);
 
 		// create channel
@@ -156,15 +279,12 @@ export module ModMailHandler {
 
 		// function declaration that returns embed that
 		// contains response
-		function getRespEmbed(resp: string, attachments: (string | MessageAttachment | FileOptions)[], anony: boolean): MessageEmbed {
+		function getRespEmbed(resp: string, anony: boolean): MessageEmbed {
 			const e: MessageEmbed = MessageUtil.generateBlankEmbed(memberThatWillRespond.user)
 				.setTitle("Your Response")
 				.setDescription(resp === "" ? "N/A" : resp)
 				.setFooter("Modmail Response System")
-				.addField("Instructions", `Please respond to the above message by typing a message here. When you are finished, simply send it here. You will have 10 minutes.\n⇒ React with ✅ once you are satisfied with your response above. This will send the message.\n⇒ React with ❌ to cancel this process.\n⇒ React with 👀 to either show or hide your identity to the person that sent the modmail message. **Identity:** ${anony ? "Private" : "Public"}`);
-			if (attachments.length !== 0) {
-				e.attachFiles(attachments);
-			}
+				.addField("Instructions", `Please respond to the above message by typing a message here. When you are finished, simply send it here. You will have 10 minutes. You are not able to send images or attachments directly.\n⇒ React with ✅ once you are satisfied with your response above. This will send the message.\n⇒ React with ❌ to cancel this process.\n⇒ React with 👀 to either show or hide your identity to the person that sent the modmail message. **Identity:** ${anony ? "Private" : "Public"}`);
 
 			return e;
 		}
@@ -174,21 +294,23 @@ export module ModMailHandler {
 			.setTitle("Modmail: Respond")
 			.setFooter(`Modmail Response System`)
 			.setDescription(originalModMailContent)
-			.attachFiles(files)
-			.addField("Sender Information", senderInfo);
+		if (typeof attachments !== "undefined") {
+			introEmbed.addField("Attachments", attachments.value);
+		}
+		introEmbed.addField("Sender Information", senderInfo);
+
 		const introMsg: Message = await responseChannel.send(memberThatWillRespond, {
 			embed: introEmbed
 		});
 		await introMsg.pin().catch(() => { });
 
 		let responseToMail: string = "";
-		let attachments: (string | MessageAttachment | FileOptions)[] = [];
 		let anonymous: boolean = true;
 
 		let botMsg: Message | null = null;
 		let hasReactedToMessage: boolean = false;
 		while (true) {
-			const responseEmbed: MessageEmbed = getRespEmbed(responseToMail, attachments, anonymous);
+			const responseEmbed: MessageEmbed = getRespEmbed(responseToMail, anonymous);
 
 			if (botMsg === null) {
 				botMsg = await responseChannel.send(responseEmbed);
@@ -245,7 +367,6 @@ export module ModMailHandler {
 
 				if (response.content.length !== 0) {
 					responseToMail = response.content;
-					attachments = response.attachments.array();
 				}
 			}
 		}
@@ -253,16 +374,15 @@ export module ModMailHandler {
 		const replyEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(anonymous ? memberThatWillRespond.guild : memberThatWillRespond.user)
 			.setTitle("Modmail Response")
 			.setDescription(responseToMail)
-			.attachFiles(attachments)
 			.addField("Original Message", originalModMailContent.length === 0 ? "N/A" : (originalModMailContent.length > 1012 ? originalModMailContent.substring(0, 1000) + "..." : originalModMailContent))
 			.setFooter("Modmail Response");
 
-		await authorOfModmail.send(replyEmbed);
+		await authorOfModmail.send(replyEmbed).catch(e => { });
 		await responseChannel.delete().catch(() => { });
 		CurrentlyRespondingToModMail.delete(memberThatWillRespond.id);
 		oldEmbed.fields.splice(oldEmbed.fields.findIndex(x => x.name === "Last Response By"), 1);
 		oldEmbed.addField("Last Response By", `${memberThatWillRespond} (${DateUtil.getTime()})`);
-		await originalModMailMessage.edit(oldEmbed.setTitle("✅ Modmail Entry"));
+		await originalModMailMessage.edit(oldEmbed.setTitle("✅ Modmail Entry").setColor("GREEN"));
 		await originalModMailMessage.react("📝").catch(() => { });
 		await originalModMailMessage.react("🗑️").catch(() => { });
 		await originalModMailMessage.react("🚫").catch(() => { });

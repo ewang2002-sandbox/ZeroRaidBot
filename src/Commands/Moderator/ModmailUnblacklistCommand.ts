@@ -86,7 +86,7 @@ export class ModmailUnblacklistCommand extends Command {
 			.setTitle("Modmail Unblacklisted")
 			.setDescription(`⇒ **Unblacklisted:** ${memberToModmailUnbl} (${memberToModmailUnbl.id})\n⇒ **Moderator:** ${msg.author} (${msg.author.id})`)
 			.addField("⇒ Reason", reason)
-			.setColor("RED")
+			.setColor("GREEN")
 			.setFooter("Unblacklisted at")
 			.setTimestamp();
 		embed.setAuthor(memberToModmailUnbl.user.tag, memberToModmailUnbl.user.displayAvatarURL());

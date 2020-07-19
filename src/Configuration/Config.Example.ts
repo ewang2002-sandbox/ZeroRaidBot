@@ -61,3 +61,23 @@ export const DeleteEmbedTime: number = 5000;
  * Private RealmEye API URL. Don't fill this field out.
  */
 export const APIUrl: string = "";
+
+/**
+ * This token will be used to post issues. 
+ */
+export const GITHUB_TOKEN: string = "";
+
+/**
+ * The organization or user. 
+ */
+export const REPOSITORY_ORG: string = "DungeoneerExalt";
+
+/**
+ * The repo
+ */
+export const REPOSITORY_NAME: string = "ZeroRaidBot";
+
+/**
+ * The IDs of all devs.
+ */
+export const DEVELOPER_ID: string[] = [];

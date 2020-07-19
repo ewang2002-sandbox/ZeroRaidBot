@@ -35,7 +35,17 @@ export module UserAvailabilityHelper {
 		/**
 		 * AFK check key
 		 */
-		KEY_ASK
+		KEY_ASK,
+
+		/**
+		 * Currently giving feedback
+		 */
+		FEEDBACK,
+
+		/**
+		 * Currently submitting bug report
+		 */
+		BUG_REPORT
 	}
 
 	/**

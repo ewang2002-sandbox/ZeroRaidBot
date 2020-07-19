@@ -1,4 +1,4 @@
-import { MessageEmbed, Message, MessageCollector, Collection, MessageOptions, TextChannel, Guild, Role, GuildMember, Permissions, PartialTextBasedChannelFields, User, GuildChannel, GuildEmoji, EmojiResolvable, ReactionCollector, MessageReaction, Emoji } from "discord.js";
+import { MessageEmbed, Message, MessageCollector, Collection, MessageOptions, TextChannel, Guild, Role, GuildMember, Permissions, PartialTextBasedChannelFields, User, GuildChannel, GuildEmoji, EmojiResolvable, ReactionCollector, MessageReaction, Emoji, DMChannel } from "discord.js";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { TimeUnit } from "../../Definitions/TimeUnit";
 import { FastReactionMenuManager } from "../Reaction/FastReactionMenuManager";
@@ -177,7 +177,7 @@ export class GenericMessageCollector<T> {
 			const botMsg: Message = oldMsg === null
 				? await this._channel.send({ embed: this._embed, content: this._strContent })
 				: oldMsg;
-			const msgCollector: MessageCollector = new MessageCollector(this._channel as TextChannel, m => m.author.id === this._originalAuthor.id, {
+			const msgCollector: MessageCollector = new MessageCollector(this._channel as TextChannel | DMChannel, m => m.author.id === this._originalAuthor.id, {
 				time: this._maxDuration
 			});
 			// RECEIVE COLLECTOR 

@@ -40,6 +40,9 @@ import { AdminProfileUpdaterCommand } from "../Commands/Bot Owner/AdminProfileUp
 import { LogRuneWCCommand } from "../Commands/Logging/LogRuneWCCommand";
 import { LogVialCommand } from "../Commands/Logging/LogVialCommand";
 import { NoLoggedRunsCommand } from "../Commands/Moderator/NoLoggedRunsCommand";
+import { ModmailBlacklistCommand } from "../Commands/Moderator/ModmailBlacklistCommand";
+import { ModmailUnblacklistCommand } from "../Commands/Moderator/ModmailUnblacklistCommand";
+import { CheckModmailBlacklistCommand } from "../Commands/Staff/CheckModmailBlacklistCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -99,7 +102,8 @@ export class CommandManager {
 			new FindUserCommand(),
 			new PollCommand(),
 			new CheckBlacklistCommand(),
-			new ManualVerifyCommand()
+			new ManualVerifyCommand(),
+			new CheckModmailBlacklistCommand()
 		]);
 
 		this.commands.set("Moderation", [
@@ -110,7 +114,9 @@ export class CommandManager {
 			new BlacklistCommand(),
 			new UnblacklistCommand(),
 			new ResetQuotaCommand(),
-			new NoLoggedRunsCommand()
+			new NoLoggedRunsCommand(),
+			new ModmailBlacklistCommand(),
+			new ModmailUnblacklistCommand()
 		]);
 		
 		this.commands.set("User Profile", [

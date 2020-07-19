@@ -160,7 +160,6 @@ export class AdminProfileUpdaterCommand extends Command {
 				.setTitle("Members With No Profile")
 				.setDescription("The members below are verified in this server but do not have a profile logged with the bot. The mention is shown first, along with any corresponding IGNs. The first IGN is the main IGN, and any other IGNs will be the alternative IGN.\n\n**DIRECTIONS:** The members shown below will have a profile created for them. Type the number corresponding to the member(s) that you do NOT want to have a profile created for.\n\n**FINISHED?** React with the ✅ to begin the syncing process. React with the ❌ to cancel this process completely.");
 
-			// TODO use the format here for other list-based embeds
 			const fieldsForEmbed: string[] = StringUtil.arrayToStringFields<[GuildMember, string[]]>(
 				membersWithNoDbEntry,
 				(i, element) => `**\`[${i + 1}]\`** ${element[0]}\n⇒ IGN(s): ${element[1].join(", ")}\n\n`,

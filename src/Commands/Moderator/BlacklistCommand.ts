@@ -36,7 +36,6 @@ export class BlacklistCommand extends Command {
 		);
 	}
 
-	// TODO only accept ign
 	public async executeCommand(
 		msg: Message,
 		args: string[],
@@ -116,7 +115,7 @@ export class BlacklistCommand extends Command {
 		const invalidInputEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 			.setTitle("Invalid Input Detected")
-			.setDescription(`Your input, ${isIgn || isId ? `\`${nameToBlacklist}\`` : nameToBlacklist}, is invalid. Please try again.`)
+			.setDescription(`Your input, ${(isIgn || isId) ? `\`${nameToBlacklist}\`` : nameToBlacklist}, is invalid. Please try again.`)
 			.setColor("RED")
 			.setFooter("Blacklist");
 
@@ -134,8 +133,7 @@ export class BlacklistCommand extends Command {
 			}
 			else {
 				invalidInputEmbed.addField("Reason", "The input you provided either wasn't a valid in-game name (10 __letters__ or less), or the ID/mention corresponding to the person that you wanted to blacklist wasn't found in the database.");
-				msg.channel.send(invalidInputEmbed)
-					.then(x => x.delete({ timeout: 5000 }));
+				MessageUtil.send({ embed: invalidInputEmbed }, msg.channel);
 				return;
 			}
 		}

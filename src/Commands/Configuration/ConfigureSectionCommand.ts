@@ -1,7 +1,3 @@
-// TODO
-// - implement key tier role
-// - prevent duplicate/invalid entries (especially with afk check/control panel)
-
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
@@ -386,8 +382,6 @@ export class ConfigureSectionCommand extends Command {
 	 */
 	private async add(msg: Message, guildData: IRaidGuild, botMsg: Message): Promise<void> {
 		await botMsg.delete().catch(e => { });
-		// TODO do something with botmsg
-
 		// get name
 		const nameOfSectionPrompt: MessageEmbed = new MessageEmbed()
 			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())

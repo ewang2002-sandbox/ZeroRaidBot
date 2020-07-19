@@ -21,7 +21,7 @@ For the purpose of this guide, I will be using a free service online.
 1. Head over to the official MongoDB website, which you can find [here](https://www.mongodb.com/).
 ![Step 1](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/master/md_img/1.PNG)
 2. Click on "Start free." Create a new account.
-3. Now, click "Create a cluster." 
+3. Now, click "Create a cluster" (below the free tier).
 ![Step 3](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/master/md_img/2.PNG)
 4. Configure the `Cloud Provider` & Region and `Cluster Name`. Leave `Cluster Tier` and `Additional Settings` alone as you may have to pay. 
 	- For `Cloud Provider`, pick the region that is closest to your general location. 

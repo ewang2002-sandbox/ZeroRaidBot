@@ -1,5 +1,5 @@
 import { IRaidInfo } from "../Definitions/IRaidInfo";
-import { IBlacklistedUser } from "../Definitions/IBlacklistedUser";
+import { IBlacklistedUser, IModmailBlacklistedUser } from "../Definitions/IBlacklistedUser";
 import { IModMail } from "../Definitions/IModMail";
 import { ISection } from "./ISection";
 import { IVerification } from "../Definitions/IVerification";
@@ -321,7 +321,7 @@ export interface IRaidGuild {
 		/**
 		 * IDs of accounts that will not be able to use modmail.
 		 */
-		blacklistedModMailUsers: string[];
+		blacklistedModMailUsers: IModmailBlacklistedUser[];
 
 		/**
 		 * People that are muted.

@@ -28,3 +28,25 @@ export interface INetworkBlacklistedUser extends IBlacklistedUser {
      */
     guildName: string; 
 }
+
+export interface IModmailBlacklistedUser {
+	/**
+	 * ID of user.
+	 */
+	id: string; 
+	
+	/**
+	 * Moderator IGN. 
+	 */
+	mod: string; 
+
+	/**
+	 * Date/time.
+	 */
+	time: number;
+
+	/**
+	 * Reason
+	 */
+	reason: string; 
+}

@@ -177,7 +177,6 @@ export class GenericMessageCollector<T> {
 			const botMsg: Message = oldMsg === null
 				? await this._channel.send({ embed: this._embed, content: this._strContent })
 				: oldMsg;
-			// TODO: textchannel cast appropriate?
 			const msgCollector: MessageCollector = new MessageCollector(this._channel as TextChannel, m => m.author.id === this._originalAuthor.id, {
 				time: this._maxDuration
 			});
@@ -267,7 +266,6 @@ export class GenericMessageCollector<T> {
 		}
 
 		return new Promise(async (resolve) => {
-			// TODO: textchannel cast appropriate?
 			const msgCollector: MessageCollector = new MessageCollector(
 				this._channel as TextChannel,
 				m => m.author.id === this._originalAuthor.id,

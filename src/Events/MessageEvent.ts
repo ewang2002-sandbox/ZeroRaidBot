@@ -198,13 +198,9 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
  * @param msg The message.
  */
 async function checkModMail(msg: Message): Promise<void> {
-	if (msg.guild !== null) {
+	if (msg.guild !== null || UserAvailabilityHelper.InMenuCollection.has(msg.author.id)) {
 		return;
 	}
 	
-	// in menu so dont say anything
-	if (UserAvailabilityHelper.InMenuCollection.has(msg.author.id)) {
-		return;
-	}
 	ModMailHandler.initiateModMailContact(msg.author, msg);
 }

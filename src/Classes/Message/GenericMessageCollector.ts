@@ -1,7 +1,9 @@
-import { MessageEmbed, Message, MessageCollector, Collection, MessageOptions, TextChannel, Guild, Role, GuildMember, Permissions, PartialTextBasedChannelFields, User, GuildChannel, GuildEmoji, EmojiResolvable, ReactionCollector, MessageReaction, Emoji, DMChannel } from "discord.js";
+import { MessageEmbed, Message, MessageCollector, Collection, MessageOptions, TextChannel, Guild, Role, GuildMember, Permissions, PartialTextBasedChannelFields, User, GuildChannel, GuildEmoji, EmojiResolvable, ReactionCollector, MessageReaction, Emoji, DMChannel, MessageAttachment, FileOptions } from "discord.js";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { TimeUnit } from "../../Definitions/TimeUnit";
 import { FastReactionMenuManager } from "../Reaction/FastReactionMenuManager";
+import internal from "events";
+import { Stream } from "stream";
 
 type IGenericMsgCollectorArguments = {
 	/**
@@ -76,6 +78,11 @@ export class GenericMessageCollector<T> {
 	private readonly _maxDuration: number;
 
 	/**
+	 * Attachments. 
+	 */
+	private readonly _attachments?: (string | MessageAttachment | FileOptions | Buffer | Stream)[];
+
+	/**
  	 * A class that sends an embed and resolves a response. Should be used to make code more concise. 
 	 * @param {Message | User | GuildMember} obj Either the message, user, or member that is responsible for the instantiation of this class. If this parameter passed is NOT a `Message`, then `targetChannel` (last parameter) must be declared.
 	 * @param {MessageOptions} msgToSend What to send. This will be a message, an embed, or both, that a bot will send. 
@@ -106,6 +113,10 @@ export class GenericMessageCollector<T> {
 
 		if (typeof msgToSend.embed !== "undefined") {
 			this._embed = new MessageEmbed(msgToSend.embed);
+		}
+
+		if (typeof msgToSend.files !== "undefined") {
+			this._attachments = msgToSend.files;
 		}
 
 		// case/switch time? 
@@ -175,7 +186,7 @@ export class GenericMessageCollector<T> {
 	): Promise<T | "CANCEL_CMD" | "TIME_CMD"> {
 		return new Promise(async (resolve) => {
 			const botMsg: Message = oldMsg === null
-				? await this._channel.send({ embed: this._embed, content: this._strContent })
+				? await this._channel.send(this._strContent, { embed: this._embed, content: this._strContent, files: this._attachments })
 				: oldMsg;
 			const msgCollector: MessageCollector = new MessageCollector(this._channel as TextChannel | DMChannel, m => m.author.id === this._originalAuthor.id, {
 				time: this._maxDuration
@@ -231,7 +242,7 @@ export class GenericMessageCollector<T> {
 		let reactToMsg: boolean = false; 
 		let botMsg: Message = typeof optArgs !== "undefined" && typeof optArgs.oldMsg !== "undefined"
 			? optArgs.oldMsg
-			: await this._channel.send({ embed: this._embed, content: this._strContent });
+			: await this._channel.send(this._strContent, { embed: this._embed, content: this._strContent, files: this._attachments })
 		let deleteBotMsgAfterDone: boolean = true;
 		let removeAllReactionAfterReact: boolean = false; 
 

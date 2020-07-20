@@ -1,7 +1,7 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, ClientUser, Client, DMChannel, MessageEmbed, Emoji, User } from "discord.js";
+import { Message, ClientUser, DMChannel, MessageEmbed, Emoji, User, MessageAttachment } from "discord.js";
 import { IRaidBot } from "../../Templates/IRaidBot";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
 import { UserAvailabilityHelper } from "../../Helpers/UserAvailabilityHelper";
@@ -11,31 +11,33 @@ import { GithubHandler } from "../../Helpers/GithubHandler";
 import { DEVELOPER_ID, PRODUCTION_BOT } from "../../Configuration/Config";
 import { BOT_VERSION } from "../../Constants/ConstantVars";
 import { MessageUtil } from "../../Utility/MessageUtil";
+import { StringBuilder } from "../../Classes/String/StringBuilder";
+import { DateUtil } from "../../Utility/DateUtil";
 
 export class BugReportCommand extends Command {
-    public constructor() {
-        super(
-            new CommandDetail(
-                "Bug Report Command",
-                "bugreport",
-                [],
-                "Lets you report a bug to the developers.",
-                ["bugreport"],
-                ["bugreport"],
-                0
-            ),
-            new CommandPermission(
-                [],
-                [],
-                [],
-                [],
-                true
-            ),
-            false, // guild-only command. 
-            false,
-            false
-        );
-    }
+	public constructor() {
+		super(
+			new CommandDetail(
+				"Bug Report Command",
+				"bugreport",
+				[],
+				"Lets you report a bug to the developers.",
+				["bugreport"],
+				["bugreport"],
+				0
+			),
+			new CommandPermission(
+				[],
+				[],
+				[],
+				[],
+				true
+			),
+			false, // guild-only command. 
+			false,
+			false
+		);
+	}
 
 	private readonly _questions: string[][] = [
 		// general idea AKA title
@@ -52,16 +54,16 @@ export class BugReportCommand extends Command {
 		args: string[]
 	): Promise<void> {
 		let dmChannel: DMChannel;
-        try {
-            dmChannel = await msg.author.createDM();
-        }
-        catch (e) {
-            await msg.channel.send(`${msg.member}, I cannot DM you. Please make sure your privacy settings are set so anyone can send messages to you.`).catch(() => { });
-            return;
-        }
+		try {
+			dmChannel = await msg.author.createDM();
+		}
+		catch (e) {
+			await msg.channel.send(`${msg.member}, I cannot DM you. Please make sure your privacy settings are set so anyone can send messages to you.`).catch(() => { });
+			return;
+		}
 		let botDb: IRaidBot = await MongoDbHelper.MongoBotSettingsClient
 			.findOne({ botId: (msg.client.user as ClientUser).id }) as IRaidBot;
-		
+
 		if (typeof botDb.dev === "undefined") {
 			botDb = (await MongoDbHelper.MongoBotSettingsClient.findOneAndUpdate({ botId: (msg.client.user as ClientUser).id }, {
 				$set: {
@@ -86,71 +88,72 @@ export class BugReportCommand extends Command {
 		}
 
 		UserAvailabilityHelper.InMenuCollection.set(msg.author.id, UserAvailabilityHelper.MenuType.BUG_REPORT);
-		let botMsg: Message | undefined;
 		const responses: string[][] = [];
-		let initialCreated: boolean = false; 
 		for await (const question of this._questions) {
-			let answer: string = "";
-			let hasReactedToMessage: boolean = false;
-			while (true) {
-				const embed: MessageEmbed = this.generateEmbed(msg.author, question[0], answer, question[1]);
-				if (typeof botMsg === "undefined") {
-					botMsg = await dmChannel.send(embed);
-				}
-				else {
-					botMsg = await botMsg.edit(embed);
-				}
-
-				if (!initialCreated) {
-					await botMsg.edit(embed).catch(e => { });
-				}
-	
-				const response: string | Emoji | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<string>(
-					msg.author,
-					{ embed: embed },
-					10,
-					TimeUnit.MINUTE,
-					dmChannel
-				).sendWithReactCollector(GenericMessageCollector.getStringPrompt(dmChannel), {
-					reactions: ["✅", "❌"],
-					cancelFlag: "--cancel",
-					reactToMsg: !hasReactedToMessage,
-					deleteMsg: false,
-					removeAllReactionAfterReact: false,
-					oldMsg: botMsg
-				});
-	
-				if (hasReactedToMessage) {
-					hasReactedToMessage = !hasReactedToMessage;
-				}
-	
-				if (response instanceof Emoji) {
-					if (response.name === "❌") {
-						await botMsg.delete().catch(e => { });
-						UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
-						return;
-					}
-					else {
-						if (answer.length !== 0) {
-							break;
-						}
-					}
-				}
-				else {
-					if (response === "CANCEL_CMD" || response === "TIME_CMD") {
-						await botMsg.delete().catch(() => { });
-						UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
-						return;
-					}
-	
-					answer = response;
-				}
-
-			} // end while loop
-			await botMsg.delete().catch(e => { });
-			botMsg = undefined;
+			const answer: string = await this.askQuestion(msg, dmChannel, question);
+			if (answer === "-CANCEL") {
+				UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
+				return;
+			}
 			responses.push([question[0], answer]);
 		} // end for
+
+		while (true) {
+			let questions: string[] = [];
+			const respString: StringBuilder = new StringBuilder()
+				.append(`[NOT SUBMITTED] Bug Report Form: ${DateUtil.getTime()}`)
+				.appendLine()
+				.append(`Author: ${msg.author.tag} (${msg.author.tag})`)
+				.appendLine()
+				.appendLine();
+			let index: number = 0;
+			for (const [question, answer] of responses) {
+				questions.push(`\`[${++index}]\` ${question}`);
+				respString.append(`Q: ${question}`)
+					.appendLine()
+					.append(answer)
+					.appendLine()
+					.appendLine();
+			}
+			const conEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(msg.author)
+				.setTitle("Confirm Submission")
+				.setDescription("Attached above are your responses to the questions. Please take this time to review your responses. If you believe there is a mistake or you wish to edit one or more of your responses, please type the number corresponding to the question that you want to edit.\n\nWhen you are done, simply react with 💾. To cancel this process entirely, thus deleting your bug report form, react with 🗑️.")
+				.addField("All Questions", questions)
+				.setFooter("Confirming Bug Report Submission.");
+			const resp: number | Emoji | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<number>(
+				msg.author,
+				{ content: "See Attachment Below.", embed: conEmbed, files: [new MessageAttachment(Buffer.from(respString.toString(), "utf8"), `$bug_report_${msg.author.discriminator}.txt`)] },
+				10,
+				TimeUnit.MINUTE,
+				dmChannel
+			).sendWithReactCollector(GenericMessageCollector.getNumber(dmChannel, 1, this._questions.length), {
+				reactions: ["💾", "🗑️"],
+				cancelFlag: "--cancel",
+				reactToMsg: true,
+				deleteMsg: true,
+				removeAllReactionAfterReact: false
+			});
+
+			if (resp instanceof Emoji) {
+				if (resp.name === "🗑️") {
+					UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
+					return;
+				}
+				else {
+					break;
+				}
+			}
+			else {
+				if (resp === "CANCEL_CMD" || resp === "TIME_CMD") {
+					UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
+					return;
+				}
+
+				responses[resp - 1][1] = await this.askQuestion(msg, dmChannel, resp - 1);
+			}
+		}
+		
+		UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
 
 		let bugReport: GithubHandler.IBugReport = {
 			time: new Date().getTime(),
@@ -172,7 +175,6 @@ export class BugReportCommand extends Command {
 			}
 		});
 
-		UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
 
 		const embed: MessageEmbed = MessageUtil.generateBlankEmbed(msg.author)
 			.setTitle("Bug Report Submitted Successfully")
@@ -183,12 +185,88 @@ export class BugReportCommand extends Command {
 			.catch(e => { });
 	}
 
-	private generateEmbed(author: User, question: string, response: string, directions: string): MessageEmbed {
-		return MessageUtil.generateBlankEmbed(author)
+	private async askQuestion(msg: Message, dmChannel: DMChannel, indexOrQ: string[] | number): Promise<string> {
+		const question: string[] = Array.isArray(indexOrQ)
+			? indexOrQ
+			: this._questions[indexOrQ];
+
+		let initialCreated: boolean = false;
+		let botMsg: Message | undefined;
+
+		let answer: string = "";
+		let hasReactedToMessage: boolean = false;
+		while (true) {
+			const embed: MessageEmbed = hasReactedToMessage
+				? this.generateEmbed(msg.author, question[0], answer)
+				: this.generateEmbed(msg.author, question[0], answer, question[1]);
+			if (typeof botMsg === "undefined") {
+				botMsg = await dmChannel.send(embed);
+			}
+			else {
+				botMsg = await botMsg.edit(embed);
+			}
+
+			if (!initialCreated) {
+				await botMsg.edit(embed).catch(e => { });
+			}
+
+			const response: string | Emoji | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<string>(
+				msg.author,
+				{ embed: embed },
+				10,
+				TimeUnit.MINUTE,
+				dmChannel
+			).sendWithReactCollector(GenericMessageCollector.getStringPrompt(dmChannel), {
+				reactions: ["✅", "❌"],
+				cancelFlag: "--cancel",
+				reactToMsg: !hasReactedToMessage,
+				deleteMsg: false,
+				removeAllReactionAfterReact: false,
+				oldMsg: botMsg
+			});
+
+			if (!hasReactedToMessage) {
+				hasReactedToMessage = !hasReactedToMessage;
+			}
+
+			if (response instanceof Emoji) {
+				if (response.name === "❌") {
+					await botMsg.delete().catch(e => { });
+					return "-CANCEL";
+				}
+				else {
+					if (answer.length !== 0) {
+						break;
+					}
+				}
+			}
+			else {
+				if (response === "CANCEL_CMD" || response === "TIME_CMD") {
+					await botMsg.delete().catch(() => { });
+					return "-CANCEL";
+				}
+
+				answer = response;
+			}
+
+		} // end while loop
+		await botMsg.delete().catch(e => { });
+		botMsg = undefined;
+
+		return answer;
+	}
+
+	private generateEmbed(author: User, question: string, response: string, directions: string = ""): MessageEmbed {
+		const embed: MessageEmbed = MessageUtil.generateBlankEmbed(author)
 			.setTitle(question)
 			.setDescription(response.length === 0 ? "N/A" : response)
-			.setFooter("Bug Report")
-			.addField("General Instructions", `Please respond to the question posed above. Please see the specific directions below for this question. You will have up to 1500 characters, and will have 10 minutes to respond. Note that you cannot submit images.\n⇒ React with ✅ once you are satisfied with your response above. You will be moved to the next step.\n⇒ React with ❌ to cancel this process.\n\n⚠️ WARNING: Your Discord tag and ID will be shared with the developer.\nℹ️ NOTE: Once you submit your response to this question, you cannot view your response again!`)
-			.addField("Specific Directions", directions);
+			.setFooter("Bug Report");
+		if (directions !== "") {
+			embed
+				.addField("General Instructions", `Please respond to the question posed above. Please see the specific directions below for this question. You will have up to 1500 characters, and will have 10 minutes to respond. Note that you cannot submit images.\n⇒ React with ✅ once you are satisfied with your response above. You will be moved to the next step.\n⇒ React with ❌ to cancel this process.\n\n⚠️ WARNING: Your Discord tag and ID will be shared with the developer.\nℹ️ NOTE: Once you submit your response to this question, you cannot view your response again!`)
+				.addField("Specific Directions", directions);
+		}
+
+		return embed;
 	}
 }

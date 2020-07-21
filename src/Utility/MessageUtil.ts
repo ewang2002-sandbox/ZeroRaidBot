@@ -15,6 +15,7 @@ export namespace MessageUtil {
 		| "NO_ZERO_NUMBER"
 		| "INVALID_ID"
 		| "NO_USERS_FOUND"
+		| "NO_USER_FOUND_GENERAL"
 		| "NOT_IN_VC"
 		| "MSG_TOO_LONG"
 		| "NOT_ENABLED"
@@ -208,6 +209,11 @@ export namespace MessageUtil {
 			case ("NO_USERS_FOUND"): {
 				embed.setTitle("No Users Found")
 				embed.setDescription(`I could find a user by the ${misc[0]} \`${misc[1]}\`.`)
+				break;
+			}
+			case ("NO_USER_FOUND_GENERAL"): {
+				embed.setTitle("No User Found")
+				embed.setDescription(`I could find a user with the mention or ID of \`${misc[0]}\`.`)
 				break;
 			}
 			case ("NO_MENTIONS_FOUND"): {

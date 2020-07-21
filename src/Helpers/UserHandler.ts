@@ -134,6 +134,34 @@ export namespace UserHandler {
 	}
 
 	/**
+	 * Finds a user. Does not need to be used in a guild.
+	 * @param person The person to look for. This can either be an ID or mention.
+	 */
+	export async function resolveUserNoGuild(person: string): Promise<User | null> {
+		const res: string | null = getUserFromMention(person);
+		if (res !== null) {
+			try {
+				return await Zero.RaidClient.users.fetch(res);
+			}
+			catch (e) {
+				return null;
+			}
+		}
+
+		if (/^\d+$/.test(person)) {
+			// this is an ID
+			try {
+				return await Zero.RaidClient.users.fetch(person);
+			}
+			catch (e) {
+				return null;
+			}
+		}
+
+		return null;
+	}
+
+	/**
 	 * Finds a user. This will take in a message and only look at the FIRST argument provided. 
 	 * @param {Message} msg The message. While there can be no content (this will return null), there should be at least one argument. The function will ONLY LOOK AT THE FIRST ARGUMENT provided.
 	 * @param {IRaidGuild} guildDb The guild db. 

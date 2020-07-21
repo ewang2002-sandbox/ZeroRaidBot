@@ -43,8 +43,10 @@ import { NoLoggedRunsCommand } from "../Commands/Moderator/NoLoggedRunsCommand";
 import { ModmailBlacklistCommand } from "../Commands/Moderator/ModmailBlacklistCommand";
 import { ModmailUnblacklistCommand } from "../Commands/Moderator/ModmailUnblacklistCommand";
 import { CheckModmailBlacklistCommand } from "../Commands/Staff/CheckModmailBlacklistCommand";
-import { FeedbackCommand } from "../Commands/Public/FeedbackCommand";
-import { BugReportCommand } from "../Commands/Public/BugReportCommand";
+import { SuggestionCommand } from "../Commands/Public/SuggestionCommand";
+import { BlacklistSuggestionUserCommand } from "../Commands/Bot Owner/BlacklistSuggestionUserCommand";
+import { UnblacklistSuggestionUserCommand } from "../Commands/Bot Owner/UnblacklistSuggestionUserCommand";
+import { EnableDisableSuggestionsCommand } from "../Commands/Bot Owner/EnableDisableSuggestionsCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -79,8 +81,7 @@ export class CommandManager {
 		this.commands.set("Public", [
 			new HelpCommand(),
 			new PingCommand(),
-			new FeedbackCommand(),
-			new BugReportCommand()
+			new SuggestionCommand()
 		]);
 
 		this.commands.set("Server Information", [
@@ -140,7 +141,10 @@ export class CommandManager {
 
 		this.commands.set("Bot Owner", [
 			new ReconnectDBCommand(),
-			new AdminProfileUpdaterCommand()
+			new AdminProfileUpdaterCommand(),
+			new BlacklistSuggestionUserCommand(),
+			new UnblacklistSuggestionUserCommand(),
+			new EnableDisableSuggestionsCommand()
 		]);
 
 		this.commands.set("Logging", [

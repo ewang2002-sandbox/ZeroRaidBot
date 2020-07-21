@@ -45,7 +45,12 @@ export module UserAvailabilityHelper {
 		/**
 		 * Currently submitting bug report
 		 */
-		BUG_REPORT
+		BUG_REPORT,
+
+		/**
+		 * Suggestions
+		 */
+		SUGGESTION
 	}
 
 	/**

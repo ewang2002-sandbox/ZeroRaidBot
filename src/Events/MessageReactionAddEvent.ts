@@ -1,4 +1,4 @@
-import { MessageReaction, User, Message, Guild, GuildMember, TextChannel, RoleResolvable, MessageCollector, DMChannel, VoiceChannel, Collection, PartialUser, Role, MessageEmbedFooter } from "discord.js";
+import { MessageReaction, User, Message, Guild, GuildMember, TextChannel, RoleResolvable, MessageCollector, DMChannel, VoiceChannel, Collection, PartialUser, Role, MessageEmbedFooter, MessageEmbed } from "discord.js";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
@@ -13,6 +13,10 @@ import { RaidDbHelper } from "../Helpers/RaidDbHelper";
 import { StringUtil } from "../Utility/StringUtil";
 import { IManualVerification } from "../Definitions/IManualVerification";
 import { ModMailHandler } from "../Helpers/ModMailHandler";
+import { MessageUtil } from "../Utility/MessageUtil";
+import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollector";
+import { TimeUnit } from "../Definitions/TimeUnit";
+import { UserAvailabilityHelper } from "../Helpers/UserAvailabilityHelper";
 
 export async function onMessageReactionAdd(
 	reaction: MessageReaction,
@@ -95,7 +99,7 @@ export async function onMessageReactionAdd(
 			|| !footer.text.endsWith("• Modmail Message")) {
 			return;
 		}
-		
+
 		if (reaction.emoji.name === "📝") {
 			ModMailHandler.respondToModmail(reaction.message, member);
 		}
@@ -268,7 +272,12 @@ export async function onMessageReactionAdd(
 				if (member.roles.cache.has(guildDb.roles.teamRole) || member.hasPermission("ADMINISTRATOR")) {
 					// get loc
 					if (reaction.emoji.name === "🗺️") {
-						user.send(`**\`[${guild.name} ⇒ ${sectionFromControlPanel.nameOfSection} ⇒ Raiding ${raidFromReaction.raidNum}]\`** The location of this raid is: \`${raidFromReaction.location}\``);
+						const locEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(guild)
+							.setTitle("Early Location")
+							.setDescription(`The location of the raid (information below) is: ${StringUtil.applyCodeBlocks(raidFromReaction.location)}`)
+							.addField("Location Rules", "- Do not give this location out to anyone else.\n- Pay attention to any directions your raid leader may have.")
+							.addField("Raid Information", `Guild: ${guild.name}\nRaid Section: ${raidFromReaction.section.nameOfSection}\nRaid VC: ${member.voice.channel.name}\nDungeon: ${raidFromReaction.dungeonInfo.dungeonName}`);
+						await user.send(locEmbed).catch(e => { });
 					}
 				}
 			}
@@ -302,7 +311,12 @@ export async function onMessageReactionAdd(
 				if (member.roles.cache.has(guildDb.roles.teamRole) || member.hasPermission("ADMINISTRATOR")) {
 					// get loc
 					if (reaction.emoji.name === "🗺️") {
-						user.send(`**\`[${guild.name} ⇒ ${sectionFromControlPanel.nameOfSection} ⇒ Raiding ${raidFromReaction.raidNum}]\`** The location of this raid is: \`${raidFromReaction.location}\``);
+						const locEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(guild)
+							.setTitle("Early Location")
+							.setDescription(`The location of the raid (information below) is: ${StringUtil.applyCodeBlocks(raidFromReaction.location)}`)
+							.addField("Location Rules", "- Do not give this location out to anyone else.\n- Pay attention to any directions your raid leader may have.")
+							.addField("Raid Information", `Guild: ${guild.name}\nRaid Section: ${raidFromReaction.section.nameOfSection}\nRaid VC: ${member.voice.channel.name}\nDungeon: ${raidFromReaction.dungeonInfo.dungeonName}`);
+						await user.send(locEmbed).catch(e => { });
 					}
 				}
 			}
@@ -318,77 +332,75 @@ export async function setNewLocationPrompt(
 	raidInfo: IRaidInfo,
 	memberRequested: GuildMember
 ): Promise<IRaidGuild> {
-	return new Promise(async (resolve) => {
-		let dmChannel: DMChannel;
-		try {
-			dmChannel = await memberRequested.createDM();
+	let dmChannel: DMChannel;
+	try {
+		dmChannel = await memberRequested.createDM();
+	}
+	catch (e) {
+		// no permission to send msg prob
+		return guildDb;
+	}
+
+	UserAvailabilityHelper.InMenuCollection.set(memberRequested.id, UserAvailabilityHelper.MenuType.KEY_ASK);
+
+	const collector: string | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<string>(
+		memberRequested,
+		{ content: `**\`[${guild.name} ⇒ ${raidInfo.section.nameOfSection} ⇒ Raiding ${raidInfo.raidNum}]\`** Please type the __new__ location for this raid. This location will be sent to people that have reacted with either the key or Nitro Booster emoji. To cancel this process, type \`cancel\`.` },
+		1,
+		TimeUnit.MINUTE,
+		dmChannel
+	).send(GenericMessageCollector.getStringPrompt(dmChannel));
+
+	// delay
+	setTimeout(() => {
+		UserAvailabilityHelper.InMenuCollection.delete(memberRequested.id);
+	}, 2 * 1000);
+
+	if (collector === "CANCEL_CMD" || collector === "TIME_CMD") {
+		return guildDb;
+	}
+
+	const curRaidDataArrElem = RaidHandler.CURRENT_RAID_DATA.get(raidInfo.vcID);
+	if (typeof curRaidDataArrElem === "undefined") {
+		let hasMessaged: string[] = [];
+		for await (const person of raidInfo.earlyReacts) {
+			const memberToMsg: GuildMember | null = guild.member(person);
+			if (memberToMsg === null) {
+				continue;
+			}
+			await memberToMsg.send(`**\`[${guild.name} ⇒ ${raidInfo.section.nameOfSection}]\`** A __new__ location for this raid has been set by a leader. The location is: ${StringUtil.applyCodeBlocks(collector)}Do not tell anyone this location.`).catch(() => { });
+			hasMessaged.push(person);
 		}
-		catch (e) {
-			resolve(guildDb); // no permission to send msg prob
-			return;
+
+		for await (const entry of raidInfo.keyReacts) {
+			if (hasMessaged.includes(entry.userId)) {
+				continue;
+			}
+			const memberToMsg: GuildMember | null = guild.member(entry.userId);
+			if (memberToMsg === null) {
+				continue;
+			}
+			await memberToMsg.send(`**\`[${guild.name} ⇒ ${raidInfo.section.nameOfSection}]\`** A __new__ location for this raid has been set by a leader. The location is: ${StringUtil.applyCodeBlocks(collector)}Do not tell anyone this location.`).catch(() => { });
+			hasMessaged.push(entry.userId);
+		}
+	}
+	else {
+		let hasMessaged: string[] = [];
+		for await (const person of curRaidDataArrElem.earlyReacts) {
+			await person.send(`**\`[${guild.name} ⇒ ${raidInfo.section.nameOfSection}]\`** A __new__ location for this raid has been set by a leader. The location is: ${StringUtil.applyCodeBlocks(collector)}Do not tell anyone this location.`).catch(() => { });
+			hasMessaged.push(person.id);
 		}
 
-		const promptMsg: Message = await dmChannel.send(`**\`[${guild.name} ⇒ ${raidInfo.section.nameOfSection} ⇒ Raiding ${raidInfo.raidNum}]\`** Please type the __new__ location for this raid. This location will be sent to people that have reacted with either the key or Nitro Booster emoji. To cancel this process, type \`cancel\`.`);
-		const hcCollector: MessageCollector = new MessageCollector(dmChannel, m => m.author.id === memberRequested.id, {
-			time: 30 * 1000 // 30 sec
-		});
-
-		hcCollector.on("collect", async (m: Message) => {
-			hcCollector.stop();
-			if (m.content.toLowerCase() === "cancel") {
-				return resolve(guildDb);
-			}
-			// send location out to ppl
-			const curRaidDataArrElem = RaidHandler.CURRENT_RAID_DATA.get(raidInfo.vcID);
-			if (typeof curRaidDataArrElem === "undefined") {
-				let hasMessaged: string[] = [];
-				for await (const person of raidInfo.earlyReacts) {
-					const memberToMsg: GuildMember | null = guild.member(person);
-					if (memberToMsg === null) {
-						continue;
-					}
-					await memberToMsg.send(`**\`[${guild.name} ⇒ ${raidInfo.section.nameOfSection}]\`** A __new__ location for this raid has been set by a leader. The location is: ${StringUtil.applyCodeBlocks(m.content)}Do not tell anyone this location.`).catch(() => { });
-					hasMessaged.push(person);
+		for await (const [, members] of curRaidDataArrElem.keyReacts) {
+			for (const member of members) {
+				if (hasMessaged.includes(member.id)) {
+					continue;
 				}
-
-				for await (const entry of raidInfo.keyReacts) {
-					if (hasMessaged.includes(entry.userId)) {
-						continue;
-					}
-					const memberToMsg: GuildMember | null = guild.member(entry.userId);
-					if (memberToMsg === null) {
-						continue;
-					}
-					await memberToMsg.send(`**\`[${guild.name} ⇒ ${raidInfo.section.nameOfSection}]\`** A __new__ location for this raid has been set by a leader. The location is: ${StringUtil.applyCodeBlocks(m.content)}Do not tell anyone this location.`).catch(() => { });
-					hasMessaged.push(entry.userId);
-				}
+				await member.send(`**\`[${guild.name} ⇒ ${raidInfo.section.nameOfSection}]\`** A __new__ location for this raid has been set by a leader. The location is: ${StringUtil.applyCodeBlocks(collector)}Do not tell anyone this location.`).catch(() => { });
+				hasMessaged.push(member.id);
 			}
-			else {
-				let hasMessaged: string[] = [];
-				for await (const person of curRaidDataArrElem.earlyReacts) {
-					await person.send(`**\`[${guild.name} ⇒ ${raidInfo.section.nameOfSection}]\`** A __new__ location for this raid has been set by a leader. The location is: ${StringUtil.applyCodeBlocks(m.content)}Do not tell anyone this location.`).catch(() => { });
-					hasMessaged.push(person.id);
-				}
+		}
+	}
 
-				for await (const [, members] of curRaidDataArrElem.keyReacts) {
-					for (const member of members) {
-						if (hasMessaged.includes(member.id)) {
-							continue;
-						}
-						await member.send(`**\`[${guild.name} ⇒ ${raidInfo.section.nameOfSection}]\`** A __new__ location for this raid has been set by a leader. The location is: ${StringUtil.applyCodeBlocks(m.content)}Do not tell anyone this location.`).catch(() => { });
-						hasMessaged.push(member.id);
-					}
-				}
-			}
-
-			return resolve(await RaidDbHelper.editLocation(guild, (memberRequested.voice.channel as VoiceChannel).id, m.content));
-		});
-
-		hcCollector.on("end", (collected: Collection<string, Message>, reason: string) => {
-			promptMsg.delete().catch(() => { });
-			if (reason === "time") {
-				return resolve(guildDb);
-			}
-		});
-	});
+	return await RaidDbHelper.editLocation(guild, (memberRequested.voice.channel as VoiceChannel).id, collector);
 }

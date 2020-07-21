@@ -1,4 +1,4 @@
-import { CategoryChannel, ChannelCreationOverwrites, ClientUser, Collection, Guild, GuildMember, Message, MessageCollector, MessageEmbed, MessageReaction, ReactionCollector, TextChannel, User, VoiceChannel, GuildEmoji, EmojiResolvable, ColorResolvable, DMChannel, Role, OverwriteResolvable } from "discord.js";
+import { CategoryChannel, ChannelCreationOverwrites, ClientUser, Collection, Guild, GuildMember, Message, MessageCollector, MessageEmbed, MessageReaction, ReactionCollector, TextChannel, User, VoiceChannel, GuildEmoji, EmojiResolvable, ColorResolvable, DMChannel, Role, OverwriteResolvable, Emoji } from "discord.js";
 import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollector";
 import { MessageSimpleTick } from "../Classes/Message/MessageSimpleTick";
 import { AFKDungeon } from "../Constants/AFKDungeon";
@@ -24,6 +24,7 @@ import { FilterQuery } from "mongodb";
 import { IRaidUser } from "../Templates/IRaidUser";
 import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuManager";
 import { UserAvailabilityHelper } from "./UserAvailabilityHelper";
+import { stringify } from "querystring";
 
 export module RaidHandler {
 	/**
@@ -563,16 +564,14 @@ export module RaidHandler {
 			// TODO somehow key entry (in end afk control panel) have data from the early react (merged data)
 			// check on this
 			if (rs.dungeonInfo.keyEmojIDs.some(x => x.keyEmojID === reaction.emoji.id)
-				&& !hasUserReactedWithKey(keysThatReacted, reaction.emoji.id, member.id)) {
+				&& !hasUserReactedWithKey(keysThatReacted, member.id)) {
 				// only want 8 keys
 				if (getAmountOfKeys(keysThatReacted, reaction.emoji.id) + 1 > 8) {
 					await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** Thank you for your interest in contributing a key to the raid. However, we have enough people for now! A leader will give instructions if keys are needed; please ensure you are paying attention to the leader.`).catch(() => { });
 					return;
 				}
 				// key react 
-				UserAvailabilityHelper.InMenuCollection.set(user.id, UserAvailabilityHelper.MenuType.KEY_ASK);
 				let hasAccepted: boolean = await keyReact(user, guild, NEW_RAID_VC, rs, reaction);
-				UserAvailabilityHelper.InMenuCollection.delete(user.id);
 				if (hasAccepted) {
 					const currData: IStoredRaidData | undefined = CURRENT_RAID_DATA.get(rs.vcID);
 					if (typeof currData === "undefined") {
@@ -602,7 +601,7 @@ export module RaidHandler {
 			if (reaction.emoji.id === earlyLocationEmoji.id
 				&& !earlyReactions.some(x => x.id === user.id)
 				// if you reacted w/ key you dont need the location twice.
-				&& !hasUserReactedWithKey(keysThatReacted, reaction.emoji.id, member.id)
+				&& !hasUserReactedWithKey(keysThatReacted, member.id)
 				// make sure you have the early location role.
 				&& guildDb.roles.earlyLocationRoles.some(x => member.roles.cache.has(x))) {
 				if (earlyReactions.length + 1 > 10) {
@@ -610,7 +609,12 @@ export module RaidHandler {
 					return;
 				}
 
-				await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** The location for this raid is ${StringUtil.applyCodeBlocks(rs.location)}Do not tell anyone this location.`);
+				const locEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(user)
+					.setTitle("Early Location")
+					.setDescription(`The location of the raid (information below) is: ${StringUtil.applyCodeBlocks(rs.location)}`)
+					.addField("Location Rules", "- Do not give this location out to anyone else.\n- Pay attention to any directions your raid leader may have.")
+					.addField("Raid Information", `Guild: ${guild.name}\nRaid Section: ${rs.section.nameOfSection}\nRaid VC: ${NEW_RAID_VC.name}\nDungeon: ${rs.dungeonInfo.dungeonName}`);
+				await user.send(locEmbed).catch(e => { });
 
 				earlyReactions.push(member);
 				const currData: IStoredRaidData | undefined = CURRENT_RAID_DATA.get(rs.vcID);
@@ -689,20 +693,13 @@ export module RaidHandler {
 	/**
 	 * Whether a person has reacted with the key or not.
 	 * @param col The key collection
-	 * @param keyId The key ID. 
 	 * @param userId The person that reacted.
 	 */
-	function hasUserReactedWithKey(col: Collection<string, GuildMember[]>, keyId: string, userId: string): boolean {
-		if (keyId === null) {
-			return false;
-		}
-
+	function hasUserReactedWithKey(col: Collection<string, GuildMember[]>, userId: string): boolean {
 		for (const [id, members] of col) {
-			if (id === keyId) {
-				for (const member of members) {
-					if (member.id === userId) {
-						return true;
-					}
+			for (const member of members) {
+				if (member.id === userId) {
+					return true;
 				}
 			}
 		}
@@ -743,36 +740,37 @@ export module RaidHandler {
 		rs: IRaidInfo,
 		reaction: MessageReaction
 	): Promise<boolean> {
-		return new Promise(async (resolve) => {
-			const resolvedKeyType: { keyEmojID: string; keyEmojiName: string; } | undefined = rs.dungeonInfo.keyEmojIDs
-				.find(x => x.keyEmojID === reaction.emoji.id);
-			const keyName: string = typeof resolvedKeyType === "undefined"
-				? rs.dungeonInfo.dungeonName
-				: resolvedKeyType.keyEmojiName;
+		const resolvedKeyType: { keyEmojID: string; keyEmojiName: string; } | undefined = rs.dungeonInfo.keyEmojIDs
+			.find(x => x.keyEmojID === reaction.emoji.id);
+		const keyName: string = typeof resolvedKeyType === "undefined"
+			? rs.dungeonInfo.dungeonName
+			: resolvedKeyType.keyEmojiName;
 
-			const keyConfirmationMsg: Message | void = await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** You have indicated that you have a **${keyName}** key for ${raidVc.name}. To get the location, please type \`yes\`; otherwise, ignore this message.`).catch(() => { });
+		const keyEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(user)
+			.setTitle(`Confirm Key: **${keyName}**`)
+			.setDescription(`Confirm that the following information below is correct. Afterwards, react appropriately. Being dishonest may result in a suspension.\n\n⇒ React with ✅ if the below information is correct and you want to use the key for this raid. You will receive the location and your name will be logged for the leaders.\n⇒ React with ❌ if you do not have a key to contribute. In this case, this prompt will close and nothing will happen.`)
+			.addField("Raid Information", `⇒ Guild: ${guild.name}\n⇒ Raid Section: ${rs.section.nameOfSection}\n⇒ Raid VC: ${raidVc.name}\n⇒ Dungeon: ${rs.dungeonInfo.dungeonName}\n⇒ Key Type: ${keyName}`);
+		const botMsg: Message | void = await user.send(keyEmbed).catch(e => { });
+		if (typeof botMsg === "undefined") {
+			return false;
+		}
 
-			if (typeof keyConfirmationMsg === "undefined") {
-				return;
-			}
+		const resultantReactionForRCAsk: Emoji | "TIME_CMD" = await new FastReactionMenuManager(botMsg, user, ["✅", "❌"], 1, TimeUnit.MINUTE).react();
 
-			const dmedMessageCollector: MessageCollector = new MessageCollector(keyConfirmationMsg.channel as DMChannel, m => m.author.id === user.id, {
-				time: 20000
-			});
+		if (resultantReactionForRCAsk === "TIME_CMD" || resultantReactionForRCAsk.name === "❌") {
+			await botMsg.delete().catch(() => { });
+			return false;
+		}
+		else {
+			const locEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(user)
+				.setTitle("Key Registered")
+				.setDescription(`The location of the raid (information below) is: ${StringUtil.applyCodeBlocks(rs.location)}`)
+				.addField("Location Rules", "- Do not give this location out to anyone else.\n- Please go to the location provided above as soon as possible.\n- Pay attention to any directions your raid leader may have.")
+				.addField("Raid Information", `Guild: ${guild.name}\nRaid Section: ${rs.section.nameOfSection}\nRaid VC: ${raidVc.name}\nDungeon: ${rs.dungeonInfo.dungeonName}\nKey Type: ${keyName}`);
+			await botMsg.edit(locEmbed);
 
-			dmedMessageCollector.on("collect", async (m: Message) => {
-				if (m.content.toLowerCase() === "yes") {
-					dmedMessageCollector.stop();
-					user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** The location for this raid is ${StringUtil.applyCodeBlocks(rs.location)}Do not tell anyone this location.`);
-					return resolve(true);
-				}
-			});
-
-			dmedMessageCollector.on("end", async () => {
-				await keyConfirmationMsg.delete().catch(() => { });
-				return resolve(false);
-			});
-		});
+			return true;
+		}
 	}
 
 	/**
@@ -1024,7 +1022,7 @@ export module RaidHandler {
 		});
 		// control panel 
 		const initiator: GuildMember | null = guild.member(rs.startedBy);
-		let descStr: string = `Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the raid.\n\nRaid Section: ${rs.section.nameOfSection}\nInitiator: ${initiator === null ? "Unknown" : initiator} (${initiator === null ? "Unknown" : initiator.displayName})\nDungeon: ${rs.dungeonInfo.dungeonName} ${Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID)}\nVoice Channel: Raiding ${rs.raidNum}\nDungeons Completed: ${rs.dungeonsDone}`;
+		let descStr: string = `Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the raid.\n\n⇒ Raid Section: ${rs.section.nameOfSection}\n⇒ Initiator: ${initiator === null ? "Unknown" : initiator} (${initiator === null ? "Unknown" : initiator.displayName})\n⇒ Dungeon: ${rs.dungeonInfo.dungeonName} ${Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID)}\n⇒ Voice Channel: Raiding ${rs.raidNum}\n⇒ Dungeons Completed: ${rs.dungeonsDone}`;
 		if (peopleThatGotLocEarly.length !== 0) {
 			descStr += `\n\n__**Early Locations**__\n${peopleThatGotLocEarly.join(" ")}`;
 		}

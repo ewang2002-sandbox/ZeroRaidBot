@@ -6,6 +6,7 @@ import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { UserHandler } from "../../Helpers/UserHandler";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
+import { IRaidBot } from "../../Templates/IRaidBot";
 
 export class UnblacklistSuggestionUserCommand extends Command {
 	public constructor() {
@@ -48,7 +49,24 @@ export class UnblacklistSuggestionUserCommand extends Command {
 			return;
 		}
 
-		if (guildDb.moderation.blacklistedModMailUsers.findIndex(x => x.id === personToSuggestBl.id) === -1) {
+		let botDb: IRaidBot = await MongoDbHelper.MongoBotSettingsClient
+			.findOne({ botId: (msg.client.user as ClientUser).id }) as IRaidBot;
+
+		if (typeof botDb.dev === "undefined") {
+			botDb = (await MongoDbHelper.MongoBotSettingsClient.findOneAndUpdate({ botId: (msg.client.user as ClientUser).id }, {
+				$set: {
+					dev: {
+						isEnabled: true,
+						bugs: [],
+						feedback: [],
+						blacklisted: []
+					}
+				}
+			}, { returnOriginal: false })).value as IRaidBot;
+		}
+
+
+		if (botDb.dev.blacklisted.findIndex(x => x === personToSuggestBl.id) === -1) {
 			await MessageUtil.send(MessageUtil.generateBlankEmbed(msg.author).setTitle("Not Blacklisted From Suggestions").setDescription(`${personToSuggestBl} isn't blacklisted from using the bot suggestions feature.`), msg.channel);
 			return;
 		}

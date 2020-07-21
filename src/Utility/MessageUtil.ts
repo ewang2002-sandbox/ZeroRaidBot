@@ -1,4 +1,4 @@
-import { Message, MessageEmbed, ColorResolvable, MessageOptions, MessageAttachment, PartialTextBasedChannelFields, User, Guild } from "discord.js";
+import { Message, MessageEmbed, ColorResolvable, MessageOptions, MessageAttachment, PartialTextBasedChannelFields, User, Guild, PartialUser } from "discord.js";
 
 export namespace MessageUtil {
 	/**
@@ -318,6 +318,7 @@ export namespace MessageUtil {
 		const embed: MessageEmbed =  new MessageEmbed()
 			.setTimestamp()
 			.setColor(color);
+
 		if (obj instanceof User) {
 			embed.setAuthor(obj.tag, obj.displayAvatarURL());
 		}

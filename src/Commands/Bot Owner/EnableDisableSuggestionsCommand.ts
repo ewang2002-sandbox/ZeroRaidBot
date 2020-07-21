@@ -59,8 +59,5 @@ export class EnableDisableSuggestionsCommand extends Command {
 				"dev.isEnabled": !botDb.dev.isEnabled
 			}
 		});
-
-		await msg.react("✅").catch(e => { });
-		await msg.react(!botDb.dev.isEnabled ? "🟢" : "🔴").catch(e => { });
 	}
 }

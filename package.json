@@ -1,6 +1,6 @@
 {
 	"name": "raidbot",
-	"version": "0.6.0-pre.3",
+	"version": "0.6.0-pre.4",
 	"description": "A simple Discord bot for Realm of the Mad God servers, designed for verification and raid management. ",
 	"main": "index.js",
 	"dependencies": {
@@ -17,7 +17,8 @@
 	},
 	"scripts": {
 		"compile": "tsc -p .",
-		"start": "npm run compile && node out/index.js"
+		"start": "npm run compile && node out/index.js",
+		"getDep": "npm install --only=prod"
 	},
 	"repository": {
 		"type": "git",

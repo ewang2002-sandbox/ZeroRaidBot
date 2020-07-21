@@ -1,4 +1,4 @@
-import { Message, MessageEmbed, ColorResolvable, MessageOptions, MessageAttachment, PartialTextBasedChannelFields } from "discord.js";
+import { Message, MessageEmbed, ColorResolvable, MessageOptions, MessageAttachment, PartialTextBasedChannelFields, User, Guild, PartialUser } from "discord.js";
 
 export namespace MessageUtil {
 	/**
@@ -15,6 +15,7 @@ export namespace MessageUtil {
 		| "NO_ZERO_NUMBER"
 		| "INVALID_ID"
 		| "NO_USERS_FOUND"
+		| "NO_USER_FOUND_GENERAL"
 		| "NOT_IN_VC"
 		| "MSG_TOO_LONG"
 		| "NOT_ENABLED"
@@ -210,6 +211,11 @@ export namespace MessageUtil {
 				embed.setDescription(`I could find a user by the ${misc[0]} \`${misc[1]}\`.`)
 				break;
 			}
+			case ("NO_USER_FOUND_GENERAL"): {
+				embed.setTitle("No User Found")
+				embed.setDescription(`I could find a user with the mention or ID of \`${misc[0]}\`.`)
+				break;
+			}
 			case ("NO_MENTIONS_FOUND"): {
 				embed.setTitle("No Mentions Found");
 				embed.setDescription("You did not @Mention anyone. Please be sure you mentioned someone.");
@@ -301,5 +307,31 @@ export namespace MessageUtil {
 		timeout: number = 5000
 	): Promise<Message> {
 		return await channel.send(info).then(x => x.delete({ timeout: timeout }));
+	}
+
+	/**
+	 * Generates a blank embed. 
+	 * @param {(User | Guild)} obj The user or guild.
+	 * @param {ColorResolvable} [color = "RANDOM"] The color of the embed.
+	 */
+	export function generateBlankEmbed(obj: User | Guild, color: ColorResolvable = "RANDOM"): MessageEmbed {
+		const embed: MessageEmbed =  new MessageEmbed()
+			.setTimestamp()
+			.setColor(color);
+
+		if (obj instanceof User) {
+			embed.setAuthor(obj.tag, obj.displayAvatarURL());
+		}
+		else {
+			const iconUrl: string | null = obj.iconURL();
+			if (iconUrl === null) {
+				embed.setAuthor(obj.name);
+			}
+			else {
+				embed.setAuthor(obj.name, iconUrl);
+			}
+		}
+		
+		return embed;
 	}
 }

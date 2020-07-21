@@ -1,4 +1,5 @@
 import { INetworkBlacklistedUser } from "../Definitions/IBlacklistedUser";
+import { GithubHandler } from "../Helpers/GithubHandler";
 
 /**
  * The bot settings. Only NETWORK ADMINS will be able to modify. There should only be ONE ENTRY.
@@ -29,7 +30,20 @@ export interface IRaidBot {
         staffAnnouncementsChannel: string;
     };
 
+	/**
+	 * Moderation stuff.
+	 */
     moderation: {
         networkBlacklisted: INetworkBlacklistedUser[];
-    }
+	}
+	
+	/**
+	 * Developer stuff.
+	 */
+	dev: {
+		feedback: GithubHandler.IFeedback[];
+		bugs: GithubHandler.IBugReport[];
+		blacklisted: string[]; 
+		isEnabled: boolean;
+	}
 }

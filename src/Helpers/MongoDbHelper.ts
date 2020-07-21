@@ -46,7 +46,6 @@ export module MongoDbHelper {
 			MongoBotSettingsClient = MongoDbHelper.MongoDbBase.MongoClient
 				.db(BotConfiguration.dbName)
 				.collection<IRaidBot>(BotConfiguration.botCollectionName);
-			Object.freeze(MongoBotSettingsClient); // will this work? 
 		}
 	}
 
@@ -210,6 +209,7 @@ export module MongoDbHelper {
 							botUpdatesChannel: "",
 							reactionLoggingChannel: ""
 						},
+						modMailStorage: "",
 						quotaChannel: "",
 						manualVerification: "",
 						modMailChannel: "",

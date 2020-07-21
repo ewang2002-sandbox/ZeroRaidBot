@@ -119,12 +119,6 @@ export namespace StringUtil {
 					str += tempString;
 				}
 			}
-			else {
-				if (str.length + tempString.length > maxLenPerElement - 200) {
-					let leftoverElements: number = array.length - i - 1;
-					
-				}
-			}
 		}
 
 		if (str.length !== 0) {

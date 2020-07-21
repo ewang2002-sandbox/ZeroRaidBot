@@ -20,10 +20,6 @@ export module GithubHandler {
 	}
 
 	export interface IBugReport extends IBaseGithubIssues {
-		// error message if any
-		errorMsg: string;
-		// where did the bug occur
-		location: string;
 		// description of bug
 		// basically "what happens"
 		description: string;
@@ -78,22 +74,10 @@ export module GithubHandler {
 				.append(details.description)
 				.appendLine()
 				.appendLine()
-				// B
-				.append("### Location of Error")
-				.appendLine()
-				.append(details.location)
-				.appendLine()
-				.appendLine()
 				// D
 				.append("### Reproduction Steps")
 				.appendLine()
 				.append(details.reproduceSteps)
-				.appendLine()
-				.appendLine()
-				// A
-				.append("### Relevant Error Message")
-				.appendLine()
-				.append(details.errorMsg === "" ? "N/A" : details.errorMsg)
 				.appendLine()
 				.appendLine()
 				// E

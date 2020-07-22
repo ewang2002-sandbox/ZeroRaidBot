@@ -135,10 +135,11 @@ export class SuggestionCommand extends Command {
 		const termsEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(msg.author)
 			.setTitle("Directions")
 			.setDescription("Read the below directions carefully. These directions will not show up as you move on; read below for more information. Once you are done, react with one of the following:\n⇒ React with 🟢 if you agree to the directions and wish to move on.\n⇒ React with 🔴 if you do not wish to move on.")
-			.addField("Questions", "If you selected the `Feedback` form, you will be answering 2 questions and the form should take less than 3 minutes. If you selected the `Bug Report` form, you will be answering 4 questions and the form should take anywhere from 5-15 minutes. The bot will be asking you each question, one at a time. You will have up to 1500 characters and 10 minutes to respond to each question.")
+			.addField("Questions", "If you selected the `Feedback` form, you will be answering 2 questions and the form should take less than 3 minutes. If you selected the `Bug Report` form, you will be answering 4 questions and the form should take anywhere from 5-15 minutes. The bot will be asking you each question, one at a time. You will have up to 2000 characters and 10 minutes to respond to each question.")
 			.addField("Specific Directions", "Each question will have \"specific\" directions. These are directions that are, well, specific to that particular question. Read the directions carefully before crafting a response. Once you send a response, the directions will hide until you move on.")
 			.addField("Responses", "When you send your answer, the bot will not immediately move you to the next question; rather, the bot will show your response. Use this opportunity to make sure your response is exactly what you wanted it to be. If you don't like it, simply type up a new response and send it; the bot will update your response.\n\nAt this time, the bot doesn't support screenshots. If you must send a picture, upload it somewhere else and then send the link with your response.")
-			.addField("Reactions", "Once you are done answer a question, react to one of the two reactions.\n⇒ React with ✅ once you are satisfied with your response. You will be moved to the next question.\n⇒ React with ❌ to cancel the entire form.");
+			.addField("Reactions", "Once you are done answer a question, react to one of the two reactions.\n⇒ React with ✅ once you are satisfied with your response. You will be moved to the next question.\n⇒ React with ❌ to cancel the entire form.")
+			.addField("Final Remarks", "- Your responses should be safe for work; that is, they should be school appropriate.\n- The developer will be able to see your Discord tag and Discord ID.");
 
 		const agreementMsg: Message = await dmChannel.send(termsEmbed);
 		const agreementEmoji: Emoji | "TIME_CMD" = await new FastReactionMenuManager(
@@ -302,7 +303,7 @@ export class SuggestionCommand extends Command {
 				10,
 				TimeUnit.MINUTE,
 				dmChannel
-			).sendWithReactCollector(GenericMessageCollector.getStringPrompt(dmChannel), {
+			).sendWithReactCollector(GenericMessageCollector.getStringPrompt(dmChannel, { minCharacters: 4, maxCharacters: 2000 }), {
 				reactions: ["✅", "❌"],
 				cancelFlag: "--cancel",
 				reactToMsg: !hasReactedToMessage,

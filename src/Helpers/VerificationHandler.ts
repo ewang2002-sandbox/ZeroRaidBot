@@ -256,7 +256,9 @@ export module VerificationHandler {
 							.setTimestamp();
 						await botMsg.edit(embed);
 					}
-					UserAvailabilityHelper.InMenuCollection.delete(member.id);
+					setTimeout(() => {
+						UserAvailabilityHelper.InMenuCollection.delete(member.id);
+					}, 2 * 1000);
 				});
 
 				let canReact: boolean = true;

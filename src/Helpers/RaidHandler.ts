@@ -454,35 +454,35 @@ export module RaidHandler {
 			},
 			{
 				id: sectionRLRoles[0],
-				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK"]
+				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "STREAM"]
 			},
 			{
 				id: sectionRLRoles[1],
-				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MOVE_MEMBERS"]
+				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MOVE_MEMBERS", "STREAM"]
 			},
 			{
 				id: guildDb.roles.universalAlmostRaidLeader,
-				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MOVE_MEMBERS"]
+				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MOVE_MEMBERS", "STREAM"]
 			},
 			{
 				id: sectionRLRoles[2],
-				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MUTE_MEMBERS", "MOVE_MEMBERS"]
+				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MUTE_MEMBERS", "MOVE_MEMBERS", "STREAM"]
 			},
 			{
 				id: guildDb.roles.universalRaidLeader,
-				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MUTE_MEMBERS", "MOVE_MEMBERS"]
+				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MUTE_MEMBERS", "MOVE_MEMBERS", "STREAM"]
 			},
 			{
 				id: guildDb.roles.headRaidLeader,
-				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MUTE_MEMBERS", "MOVE_MEMBERS", "DEAFEN_MEMBERS"]
+				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MUTE_MEMBERS", "MOVE_MEMBERS", "DEAFEN_MEMBERS", "STREAM"]
 			},
 			{
 				id: guildDb.roles.officer,
-				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MUTE_MEMBERS", "MOVE_MEMBERS", "DEAFEN_MEMBERS"]
+				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MUTE_MEMBERS", "MOVE_MEMBERS", "DEAFEN_MEMBERS", "STREAM"]
 			},
 			{
 				id: guildDb.roles.moderator,
-				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MUTE_MEMBERS", "MOVE_MEMBERS", "DEAFEN_MEMBERS"]
+				allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK", "MUTE_MEMBERS", "MOVE_MEMBERS", "DEAFEN_MEMBERS", "STREAM"]
 			}
 		];
 

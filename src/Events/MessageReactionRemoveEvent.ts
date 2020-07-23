@@ -8,8 +8,6 @@ export async function onMessageReactionRemove(
         return;
     }
 
-    const guild: Guild = reaction.message.guild;
-
     if (reaction.partial) {
         let fetchedReaction: MessageReaction | void = await reaction.fetch().catch(e => { });
         if (typeof fetchedReaction === "undefined") {

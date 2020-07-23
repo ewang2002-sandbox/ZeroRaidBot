@@ -1,4 +1,4 @@
-import { CategoryChannel, ChannelCreationOverwrites, ClientUser, Collection, Guild, GuildMember, Message, MessageCollector, MessageEmbed, MessageReaction, ReactionCollector, TextChannel, User, VoiceChannel, GuildEmoji, EmojiResolvable, ColorResolvable, Role, OverwriteResolvable, Emoji, GuildChannel } from "discord.js";
+import { CategoryChannel, ChannelCreationOverwrites, ClientUser, Collection, Guild, GuildMember, Message, MessageCollector, MessageEmbed, MessageReaction, ReactionCollector, TextChannel, User, VoiceChannel, GuildEmoji, EmojiResolvable, ColorResolvable, Role, OverwriteResolvable, Emoji, GuildChannel, PermissionOverwrites } from "discord.js";
 import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollector";
 import { MessageSimpleTick } from "../Classes/Message/MessageSimpleTick";
 import { AFKDungeon } from "../Constants/AFKDungeon";
@@ -346,9 +346,17 @@ export module RaidHandler {
 			vcToUse = null;
 		}
 		else {
+			let isInValidVc: boolean = false; 
+			let desc: string = "It appears this server has multiple compatible voice channels. Please select the voice channel that you'd like to use. Please make sure the voice channel isn't already in use.\n\n⇒ React with ➕ if you want the bot to create a new VC for this raid.\n⇒ React with ❌ if you want to cancel this process.";
+			if (typeof member.voice.channelID !== "undefined"
+				&& allVoiceChannels.map(x => x.id).includes(member.voice.channelID)) {
+				desc += `\n⇒ React with 📍 if you want to use your current voice channel.`;
+				isInValidVc = true;
+			}
+
 			const embed: MessageEmbed = MessageUtil.generateBlankEmbed(guild)
 				.setTitle("Select Voice Channel")
-				.setDescription("It appears this server has multiple compatible voice channels. Please select the voice channel that you'd like to use. Please make sure the voice channel isn't already in use.\n\n⇒ React with ➕ if you want the bot to create a new VC for this raid.\n⇒ React with ❌ if you want to cancel this process.")
+				.setDescription(desc)
 				.setFooter("Voice Channel Selection");
 			const arr: string[] = StringUtil.arrayToStringFields<VoiceChannel>(
 				allVoiceChannels as VoiceChannel[],
@@ -365,7 +373,7 @@ export module RaidHandler {
 				2,
 				TimeUnit.MINUTE
 			).sendWithReactCollector(GenericMessageCollector.getNumber(msg.channel, 1, allVoiceChannels.length), {
-				reactions: ["➕", "❌"],
+				reactions: isInValidVc ? ["➕", "❌", "📍"] : ["➕", "❌"],
 				cancelFlag: "-cancel",
 				reactToMsg: true,
 				deleteMsg: true
@@ -374,6 +382,9 @@ export module RaidHandler {
 			if (response instanceof Emoji) {
 				if (response.name === "❌") {
 					return;
+				}
+				else if (response.name === "📍") {
+					vcToUse = member.voice.channel as VoiceChannel;
 				}
 				else {
 					vcToUse = null;
@@ -387,11 +398,19 @@ export module RaidHandler {
 			}
 		}
 
-		let oldPerms: ChannelCreationOverwrites[] = [];
+		let oldPerms: OverwriteResolvable[] = [];
 		let newRaidNum: number | undefined;
 		// determine vc number OR get old perms
 		if (vcToUse !== null) {
-			oldPerms = vcToUse.permissionOverwrites.array();
+			let permsFromOldVc: Collection<string, PermissionOverwrites> = vcToUse.permissionOverwrites;
+			for (const [id, perms] of permsFromOldVc) {
+				oldPerms.push({
+					id: id,
+					type: perms.type,
+					allow: perms.allow.toArray(),
+					deny: perms.deny.toArray()
+				});
+			}
 		}
 		else {
 			const allNums: number[] = SECTION_CATEGORY.children
@@ -495,7 +514,8 @@ export module RaidHandler {
 		});
 
 		if (vcToUse !== null) {
-			await NEW_RAID_VC.overwritePermissions(permissions).catch(e => { });
+			await NEW_RAID_VC.overwritePermissions([]).catch(console.error);
+			await NEW_RAID_VC.overwritePermissions(realPermissions).catch(console.error);
 		}
 
 		const earlyLocationEmoji: GuildEmoji = msg.client.emojis.cache.get(NitroEmoji) as GuildEmoji;
@@ -1198,6 +1218,7 @@ export module RaidHandler {
 		await cpMsg.delete().catch(() => { });
 		await logCompletedRunsForRaiders(guild, membersLeft, rs, 1);
 		if (rs.vcInfo.isOld) {
+			await raidVC.overwritePermissions([]).catch(console.error);
 			await raidVC.overwritePermissions(rs.vcInfo.oldPerms).catch(e => { });
 		}
 		else {
@@ -1218,7 +1239,7 @@ export module RaidHandler {
 		for (const [, perm] of raidVC.permissionOverwrites) {
 			permsToUpdate.push({
 				id: perm.id,
-				deny: ["MOVE_MEMBERS"]
+				deny: ["MOVE_MEMBERS", "CONNECT"]
 			});
 		}
 		await raidVC.overwritePermissions(permsToUpdate).catch(() => { });
@@ -1284,7 +1305,8 @@ export module RaidHandler {
 		await raidMsg.unpin().catch(() => { });
 		await cpMsg.delete().catch(console.error);
 		if (rs.vcInfo.isOld) {
-			await raidVC.overwritePermissions(rs.vcInfo.oldPerms).catch(e => { });
+			await raidVC.overwritePermissions([]).catch(console.error);
+			await raidVC.overwritePermissions(rs.vcInfo.oldPerms).catch(console.error);
 		}
 		else {
 			await movePeopleOutAndDeleteRaidVc(guild, raidVC);

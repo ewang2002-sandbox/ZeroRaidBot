@@ -250,6 +250,11 @@ export interface IRaidGuild {
 	 */
 	properties: {
 		/**
+		 * Whether to use the priority queue system or not. 
+		 */
+		priorityQueue: boolean;
+
+		/**
 		 * Quota details.
 		 */
 		quotas: {

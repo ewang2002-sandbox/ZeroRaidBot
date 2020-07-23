@@ -1,7 +1,7 @@
 import { RaidStatus } from "./RaidStatus";
 import { IDungeonData } from "./IDungeonData";
 import { ISection } from "../Templates/ISection";
-import {  OverwriteResolvable } from "discord.js";
+import { OverwriteResolvable } from "discord.js";
 
 export interface IRaidInfo {
 	/**

@@ -255,6 +255,7 @@ export module MongoDbHelper {
 						}
 					},
 					properties: {
+						priorityQueue: false,
 						quotas: {
 							quotaDetails: [],
 							quotaMessage: "",

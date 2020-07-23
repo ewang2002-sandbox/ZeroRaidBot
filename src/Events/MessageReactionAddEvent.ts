@@ -54,8 +54,12 @@ export async function onMessageReactionAdd(
     /**
      * the member that reacted
      */
-	const member: GuildMember | null = guild.member(user.id);
-	if (member === null) {
+	let member: GuildMember;
+	try {
+		member = await guild.members.fetch(user.id);
+	}
+	catch (e) {
+		console.error(e);
 		return;
 	}
 

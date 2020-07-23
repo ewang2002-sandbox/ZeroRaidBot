@@ -1,4 +1,4 @@
-import { MessageReaction, User, Message, Guild, GuildMember, TextChannel, RoleResolvable, MessageCollector, DMChannel, VoiceChannel, Collection, PartialUser, Role, MessageEmbedFooter, MessageEmbed } from "discord.js";
+import { MessageReaction, User, Message, Guild, GuildMember, TextChannel, RoleResolvable, MessageCollector, DMChannel, VoiceChannel, Collection, PartialUser, Role, MessageEmbedFooter, MessageEmbed, Emoji } from "discord.js";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
@@ -17,6 +17,7 @@ import { MessageUtil } from "../Utility/MessageUtil";
 import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollector";
 import { TimeUnit } from "../Definitions/TimeUnit";
 import { UserAvailabilityHelper } from "../Helpers/UserAvailabilityHelper";
+import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuManager";
 
 export async function onMessageReactionAdd(
 	reaction: MessageReaction,
@@ -104,6 +105,37 @@ export async function onMessageReactionAdd(
 			ModMailHandler.respondToModmail(reaction.message, member);
 		}
 		else if (reaction.emoji.name === "🗑️") {
+			const oldEmbed: MessageEmbed = reaction.message.embeds[0];
+			if (typeof oldEmbed.description !== "undefined" && oldEmbed.description.length > 20) {
+				await reaction.message.reactions.removeAll().catch(e => { });
+				const askDeleteEmbed: MessageEmbed = new MessageEmbed()
+					.setAuthor(member.user.tag, member.user.displayAvatarURL())
+					.setTitle("Confirm Delete Modmail")
+					.setDescription("Are you sure you want to delete this modmail message?")
+					.addField("React With ✅", "To confirm that you want to delete this modmail message.")
+					.addField("React With ❌", "To cancel.")
+					.setColor("RANDOM");
+				await reaction.message.edit(askDeleteEmbed).catch(() => { });
+				const deleteResp: Emoji | "TIME_CMD" = await new FastReactionMenuManager(
+					reaction.message,
+					member,
+					["✅", "❌"],
+					1,
+					TimeUnit.MINUTE
+				).react();
+
+				if (deleteResp === "TIME_CMD" || deleteResp.name === "❌") {
+					await reaction.message.edit(oldEmbed).catch(e => { });
+					// respond reaction
+					await reaction.message.react("📝").catch(() => { });
+					// garbage reaction
+					await reaction.message.react("🗑️").catch(() => { });
+					// blacklist
+					await reaction.message.react("🚫").catch(() => { });
+
+					return;
+				}
+			}
 			await reaction.message.delete().catch(e => { });
 		}
 		else if (reaction.emoji.name === "🚫") {
@@ -345,7 +377,7 @@ export async function setNewLocationPrompt(
 
 	const collector: string | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<string>(
 		memberRequested,
-		{ content: `**\`[${guild.name} ⇒ ${raidInfo.section.nameOfSection} ⇒ Raiding ${raidInfo.raidNum}]\`** Please type the __new__ location for this raid. This location will be sent to people that have reacted with either the key or Nitro Booster emoji. To cancel this process, type \`cancel\`.` },
+		{ content: `**\`[${guild.name} ⇒ ${raidInfo.section.nameOfSection} ⇒ ${raidInfo.vcName}\`** Please type the __new__ location for this raid. This location will be sent to people that have reacted with either the key or Nitro Booster emoji. To cancel this process, type \`cancel\`.` },
 		1,
 		TimeUnit.MINUTE,
 		dmChannel

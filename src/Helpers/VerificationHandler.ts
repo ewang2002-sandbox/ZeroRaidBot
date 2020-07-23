@@ -132,7 +132,12 @@ export module VerificationHandler {
 			if (section.isMain) {
 				UserAvailabilityHelper.InMenuCollection.set(member.id, UserAvailabilityHelper.MenuType.VERIFICATION);
 				let isOldProfile: boolean = false;
-				let botMsg: Message = await member.send(new MessageEmbed());
+				let botMsg: Message = await member.send(
+					MessageUtil.generateBlankEmbed(member.user)
+						.setTitle("Starting Verification Module")
+						.setDescription("Please wait. This should take less than 10 seconds.")
+						.setFooter("Starting Verification.")
+				);
 
 				if (typeof verificationAttemptsChannel !== "undefined") {
 					verificationAttemptsChannel.send(`▶️ **\`[${section.nameOfSection}]\`** ${member} has started the verification process.`).catch(() => { });
@@ -1290,10 +1295,10 @@ export module VerificationHandler {
 		let loggingMsg: string = `❌ **\`[${sectionForManualVerif.nameOfSection}]\`** ${manualVerifMember} (${manualVerificationProfile.inGameName})'s manual verification review has been rejected by ${responsibleMember} (${responsibleMember.displayName})`;
 
 		if (sectionForManualVerif.isMain) {
-			await manualVerifMember.send(`**\`[${guild.name}]\`**: After manually reviewing your profile, we have determined that you do not meet the requirements defined by server. This manual review was done by ${responsibleMember} (${responsibleMember.displayName}).`).catch(() => { });
+			await manualVerifMember.send(`**\`[${guild.name}]\`**: After manually reviewing your profile, we have determined that you do not meet the requirements defined by server.`).catch(() => { });
 		}
 		else {
-			await manualVerifMember.send(`**\`[${guild.name}]\`**: After reviewing your profile, we have determined that your profile does not meet the minimum requirements for the **\`${sectionForManualVerif.nameOfSection}\`** section . This manual review was done by ${responsibleMember} (${responsibleMember.displayName}).`).catch(() => { });
+			await manualVerifMember.send(`**\`[${guild.name}]\`**: After reviewing your profile, we have determined that your profile does not meet the minimum requirements for the **\`${sectionForManualVerif.nameOfSection}\`** section.`).catch(() => { });
 		}
 
 		sendLogAndUpdateDb(loggingMsg, sectionForManualVerif, manualVerifMember);

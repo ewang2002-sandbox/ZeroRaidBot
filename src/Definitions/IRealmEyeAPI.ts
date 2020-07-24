@@ -22,7 +22,8 @@ export interface IRealmEyeAPI {
     /**
      * This is NOT available in the public API.
      */
-    player_first_seen: string;
+	player_first_seen?: string;
+	created?: string; 
     player_last_seen: string;
     rank: number;
     skins: number;

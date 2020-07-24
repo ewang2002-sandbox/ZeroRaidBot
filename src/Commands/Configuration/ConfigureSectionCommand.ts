@@ -766,7 +766,7 @@ export class ConfigureSectionCommand extends Command {
 				.addField("Configure Suspension Logging Channel", "React with ⚠️ to configure the suspension logging command.")
 				.addField("Configure Join & Leave Logging Channel", "React with 📥 to configure join & leave logs.")
 				.addField("Configure Moderation Mail Channel", "React with 📬 to configure the moderation mail channel.")
-				.addField("Configure Moderation Mail Storage Chanel", "React with ✏️ to configure the moderation mail storage channel. All modmail responses will be stored in this channel.")
+				.addField("Configure Moderation Mail Storage Channel", "React with ✏️ to configure the moderation mail storage channel. All modmail responses will be stored in this channel.")
 				.addField("Configure Raid Requests Channel", "React with ❓ to configure the raid requests channel.")
 				.addField("Configure Network Announcements Channel", "React with to configure the network announcements channel.")
 				.addField("Configure Quota Channel", "React with 📋 to configure the quota leaderboard channel.");

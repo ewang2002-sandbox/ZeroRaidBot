@@ -28,7 +28,7 @@ export class AddAltAccountCommand extends Command {
 			new CommandDetail(
 				"Add Alternative Account Command",
 				"addaltaccount",
-				[],
+				["updateoldname", "changemainign"],
 				"Adds an alternative account to your profile or updates your name in case of a name change.",
 				["addaltaccount"],
 				["addaltaccount"],
@@ -111,7 +111,9 @@ export class AddAltAccountCommand extends Command {
 
 		// end collector
 		reactCollector.on("end", () => {
-			UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
+			setTimeout(() => {
+				UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
+			}, 2 * 1000);
 			mcd.disableAutoTick();
 		});
 

@@ -21,7 +21,7 @@ export class SuggestionCommand extends Command {
 			new CommandDetail(
 				"Suggestion Command",
 				"suggest",
-				[],
+				["bugreport", "feedback"],
 				"Allows you to send suggestions or bug reports to the developer.",
 				["suggest"],
 				["suggest"],
@@ -49,10 +49,8 @@ export class SuggestionCommand extends Command {
 	private readonly _bugReportQuestions: string[][] = [
 		// general idea AKA title
 		["What is the general idea of this bug report?", "The general idea is a short \"summary\" (preferably less than 10 words) of what your report is about. This should NOT be an essay; that will be for later. Examples of valid submissions are:\n- \"AFK check dungeon menu not responding\"\n- \"Blacklist doesn't blacklist all alts.\"\n- \"The bot isn't sending modmail.\"\n\nExamples of invalid submissions are:\n- \"The bot broke\"\n- \"Please help\""],
-		["Please provide any error message(s).", "If the bot provided any error messages or other responses that seem out of place (with respect to the command itself), please list them. If not, simply respond with \`None\`."],
-		["Where did this bug occur?", "Please specify where the bug occurred. For example, if the bug occurred in a command, type the command name. If the bug occurred during an AFK check, say \"AFK check.\" Please be descriptive."],
-		["Please provide a description of this bug.", "Now is the time for you to write a description of the bug. **Be as descriptive as possible!** Use this opportunity to describe what the bug does. Include information like what you expected the bot to do and what actually happened. The more descriptive you are, the fast the bug will be fixed.\n\nAn example of a valid submission is:\n- \"When the bot asked me to specify a dungeon for the AFK check, I chose \"5.\" However, the bot didn't respond.\""],
-		["Please provide steps to reproduce this bug.", "This is your opportunity to tell me, the developer, how you came across this bug. Use this opportunity to tell me what you did that led up to the bug happening; in other words, tell me what bot commands or features you used *prior* to the bug happening. This part should be the longest part of this report, and should take a bit of time. Again, **be as descriptive as possible!**\n\nWhen writing the steps, please be sure to number them. For example, I'll provide a valid submission below.\n1. Run the AFK check command with no arguments.\n2. Specify the location.\n3. Select the section. In my case, I used the \"Endgame\" section.\n4. Select a dungeon. In my case, I chose Void.\n5. Done."],
+		["Please provide a description of this bug.", "Now is the time for you to write a description of the bug. Include information like any relevant error message(s), the location (where the bug occurred), what you expected the bot to do, and what actually happened. The more descriptive you are, the fast the bug will be fixed."],
+		["Please provide steps to reproduce this bug.", "This is your opportunity to tell me, the developer, how you came across this bug. Use this opportunity to tell me what you did that led up to the bug happening; in other words, tell me what bot commands or features you used *prior* to the bug happening. This part should be the longest part of this report, and should take a bit of time. Please be as descriptive as possible. The best way to respond to this question is to write a step-by-step guide."],
 		["Any other details?", "Provide any other useful or notable details. Perhaps mention how often this bug occurred (does it occur every time or once in a while?)"]
 	];
 
@@ -132,6 +130,34 @@ export class SuggestionCommand extends Command {
 			return;
 		}
 
+
+		// confirm terms
+		const termsEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(msg.author)
+			.setTitle("Directions")
+			.setDescription("Read the below directions carefully. These directions will not show up as you move on; read below for more information. Once you are done, react with one of the following:\n⇒ React with 🟢 if you agree to the directions and wish to move on.\n⇒ React with 🔴 if you do not wish to move on.")
+			.addField("Questions", "If you selected the `Feedback` form, you will be answering 2 questions and the form should take less than 3 minutes. If you selected the `Bug Report` form, you will be answering 4 questions and the form should take anywhere from 5-15 minutes. The bot will be asking you each question, one at a time. You will have up to 2000 characters and 10 minutes to respond to each question.")
+			.addField("Specific Directions", "Each question will have \"specific\" directions. These are directions that are, well, specific to that particular question. Read the directions carefully before crafting a response. Once you send a response, the directions will hide until you move on.")
+			.addField("Responses", "When you send your answer, the bot will not immediately move you to the next question; rather, the bot will show your response. Use this opportunity to make sure your response is exactly what you wanted it to be. If you don't like it, simply type up a new response and send it; the bot will update your response.\n\nAt this time, the bot doesn't support screenshots. If you must send a picture, upload it somewhere else and then send the link with your response.")
+			.addField("Reactions", "Once you are done answer a question, react to one of the two reactions.\n⇒ React with ✅ once you are satisfied with your response. You will be moved to the next question.\n⇒ React with ❌ to cancel the entire form.")
+			.addField("Final Remarks", "- Your responses should be safe for work; that is, they should be school appropriate.\n- The developer will be able to see your Discord tag and Discord ID.");
+
+		const agreementMsg: Message = await dmChannel.send(termsEmbed);
+		const agreementEmoji: Emoji | "TIME_CMD" = await new FastReactionMenuManager(
+			agreementMsg,
+			msg.author,
+			["🟢", "🔴"],
+			1,
+			TimeUnit.MINUTE
+		).react();
+
+		await agreementMsg.delete().catch(e => { });
+
+		if (agreementEmoji === "TIME_CMD" || agreementEmoji.name === "🔴") {
+			await reportTypeMessage.delete().catch(e => { });
+			UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
+			return;
+		}
+
 		const responses: string[][] = [];
 		for await (const question of questions) {
 			const answer: string = await this.askQuestion(msg, dmChannel, question);
@@ -207,11 +233,9 @@ export class SuggestionCommand extends Command {
 				authorTag: DEVELOPER_ID.includes(msg.author.id) ? (PRODUCTION_BOT ? "Developer" : "Developer Testing") : msg.author.tag,
 				version: BOT_VERSION,
 				title: `[BUG REPORT] ${responses[0][1]}`,
-				errorMsg: responses[1][1],
-				location: responses[2][1],
-				description: responses[3][1],
-				reproduceSteps: responses[4][1],
-				otherInfo: responses[5][1]
+				description: responses[1][1],
+				reproduceSteps: responses[2][1],
+				otherInfo: responses[3][1]
 			};
 			resp = await GithubHandler.createIssue("BUG_REPORT", bugReport);
 		}
@@ -279,7 +303,7 @@ export class SuggestionCommand extends Command {
 				10,
 				TimeUnit.MINUTE,
 				dmChannel
-			).sendWithReactCollector(GenericMessageCollector.getStringPrompt(dmChannel), {
+			).sendWithReactCollector(GenericMessageCollector.getStringPrompt(dmChannel, { minCharacters: 4, maxCharacters: 2000 }), {
 				reactions: ["✅", "❌"],
 				cancelFlag: "--cancel",
 				reactToMsg: !hasReactedToMessage,
@@ -325,9 +349,7 @@ export class SuggestionCommand extends Command {
 			.setDescription(response.length === 0 ? "N/A" : response)
 			.setFooter("Feedback & Bug Report System");
 		if (directions !== "") {
-			embed
-				.addField("General Instructions", `Please respond to the question posed above. Please see the specific directions below for this question. You will have up to 1500 characters, and will have 10 minutes to respond. Note that you cannot submit images as of now. **REPORTS MUST BE SCHOOL-APPROPRIATE!**\n⇒ React with ✅ once you are satisfied with your response above. You will be moved to the next step.\n⇒ React with ❌ to cancel this process.\n\n⚠️ WARNING: Your Discord tag and ID will be shared with the developer.\n\nℹ️ NOTE: The directions will automatically be hidden after you send something!`)
-				.addField("Specific Directions", directions);
+			embed.addField("Specific Directions", directions);
 		}
 		return embed;
 	}

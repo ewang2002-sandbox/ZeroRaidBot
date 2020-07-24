@@ -371,7 +371,7 @@ export module ModMailHandler {
 					responseToMail = response.content;
 				}
 			}
-		}
+		} // end while
 
 		const replyEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(anonymous ? memberThatWillRespond.guild : memberThatWillRespond.user)
 			.setTitle("Modmail Response")
@@ -391,9 +391,23 @@ export module ModMailHandler {
 			.appendLine()
 			.appendLine()
 			.appendLine()
-			.append("========== ORIGINAL MESSAGE ==========")
+			.append("====== ORIGINAL MESSAGE ======")
 			.appendLine()
-			.append(originalModMailContent);
+			.append(originalModMailContent)
+			.appendLine()
+			.appendLine()
+			.appendLine()
+			.append("======== GENERAL INFO ========")
+			.appendLine()
+			.append(`Author ID: ${authorOfModmail.id}`)
+			.appendLine()
+			.append(`Author Tag: ${authorOfModmail.user.tag}`)
+			.appendLine()
+			.append(`Responder ID: ${memberThatWillRespond.id}`)
+			.appendLine()
+			.append(`Responder Tag: ${memberThatWillRespond.user.tag}`)
+			.appendLine()
+			.append(`Time: ${DateUtil.getTime()} (UTC)`);
 
 		// see if we should store 
 		const modMailStorage: TextChannel | undefined = memberThatWillRespond.guild.channels.cache

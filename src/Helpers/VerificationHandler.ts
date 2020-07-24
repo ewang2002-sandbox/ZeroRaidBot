@@ -132,7 +132,12 @@ export module VerificationHandler {
 			if (section.isMain) {
 				UserAvailabilityHelper.InMenuCollection.set(member.id, UserAvailabilityHelper.MenuType.VERIFICATION);
 				let isOldProfile: boolean = false;
-				let botMsg: Message = await member.send(new MessageEmbed());
+				let botMsg: Message = await member.send(
+					MessageUtil.generateBlankEmbed(member.user)
+						.setTitle("Starting Verification Module")
+						.setDescription("Please wait. This should take less than 10 seconds.")
+						.setFooter("Starting Verification.")
+				);
 
 				if (typeof verificationAttemptsChannel !== "undefined") {
 					verificationAttemptsChannel.send(`▶️ **\`[${section.nameOfSection}]\`** ${member} has started the verification process.`).catch(() => { });
@@ -256,7 +261,9 @@ export module VerificationHandler {
 							.setTimestamp();
 						await botMsg.edit(embed);
 					}
-					UserAvailabilityHelper.InMenuCollection.delete(member.id);
+					setTimeout(() => {
+						UserAvailabilityHelper.InMenuCollection.delete(member.id);
+					}, 2 * 1000);
 				});
 
 				let canReact: boolean = true;
@@ -950,7 +957,8 @@ export module VerificationHandler {
 		}
 		verifEmbed.addField("3. Check Profile Settings", `Ensure __anyone__ can view your general profile (stars, alive fame), characters, fame history, and name history. You can access your profile settings [here](https://www.realmeye.com/settings-of/${inGameName}). If you don't have your RealmEye account password, you can learn how to get one [here](https://www.realmeye.com/mreyeball#password).`)
 			.addField("4. Wait", "Before you react with the check, make sure you wait. RealmEye may sometimes take up to 30 seconds to fully register your changes!")
-			.addField("5. Confirm", "React with ✅ to begin the verification check. If you have already reacted, un-react and react again.");
+			.addField("5. Confirm", "React with ✅ to begin the verification check. If you have already reacted, un-react and react again.")
+			.addField("ℹ️ Note", "The bot will not send a new message if you are successfully verified; it will edit the old message!");
 		return verifEmbed;
 	}
 
@@ -1136,15 +1144,23 @@ export module VerificationHandler {
 			.append(`⇒ **User:** ${member}`)
 			.appendLine()
 			.append(`⇒ **IGN:** ${verificationInfo.player}`)
-			.appendLine()
-			.append(`⇒ **First Seen**: ${PRIVATE_BOT ? verificationInfo.player_first_seen : "Not Available"}`)
+			.appendLine();
+		
+		if (typeof verificationInfo.player_first_seen !== "undefined") {
+			desc.append(`⇒ **First Seen**: ${verificationInfo.player_first_seen}`)
+		}
+		else if (typeof verificationInfo.created !== "undefined") {
+			desc.append(`⇒ **Created**: ${verificationInfo.created}`);
+		}
+		
+		desc 
 			.appendLine()
 			.append(`⇒ **Last Seen**: ${verificationInfo.player_last_seen}`)
 			.appendLine()
 			.append(`⇒ **RealmEye:** [Profile](https://www.realmeye.com/player/${verificationInfo.player})`)
 			.appendLine()
 			.appendLine()
-			.append(`React with ☑️ to manually verify this person; otherwise, react with ❌.`)
+			.append(`React with ☑️ to manually verify this person; otherwise, react with ❌.`);
 
 		const manualVerifEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(member.user.tag, member.user.displayAvatarURL())
@@ -1288,10 +1304,10 @@ export module VerificationHandler {
 		let loggingMsg: string = `❌ **\`[${sectionForManualVerif.nameOfSection}]\`** ${manualVerifMember} (${manualVerificationProfile.inGameName})'s manual verification review has been rejected by ${responsibleMember} (${responsibleMember.displayName})`;
 
 		if (sectionForManualVerif.isMain) {
-			await manualVerifMember.send(`**\`[${guild.name}]\`**: After manually reviewing your profile, we have determined that you do not meet the requirements defined by server. This manual review was done by ${responsibleMember} (${responsibleMember.displayName}).`).catch(() => { });
+			await manualVerifMember.send(`**\`[${guild.name}]\`**: After manually reviewing your profile, we have determined that you do not meet the requirements defined by server.`).catch(() => { });
 		}
 		else {
-			await manualVerifMember.send(`**\`[${guild.name}]\`**: After reviewing your profile, we have determined that your profile does not meet the minimum requirements for the **\`${sectionForManualVerif.nameOfSection}\`** section . This manual review was done by ${responsibleMember} (${responsibleMember.displayName}).`).catch(() => { });
+			await manualVerifMember.send(`**\`[${guild.name}]\`**: After reviewing your profile, we have determined that your profile does not meet the minimum requirements for the **\`${sectionForManualVerif.nameOfSection}\`** section.`).catch(() => { });
 		}
 
 		sendLogAndUpdateDb(loggingMsg, sectionForManualVerif, manualVerifMember);

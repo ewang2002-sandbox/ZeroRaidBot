@@ -1,7 +1,7 @@
 import { RaidStatus } from "./RaidStatus";
 import { IDungeonData } from "./IDungeonData";
 import { ISection } from "../Templates/ISection";
-import { ChannelCreationOverwrites } from "discord.js";
+import { OverwriteResolvable } from "discord.js";
 
 export interface IRaidInfo {
 	/**
@@ -18,6 +18,19 @@ export interface IRaidInfo {
 	 * The voice channel ID.
 	 */
 	vcID: string;
+
+	/**
+	 * VC Name
+	 */
+	vcName: string;
+
+	/**
+	 * VC info
+	 */
+	vcInfo: {
+		isOld: boolean;
+		oldPerms: OverwriteResolvable[];
+	};
 
 	/**
 	 * The location of the raid.

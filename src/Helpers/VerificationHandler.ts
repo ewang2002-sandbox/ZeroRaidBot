@@ -82,15 +82,17 @@ export module VerificationHandler {
 
 			const allSections: ISection[] = [GuildUtil.getDefaultSection(guildDb), ...guildDb.sections];
 			for (const section of allSections) {
+				if (section.channels.verificationChannel !== verificationChannel.id) {
+					continue;
+				}
 				const manualVerifEntry: IManualVerification | undefined = section.properties.manualVerificationEntries
 					.find(x => x.userId === member.id);
 				if (typeof manualVerifEntry === "undefined") {
 					continue;
 				}
-				if (manualVerifEntry.userId === member.id) {
-					await member.send(`**\`[${section.isMain ? guild.name : section.nameOfSection}]\`** Your profile is currently under manual verification. Please try again later.`);
-					return;
-				}
+				
+				await member.send(`**\`[${section.isMain ? guild.name : section.nameOfSection}]\`** Your profile is currently under manual verification. Please try again later.`);
+				return;
 			}
 
 			//#region requirement text
@@ -134,12 +136,6 @@ export module VerificationHandler {
 				let inGameName: string = "";
 
 				let isOldProfile: boolean = false;
-				let botMsg: Message = await member.send(
-					MessageUtil.generateBlankEmbed(member.user)
-						.setTitle("Starting Verification Module")
-						.setDescription("Please wait. This should take less than 10 seconds.")
-						.setFooter("Starting Verification.")
-				);
 
 				if (typeof verificationAttemptsChannel !== "undefined") {
 					verificationAttemptsChannel.send(`▶️ **\`[${section.nameOfSection}]\`** ${member} has started the verification process.`).catch(() => { });
@@ -154,7 +150,7 @@ export module VerificationHandler {
 						.setColor("RANDOM");
 
 					const choice: boolean | "CANCEL_CMD" | "TIME_CMD" = await new Promise(async (resolve) => {
-						botMsg = await botMsg.edit(hasNameEmbed);
+						let botMsg = await dmChannel.send(hasNameEmbed);
 						const mc1: MessageAutoTick = new MessageAutoTick(
 							botMsg,
 							hasNameEmbed,
@@ -169,6 +165,7 @@ export module VerificationHandler {
 
 						msgCollector.on("end", (collected: Collection<string, Message>, reason: string) => {
 							mc1.disableAutoTick();
+							botMsg.delete().catch(e => { });
 							if (reason === "time") {
 								return resolve("TIME_CMD");
 							}
@@ -193,7 +190,6 @@ export module VerificationHandler {
 					});
 
 					if (choice === "TIME_CMD" || choice === "CANCEL_CMD") {
-						await botMsg.delete().catch(() => { });
 						UserAvailabilityHelper.InMenuCollection.delete(member.id);
 						return;
 					}
@@ -209,8 +205,7 @@ export module VerificationHandler {
 						member.user,
 						dmChannel,
 						guild,
-						null,
-						botMsg
+						null
 					);
 
 					if (nameToUse === "CANCEL_" || nameToUse === "TIME_") {
@@ -233,7 +228,7 @@ export module VerificationHandler {
 
 				// verification embed
 				const verifEmbed: MessageEmbed = getVerificationEmbed(guild, inGameName, reqs, isOldProfile, code);
-				const verifMessage: Message = await botMsg.edit(verifEmbed);
+				const verifMessage: Message = await dmChannel.send(verifEmbed);
 				await verifMessage.react("✅").catch(() => { });
 				await verifMessage.react("❌").catch(() => { });
 
@@ -251,6 +246,7 @@ export module VerificationHandler {
 				// end collector
 				reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
 					mcd.disableAutoTick();
+					await verifMessage.delete().catch(e => { });
 					setTimeout(() => {
 						IsInVerification.delete(member.id);
 						UserAvailabilityHelper.InMenuCollection.delete(member.id);
@@ -266,7 +262,7 @@ export module VerificationHandler {
 							.setDescription("Your verification process has been stopped because the time limit has been reached.")
 							.setFooter(guild.name)
 							.setTimestamp();
-						await botMsg.edit(embed);
+						await dmChannel.send(embed).catch(e => { });
 					}
 				});
 
@@ -289,7 +285,7 @@ export module VerificationHandler {
 							.setDescription("You have stopped the verification process manually.")
 							.setFooter(guild.name)
 							.setTimestamp();
-						await botMsg.edit(embed);
+						await dmChannel.send(embed).catch(e => { });
 						return;
 					}
 
@@ -313,8 +309,8 @@ export module VerificationHandler {
 							.addField("Error Message", StringUtil.applyCodeBlocks(e))
 							.setColor("RED")
 							.setFooter("Verification Process: Stopped.");
-						await botMsg.edit(failedEmbed).catch(() => { });
-						return;
+							await dmChannel.send(failedEmbed).catch(e => { });
+							return;
 					}
 
 					if ("error" in requestData.data) {
@@ -342,8 +338,8 @@ export module VerificationHandler {
 							.addField("Error Message", StringUtil.applyCodeBlocks(e))
 							.setColor("RED")
 							.setFooter("Verification Process: Stopped.");
-						await botMsg.edit(failedEmbed).catch(() => { });
-						return;
+							await dmChannel.send(failedEmbed).catch(e => { });
+							return;
 					}
 
 					if ("errorMessage" in nameHistory) {
@@ -373,7 +369,7 @@ export module VerificationHandler {
 							if (typeof verificationAttemptsChannel !== "undefined") {
 								verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the verification code, \`${code}\`, could not be found in his/her RealmEye profile.`).catch(() => { });
 							}
-							await member.send(`Your verification code, \`${code}\`, wasn't found in your RealmEye description! Make sure the code is on your description and then try again.`);
+							await member.send(`Your verification code, \`${code}\`, wasn't found in your RealmEye description! Make sure the code is on your description and then **try again in one minute!**`);
 							canReact = true;
 							return;
 						}
@@ -395,8 +391,8 @@ export module VerificationHandler {
 									.setColor("RANDOM")
 									.addField("Reason", blacklistEntry.reason)
 									.setFooter("Verification Process: Stopped.");
-								await botMsg.edit(failedEmbed).catch(() => { });
-								return;
+									await dmChannel.send(failedEmbed).catch(e => { });
+									return;
 							}
 						}
 					}
@@ -475,8 +471,8 @@ export module VerificationHandler {
 							manualVerification(guild, member, requestData.data, manualVerificationChannel, section, reqsFailedToMeet, nameHistory);
 							outputLogs += `\nThis profile has been sent to the manual verification channel for further review.`;
 						}
+						await dmChannel.send(failedEmbed).catch(e => { });
 
-						await botMsg.edit(failedEmbed).catch(() => { });
 						if (typeof verificationAttemptsChannel !== "undefined") {
 							verificationAttemptsChannel.send(outputLogs).catch(() => { });
 						}
@@ -494,7 +490,7 @@ export module VerificationHandler {
 						.setDescription(guildDb.properties.successfulVerificationMessage.length === 0 ? "You have been successfully verified. Please make sure you read the rules posted in the server, if any, and any other regulations/guidelines. Good luck and have fun!" : guildDb.properties.successfulVerificationMessage)
 						.setColor("GREEN")
 						.setFooter("Verification Process: Stopped.");
-					await botMsg.edit(successEmbed);
+						await dmChannel.send(successEmbed).catch(e => { });
 					if (typeof verificationSuccessChannel !== "undefined") {
 						verificationSuccessChannel.send(`📥 **\`[${section.nameOfSection}]\`** ${member} has successfully been verified as \`${inGameName}\`.`).catch(console.error);
 					}
@@ -959,8 +955,7 @@ export module VerificationHandler {
 		}
 		verifEmbed.addField("3. Check Profile Settings", `Ensure __anyone__ can view your general profile (stars, alive fame), characters, fame history, and name history. You can access your profile settings [here](https://www.realmeye.com/settings-of/${inGameName}). If you don't have your RealmEye account password, you can learn how to get one [here](https://www.realmeye.com/mreyeball#password).`)
 			.addField("4. Wait", "Before you react with the check, make sure you wait. RealmEye may sometimes take up to 30 seconds to fully register your changes!")
-			.addField("5. Confirm", "React with ✅ to begin the verification check. If you have already reacted, un-react and react again.")
-			.addField("ℹ️ Note", "The bot will not send a new message if you are successfully verified; it will edit the old message!");
+			.addField("5. Confirm", "React with ✅ to begin the verification check. **If you have already reacted, un-react and react again.**");
 		return verifEmbed;
 	}
 
@@ -1147,15 +1142,15 @@ export module VerificationHandler {
 			.appendLine()
 			.append(`⇒ **IGN:** ${verificationInfo.player}`)
 			.appendLine();
-		
+
 		if (typeof verificationInfo.player_first_seen !== "undefined") {
 			desc.append(`⇒ **First Seen**: ${verificationInfo.player_first_seen}`)
 		}
 		else if (typeof verificationInfo.created !== "undefined") {
 			desc.append(`⇒ **Created**: ${verificationInfo.created}`);
 		}
-		
-		desc 
+
+		desc
 			.appendLine()
 			.append(`⇒ **Last Seen**: ${verificationInfo.player_last_seen}`)
 			.appendLine()
@@ -1283,7 +1278,7 @@ export module VerificationHandler {
 			await manualVerifMember.send(successEmbed).catch(() => { });
 		}
 		else {
-			await manualVerifMember.send(`**\`[${guild.name}]\`** You have successfully been verified in the **\`${sectionForManualVerif.nameOfSection}\`** section!`).catch(() => { });
+			await manualVerifMember.send(`**\`[${guild.name}]\`**: You have successfully been verified in the **\`${sectionForManualVerif.nameOfSection}\`** section!`).catch(() => { });
 		}
 
 		sendLogAndUpdateDb(loggingMsg, sectionForManualVerif, manualVerifMember);
@@ -1365,8 +1360,7 @@ export module VerificationHandler {
 		initUser: User,
 		dmChannel: DMChannel,
 		guild: Guild | null = null,
-		userDb: IRaidUser | null = null,
-		botMsg: Message | null = null
+		userDb: IRaidUser | null = null
 	): Promise<string> {
 		return new Promise(async (resolve) => {
 			let desc: string;
@@ -1384,13 +1378,7 @@ export module VerificationHandler {
 				.setColor("RANDOM")
 				.setFooter("⏳ Time Remaining: 2 Minutes and 0 Seconds.");
 
-			let resBotMsg: Message;
-			if (botMsg === null) {
-				resBotMsg = await dmChannel.send(nameEmbed);
-			}
-			else {
-				resBotMsg = await botMsg.edit(nameEmbed);
-			}
+			let resBotMsg: Message = await dmChannel.send(nameEmbed);
 
 			for await (const [, reaction] of resBotMsg.reactions.cache) {
 				for await (const [, user] of reaction.users.cache) {
@@ -1457,6 +1445,8 @@ export module VerificationHandler {
 
 			msgCollector.on("end", (collected: Collection<string, Message>, reason: string) => {
 				mcd.disableAutoTick();
+				reactCollector.stop();
+				resBotMsg.delete().catch(() => { });
 				if (reason === "time") {
 					return resolve("TIME_");
 				}

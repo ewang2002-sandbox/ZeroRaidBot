@@ -1463,35 +1463,44 @@ export class ConfigureSectionCommand extends Command {
 					.appendLine();
 			}
 
-			if (section.properties.showVerificationRequirements) {
-				if (section.verification.aliveFame.required) {
-					reqs.append(`• ${section.verification.aliveFame.minimum} Alive Fame.`)
-						.appendLine();
-				}
+			if (section.verification.aliveFame.required) {
+				reqs.append(`• ${section.verification.aliveFame.minimum} Alive Fame.`)
+					.appendLine();
+			}
 
-				if (section.verification.stars.required) {
-					reqs.append(`• ${section.verification.stars.minimum} Stars.`)
-						.appendLine();
-				}
+			if (section.verification.stars.required) {
+				reqs.append(`• ${section.verification.stars.minimum} Stars.`)
+					.appendLine();
+			}
 
-				if (section.verification.maxedStats.required) {
-					for (let i = 0; i < section.verification.maxedStats.statsReq.length; i++) {
-						if (section.verification.maxedStats.statsReq[i] !== 0) {
-							reqs.append(`• ${section.verification.maxedStats.statsReq[i]} ${i}/8 Character(s).`)
-								.appendLine();
-						}
+			if (section.verification.maxedStats.required) {
+				for (let i = 0; i < section.verification.maxedStats.statsReq.length; i++) {
+					if (section.verification.maxedStats.statsReq[i] !== 0) {
+						reqs.append(`• ${section.verification.maxedStats.statsReq[i]} ${i}/8 Character(s).`)
+							.appendLine();
 					}
 				}
 			}
+
 
 			const veriChan: TextChannel = verificationChannel as TextChannel;
 			let desc: string;
 
 			if (section.isMain) {
-				desc = `Welcome to **\`${guild.name}\`**! In order to get access to the server, you must verify your identity and your RotMG account must meet the requirements, which are listed below. ${StringUtil.applyCodeBlocks(reqs.toString())}\nIf you meet the requirements above, please react to the ✅ emoji to get started. Make sure your direct messages are set so anyone can message you.`;
+				if (section.properties.showVerificationRequirements) {
+					desc = `Welcome to **\`${guild.name}\`**! In order to get access to the server, you must verify your identity and your RotMG account must meet the requirements, which are listed below. ${StringUtil.applyCodeBlocks(reqs.toString())}\n\nPlease react to the ✅ emoji to get started. Make sure you meet the server requirements and your direct messages are set so anyone can message you.`;
+				}
+				else {
+					desc = `Welcome to **\`${guild.name}\`**! In order to get access to the server, you must verify your identity.\n\nPlease react to the ✅ emoji to get started. Make sure your direct messages are set so anyone can message you.`;
+				}
 			}
 			else {
-				desc = `Welcome to the **\`${section.nameOfSection}\`** section. In order to get access to this specific section, your RotMG account must meet the following requirements, which are listed below. ${StringUtil.applyCodeBlocks(reqs.toString())}\nIf you meet these requirements, then react to the ✅ emoji. Other than ensuring you can receive direct messages, you will not need to do anything else. To unverify from this section, simply react to the ❌ emoji. `
+				if (section.properties.showVerificationRequirements) {
+					desc = `Welcome to the **\`${section.nameOfSection}\`** section. In order to get access to this specific section, your RotMG account must meet the following requirements, which are listed below. ${StringUtil.applyCodeBlocks(reqs.toString())}\n\n⇒ React to the ✅ emoji if you believe you meet the requirements and want to get verified. Other than ensuring you can receive direct messages, you will not need to do anything else.\n⇒ React to the ❌ emoji if you want to unverify from this section.`;
+				}
+				else {
+					desc = `Welcome to the **\`${section.nameOfSection}\`** section. In order to get access to this specific section, follow the directions below.\n\n⇒ React to the ✅ emoji if you want to get verified. Other than ensuring you can receive direct messages, you will not need to do anything else.\n⇒ React to the ❌ emoji if you want to unverify from this section.`;
+				}
 			}
 
 			const verifEmbed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", { authorType: "GUILD" })
@@ -1501,14 +1510,11 @@ export class ConfigureSectionCommand extends Command {
 				.setColor("RANDOM");
 
 			const allMessagesInVeriChannel: Message[] = (await veriChan.messages.fetch())
-				.filter(x => x.embeds.length > 0)
+				.filter(x => x.embeds.length === 1)
 				.filter(x => x.author.bot && x.author.id === (msg.client.user as ClientUser).id)
-				.filter(x => x.embeds[0].footer !== null)
-				.filter(x => typeof (x.embeds[0].footer as MessageEmbedFooter).text !== "undefined")
-				.filter(x => ((x.embeds[0].footer as MessageEmbedFooter).text as string).includes(section.isMain ? "Server Verification" : "Section Verification"))
+				.filter(x => x.embeds[0].footer !== null && typeof x.embeds[0].footer.text !== "undefined" && x.embeds[0].footer.text.includes("Verification"))
 				.array();
-
-			const z: Message = allMessagesInVeriChannel.length === 0 
+			const z: Message = allMessagesInVeriChannel.length === 0
 				? await veriChan.send(verifEmbed)
 				: await allMessagesInVeriChannel[0].edit(verifEmbed);
 			if (allMessagesInVeriChannel.length === 0) {

@@ -346,7 +346,7 @@ export module RaidHandler {
 			vcToUse = null;
 		}
 		else {
-			let isInValidVc: boolean = false; 
+			let isInValidVc: boolean = false;
 			let desc: string = "It appears this server has multiple compatible voice channels. Please select the voice channel that you'd like to use. Please make sure the voice channel isn't already in use.\n\n⇒ React with ➕ if you want the bot to create a new VC for this raid.\n⇒ React with ❌ if you want to cancel this process.";
 			if (typeof member.voice.channelID !== "undefined"
 				&& allVoiceChannels.map(x => x.id).includes(member.voice.channelID)) {
@@ -514,8 +514,16 @@ export module RaidHandler {
 		});
 
 		if (vcToUse !== null) {
-			await NEW_RAID_VC.overwritePermissions([]).catch(console.error);
-			await NEW_RAID_VC.overwritePermissions(realPermissions).catch(console.error);
+			await NEW_RAID_VC.updateOverwrite(guild.roles.everyone, {
+				VIEW_CHANNEL: false,
+				CONNECT: null,
+				SPEAK: false
+			});
+			await NEW_RAID_VC.updateOverwrite(SECTION.verifiedRole, {
+				VIEW_CHANNEL: true,
+				CONNECT: null,
+				SPEAK: null
+			});
 		}
 
 		const earlyLocationEmoji: GuildEmoji = msg.client.emojis.cache.get(NitroEmoji) as GuildEmoji;
@@ -551,7 +559,7 @@ export module RaidHandler {
 			.setDescription(`⇒ **Join** the **${NEW_RAID_VC.name}** voice channel to participate in this raid.\n⇒ **React** to the ${msg.client.emojis.cache.get(SELECTED_DUNGEON.portalEmojiID)} emoji to show that you are joining in on this raid.`)
 			.addField("Optional Reactions", optionalReactsField)
 			.setColor(ArrayUtil.getRandomElement(SELECTED_DUNGEON.colors))
-			.setImage(ArrayUtil.getRandomElement(SELECTED_DUNGEON.bossLink))
+			.setThumbnail(ArrayUtil.getRandomElement(SELECTED_DUNGEON.bossLink))
 			.setFooter(`${guild.name}: Raid AFK Check`);
 
 		const afkCheckMessage: Message = await AFK_CHECK_CHANNEL.send(`@here, a new ${SELECTED_DUNGEON.dungeonName} AFK check is currently ongoing. There are 5 minutes and 0 seconds remaining on this AFK check.`, { embed: afkCheckEmbed });
@@ -580,9 +588,10 @@ export module RaidHandler {
 		// ==================================
 		// control panel stuff
 		// ==================================
-		const controlPanelDescription: string = `Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the AFK check.\n⇒ Raid Section: ${SECTION.nameOfSection}\n⇒ Initiator: ${member} (${member.displayName})\n⇒ Dungeon: ${SELECTED_DUNGEON.dungeonName} ${Zero.RaidClient.emojis.cache.get(SELECTED_DUNGEON.portalEmojiID)}\n⇒ Voice Channel: ${vcName}`;
+		const controlPanelDescription: string = `⇒ Raid Section: ${SECTION.nameOfSection}\n⇒ Initiator: ${member} (${member.displayName})\n⇒ Dungeon: ${SELECTED_DUNGEON.dungeonName} ${Zero.RaidClient.emojis.cache.get(SELECTED_DUNGEON.portalEmojiID)}\n⇒ Voice Channel: ${vcName}`;
 		const controlPanelEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(`Control Panel: ${vcName}`, SELECTED_DUNGEON.portalLink)
+			.setTitle(`**${SELECTED_DUNGEON.dungeonName} Raid**`)
 			.setDescription(controlPanelDescription)
 			.setColor(ArrayUtil.getRandomElement<ColorResolvable>(SELECTED_DUNGEON.colors))
 			.addField("End AFK Check Normally", "React with ⏹️ to end the AFK check and start the post-AFK check.")
@@ -591,7 +600,7 @@ export module RaidHandler {
 			.addField("Get Location", "React with 🗺️ to get the current raid location.")
 			.setTimestamp()
 			.setFooter(`Control Panel • AFK Check • ${vcName}`);
-		const controlPanelMsg: Message = await CONTROL_PANEL_CHANNEL.send(controlPanelEmbed);
+		const controlPanelMsg: Message = await CONTROL_PANEL_CHANNEL.send("**NOTICE:** Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the raid; this control panel message can only be used to control the corresponding raid.", controlPanelEmbed);
 		await controlPanelMsg.pin().catch(() => { });
 
 		// create collector for key filtering
@@ -640,6 +649,14 @@ export module RaidHandler {
 			timeout: timeout
 		});
 
+		// we want to limit the number of keys allowed for certain dungeons 
+		const maximumKeysAllowed: number = [38].includes(SELECTED_DUNGEON.id)
+			? 3
+			: 8;
+		const maximumEarlyLocsAllowed: number = [38].includes(SELECTED_DUNGEON.id)
+			? 10
+			: 15;
+
 		// collector events
 		let keysThatReacted: Collection<string, GuildMember[]> = new Collection<string, GuildMember[]>();
 		let earlyReactions: GuildMember[] = [];
@@ -659,7 +676,7 @@ export module RaidHandler {
 			if (rs.dungeonInfo.keyEmojIDs.some(x => x.keyEmojID === reaction.emoji.id)
 				&& !hasUserReactedWithSpecificKey(keysThatReacted, reaction.emoji.id, user.id)) {
 				// only want 8 keys
-				if (getAmountOfKeys(keysThatReacted, reaction.emoji.id) + 1 > 8) {
+				if (getAmountOfKeys(keysThatReacted, reaction.emoji.id) + 1 > maximumKeysAllowed) {
 					await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** Thank you for your interest in contributing a key to the raid. However, we have enough people for now! A leader will give instructions if keys are needed; please ensure you are paying attention to the leader.`).catch(() => { });
 					return;
 				}
@@ -696,7 +713,7 @@ export module RaidHandler {
 				&& !hasUserReactedWithKey(keysThatReacted, member.id)
 				// make sure you have the early location role.
 				&& guildDb.roles.earlyLocationRoles.some(x => member.roles.cache.has(x))) {
-				if (earlyReactions.length + 1 > 10) {
+				if (earlyReactions.length + 1 > maximumEarlyLocsAllowed) {
 					await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** You are unable to get the location early due to the volume of people that has requested the location early.`).catch(() => { });
 					return;
 				}
@@ -732,10 +749,7 @@ export module RaidHandler {
 		});
 
 		// react to control panel msgs
-		await controlPanelMsg.react("⏹️").catch(() => { });
-		await controlPanelMsg.react("🗑️").catch(() => { });
-		await controlPanelMsg.react("✏️").catch(() => { });
-		await controlPanelMsg.react("🗺️").catch(() => { });
+		FastReactionMenuManager.reactFaster(controlPanelMsg, ["⏹️", "🗑️", "✏️", "🗺️"]);
 	} // END OF FUNCTION
 
 	/**
@@ -799,11 +813,15 @@ export module RaidHandler {
 	}
 
 	/**
- * Whether a person has reacted with the key or not.
- * @param col The key collection
- * @param keyId The key ID. 
- * @param userId The person that reacted.
- */
+	 * Whether a person has reacted with the key or not.
+	 * @param col The key collection
+	 * @param keyId The key ID. 
+ 	 * @param keyId The key ID. 
+	 * @param keyId The key ID. 
+     * @param keyId The key ID. 
+	 * @param keyId The key ID. 
+	 * @param userId The person that reacted.
+	 */
 	function hasUserReactedWithSpecificKey(col: Collection<string, GuildMember[]>, keyId: string, userId: string): boolean {
 		if (keyId === null) {
 			return false;
@@ -1044,30 +1062,44 @@ export module RaidHandler {
 		peopleThatGotLocEarly = peopleThatGotLocEarly.filter(x => x !== null);
 		peopleThatReactedToKey = peopleThatReactedToKey.filter(x => x !== null);
 
-		const postAfkControlPanelEmbed: MessageEmbed = new MessageEmbed()
-			.setAuthor(`Control Panel: ${rs.vcName}`, rs.dungeonInfo.portalLink)
-			.setDescription("A post-AFK check is currently running.")
-			.setColor(ArrayUtil.getRandomElement<ColorResolvable>(rs.dungeonInfo.colors))
-			.setTimestamp()
-			.setFooter(`Control Panel • Post AFK • ${rs.vcName}`);
-		if (getStringRepOfKeyCollection(peopleThatReactedToKey, rs).length !== 0) {
-			postAfkControlPanelEmbed.addField("Key Reactions", getStringRepOfKeyCollection(peopleThatReactedToKey, rs));
-		}
-		if (peopleThatGotLocEarly.length !== 0) {
-			postAfkControlPanelEmbed.addField("Early Location", peopleThatGotLocEarly.join(" "));
-		}
-
-		await cpMsg.edit(postAfkControlPanelEmbed).catch(() => { });
-
 		const durationOfPostAfk: number = determineDurationForPostAfk(raidVc.members.size);
 
 		if (durationOfPostAfk !== 0) {
+			const postAfkControlPanelEmbed: MessageEmbed = new MessageEmbed()
+				.setAuthor(`Control Panel: ${rs.vcName}`, rs.dungeonInfo.portalLink)
+				.setTitle(`**${rs.dungeonInfo.dungeonName} Raid**`)
+				.setDescription("A post-AFK check is currently running.")
+				.setColor(ArrayUtil.getRandomElement<ColorResolvable>(rs.dungeonInfo.colors))
+				.setTimestamp()
+				.setFooter(`Control Panel • Post AFK • ${rs.vcName}`);
+			if (getStringRepOfKeyCollection(peopleThatReactedToKey, rs).length !== 0) {
+				postAfkControlPanelEmbed.addField("Key Reactions", getStringRepOfKeyCollection(peopleThatReactedToKey, rs));
+			}
+			if (peopleThatGotLocEarly.length !== 0) {
+				postAfkControlPanelEmbed.addField("Early Location", peopleThatGotLocEarly.join(" "));
+			}
+
+			await cpMsg.edit(postAfkControlPanelEmbed).catch(() => { });
+
+			// POST-AFK
+			const earlyLocationRoles: (Role | undefined)[] = guildDb.roles.earlyLocationRoles
+				.map(x => guild.roles.cache.get(x));
+			const existingEarlyLocRoles: Role[] = [];
+			for (const role of earlyLocationRoles) {
+				if (typeof role !== "undefined") {
+					existingEarlyLocRoles.push(role);
+				}
+			}
+
 			const postAfkEmbed: MessageEmbed = new MessageEmbed()
 				.setAuthor(`The ${rs.dungeonInfo.dungeonName} post-AFK Check has been initiated.`, rs.dungeonInfo.portalLink)
 				.setDescription(`Instructions: Join any available voice channel and then **react** with ${Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID)}.`)
 				.setColor(ArrayUtil.getRandomElement(rs.dungeonInfo.colors))
-				.setImage(ArrayUtil.getRandomElement(rs.dungeonInfo.bossLink))
+				.setThumbnail(ArrayUtil.getRandomElement(rs.dungeonInfo.bossLink))
 				.setFooter(`${guild.name}: Post AFK Check`);
+			if (raidVc.userLimit !== 0) {
+				postAfkEmbed.addField("VC Limit Warning!", `If the raid voice channel is at or exceeding capacity, only members with the following role will be moved in: ${earlyLocationRoles.join(", ")}`);
+			}
 			raidMsg = await raidMsg.edit(`This post-AFK check has ${durationOfPostAfk} seconds remaining.`, postAfkEmbed);
 			const mst: MessageSimpleTick = new MessageSimpleTick(raidMsg, `This post-AFK check has {s} seconds remaining.`, durationOfPostAfk * 1000);
 			// begin post afk check 
@@ -1089,11 +1121,20 @@ export module RaidHandler {
 			}
 
 			// events
-			postAFKMoveIn.on("collect", async (r) => {
-				for await (let [id] of r.users.cache) {
-					const member: GuildMember | null = guild.member(id);
-					// TODO fix post afk not working 
-					if (member !== null && member.voice.channel !== null) {
+			postAFKMoveIn.on("collect", async (r: MessageReaction, u: User) => {
+				const member: GuildMember | null = guild.member(u);
+				// TODO fix post afk not working 
+				if (member !== null && member.voice.channel !== null) {
+					if (raidVc.userLimit === 0) {
+						await member.voice.setChannel(raidVC).catch(console.error);
+					}
+					// there's a limit
+					// either enough slots for people
+					else if (raidVc.members.size + 1 <= raidVc.userLimit
+						// or person has boosted server
+						|| member.premiumSince !== null
+						// or person has early location 
+						|| guildDb.roles.earlyLocationRoles.some(x => member.roles.cache.has(x))) {
 						await member.voice.setChannel(raidVC).catch(console.error);
 					}
 				}
@@ -1131,7 +1172,7 @@ export module RaidHandler {
 			.setAuthor(typeof endedBy === "string" ? `The ${rs.dungeonInfo.dungeonName} AFK Check has ended automatically.` : `${endedBy.displayName} has ended the ${rs.dungeonInfo.dungeonName} AFK Check.`, rs.dungeonInfo.portalLink)
 			.setDescription(`The AFK check is now over.\nWe are currently running a raid with ${raidersPresent} members.`)
 			.setFooter(`${guild.name}: Raid`)
-			.setImage(ArrayUtil.getRandomElement(rs.dungeonInfo.bossLink))
+			.setThumbnail(ArrayUtil.getRandomElement(rs.dungeonInfo.bossLink))
 			.setColor(ArrayUtil.getRandomElement(rs.dungeonInfo.colors));
 		await raidMsg.edit("This AFK check is now over.", embed).catch(() => { });
 		if (!rs.vcInfo.isOld) {
@@ -1141,7 +1182,7 @@ export module RaidHandler {
 		}
 		// control panel 
 		const initiator: GuildMember | null = guild.member(rs.startedBy);
-		let descStr: string = `Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the raid.\n\n⇒ Raid Section: ${rs.section.nameOfSection}\n⇒ Initiator: ${initiator === null ? "Unknown" : initiator} (${initiator === null ? "Unknown" : initiator.displayName})\n⇒ Dungeon: ${rs.dungeonInfo.dungeonName} ${Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID)}\n⇒ Voice Channel: ${rs.vcName}\n⇒ Dungeons Completed: ${rs.dungeonsDone}`;
+		let descStr: string = `⇒ Raid Section: ${rs.section.nameOfSection}\n⇒ Initiator: ${initiator === null ? "Unknown" : initiator} (${initiator === null ? "Unknown" : initiator.displayName})\n⇒ Dungeon: ${rs.dungeonInfo.dungeonName} ${Zero.RaidClient.emojis.cache.get(rs.dungeonInfo.portalEmojiID)}\n⇒ Voice Channel: ${rs.vcName}\n⇒ Dungeons Completed: ${rs.dungeonsDone}`;
 		if (peopleThatGotLocEarly.length !== 0) {
 			descStr += `\n\n__**Early Locations**__\n${peopleThatGotLocEarly.join(" ")}`;
 		}
@@ -1150,6 +1191,7 @@ export module RaidHandler {
 		}
 		const startRunControlPanelEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(`Control Panel: ${rs.vcName}`, rs.dungeonInfo.portalLink)
+			.setTitle(`**${rs.dungeonInfo.dungeonName} Raid**`)
 			.setDescription(descStr)
 			.addField("End Raid", "React with ⏹️ to end the raid. This will move members into the lounge voice channel, if applicable, and delete the voice channel.")
 			.addField("Set Location", "React with ✏️ to set a new location. You will be DMed. The new location will be sent to anyone that has the location (people that reacted with key, Nitro boosters, raid leaders, etc.)")
@@ -1159,12 +1201,8 @@ export module RaidHandler {
 			.setColor(ArrayUtil.getRandomElement<ColorResolvable>(rs.dungeonInfo.colors))
 			.setTimestamp()
 			.setFooter(`Control Panel • In Raid • ${rs.vcName}`);
-		await cpMsg.edit(startRunControlPanelEmbed).catch(() => { });
-		await cpMsg.react("⏹️").catch(() => { });
-		await cpMsg.react("✏️").catch(() => { });
-		await cpMsg.react("🗺️").catch(() => { });
-		await cpMsg.react("🔒").catch(() => { });
-		await cpMsg.react("🔓").catch(() => { });
+		await cpMsg.edit("**NOTICE:** Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the raid; this control panel message can only be used to control the corresponding raid.\n***NOTICE:** When you are done with the raid, you MUST end the run.", startRunControlPanelEmbed).catch(() => { });
+		FastReactionMenuManager.reactFaster(cpMsg, ["⏹️", "✏️", "🗺️", "🔒", "🔓"]);
 	}
 
 	/**
@@ -1173,14 +1211,14 @@ export module RaidHandler {
 	 */
 	function determineDurationForPostAfk(amtOfPeople: number): number {
 		let dur: number;
-		if (amtOfPeople > 80) {
-			dur = -0.5 * amtOfPeople + 45;
+		if (amtOfPeople >= 120) {
+			dur = -0.3 * amtOfPeople + 40;
 			if (dur < 0) {
 				dur = 0;
 			}
 		}
 		else {
-			dur = -Math.sqrt(8 * amtOfPeople) + 30;
+			dur = -Math.sqrt(8 * amtOfPeople) + 35;
 		}
 		return Math.round(dur);
 	}
@@ -1210,7 +1248,7 @@ export module RaidHandler {
 		const endedRun: MessageEmbed = new MessageEmbed()
 			.setAuthor(`${memberThatEnded.displayName} has ended the ${rs.dungeonInfo.dungeonName} raid.`, rs.dungeonInfo.portalLink)
 			.setDescription(`The ${rs.dungeonInfo.dungeonName} raid is now finished.\n${membersLeft.size} members have stayed with us throughout the entire raid.`)
-			.setImage("https://static.drips.pw/rotmg/wiki/Enemies/Event%20Chest.png")
+			.setThumbnail("https://static.drips.pw/rotmg/wiki/Enemies/Event%20Chest.png")
 			.setColor(ArrayUtil.getRandomElement<ColorResolvable>(rs.dungeonInfo.colors))
 			.setFooter(guild.name);
 		await raidMsg.edit("The raid is now over. Thanks to everyone for attending!", endedRun);
@@ -1218,7 +1256,6 @@ export module RaidHandler {
 		await cpMsg.delete().catch(() => { });
 		await logCompletedRunsForRaiders(guild, membersLeft, rs, 1);
 		if (rs.vcInfo.isOld) {
-			await raidVC.overwritePermissions([]).catch(console.error);
 			await raidVC.overwritePermissions(rs.vcInfo.oldPerms).catch(e => { });
 		}
 		else {
@@ -1305,7 +1342,6 @@ export module RaidHandler {
 		await raidMsg.unpin().catch(() => { });
 		await cpMsg.delete().catch(console.error);
 		if (rs.vcInfo.isOld) {
-			await raidVC.overwritePermissions([]).catch(console.error);
 			await raidVC.overwritePermissions(rs.vcInfo.oldPerms).catch(console.error);
 		}
 		else {

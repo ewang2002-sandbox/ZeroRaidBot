@@ -13,16 +13,16 @@ import { AxiosResponse } from "axios";
 import { FilterQuery, InsertOneWriteOpResult, WithId } from "mongodb";
 import { ArrayUtil } from "../Utility/ArrayUtil";
 import { INameHistory, IAPIError } from "../Definitions/ICustomREVerification";
-import { TestCasesNameHistory } from "../TestCases/TestCases";
 import { UserHandler } from "./UserHandler";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { IManualVerification } from "../Definitions/IManualVerification";
 import { IRealmEyeNoUser } from "../Definitions/IRealmEyeNoUser";
 import { IRealmEyeAPI } from "../Definitions/IRealmEyeAPI";
-import { PRIVATE_BOT } from "../Configuration/Config";
 import { UserAvailabilityHelper } from "./UserAvailabilityHelper";
 
 export module VerificationHandler {
+	export const IsInVerification: Collection<string, "GENERAL" | "ALT"> = new Collection<string, "GENERAL" | "ALT">();
+
 	interface ICheckResults {
 		characters: {
 			amt: [number, number, number, number, number, number, number, number, number];
@@ -58,7 +58,7 @@ export module VerificationHandler {
 	): Promise<void> {
 		try {
 			// already verified or no role
-			if (!guild.roles.cache.has(section.verifiedRole) || member.roles.cache.has(section.verifiedRole)) {
+			if (!guild.roles.cache.has(section.verifiedRole) || member.roles.cache.has(section.verifiedRole) || IsInVerification.has(member.id)) {
 				return;
 			}
 
@@ -125,12 +125,14 @@ export module VerificationHandler {
 
 			//#endregion
 
-			const userDb: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.getUserDbByDiscordId(member.id);
-			let inGameName: string = "";
-
 			// within the server we will be checking for other major reqs.
 			if (section.isMain) {
+				IsInVerification.set(member.id, "GENERAL");
 				UserAvailabilityHelper.InMenuCollection.set(member.id, UserAvailabilityHelper.MenuType.VERIFICATION);
+
+				const userDb: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.getUserDbByDiscordId(member.id);
+				let inGameName: string = "";
+
 				let isOldProfile: boolean = false;
 				let botMsg: Message = await member.send(
 					MessageUtil.generateBlankEmbed(member.user)
@@ -215,6 +217,7 @@ export module VerificationHandler {
 						if (typeof verificationAttemptsChannel !== "undefined") {
 							verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member}'s verification process has been canceled.\n\t⇒ Reason: ${nameToUse.substring(0, nameToUse.length - 1)}`).catch(() => { });
 						}
+						IsInVerification.delete(member.id);
 						UserAvailabilityHelper.InMenuCollection.delete(member.id);
 						return;
 					}
@@ -248,6 +251,10 @@ export module VerificationHandler {
 				// end collector
 				reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
 					mcd.disableAutoTick();
+					setTimeout(() => {
+						IsInVerification.delete(member.id);
+						UserAvailabilityHelper.InMenuCollection.delete(member.id);
+					}, 2 * 1000);
 					if (reason === "time") {
 						if (typeof verificationAttemptsChannel !== "undefined") {
 							verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member}'s verification process has been canceled.\n\t⇒ Reason: TIME`).catch(() => { });
@@ -261,9 +268,6 @@ export module VerificationHandler {
 							.setTimestamp();
 						await botMsg.edit(embed);
 					}
-					setTimeout(() => {
-						UserAvailabilityHelper.InMenuCollection.delete(member.id);
-					}, 2 * 1000);
 				});
 
 				let canReact: boolean = true;
@@ -350,8 +354,6 @@ export module VerificationHandler {
 						canReact = true;
 						return;
 					}
-
-					nameHistory = TestCasesNameHistory.withNames();
 
 					const nameFromProfile: string = requestData.data.player;
 					if (!isOldProfile) {
@@ -1393,7 +1395,7 @@ export module VerificationHandler {
 			for await (const [, reaction] of resBotMsg.reactions.cache) {
 				for await (const [, user] of reaction.users.cache) {
 					if (user.bot) {
-						await reaction.remove().catch(e => { });
+						await reaction.remove().catch(() => { });
 						break;
 					}
 				}

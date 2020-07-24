@@ -73,8 +73,7 @@ export class AddAltAccountCommand extends Command {
 			msg.author,
 			dmChannel,
 			null,
-			userDb,
-			null
+			userDb
 		);
 
 		if (inGameName === "CANCEL_" || inGameName === "TIME_") {
@@ -111,6 +110,7 @@ export class AddAltAccountCommand extends Command {
 
 		// end collector
 		reactCollector.on("end", () => {
+			verifMessage.delete().catch(e => { });
 			setTimeout(() => {
 				UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
 			}, 2 * 1000);
@@ -133,7 +133,7 @@ export class AddAltAccountCommand extends Command {
 					.setDescription("You have stopped the verification process manually.")
 					.setFooter("Profile Management System")
 					.setTimestamp();
-				await verifMessage.edit(embed);
+				await dmChannel.send(embed);
 				return;
 			}
 
@@ -300,7 +300,7 @@ export class AddAltAccountCommand extends Command {
 				.setDescription(statusSb.toString())
 				.setColor("GREEN")
 				.setFooter("Verification Process: Stopped.");
-			await verifMessage.edit(successEmbed);
+			await dmChannel.send(successEmbed);
 
 			// we need to check each guild
 			// to see if we can replace the old

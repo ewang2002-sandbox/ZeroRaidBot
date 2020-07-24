@@ -10,6 +10,7 @@ import { onGuildMemberAdd } from "./Events/GuildMemberAddEvent";
 import { onGuildCreate } from "./Events/GuildCreateEvent";
 import { onGuildMemberUpdate } from "./Events/GuildMemberUpdate";
 import { onError } from "./Events/ErrorEvent";
+import { LoggerClient } from "./Classes/LoggerClient";
 
 export class Zero {
 	/** 
@@ -37,6 +38,8 @@ export class Zero {
 	 * The AxiosInstance, which will be used to make requests to RealmEye.
 	 */
 	public static readonly AxiosClient: AxiosInstance = axios.create();
+
+	public static readonly LogClient: LoggerClient;
 
 	/**
 	 * The contructor for this method.

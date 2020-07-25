@@ -227,7 +227,7 @@ export module VerificationHandler {
 				}
 
 				// verification embed
-				const verifEmbed: MessageEmbed = getVerificationEmbed(guild, inGameName, reqs, isOldProfile, code);
+				const verifEmbed: MessageEmbed = getVerificationEmbed(guild, inGameName, isOldProfile, code);
 				const verifMessage: Message = await dmChannel.send(verifEmbed);
 				await verifMessage.react("✅").catch(() => { });
 				await verifMessage.react("❌").catch(() => { });
@@ -250,7 +250,7 @@ export module VerificationHandler {
 					setTimeout(() => {
 						IsInVerification.delete(member.id);
 						UserAvailabilityHelper.InMenuCollection.delete(member.id);
-					}, 2 * 1000);
+					}, 15 * 1000);
 					if (reason === "time") {
 						if (typeof verificationAttemptsChannel !== "undefined") {
 							verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member}'s verification process has been canceled.\n\t⇒ Reason: TIME`).catch(() => { });
@@ -939,23 +939,22 @@ export module VerificationHandler {
 	 * @param {boolean} isOldProfile Whether the profile was pre-existing or not. 
 	 * @param {GuildMember} member The guild member. 
 	 */
-	function getVerificationEmbed(guild: Guild, inGameName: string, reqs: StringBuilder, isOldProfile: boolean, code: string) {
+	function getVerificationEmbed(guild: Guild, inGameName: string, isOldProfile: boolean, code: string) {
 		const verifEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
 			.setTitle(`Verification For: **${guild.name}**`)
 			.setDescription(`You have selected the in-game name: **\`${inGameName}\`**. To access your RealmEye profile, click [here](https://www.realmeye.com/player/${inGameName}).\n\nYou are almost done verifying; however, you need to do a few more things.\n\nTo stop the verification process, react with ❌.`)
 			.setColor("RANDOM")
-			.addField("1. Meet the Requirements", `Ensure you meet the requirements posted. For your convenience, the requirements are listed below.${StringUtil.applyCodeBlocks(reqs.toString())}`)
 			.setFooter("⏳ Time Remaining: 15 Minutes and 0 Seconds.");
 		if (isOldProfile) {
-			verifEmbed.addField("2. Get Your Verification Code", "Normally, I would require a verification code for your RealmEye profile; however, because I recognize you from a different server, you can skip this process completely.");
+			verifEmbed.addField("1. Get Your Verification Code", "Normally, I would require a verification code for your RealmEye profile; however, because I recognize you from a different server, you can skip this process completely.");
 		}
 		else {
-			verifEmbed.addField("2. Get Your Verification Code", `Your verification code is: ${StringUtil.applyCodeBlocks(code)}Please put this verification code in one of your three lines of your RealmEye profile's description.`);
+			verifEmbed.addField("1. Get Your Verification Code", `Your verification code is: ${StringUtil.applyCodeBlocks(code)}Please put this verification code in one of your three lines of your RealmEye profile's description.`);
 		}
-		verifEmbed.addField("3. Check Profile Settings", `Ensure __anyone__ can view your general profile (stars, alive fame), characters, fame history, and name history. You can access your profile settings [here](https://www.realmeye.com/settings-of/${inGameName}). If you don't have your RealmEye account password, you can learn how to get one [here](https://www.realmeye.com/mreyeball#password).`)
-			.addField("4. Wait", "Before you react with the check, make sure you wait. RealmEye may sometimes take up to 30 seconds to fully register your changes!")
-			.addField("5. Confirm", "React with ✅ to begin the verification check. **If you have already reacted, un-react and react again.**");
+		verifEmbed.addField("2. Check Profile Settings", `Ensure __anyone__ can view your general profile (stars, alive fame), characters, fame history, and name history. You can access your profile settings [here](https://www.realmeye.com/settings-of/${inGameName}). If you don't have your RealmEye account password, you can learn how to get one [here](https://www.realmeye.com/mreyeball#password).`)
+			.addField("3. Wait", "Before you react with the check, make sure you wait. RealmEye may sometimes take up to 30 seconds to fully register your changes!")
+			.addField("4. Confirm", "React with ✅ to begin the verification check. **If you have already reacted, un-react and react again.**");
 		return verifEmbed;
 	}
 

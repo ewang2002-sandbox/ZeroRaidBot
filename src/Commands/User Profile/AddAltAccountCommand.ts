@@ -113,7 +113,7 @@ export class AddAltAccountCommand extends Command {
 			verifMessage.delete().catch(e => { });
 			setTimeout(() => {
 				UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
-			}, 2 * 1000);
+			}, 10 * 1000);
 			mcd.disableAutoTick();
 		});
 

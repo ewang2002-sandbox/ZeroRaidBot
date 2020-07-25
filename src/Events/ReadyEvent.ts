@@ -7,6 +7,7 @@ import { SuspendCommand } from "../Commands/Moderator/SuspendCommand";
 import { IRaidBot } from "../Templates/IRaidBot";
 import { DateUtil } from "../Utility/DateUtil";
 import { BOT_VERSION } from "../Constants/ConstantVars";
+import { AxiosResponse } from "axios";
 
 export async function onReadyEvent() {
 	await mongoPreloader();

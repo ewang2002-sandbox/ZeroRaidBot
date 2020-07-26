@@ -115,13 +115,18 @@ export class FastReactionMenuManager {
 		const interval: NodeJS.Timeout = setInterval(() => {
 			// think of this as a for loop
 			// for (let i = 0; i < reactions.length; i++)
-			if (i < reactions.length) {
-				msg.react(reactions[i]).catch(e => { });
+			try {
+				if (i < reactions.length) {
+					msg.react(reactions[i]);
+				}
+				else {
+					clearInterval(interval);
+				}
+				i++;
 			}
-			else {
+			catch (e) {
 				clearInterval(interval);
 			}
-			i++;
 		}, 500);
 	}
 

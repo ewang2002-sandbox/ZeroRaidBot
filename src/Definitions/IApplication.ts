@@ -3,4 +3,5 @@ export interface IApplication {
 	name: string;
 	questions: string[];
 	channel: string; 
+	instructions: string;
 };

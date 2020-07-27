@@ -65,6 +65,11 @@ export class FastReactionMenuManager {
 				// think of this as a for loop
 				// for (let i = 0; i < reactions.length; i++)
 				if (i < this._reactionsToUse.length) {
+					if (this._botMsg.deleted) {
+						clearInterval(interval);
+						return; 
+					}
+
 					this._botMsg.react(this._reactionsToUse[i]).catch(e => { });
 				}
 				else {
@@ -115,18 +120,18 @@ export class FastReactionMenuManager {
 		const interval: NodeJS.Timeout = setInterval(() => {
 			// think of this as a for loop
 			// for (let i = 0; i < reactions.length; i++)
-			try {
-				if (i < reactions.length) {
-					msg.react(reactions[i]);
-				}
-				else {
+			if (i < reactions.length) {
+				if (msg.deleted) {
 					clearInterval(interval);
+					return; 
 				}
-				i++;
+
+				msg.react(reactions[i]);
 			}
-			catch (e) {
+			else {
 				clearInterval(interval);
 			}
+			i++;
 		}, 500);
 	}
 

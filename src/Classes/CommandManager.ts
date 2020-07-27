@@ -49,6 +49,7 @@ import { UnblacklistSuggestionUserCommand } from "../Commands/Bot Owner/Unblackl
 import { EnableDisableSuggestionsCommand } from "../Commands/Bot Owner/EnableDisableSuggestionsCommand";
 import { ConfigureApplicationCommand } from "../Commands/Configuration/ConfigureApplicationCommand";
 import { SilenceCommand } from "../Commands/Moderator/SilenceCommand";
+import { VerifyCommand } from "../Commands/Public/VerifyCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -83,7 +84,8 @@ export class CommandManager {
 		this.commands.set("Public", [
 			new HelpCommand(),
 			new PingCommand(),
-			new SuggestionCommand()
+			new SuggestionCommand(),
+			new VerifyCommand()
 		]);
 
 		this.commands.set("Server Information", [

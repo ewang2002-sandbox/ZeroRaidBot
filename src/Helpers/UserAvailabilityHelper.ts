@@ -50,7 +50,12 @@ export module UserAvailabilityHelper {
 		/**
 		 * Suggestions
 		 */
-		SUGGESTION
+		SUGGESTION,
+
+		/**
+		 * Application
+		 */
+		APPLICATION
 	}
 
 	/**

@@ -47,6 +47,10 @@ import { SuggestionCommand } from "../Commands/Public/SuggestionCommand";
 import { BlacklistSuggestionUserCommand } from "../Commands/Bot Owner/BlacklistSuggestionUserCommand";
 import { UnblacklistSuggestionUserCommand } from "../Commands/Bot Owner/UnblacklistSuggestionUserCommand";
 import { EnableDisableSuggestionsCommand } from "../Commands/Bot Owner/EnableDisableSuggestionsCommand";
+import { ConfigureApplicationCommand } from "../Commands/Configuration/ConfigureApplicationCommand";
+import { SilenceCommand } from "../Commands/Moderator/SilenceCommand";
+import { VerifyCommand } from "../Commands/Public/VerifyCommand";
+import { ApplyCommand } from "../Commands/Public/ApplyCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -81,7 +85,9 @@ export class CommandManager {
 		this.commands.set("Public", [
 			new HelpCommand(),
 			new PingCommand(),
-			new SuggestionCommand()
+			new SuggestionCommand(),
+			new VerifyCommand(),
+			new ApplyCommand()
 		]);
 
 		this.commands.set("Server Information", [
@@ -94,7 +100,8 @@ export class CommandManager {
 		this.commands.set("Configuration", [
 			new ConfigureSectionCommand(),
 			new ConfigurePrefixCommand(),
-			new ConfigureVerifSuccessCommand()
+			new ConfigureVerifSuccessCommand(),
+			new ConfigureApplicationCommand()
 		]);
 
 		this.commands.set("Raid Leader", [
@@ -108,7 +115,8 @@ export class CommandManager {
 			new PollCommand(),
 			new CheckBlacklistCommand(),
 			new ManualVerifyCommand(),
-			new CheckModmailBlacklistCommand()
+			new CheckModmailBlacklistCommand(),
+			new SilenceCommand()
 		]);
 
 		this.commands.set("Moderation", [

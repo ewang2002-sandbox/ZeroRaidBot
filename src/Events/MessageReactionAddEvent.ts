@@ -1,4 +1,4 @@
-import { MessageReaction, User, Message, Guild, GuildMember, TextChannel, RoleResolvable, MessageCollector, DMChannel, VoiceChannel, Collection, PartialUser, Role, MessageEmbedFooter, MessageEmbed, Emoji } from "discord.js";
+import { MessageReaction, User, Message, Guild, GuildMember, TextChannel, RoleResolvable, MessageCollector, DMChannel, VoiceChannel, Collection, PartialUser, Role, MessageEmbedFooter, MessageEmbed, Emoji, ClientUser } from "discord.js";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
@@ -18,6 +18,7 @@ import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollec
 import { TimeUnit } from "../Definitions/TimeUnit";
 import { UserAvailabilityHelper } from "../Helpers/UserAvailabilityHelper";
 import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuManager";
+import { Zero } from "../Zero";
 
 export async function onMessageReactionAdd(
 	reaction: MessageReaction,
@@ -80,7 +81,10 @@ export async function onMessageReactionAdd(
 		...guildDb.sections.map(x => x.channels.manualVerification)
 	];
 
-	if (channelsWhereReactionsCanBeDeleted.includes(reaction.message.channel.id)) {
+	// must be in a valid channel
+	if (channelsWhereReactionsCanBeDeleted.includes(reaction.message.channel.id)
+		// message that was reacted to was a bot's msg
+		&& reaction.message.author.id === (Zero.RaidClient.user as ClientUser).id) {
 		await reaction.users.remove(user.id).catch(() => { });
 	}
 

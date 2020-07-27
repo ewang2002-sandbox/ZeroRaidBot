@@ -5,128 +5,33 @@ import { Message, TextChannel, MessageEmbed, GuildMember } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { ArrayUtil } from "../../Utility/ArrayUtil";
+import { FastReactionMenuManager } from "../../Classes/Reaction/FastReactionMenuManager";
 
 export class PollCommand extends Command {
 
-    private readonly reactions: string[][] = [
-		//#region emojis
-		[
-			"1⃣",
-			"2⃣",
-			"3⃣",
-			"4⃣",
-			"5⃣",
-			"6⃣",
-			"7⃣",
-			"8⃣",
-			"9⃣",
-			"🔟",
-			"🇦",
-			"🇧",
-			"🇨",
-			"🇩",
-			"🇪",
-			"🇫",
-			"🇬",
-			"🇭",
-			"🇮",
-			"🇯"
-		],
-		[
-			"🍇",
-			"🍈",
-			"🍉",
-			"🍊",
-			"🍋",
-			"🍌",
-			"🍍",
-			"🥭",
-			"🍎",
-			"🍏",
-			"🍐",
-			"🍑",
-			"🍒",
-			"🍓",
-			"🥝",
-			"🍅",
-			"🥥",
-			"🥑",
-			"🍆",
-			"🥔",
-			"🥕",
-			"🌽",
-			"🌶️",
-			"🥒",
-			"🥬",
-			"🥦",
-			"🧄",
-			"🧅",
-			"🍄",
-			"🥜",
-			"🌰",
-			"🍞",
-			"🥐",
-			"🥖",
-			"🥨",
-			"🥯",
-			"🥞",
-			"🧇",
-			"🧀",
-			"🍖",
-			"🍗",
-			"🥩",
-			"🥓",
-			"🍔",
-			"🍟",
-			"🍕",
-			"🌭",
-			"🥪",
-			"🌮",
-			"🌯",
-			"🥙",
-			"🧆",
-			"🍳",
-			"🥘",
-			"🍲",
-			"🥗",
-			"🍿",
-			"🍘",
-			"🍙",
-			"🍚",
-			"🍛",
-			"🍜",
-			"🍝",
-			"🍠",
-			"🍣",
-			"🥮",
-			"🍡",
-			"🥟",
-			"🥠",
-			"🦪",
-			"🍦",
-			"🍧",
-			"🍨",
-			"🍩",
-			"🍪",
-			"🎂",
-			"🍰",
-			"🧁",
-			"🥧",
-			"🍫",
-			"🍬",
-			"🍭",
-			"🍮",
-			"🍯",
-			"🥛",
-			"☕",
-			"🍵",
-			"🍺",
-			"🍻",
-			"🧊"
-		]
-		//#endregion
-    ];
-    
+	private readonly reactions: string[] = [
+		"1⃣",
+		"2⃣",
+		"3⃣",
+		"4⃣",
+		"5⃣",
+		"6⃣",
+		"7⃣",
+		"8⃣",
+		"9⃣",
+		"🔟",
+		"🇦",
+		"🇧",
+		"🇨",
+		"🇩",
+		"🇪",
+		"🇫",
+		"🇬",
+		"🇭",
+		"🇮",
+		"🇯"
+	];
+
 	public constructor() {
 		super(
 			new CommandDetail(
@@ -201,24 +106,20 @@ export class PollCommand extends Command {
 		// custom choices
 		pollEmbed.setDescription(`📊 ${args.shift()}`);
 		let toReactWith: string[] = [];
-		let selectedReaction: string[] = ArrayUtil.getRandomElement<string[]>(this.reactions);
-		if (selectedReaction.includes("🍎")) {
-			selectedReaction = ArrayUtil.shuffle(selectedReaction);
-		}
+
 		for (let i = 0; i < args.length; i++) {
 			if (args[i].length > 1000) {
 				MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "MSG_TOO_LONG", null, "poll option", "1000"), msg.channel as TextChannel);
 				return;
 			}
-			pollEmbed.addField(`Choice ${selectedReaction[i]}`, args[i]);
-			toReactWith.push(selectedReaction[i]);
+			pollEmbed.addField(`Choice ${this.reactions[i]}`, args[i]);
+			toReactWith.push(this.reactions[i]);
 		}
 		const pollMsg: Message | void = await msg.channel.send(pollEmbed).catch(e => { });
 		if (typeof pollMsg === "undefined") {
 			return;
 		}
-		for await (const reaction of toReactWith) {
-			await pollMsg.react(reaction).catch(e => { });
-		}
+
+		FastReactionMenuManager.reactFaster(pollMsg, toReactWith);
 	} // end
 }

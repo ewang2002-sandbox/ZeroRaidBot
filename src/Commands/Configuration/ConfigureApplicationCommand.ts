@@ -186,7 +186,7 @@ export class ConfigureApplicationCommand extends Command {
 		}
 		// instructions
 		else if (selectedReaction.name === "📖") {
-			this.editInstructions(msg, db, app, app.questions, botMsg);
+			this.editInstructions(msg, guildDb, app, app.questions, botMsg);
 			return;
 		}
 		// enable/disable

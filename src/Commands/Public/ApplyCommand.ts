@@ -265,6 +265,12 @@ export class ApplyCommand extends Command {
 			.appendLine()
 			.appendLine();
 		for (let i = 0; i < app.questions.length; i++) {
+			let editTimeDesc: string[] = [];
+			for (const [ans, initTime, editTimes] of responses) {
+				for (const editTime of editTimes) {
+					editTimeDesc.push(`${(editTime / 60000).toFixed(2)} Minutes`);
+				}
+			}
 			finalConfirm.append("=========================================")
 				.appendLine()
 				.append(`[Q] ${app.questions[i]}`)
@@ -277,7 +283,7 @@ export class ApplyCommand extends Command {
 				.appendLine()
 				.append(`⇒ Edited: ${responses[i][2].length} Times`)
 				.appendLine()
-				.append(`⇒ Time Spent Editing: [${responses[i][2].map(x => x / 60000).join(" Minutes, ")}]`)
+				.append(`⇒ Time Spent Editing: [${editTimeDesc.length === 0 ? "None" : editTimeDesc.join(", ")}]`)
 				.appendLine();
 		}
 

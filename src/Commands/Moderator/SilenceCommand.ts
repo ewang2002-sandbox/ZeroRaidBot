@@ -58,12 +58,12 @@ export class SilenceCommand extends Command {
 			.setTimestamp()
 			.setFooter("Silence Command Executed At");
 
-		if (SilencedUsers.has(guild.id) && (SilencedUsers.get(guild.id) as string[]).includes(msg.author.id)) {
+		if (SilencedUsers.has(guild.id) && (SilencedUsers.get(guild.id) as string[]).includes(target.id)) {
 			await MessageUtil.send({ content: `${target} has been un-silenced successfully.` }, msg.channel).catch(() => { });
 			embed.setTitle("😄 User Un-Silenced")
 				.setDescription(`⇒ Un-Silenced Member: ${target} (${target.displayName})\n⇒ Moderator: ${msg.member as GuildMember} (${(msg.member as GuildMember).displayName})\n⇒ Reason: ${reason}`)
 				.setColor("GREEN");
-			(SilencedUsers.get(guild.id) as string[]).splice((SilencedUsers.get(guild.id) as string[]).indexOf(msg.author.id), 1);
+			(SilencedUsers.get(guild.id) as string[]).splice((SilencedUsers.get(guild.id) as string[]).indexOf(target.id), 1);
 		}
 		else {
 			await MessageUtil.send({ content: `${target} has been silenced successfully.` }, msg.channel).catch(() => { });
@@ -71,10 +71,10 @@ export class SilenceCommand extends Command {
 				.setDescription(`⇒ Silenced Member: ${target} (${target.displayName})\n⇒ Moderator: ${msg.member as GuildMember} (${(msg.member as GuildMember).displayName})\n⇒ Reason: ${reason}`)
 				.setColor("RED");
 			if (SilencedUsers.has(guild.id)) {
-				(SilencedUsers.get(guild.id) as string[]).push(msg.author.id);
+				(SilencedUsers.get(guild.id) as string[]).push(target.id);
 			}
 			else {
-				SilencedUsers.set(guild.id, [msg.author.id]);
+				SilencedUsers.set(guild.id, [target.id]);
 			}
 		}
 

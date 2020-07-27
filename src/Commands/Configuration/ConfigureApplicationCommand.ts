@@ -36,7 +36,7 @@ export class ConfigureApplicationCommand extends Command {
 			new CommandDetail(
 				"Configure Leader Application Command",
 				"configleaderapps",
-				["configapps", "configapp"],
+				["configapps", "configapp", "configapplication", "configapplications"],
 				"Configures the leader application system.",
 				["configleaderapps"],
 				["configleaderapps"],
@@ -61,6 +61,14 @@ export class ConfigureApplicationCommand extends Command {
 		args: string[],
 		guildDb: IRaidGuild
 	): Promise<void> {
+		const guild: Guild = msg.guild as Guild;
+		if (typeof guildDb.properties.application === "undefined") {
+			guildDb = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id }, {
+				$set: {
+					"properties.application": []
+				}
+			}, { returnOriginal: false })).value as IRaidGuild;
+		}
 		this.mainMenu(msg, guildDb);
 	}
 
@@ -143,9 +151,8 @@ export class ConfigureApplicationCommand extends Command {
 			.addField("Delete Application", "React with 🗑️ if you want to delete this application.")
 			.addField("Cancel Process", "React with ❌ if you want to cancel this process.")
 			.setFooter("Application Editor.");
-		await botMsg.edit(embed).catch(e => { });
-		const reactions: EmojiResolvable[] = ["⬅️", "📝", "🔔", "❓", "#️⃣", "🗑️", "❌"];
-		FastReactionMenuManager.reactFaster(botMsg, reactions);
+		botMsg.edit(embed).catch(e => { });
+		const reactions: EmojiResolvable[] = ["⬅️", "🔔", "📝", "❓", "#️⃣", "🗑️", "❌"];
 
 		const selectedReaction: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(
 			botMsg,
@@ -184,7 +191,7 @@ export class ConfigureApplicationCommand extends Command {
 		// questions
 		else if (selectedReaction.name === "❓") {
 			await botMsg.reactions.removeAll().catch(e => { });
-			this.questionTime(msg, guildDb, app, botMsg, false);
+			this.questionTime(msg, guildDb, app, botMsg);
 			return;
 		}
 		// channel
@@ -220,7 +227,7 @@ export class ConfigureApplicationCommand extends Command {
 						name: app.name
 					}
 				}
-			})).value as IRaidGuild;
+			}, { returnOriginal: false })).value as IRaidGuild;
 			this.mainMenu(msg, guildDb, botMsg);
 			return;
 		}
@@ -231,12 +238,17 @@ export class ConfigureApplicationCommand extends Command {
 		}
 	}
 
-	private async questionTime(msg: Message, guildDb: IRaidGuild, app: IApplication, botMsg: Message, needToReact: boolean): Promise<void> {
+	private async questionTime(msg: Message, guildDb: IRaidGuild, app: IApplication, botMsg: Message): Promise<void> {
+		await botMsg.reactions.removeAll().catch(e => { });
 		let questions: string[] = app.questions;
 
-		const reactions: EmojiResolvable[] = ["⬅️", "➕"];
+		const reactions: EmojiResolvable[] = ["⬅️"];
+		if (questions.length < ConfigureApplicationCommand.MAX_QUESTIONS) {
+			reactions.push("➕");
+		}
 		if (questions.length !== 0) {
 			reactions.push("➖");
+			reactions.push("🔨");
 		}
 		if (questions.length > 1) {
 			reactions.push("🔃");
@@ -244,9 +256,6 @@ export class ConfigureApplicationCommand extends Command {
 		reactions.push("💾", "❌");
 
 		await botMsg.edit(this.generateEmbed(msg, app, questions)).catch(e => { });
-		if (!needToReact) {
-			FastReactionMenuManager.reactFaster(botMsg, reactions);
-		}
 
 		const selectedReaction: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(
 			botMsg,
@@ -270,6 +279,10 @@ export class ConfigureApplicationCommand extends Command {
 		}
 		else if (selectedReaction.name === "➖") {
 			this.deleteQuestion(msg, guildDb, app, questions, botMsg);
+			return;
+		}
+		else if (selectedReaction.name === "🔨") {
+			this.addOrEditQuestion(msg, guildDb, app, questions, botMsg, "EDIT");
 			return;
 		}
 		else if (selectedReaction.name === "🔃") {
@@ -307,7 +320,7 @@ export class ConfigureApplicationCommand extends Command {
 		while (true) {
 			const embed: MessageEmbed = MessageUtil.generateBlankEmbed(msg.author)
 				.setTitle(`**${app.name}** ⇒ Editing Questions ⇒ Adding Question(s)`)
-				.setDescription(`${qs.length === 0 ? "N/A" : qs.join("\n")}\n\nYou may add up to 8 questions (200 characters each), starting at ${positionStr + 1}. Split each question with a bar: \`|\`.\n⇒ React with ⬅️ to go back to the previous menu.\n⇒ React with ✅ to save the questions.\n⇒ React with ❌ to cancel this process.`)
+				.setDescription(`${qs.length === 0 ? "N/A" : this.generateProperString(qs)}\n\nYou may add up to 8 questions (200 characters each), starting at ${positionStr}. Split each question with a bar: \`|\`.\n⇒ React with ⬅️ to go back to the previous menu.\n⇒ React with ✅ to save the questions.\n⇒ React with ❌ to cancel this process.`)
 				.setFooter("Adding Questions.");
 			const fields: string[] = StringUtil.arrayToStringFields<string>(
 				questions,
@@ -324,7 +337,7 @@ export class ConfigureApplicationCommand extends Command {
 				10,
 				TimeUnit.MINUTE,
 				msg.channel
-			).sendWithReactCollector(GenericMessageCollector.getStringPrompt(msg.channel, { minCharacters: 1, maxCharacters: 50 }), {
+			).sendWithReactCollector(GenericMessageCollector.getStringPrompt(msg.channel, { minCharacters: 1 }), {
 				reactions: ["⬅️", "✅", "❌"],
 				cancelFlag: "--cancel",
 				reactToMsg: !hasReactedToMessage,
@@ -348,7 +361,7 @@ export class ConfigureApplicationCommand extends Command {
 					return;
 				}
 				else {
-					if (questions.length !== 0) {
+					if (qs.length !== 0) {
 						break;
 					}
 				}
@@ -358,7 +371,17 @@ export class ConfigureApplicationCommand extends Command {
 					await botMsg.delete().catch(() => { });
 					return;
 				}
-				qs.push(...response.split("|").map(x => x.trim()));
+				const allQs: string[] = response.split("|").map(x => x.trim()).filter(x => x.length <= 200);
+				while (questions.length + allQs.length > ConfigureApplicationCommand.MAX_QUESTIONS) {
+					allQs.pop();
+				}
+
+				// only first 8
+				while (allQs.length > 8) {
+					allQs.pop();
+				}
+
+				qs = allQs;
 			}
 		}
 
@@ -369,14 +392,16 @@ export class ConfigureApplicationCommand extends Command {
 			app.questions.push(...qs);
 		}
 		else {
-			app.questions.splice(position, 0, ...qs);
+			app.questions.splice(position + 1, 0, ...qs);
 		}
-		db = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: db.guildID, "properties.application.name": app.name }, {
-			$set: {
-				"properties.application.$.questions": app.questions
-			}
-		}, { returnOriginal: false })).value as IRaidGuild;
-		this.questionTime(msg, db, app, botMsg, true);
+		this.questionTime(msg, db, app, botMsg);
+	}
+
+	private generateProperString(questions: string[]): string {
+		return StringUtil.arrayToStringFields<string>(
+			questions,
+			(i, elem) => `\`[${i + 1}]\` ${elem}\n`,
+		)[0];
 	}
 
 	private async editQuestion(msg: Message, db: IRaidGuild, app: IApplication, questions: string[], botMsg: Message, position: number): Promise<void> {
@@ -442,12 +467,7 @@ export class ConfigureApplicationCommand extends Command {
 		}
 
 		app.questions[position] = q;
-		db = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: db.guildID, "properties.application.name": app.name }, {
-			$set: {
-				"properties.application.$.questions": app.questions
-			}
-		}, { returnOriginal: false })).value as IRaidGuild;
-		this.questionTime(msg, db, app, botMsg, true);
+		this.questionTime(msg, db, app, botMsg);
 	}
 
 	private async addOrEditQuestion(msg: Message, db: IRaidGuild, app: IApplication, questions: string[], botMsg: Message, qType: "ADD" | "EDIT"): Promise<void> {
@@ -494,13 +514,13 @@ export class ConfigureApplicationCommand extends Command {
 
 		if (response instanceof Emoji) {
 			if (response.name === "🇧") {
-				numToUse = 0;
-			}
-			else if (response.name === "🇫") {
 				numToUse = questions.length - 1;
 			}
+			else if (response.name === "🇫") {
+				numToUse = 0;
+			}
 			else {
-				this.questionTime(msg, db, app, botMsg, true);
+				this.questionTime(msg, db, app, botMsg);
 				return;
 			}
 		}
@@ -513,7 +533,8 @@ export class ConfigureApplicationCommand extends Command {
 			return;
 		}
 		else {
-
+			this.editQuestion(msg, db, app, questions, botMsg, numToUse);
+			return;
 		}
 	}
 
@@ -555,7 +576,7 @@ export class ConfigureApplicationCommand extends Command {
 		}
 		else if (response instanceof Emoji) {
 			if (response.name === "⬅️") {
-				this.questionTime(msg, db, app, botMsg, true);
+				this.questionTime(msg, db, app, botMsg);
 				return;
 			}
 			else {
@@ -566,7 +587,8 @@ export class ConfigureApplicationCommand extends Command {
 		else {
 			questions.splice(response - 1, 1);
 			app.questions = questions;
-			this.questionTime(msg, db, app, botMsg, true);
+
+			this.questionTime(msg, db, app, botMsg);
 			return;
 		}
 	}
@@ -579,7 +601,7 @@ export class ConfigureApplicationCommand extends Command {
 		while (true) {
 			const embed: MessageEmbed = MessageUtil.generateBlankEmbed(msg.author)
 				.setTitle(`**${app.name}** ⇒ Editing Questions ⇒ Switching Questions`)
-				.setDescription(`Q1: ${nums[0] === -1 ? "N/A" : questions[nums[0]]}\nQ2: ${nums[1] === -1 ? "N/A" : questions[nums[1]]}\n\nPlease type two numbers corresponding to the questions you want to swap around. For example, valid inputs could be \`1 10\` or \`15 2\`.\n\n⇒ React with ⬅️ to go back to the previous menu.\n⇒ React with ✅ to confirm that you want to switch the above two questions.\n⇒ React with ❌ to cancel this process.`)
+				.setDescription(`\`[Q1]\` ${nums[0] === -1 ? "N/A" : questions[nums[0]]}\n\`[Q2]\` ${nums[1] === -1 ? "N/A" : questions[nums[1]]}\n\nPlease type two numbers corresponding to the questions you want to swap around. For example, valid inputs could be \`1 10\` or \`15 2\`.\n\n⇒ React with ⬅️ to go back to the previous menu.\n⇒ React with ✅ to confirm that you want to switch the above two questions.\n⇒ React with ❌ to cancel this process.`)
 				.setFooter("Delete Questions.");
 
 			const fields: string[] = StringUtil.arrayToStringFields<string>(
@@ -652,14 +674,17 @@ export class ConfigureApplicationCommand extends Command {
 		questions[nums[0]] = questions[nums[1]];
 		questions[nums[1]] = temp;
 		app.questions = questions;
-		this.questionTime(msg, db, app, botMsg, true);
+		this.questionTime(msg, db, app, botMsg);
 	}
 
 	private generateEmbed(msg: Message, app: IApplication, questions: string[]): MessageEmbed {
 		let desc: string = "";
-		desc += `⇒ React with ⬅️ to go back to the previous menu. Your changes won't be saved.\n⇒ React with ➕ to add one or more question(s) to the application.`;
+		desc += `⇒ React with ⬅️ to go back to the previous menu. Your changes won't be saved.`;
+		if (questions.length < ConfigureApplicationCommand.MAX_QUESTIONS) {
+			desc += `\n⇒ React with ➕ to add one or more question(s) to the application.`;
+		}
 		if (questions.length !== 0) {
-			desc += "\n⇒ React with ➖ to delete a question.";
+			desc += "\n⇒ React with ➖ to delete a question.\n⇒ React with 🔨 to edit a question.";
 		}
 		if (questions.length > 1) {
 			desc += `\n⇒ React with 🔃 to switch two questions around.`;
@@ -695,6 +720,7 @@ export class ConfigureApplicationCommand extends Command {
 			const embed: MessageEmbed = MessageUtil.generateBlankEmbed(msg.author)
 				.setTitle(`**${app.name}** ⇒ Change Channel`)
 				.setDescription("Please type the channel that you want to use for this application. Any applications will be sent to this channel where it can be reviewed. The channel preview is below.\n\n⇒ React with ⬅️ if you want to go back to the previous menu.\n⇒ React with ✅ if you want to use the channel below.\n⇒ React with ❌ if you want to cancel.")
+				.addField("Selected Channel", typeof channel === "undefined" ? "N/A" : channel)
 				.setFooter("Application Editor.");
 			await botMsg.edit(embed).catch(e => { });
 
@@ -761,6 +787,7 @@ export class ConfigureApplicationCommand extends Command {
 			const embed: MessageEmbed = MessageUtil.generateBlankEmbed(msg.author)
 				.setTitle(`**${app.name}** ⇒ Change Name`)
 				.setDescription("Please type the name that you want to use for this application. The name preview is below. Your name must not be more than 50 characters long and must not be used by another application.\n\n⇒ React with ⬅️ if you want to go back to the previous menu.\n⇒ React with ✅ if you want to use the name below.\n⇒ React with ❌ if you want to cancel.")
+				.addField("Preview Name", title === "" ? "N/A" : title)
 				.setFooter("Application Editor.");
 			await botMsg.edit(embed).catch(e => { });
 
@@ -771,7 +798,7 @@ export class ConfigureApplicationCommand extends Command {
 				TimeUnit.MINUTE,
 				msg.channel
 			).sendWithReactCollector(GenericMessageCollector.getStringPrompt(msg.channel, { minCharacters: 1, maxCharacters: 50 }), {
-				reactions: ["✅", "❌"],
+				reactions: ["⬅️", "✅", "❌"],
 				cancelFlag: "--cancel",
 				reactToMsg: !hasReactedToMessage,
 				deleteMsg: false,
@@ -804,7 +831,7 @@ export class ConfigureApplicationCommand extends Command {
 					await botMsg.delete().catch(() => { });
 					return;
 				}
-				if (!allAppNames.includes(title.toLowerCase())) {
+				if (response !== "" && !allAppNames.includes(response.toLowerCase())) {
 					title = response;
 				}
 			}
@@ -856,12 +883,14 @@ export class ConfigureApplicationCommand extends Command {
 			}
 
 			if (response instanceof Emoji) {
-				if (response.name === "❌") {
-					await botMsg.delete().catch(e => { });
-					return
+				if (response.name === "✅") {
+					if (title.length !== 0) {
+						break;
+					}
 				}
 				else {
-					break;
+					await botMsg.delete().catch(e => { });
+					return
 				}
 			}
 			else {
@@ -870,7 +899,7 @@ export class ConfigureApplicationCommand extends Command {
 					return;
 				}
 
-				if (!allAppNames.includes(title.toLowerCase())) {
+				if (!allAppNames.includes(response.toLowerCase()) && response.length !== 0) {
 					title = response;
 				}
 			}
@@ -892,7 +921,7 @@ export class ConfigureApplicationCommand extends Command {
 			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 			.setTitle("Application Created")
 			.setDescription(`Your application, named \`${title}\`, has been created. It is currently disabled and no questions have been provided. To manage this application, please edit the application.`)
-			.setFooter("Too Many Applications!");
+			.setFooter("Application Created!");
 		await botMsg.edit(confirmEmbed).catch(e => { });
 		setTimeout(async () => {
 			this.mainMenu(msg, guildDb, botMsg);

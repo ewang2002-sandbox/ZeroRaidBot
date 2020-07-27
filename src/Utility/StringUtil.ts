@@ -121,7 +121,7 @@ export namespace StringUtil {
 			}
 		}
 
-		if (str.length !== 0) {
+		if (str.length !== 0 && str !== "") {
 			returnArr.push(str);
 		}
 

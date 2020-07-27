@@ -1,4 +1,4 @@
-import { Message, ClientApplication, User, MessageEmbed, GuildMember } from "discord.js";
+import { Message, ClientApplication, User, MessageEmbed, GuildMember, Collection } from "discord.js";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { DefaultPrefix, BotConfiguration } from "../Configuration/Config";
 import { Command } from "../Templates/Command/Command";
@@ -9,6 +9,9 @@ import { MessageUtil } from "../Utility/MessageUtil";
 import { OtherUtil } from "../Utility/OtherUtil";
 import { ModMailHandler } from "../Helpers/ModMailHandler";
 import { UserAvailabilityHelper } from "../Helpers/UserAvailabilityHelper";
+
+// guild id, all users
+export const SilencedUsers: Collection<string, string[]> = new Collection<string, string[]>();
 
 export async function onMessageEvent(msg: Message): Promise<void> {
 	// make sure we have a regular message to handle
@@ -23,6 +26,11 @@ export async function onMessageEvent(msg: Message): Promise<void> {
 
 	// ensure no bot.
 	if (msg.author.bot) {
+		return;
+	}
+
+	if (msg.guild !== null && SilencedUsers.has(msg.guild.id) && (SilencedUsers.get(msg.guild.id) as string[]).includes(msg.author.id)) {
+		await msg.delete().catch(e => { });
 		return;
 	}
 

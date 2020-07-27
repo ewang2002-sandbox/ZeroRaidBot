@@ -47,7 +47,10 @@ Some of the bot's more prominent features include the following.
 Please see this [guide](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/master/md_img/SETUP.md).
 
 ## Support the Project
-The best way to support this project is to star (⭐) it.
+The best way to support this project is to star (⭐) it. You might also consider looking through the code and seeing if something could use optimizing (most of the code is written in the middle of the night). 
+
+## Similar Projects
+- [Ooga-Booga](https://github.com/Jacobvs/Rotmg-Discord-Bot) by [Darkmattr](https://github.com/Jacobvs). 
 
 ## License
 Please review the license file in this repository.

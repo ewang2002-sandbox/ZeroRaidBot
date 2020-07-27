@@ -88,12 +88,9 @@ export class ApplyCommand extends Command {
 
 		const reactions: EmojiResolvable[] = ["❌"];
 
-		for (let i = 0; i < guildDb.properties.application.length; i++) {
-			if (!guildDb.properties.application[i].isEnabled) {
-				continue;
-			}
+		for (let i = 0; i < allActiveApps.length; i++) {
 			reactions.push(this._emojiToReaction[i]);
-			const app: IApplication = guildDb.properties.application[i];
+			const app: IApplication = allActiveApps[i];
 			embed.addField(`**\`[${i + 1}]\`** ${app.name}`, `${app.questions.length} Questions`);
 		}
 
@@ -122,7 +119,7 @@ export class ApplyCommand extends Command {
 		}
 
 		await botMsg.delete().catch(e => { });
-		this.application(msg, guildDb.properties.application[selectedIndex]).catch(e => { });
+		this.application(msg, allActiveApps[selectedIndex]).catch(e => { });
 	}
 
 	public async application(msg: Message, app: IApplication): Promise<void> {
@@ -160,7 +157,6 @@ export class ApplyCommand extends Command {
 		const start: number = new Date().getTime();
 
 		const responses: [string, number, number[]][] = [];
-		const times: number[] = [];
 		for await (const question of app.questions) {
 			let timeA: number = new Date().getTime();
 			const answer: string = await this.askQuestion(msg, dmChannel, question);
@@ -173,7 +169,6 @@ export class ApplyCommand extends Command {
 		} // end for
 
 		while (true) {
-			let questions: string[] = [];
 			const respString: StringBuilder = new StringBuilder()
 				.append(`[APPLICATION] ${app.name} Form: ${DateUtil.getTime()}`)
 				.appendLine()
@@ -206,8 +201,8 @@ export class ApplyCommand extends Command {
 				{ content: "See Attachment Below.", embed: conEmbed, files: [new MessageAttachment(Buffer.from(respString.toString(), "utf8"), `${app.name.toLowerCase()}_${msg.author.id}.txt`)] },
 				10,
 				TimeUnit.MINUTE,
-				msg.author
-			).sendWithReactCollector(GenericMessageCollector.getNumber(msg.author, 1, questions.length), {
+				dmChannel
+			).sendWithReactCollector(GenericMessageCollector.getNumber(msg.author, 1, app.questions.length), {
 				reactions: ["💾", "🗑️"],
 				cancelFlag: "--cancel",
 				reactToMsg: true,
@@ -231,7 +226,7 @@ export class ApplyCommand extends Command {
 				}
 
 				let a: number = new Date().getTime();
-				responses[resp - 1][0] = await this.askQuestion(msg, dmChannel, responses[resp - 1][0]);
+				responses[resp - 1][0] = await this.askQuestion(msg, dmChannel, app.questions[resp - 1]);
 				let b: number = new Date().getTime();
 				responses[resp - 1][2].push(b - a);
 			}

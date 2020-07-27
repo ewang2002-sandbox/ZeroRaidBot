@@ -1,7 +1,7 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, MessageEmbed, Role, Collection, Guild, TextChannel, MessageReaction, User, ReactionCollector, EmojiResolvable, GuildChannel, MessageCollector, GuildEmoji, ReactionEmoji, Emoji, ClientUser, MessageEmbedFooter } from "discord.js";
+import { Message, MessageEmbed, Role, Collection, Guild, TextChannel, MessageReaction, User, EmojiResolvable, GuildChannel, MessageCollector, GuildEmoji, ReactionEmoji, Emoji, ClientUser } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
@@ -338,7 +338,7 @@ export class ConfigureSectionCommand extends Command {
 		).react();
 
 		if (chosenReaction === "TIME_CMD" || chosenReaction.name === "❌") {
-			await botMsg.delete().catch(e => { });
+			await botMsg.delete().catch(() => { });
 			return;
 		}
 
@@ -353,7 +353,7 @@ export class ConfigureSectionCommand extends Command {
 				return;
 			}
 			else if (section === "CANCEL_CMD") {
-				await botMsg.delete().catch(e => { });
+				await botMsg.delete().catch(() => { });
 				return;
 			}
 			else {
@@ -374,7 +374,7 @@ export class ConfigureSectionCommand extends Command {
 	 * @param {IRaidGuild} guildData The guild db.
 	 */
 	private async add(msg: Message, guildData: IRaidGuild, botMsg: Message): Promise<void> {
-		await botMsg.delete().catch(e => { });
+		await botMsg.delete().catch(() => { });
 		// get name
 		const nameOfSectionPrompt: MessageEmbed = new MessageEmbed()
 			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
@@ -402,7 +402,7 @@ export class ConfigureSectionCommand extends Command {
 					.setColor("RED")
 					.setFooter("Invalid Name.");
 				const tempMsg: Message = await msg.channel.send(noMatchAllowedEmbed);
-				await tempMsg.delete({ timeout: 5000 }).catch(e => { });
+				await tempMsg.delete({ timeout: 5000 }).catch(() => { });
 				return;
 			}
 		}
@@ -685,7 +685,7 @@ export class ConfigureSectionCommand extends Command {
 				.setDescription(`Are you sure you want to delete the \`${section.nameOfSection}\` section?`)
 				.setColor("RED")
 				.setFooter("Section Deletion");
-			await m.edit(confirmEmbed).catch(e => { });
+			await m.edit(confirmEmbed).catch(() => { });
 
 			const result: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(
 				m,
@@ -1182,7 +1182,6 @@ export class ConfigureSectionCommand extends Command {
 			res = await this.updateArrayRoleCommand(
 				msg,
 				"Talking Roles",
-				guildData,
 				"roles.talkingRoles",
 				guildData.roles.talkingRoles
 			);
@@ -1193,7 +1192,6 @@ export class ConfigureSectionCommand extends Command {
 			res = await this.updateArrayRoleCommand(
 				msg,
 				"Early Location Roles",
-				guildData,
 				"roles.earlyLocationRoles",
 				guildData.roles.earlyLocationRoles
 			);
@@ -1293,12 +1291,10 @@ export class ConfigureSectionCommand extends Command {
 	private async updateArrayRoleCommand(
 		msg: Message,
 		roleName: string,
-		guildData: IRaidGuild,
 		mongoPath: string,
 		currRoles: string[]
 	): Promise<IRaidGuild | "CANCEL_CMD" | "TIME_CMD"> {
 		const guild: Guild = msg.guild as Guild;
-		guildData = await this.removeDeadElements(currRoles, mongoPath, guild);
 
 		const roles: (Role | undefined)[] = currRoles.map(x => guild.roles.cache.get(x));
 
@@ -1761,7 +1757,7 @@ export class ConfigureSectionCommand extends Command {
 				.setFooter("Changing Name of Section.")
 				.setDescription(`Selected Name: \`${typeof newNameForSection === "undefined" ? "N/A" : newNameForSection}\`\nOriginal Name: \`${section.nameOfSection}\`\n\n**DIRECTIONS:** Type the name of the new section. This name must not be used in a previous section. \n\n**REACTIONS:**\n⇒ React with ⬅️ if you want to go back and keep the old name.\n⇒ React with ✅ to change the name of the section to the one defined above.`);
 
-			await botSentMsg.edit(promptEmbed).catch(e => { });
+			await botSentMsg.edit(promptEmbed).catch(() => { });
 			const response: string | Emoji | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<string>(
 				msg,
 				{ embed: promptEmbed },
@@ -1805,7 +1801,7 @@ export class ConfigureSectionCommand extends Command {
 						.setDescription("The name that you attempted to use is already being used by another section. Your new section name must not match another section's name (case-insensitive).")
 						.setColor("RED")
 						.setFooter("Invalid Name Detected.");
-					await botSentMsg.edit(noMatchAllowedEmbed).catch(e => { });
+					await botSentMsg.edit(noMatchAllowedEmbed).catch(() => { });
 					await OtherUtil.waitFor(5000);
 				}
 				else {
@@ -2016,7 +2012,7 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 			//}
 		}
 
-		await botMsg.edit(embed).catch(e => { });
+		await botMsg.edit(embed).catch(() => { });
 		const selectedReaction: Emoji | "TIME_CMD" = await new FastReactionMenuManager(
 			botMsg,
 			msg.author,
@@ -2369,16 +2365,6 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 	}
 
 
-	/**
-	 * The reaction collector filter that can be used for all reaction collectors.
-	 * @param {EmojiResolvable[]} reactions The reactions. 
-	 * @param {Message} msg The message from the author.  
-	 */
-	private reactionCollectionFilter(reactions: EmojiResolvable[], msg: Message): ((r: MessageReaction, u: User) => boolean) {
-		return (reaction: MessageReaction, user: User) => {
-			return reactions.includes(reaction.emoji.name) && user.id === msg.author.id && !user.bot;
-		}
-	}
 
 	/**
 	 * A sample function, to be used as a parameter for the `send` method, that will wait for someone to respond with either a TextChannel mention or ID, or simply the "skip" message.
@@ -2467,7 +2453,7 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 						$pull: {
 							[field]: role
 						}
-					}, (err, raw) => {
+					}, (err) => {
 						if (err) {
 							reject(err);
 						}

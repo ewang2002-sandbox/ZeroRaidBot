@@ -415,7 +415,7 @@ export module ModMailHandler {
 
 		let addLogStr: string = "";
 		if (typeof modMailStorage !== "undefined") {
-			const m: Message | void = await modMailStorage.send(DateUtil.getTime(), new MessageAttachment(Buffer.from(respString.toString(), "utf8"), "log.txt")).catch(console.error);
+			const m: Message | void = await modMailStorage.send(DateUtil.getTime(), new MessageAttachment(Buffer.from(respString.toString(), "utf8"), `${authorOfModmail.id}_modmail_${new Date().getTime()}.txt`)).catch(console.error);
 			if (typeof m !== "undefined" && m.attachments.size > 0) {
 				addLogStr = `[[Response](${(m.attachments.first() as MessageAttachment).url})]`;
 			}

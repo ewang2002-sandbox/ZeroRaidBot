@@ -1,9 +1,8 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, MessageEmbed, Guild } from "discord.js";
+import { Message, Guild } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
-import { StringBuilder } from "../../Classes/String/StringBuilder";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
 

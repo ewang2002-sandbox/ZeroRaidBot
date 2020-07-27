@@ -1,8 +1,7 @@
-import { MessageEmbed, Message, MessageCollector, Collection, MessageOptions, TextChannel, Guild, Role, GuildMember, Permissions, PartialTextBasedChannelFields, User, GuildChannel, GuildEmoji, EmojiResolvable, ReactionCollector, MessageReaction, Emoji, DMChannel, MessageAttachment, FileOptions } from "discord.js";
+import { MessageEmbed, Message, MessageCollector, Collection, MessageOptions, TextChannel, Guild, Role, GuildMember, Permissions, PartialTextBasedChannelFields, User, GuildChannel, EmojiResolvable, ReactionCollector, MessageReaction, Emoji, DMChannel, MessageAttachment, FileOptions } from "discord.js";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { TimeUnit } from "../../Definitions/TimeUnit";
 import { FastReactionMenuManager } from "../Reaction/FastReactionMenuManager";
-import internal from "events";
 import { Stream } from "stream";
 
 type IGenericMsgCollectorArguments = {

@@ -1,3 +1,7 @@
+// TODO look into using positional operators
+// for nested array
+// https://docs.mongodb.com/manual/reference/operator/update/positional-filtered/
+
 // TODO optimize code -- put all while (true) {...}
 // that allow for interactive selection to be
 // a function 
@@ -138,7 +142,7 @@ export class ConfigureApplicationCommand extends Command {
 
 	public async editApp(msg: Message, guildDb: IRaidGuild, app: IApplication, botMsg: Message): Promise<void> {
 		await botMsg.reactions.removeAll().catch(() => { });
-		const guild: Guild = msg.guild as Guild;
+		const guild: Guild = await (msg.guild as Guild).fetch()
 		const channel: GuildChannel | undefined = guild.channels.cache.get(app.channel);
 		const reactions: EmojiResolvable[] = ["⬅️"];
 		const embed: MessageEmbed = MessageUtil.generateBlankEmbed(msg.author)
@@ -147,7 +151,7 @@ export class ConfigureApplicationCommand extends Command {
 			.setFooter(`${app.name}`)
 			.addField("Go Back", "React with ⬅️ if you want to go back to the previous menu.");
 
-		if (typeof channel !== "undefined") {
+		if (typeof channel !== "undefined" && app.questions.length !== 0) {
 			embed.addField(`${app.isEnabled ? "Disable" : "Enable"} Application`, `React with 🔔 if you want to ${app.isEnabled ? "disable" : "enable"} this application.`);
 			reactions.push("🔔");
 		}
@@ -186,7 +190,7 @@ export class ConfigureApplicationCommand extends Command {
 		}
 		// instructions
 		else if (selectedReaction.name === "📖") {
-			this.editInstructions(msg, guildDb, app, app.questions, botMsg);
+			this.editInstructions(msg, guildDb, app, botMsg);
 			return;
 		}
 		// enable/disable
@@ -637,7 +641,7 @@ export class ConfigureApplicationCommand extends Command {
 		this.questionTime(msg, db, app, botMsg);
 	}
 
-	private async editInstructions(msg: Message, guildDb: IRaidGuild, app: IApplication, questions: string[], botMsg: Message): Promise<void> { 
+	private async editInstructions(msg: Message, guildDb: IRaidGuild, app: IApplication, botMsg: Message): Promise<void> { 
 		await botMsg.reactions.removeAll().catch(() => { });
 		const guild: Guild = msg.guild as Guild;
 
@@ -657,7 +661,7 @@ export class ConfigureApplicationCommand extends Command {
 				10,
 				TimeUnit.MINUTE,
 				msg.channel
-			).sendWithReactCollector(GenericMessageCollector.getStringPrompt(msg.channel, { minCharacters: 1, maxCharacters: 50 }), {
+			).sendWithReactCollector(GenericMessageCollector.getStringPrompt(msg.channel, { minCharacters: 1, maxCharacters: 2000 }), {
 				reactions: ["⬅️", "✅", "❌"],
 				cancelFlag: "--cancel",
 				reactToMsg: !hasReactedToMessage,
@@ -702,7 +706,7 @@ export class ConfigureApplicationCommand extends Command {
 				"properties.application.$.instructions": instructions
 			}
 		}, { returnOriginal: false })).value as IRaidGuild;
-		const newIndex: number = guildDb.properties.application.findIndex(x => x.name === instructions);
+		const newIndex: number = guildDb.properties.application.findIndex(x => x.name === app.name);
 		this.editApp(msg, guildDb, guildDb.properties.application[newIndex], botMsg);
 	}
 
@@ -1025,7 +1029,8 @@ export class ConfigureApplicationCommand extends Command {
 					isEnabled: false,
 					name: title,
 					questions: [],
-					channel: ""
+					channel: "",
+					instructions: ""
 				}
 			}
 		}, { returnOriginal: false })).value as IRaidGuild;
@@ -1059,7 +1064,7 @@ export class ConfigureApplicationCommand extends Command {
 
 		for (let i = 0; i < guildData.properties.application.length; i++) {
 			reactions.push(this._emojiToReaction[i]);
-			const app: { isEnabled: boolean; name: string; questions: string[]; } = guildData.properties.application[i];
+			const app: IApplication = guildData.properties.application[i];
 			embed.addField(`**\`[${i + 1}]\`** ${app.name}`, `Questions: ${app.questions.length}\nStatus: ${app.isEnabled ? "Active" : "Inactive"}`);
 		}
 

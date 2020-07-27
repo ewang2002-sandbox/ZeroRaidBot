@@ -2,7 +2,6 @@ import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
 import { Message, ClientUser, User } from "discord.js";
-import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { UserHandler } from "../../Helpers/UserHandler";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";

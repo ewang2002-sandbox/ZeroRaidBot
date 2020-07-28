@@ -721,7 +721,7 @@ export module RaidHandler {
 				// if you reacted w/ key you dont need the location twice.
 				&& !hasUserReactedWithKey(keysThatReacted, member.id)
 				// make sure you have the early location role.
-				&& guildDb.roles.earlyLocationRoles.some(x => member.roles.cache.has(x))) {
+				&& (guildDb.roles.earlyLocationRoles.some(x => member.roles.cache.has(x)) || member.premiumSince !== null)) {
 				if (earlyReactions.length + 1 > maximumEarlyLocsAllowed) {
 					await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** You are unable to get the location early due to the volume of people that has requested the location early.`).catch(() => { });
 					return;

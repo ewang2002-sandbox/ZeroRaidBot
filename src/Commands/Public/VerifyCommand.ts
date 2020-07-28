@@ -32,6 +32,6 @@ export class VerifyCommand extends Command {
     }
 
 	public async executeCommand(message: Message, args: string[], guildData: IRaidGuild): Promise<void> {
-		VerificationHandler.verifyUser(message.member as GuildMember, message.guild as Guild, guildData, GuildUtil.getDefaultSection(guildData));
+		VerificationHandler.verifyUser(message.member as GuildMember, message.guild as Guild, guildData, GuildUtil.getDefaultSection(guildData), "COMMAND");
 	}
 }

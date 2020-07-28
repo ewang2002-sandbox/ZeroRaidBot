@@ -238,7 +238,7 @@ export async function onMessageReactionAdd(
 			.get(sectionForVerification.channels.logging.verificationSuccessChannel) as TextChannel | undefined;
 
 		if (reaction.emoji.name === "✅") {
-			VerificationHandler.verifyUser(member, guild, guildDb, sectionForVerification);
+			VerificationHandler.verifyUser(member, guild, guildDb, sectionForVerification, "REACT");
 			return;
 		}
 		else {

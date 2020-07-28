@@ -26,6 +26,7 @@ export const AllEmoji: string = "561605182153031680";
 export const NitroEmoji: string = "706246225200152656";
 export const SnakeOilEmoji: string = "733724221137616920"; 
 
+
 /**
  * Emojis and their definitions.
  */

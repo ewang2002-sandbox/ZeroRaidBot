@@ -1022,22 +1022,22 @@ export const AFKDungeon: IDungeonData[] = [
 	{
 		id: 38,
 		dungeonName: "Oryx 3",
-		portalEmojiID: "708193196902973441",
+		portalEmojiID: "711426860051071067",
 		keyEmojIDs: [
 			{
 				keyEmojID: "708191799750950962",
 				keyEmojiName: "Wine Cellar Incantation"
 			},
 			{
-				keyEmojID: "708191783405879378",
+				keyEmojID: "737672554482761739",
 				keyEmojiName: "Sword Rune"
 			},
 			{
-				keyEmojID: "708191783674314814",
+				keyEmojID: "737672554642276423",
 				keyEmojiName: "Shield Rune"
 			},
 			{
-				keyEmojID: "708191783825178674",
+				keyEmojID: "737673058722250782",
 				keyEmojiName: "Helmet Rune"
 			}
 		],

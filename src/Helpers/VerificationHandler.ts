@@ -49,12 +49,14 @@ export module VerificationHandler {
 	 * @param {Guild} guild The guild. 
 	 * @param {IRaidGuild} guildDb The guild doc. 
 	 * @param {ISection} section The section to verify the member in. Contains channel information.
+	 * @param {string} calledFrom Where the function was called from.
 	 */
 	export async function verifyUser(
 		member: GuildMember,
 		guild: Guild,
 		guildDb: IRaidGuild,
-		section: ISection
+		section: ISection,
+		calledFrom: "REACT" | "COMMAND"
 	): Promise<void> {
 		try {
 			// already verified or no role
@@ -138,7 +140,7 @@ export module VerificationHandler {
 				let isOldProfile: boolean = false;
 
 				if (typeof verificationAttemptsChannel !== "undefined") {
-					verificationAttemptsChannel.send(`▶️ **\`[${section.nameOfSection}]\`** ${member} has started the verification process.`).catch(() => { });
+					verificationAttemptsChannel.send(`▶️ **\`[${section.nameOfSection}]\`** ${member} has started the verification process through the ${calledFrom === "COMMAND" ? "verify command" : "verification embed reaction"}.`).catch(() => { });
 				}
 
 				if (userDb !== null) {

@@ -19,11 +19,15 @@ import { TimeUnit } from "../Definitions/TimeUnit";
 import { UserAvailabilityHelper } from "../Helpers/UserAvailabilityHelper";
 import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuManager";
 import { Zero } from "../Zero";
+import { DateUtil } from "../Utility/DateUtil";
+import { NitroEmoji } from "../Constants/EmojiData";
+import { ReactionLoggingHandler } from "../Helpers/ReactionLoggingHandler";
 
 export async function onMessageReactionAdd(
 	reaction: MessageReaction,
 	user: User | PartialUser
 ): Promise<void> {
+	// PRECHECK AND PRELOAD
 	if (reaction.partial) {
 		let fetchedReaction: MessageReaction | void = await reaction.fetch().catch(() => { });
 		if (typeof fetchedReaction === "undefined") {
@@ -48,11 +52,20 @@ export async function onMessageReactionAdd(
 		return;
 	}
 
-	const guild: Guild = reaction.message.guild;
-	const guildDb: IRaidGuild = await (new MongoDbHelper.MongoDbGuildManager(guild.id)).findOrCreateGuildDb();
-	const allSections: ISection[] = [GuildUtil.getDefaultSection(guildDb), ...guildDb.sections];
+	if (reaction.message.type !== "DEFAULT") {
+		return;
+	}
 
-    /**
+	try {
+		user = await user.fetch();
+	}
+	catch (e) {
+		return;
+	}
+
+	const guild: Guild = reaction.message.guild;
+
+	/**
      * the member that reacted
      */
 	let member: GuildMember;
@@ -64,9 +77,17 @@ export async function onMessageReactionAdd(
 		return;
 	}
 
-	if (reaction.message.type !== "DEFAULT") {
-		return;
+	// END PRECHECK AND PRELOAD
+
+	const guildDb: IRaidGuild = await (new MongoDbHelper.MongoDbGuildManager(guild.id)).findOrCreateGuildDb();
+	const allSections: ISection[] = [GuildUtil.getDefaultSection(guildDb), ...guildDb.sections];
+
+	//#region REACTION LOGGING
+	if (reaction.message.author.bot) {
+		ReactionLoggingHandler.reacted(guild, reaction, member, allSections, "REACT");
 	}
+
+	//#region END 
 
 	// TODO shorten var name? :P
 	// anyways, these are channels
@@ -217,7 +238,7 @@ export async function onMessageReactionAdd(
 			.get(sectionForVerification.channels.logging.verificationSuccessChannel) as TextChannel | undefined;
 
 		if (reaction.emoji.name === "✅") {
-			VerificationHandler.verifyUser(member, guild, guildDb, sectionForVerification);
+			VerificationHandler.verifyUser(member, guild, guildDb, sectionForVerification, "REACT");
 			return;
 		}
 		else {
@@ -404,7 +425,14 @@ export async function setNewLocationPrompt(
 	if (typeof curRaidDataArrElem === "undefined") {
 		let hasMessaged: string[] = [];
 		for await (const person of raidInfo.earlyReacts) {
-			const memberToMsg: GuildMember | null = guild.member(person);
+			let memberToMsg: GuildMember | null;
+			try {
+				memberToMsg = await guild.members.fetch(person);
+			}
+			catch (e) {
+				memberToMsg = null;
+			}
+
 			if (memberToMsg === null) {
 				continue;
 			}
@@ -416,7 +444,13 @@ export async function setNewLocationPrompt(
 			if (hasMessaged.includes(entry.userId)) {
 				continue;
 			}
-			const memberToMsg: GuildMember | null = guild.member(entry.userId);
+			let memberToMsg: GuildMember | null;
+			try {
+				memberToMsg = await guild.members.fetch(entry.userId);
+			}
+			catch (e) {
+				memberToMsg = null;
+			}
 			if (memberToMsg === null) {
 				continue;
 			}

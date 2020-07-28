@@ -262,8 +262,11 @@ export module RaidHandler {
 
 				reactCollector.on("collect", async (r: MessageReaction, u: User) => {
 					await r.users.remove(u).catch(() => { });
-					const memberThatAnswered: GuildMember | null = guild.member(u);
-					if (memberThatAnswered === null) {
+					let memberThatAnswered: GuildMember;
+					try {
+						memberThatAnswered = await guild.members.fetch(u);
+					}
+					catch (e) {
 						return;
 					}
 
@@ -588,7 +591,7 @@ export module RaidHandler {
 		// ==================================
 		// control panel stuff
 		// ==================================
-		const controlPanelDescription: string = `⇒ Raid Section: ${SECTION.nameOfSection}\n⇒ Initiator: ${member} (${member.displayName})\n⇒ Dungeon: ${SELECTED_DUNGEON.dungeonName} ${Zero.RaidClient.emojis.cache.get(SELECTED_DUNGEON.portalEmojiID)}\n⇒ Voice Channel: ${vcName}`;
+		const controlPanelDescription: string = `⇒ Raid Section: ${SECTION.nameOfSection}\n⇒ Initiator: ${member} (${member.displayName})\n⇒ Dungeon: ${SELECTED_DUNGEON.dungeonName} ${Zero.RaidClient.emojis.cache.get(SELECTED_DUNGEON.portalEmojiID)}\n⇒ Voice Channel: ${vcName}\n⇒ Location: Please react below.`;
 		const controlPanelEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(`Control Panel: ${vcName}`, SELECTED_DUNGEON.portalLink)
 			.setTitle(`**${SELECTED_DUNGEON.dungeonName} Raid**`)
@@ -665,10 +668,16 @@ export module RaidHandler {
 				return; // this should never hit.
 			}
 
-			const member: GuildMember | null = guild.member(user);
+			let member: GuildMember;
+			try {
+				member = await guild.members.fetch(user);
+			}
+			catch (e) {
+				return;
+			}
 			// member not found OR member not in vc OR member not in raid vc 
 			// dont let them in
-			if (member === null || member.voice.channel === null || member.voice.channel.id !== NEW_RAID_VC.id) {
+			if (member.voice.channel === null || member.voice.channel.id !== NEW_RAID_VC.id) {
 				return;
 			}
 			// TODO somehow key entry (in end afk control panel) have data from the early react (merged data)
@@ -712,7 +721,7 @@ export module RaidHandler {
 				// if you reacted w/ key you dont need the location twice.
 				&& !hasUserReactedWithKey(keysThatReacted, member.id)
 				// make sure you have the early location role.
-				&& guildDb.roles.earlyLocationRoles.some(x => member.roles.cache.has(x))) {
+				&& (guildDb.roles.earlyLocationRoles.some(x => member.roles.cache.has(x)) || member.premiumSince !== null)) {
 				if (earlyReactions.length + 1 > maximumEarlyLocsAllowed) {
 					await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** You are unable to get the location early due to the volume of people that has requested the location early.`).catch(() => { });
 					return;
@@ -983,10 +992,14 @@ export module RaidHandler {
 			for (let i = 0; i < guildDb.activeRaidsAndHeadcounts.raidChannels.length; i++) {
 				if (guildDb.activeRaidsAndHeadcounts.raidChannels[i].vcID === raidVC.id) {
 					for (const react of guildDb.activeRaidsAndHeadcounts.raidChannels[i].keyReacts) {
-						const member: GuildMember | null = guild.member(react.userId);
-						if (member === null) {
+						let member: GuildMember;
+						try {
+							member = await guild.members.fetch(react.userId);
+						}
+						catch (e) {
 							continue;
 						}
+
 						if (peopleThatReactedToKey.has(react.keyId)) {
 							(peopleThatReactedToKey.get(react.keyId) as GuildMember[]).push(member);
 						}
@@ -1122,9 +1135,16 @@ export module RaidHandler {
 
 			// events
 			postAFKMoveIn.on("collect", async (r: MessageReaction, u: User) => {
-				const member: GuildMember | null = guild.member(u);
+				let member: GuildMember;
+				try {
+					member = await guild.members.fetch(u);
+				}
+				catch (e) {
+					return;
+				}
+
 				// TODO fix post afk not working 
-				if (member !== null && member.voice.channel !== null) {
+				if (member.voice.channel !== null) {
 					if (raidVc.userLimit === 0) {
 						await member.voice.setChannel(raidVC).catch(console.error);
 					}

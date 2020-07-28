@@ -80,7 +80,15 @@ export class AddToNicknameCommand extends Command {
         }
 
         // first, get nickname
-        const resolvedMember: GuildMember | null = guild.member(msg.author.id);
+		let resolvedMember: GuildMember | null;
+		try {
+			resolvedMember = await guild.members.fetch(msg.author.id);
+		}
+		catch (e) {
+			resolvedMember = null;
+		}	
+
+
         if (resolvedMember === null) {
 			UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
             return;

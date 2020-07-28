@@ -306,7 +306,7 @@ export class ApplyCommand extends Command {
 			.setFooter("Submitted")
 			.setTimestamp();
 		await formChan.send(finalEmbed).catch(e => { });
-		const appMsg: Message = await formChan.send(new MessageAttachment(Buffer.from(finalConfirm.toString(), "utf8"), `${app.name.toLowerCase()}_${msg.author.id}.txt`));
+		const appMsg: Message = await formChan.send(new MessageAttachment(Buffer.from(finalConfirm.toString(), "utf8"), `${app.name.toLowerCase()}_${msg.author.id}_${new Date().getTime()}.txt`));
 		FastReactionMenuManager.reactFaster(appMsg, ["✅", "❌", "📝"]);
 	}
 

@@ -1201,7 +1201,7 @@ export module RaidHandler {
 			.setColor(ArrayUtil.getRandomElement<ColorResolvable>(rs.dungeonInfo.colors))
 			.setTimestamp()
 			.setFooter(`Control Panel • In Raid • ${rs.vcName}`);
-		await cpMsg.edit("**NOTICE:** Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the raid; this control panel message can only be used to control the corresponding raid.\n***NOTICE:** When you are done with the raid, you MUST end the run.", startRunControlPanelEmbed).catch(() => { });
+		await cpMsg.edit("**NOTICE:** Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the raid; this control panel message can only be used to control the corresponding raid.\n**NOTICE:** When you are done with the raid, you MUST end the run.", startRunControlPanelEmbed).catch(() => { });
 		FastReactionMenuManager.reactFaster(cpMsg, ["⏹️", "✏️", "🗺️", "🔒", "🔓"]);
 	}
 

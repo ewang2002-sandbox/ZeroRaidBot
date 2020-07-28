@@ -51,6 +51,7 @@ import { ConfigureApplicationCommand } from "../Commands/Configuration/Configure
 import { SilenceCommand } from "../Commands/Moderator/SilenceCommand";
 import { VerifyCommand } from "../Commands/Public/VerifyCommand";
 import { ApplyCommand } from "../Commands/Public/ApplyCommand";
+import { PurgeCommand } from "../Commands/Staff/PurgeCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -116,7 +117,8 @@ export class CommandManager {
 			new CheckBlacklistCommand(),
 			new ManualVerifyCommand(),
 			new CheckModmailBlacklistCommand(),
-			new SilenceCommand()
+			new SilenceCommand(),
+			new PurgeCommand()
 		]);
 
 		this.commands.set("Moderation", [

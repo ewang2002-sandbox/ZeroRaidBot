@@ -112,7 +112,7 @@ export namespace MessageUtil {
 			// invalid input
 			case ("INVALID_NUMBER_INPUT"): {
 				embed.setTitle("Invalid Number Input");
-				embed.setDescription("Please input a valid numerical value.");
+				embed.setDescription("Please input a valid number.");
 				break;
 			}
 			case ("INVALID_INPUT_NO_CHOICE"): {

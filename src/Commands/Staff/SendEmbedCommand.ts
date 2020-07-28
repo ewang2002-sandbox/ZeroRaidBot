@@ -426,7 +426,7 @@ export class SendEmbedCommand extends Command {
 					await msg.delete().catch(() => { });
 					await embedMessage.delete().catch(() => { });
 					interact.stop();
-					const embedPrompt: MessageEmbed = this.createMsgEmbed(msg, "Select Location To Send", "Please mention a channel or give me the ID of the channel where you want this embed to be sent to. To cancel, type `cancel`.");
+					const embedPrompt: MessageEmbed = this.createMsgEmbed(msg, "Select Location To Send", "Please mention a channel or give me the ID of the channel where you want this embed to be sent to. To cancel, type `cancel`. To __edit__ a message instead of send, type the message ID after the channel.");
 					msg.channel.send(embedPrompt).then(promptMsg => {
 						const collector: MessageCollector = new MessageCollector(msg.channel as TextChannel, m => m.author.id === message.author.id, {
 							time: 600000
@@ -437,7 +437,9 @@ export class SendEmbedCommand extends Command {
 								return;
 							}
 
-							let chan: TextChannel | string = m.mentions.channels.first() || m.content;
+							let data: string[] = m.content.split(" ");
+
+							let chan: TextChannel | string = m.mentions.channels.first() || data[0];
 							let resolvedChannel: TextChannel | null = null;
 
 							if (typeof chan === "string") {
@@ -462,8 +464,16 @@ export class SendEmbedCommand extends Command {
 
 							await m.delete().catch(() => { });
 
-							(resolvedChannel as TextChannel).send(embed).catch(() => { });
-							(promptMsg as Message).delete().catch(() => { });
+							try {
+								const channelMsgs: Message = await resolvedChannel.messages.fetch(data[1]);
+								if (channelMsgs.author.id === (msg.client.user as ClientUser).id) {
+									channelMsgs.edit(embed).catch(e => { });
+								}
+							}
+							catch (e) {
+								(resolvedChannel as TextChannel).send(embed).catch(() => { });
+							}
+
 							collector.stop();
 						});
 

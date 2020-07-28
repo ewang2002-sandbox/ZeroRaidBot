@@ -1,4 +1,4 @@
-import { User, ClientUser, ClientApplication, GuildMember, Role } from "discord.js";
+import { User, ClientUser, ClientApplication, GuildMember, Role, TextChannel } from "discord.js";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
 import { Zero } from "../Zero";
@@ -7,7 +7,6 @@ import { SuspendCommand } from "../Commands/Moderator/SuspendCommand";
 import { IRaidBot } from "../Templates/IRaidBot";
 import { DateUtil } from "../Utility/DateUtil";
 import { BOT_VERSION } from "../Constants/ConstantVars";
-import { AxiosResponse } from "axios";
 
 export async function onReadyEvent() {
 	await mongoPreloader();

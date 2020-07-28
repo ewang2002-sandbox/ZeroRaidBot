@@ -283,7 +283,14 @@ export module QuotaLoggingHandler {
 
         let str: string = "";
         for (const entry of leaderboardData) {
-            const member: GuildMember | null = guild.member(entry[1].memberId);
+			let member: GuildMember | null;
+			try {
+				member = await guild.members.fetch(entry[1].memberId);
+			}
+			catch (e) {
+				member = null;
+			}	
+
             if (member === null) {
                 continue;
             }

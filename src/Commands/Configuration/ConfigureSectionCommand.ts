@@ -1,7 +1,7 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, MessageEmbed, Role, Collection, Guild, TextChannel, MessageReaction, User, EmojiResolvable, GuildChannel, MessageCollector, GuildEmoji, ReactionEmoji, Emoji, ClientUser } from "discord.js";
+import { Message, MessageEmbed, Role, Collection, Guild, TextChannel, EmojiResolvable, GuildChannel, MessageCollector, GuildEmoji, ReactionEmoji, Emoji, ClientUser } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
@@ -106,6 +106,13 @@ export class ConfigureSectionCommand extends Command {
 			sectMongo: "sections.$.channels.manualVerification"
 		},
 		{
+			q: "Configure Reaction Logging Channel",
+			d: "Mention, or type the ID of, the channel that you want the bot to use as the logging channel for reactions. When someone reacts (to a key, class emoji, etc.), it will be logged in this channel.",
+			m: false,
+			mainMongo: "generalChannels.logging.reactionLoggingChannel",
+			sectMongo: "sections.$.channels.logging.reactionLoggingChannel"
+		},
+		{
 			q: "Configure Moderation Logging Channel",
 			d: "Mention, or type the ID of, the channel that you want the bot to use as the logging channel for moderation. Any major moderation actions carried out through the bot -- mute & blacklist -- will be logged in this channel.",
 			m: true,
@@ -145,13 +152,6 @@ export class ConfigureSectionCommand extends Command {
 			d: "Mention, or type the ID of, the channel that you want to make the raid requests channel. When a Trial Leader want to start their own raid, a message will be sent to this channel with the following information: location, section, dungeon, time/date. The request will expire in 5 minutes.",
 			m: true,
 			mainMongo: "generalChannels.raidRequestChannel",
-			sectMongo: ""
-		},
-		{
-			q: "Configure Network Announcements Channel",
-			d: "Mention, or type the ID of, the channel that you want to make the network announcements channel. When a message is sent in the Network Announcements channel in the Network Administrator's server, the message will be forwarded to all servers.",
-			m: true,
-			mainMongo: "generalChannels.networkAnnouncementsChannel",
 			sectMongo: ""
 		},
 		{
@@ -756,9 +756,10 @@ export class ConfigureSectionCommand extends Command {
 			.addField("Configure Verification Channel", "React with ✅ to configure the verification channel.")
 			.addField("Configure Manual Verification Channel", "React with 🔍 to configure the manual verification channel.")
 			.addField("Configure Verification Attempts Channel", "React with 🥈 to configure the verification attempts channel. The bot will forward all verification attempts here.")
-			.addField("Configure Verification Success Channel", "React with 🥇 to configure the verification success channel. The bot will forward successful verification attempts here.");
+			.addField("Configure Verification Success Channel", "React with 🥇 to configure the verification success channel. The bot will forward successful verification attempts here.")
+			.addField("Configure Reaction Logging Channel", "React with 😄 to configure the reaction logging channel.");
 
-		reactions.push("⬅️", "🚥", "💻", "✅", "🔍", "🥈", "🥇");
+		reactions.push("⬅️", "🚥", "💻", "✅", "🔍", "🥈", "🥇", "😄");
 
 		if (section.isMain) {
 			embed
@@ -768,10 +769,9 @@ export class ConfigureSectionCommand extends Command {
 				.addField("Configure Moderation Mail Channel", "React with 📬 to configure the moderation mail channel.")
 				.addField("Configure Moderation Mail Storage Channel", "React with ✏️ to configure the moderation mail storage channel. All modmail responses will be stored in this channel.")
 				.addField("Configure Raid Requests Channel", "React with ❓ to configure the raid requests channel.")
-				.addField("Configure Network Announcements Channel", "React with to configure the network announcements channel.")
 				.addField("Configure Quota Channel", "React with 📋 to configure the quota leaderboard channel.");
 
-			reactions.push("⚒️", "⚠️", "📥", "📬", "✏️", "❓", "📢", "📋");
+			reactions.push("⚒️", "⚠️", "📥", "📬", "✏️", "❓", "📋");
 		}
 
 		embed
@@ -898,6 +898,18 @@ export class ConfigureSectionCommand extends Command {
 				"generalChannels.modMailStorage"
 			);
 		}
+		else if (r.name === "😄") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateChannelCommand(
+				msg,
+				"Reaction Logging Channel",
+				section,
+				guild.channels.cache.get(section.channels.logging.reactionLoggingChannel),
+				section.isMain
+					? "generalChannels.logging.reactionLoggingChannel"
+					: "sections.$.channels.logging.reactionLoggingChannel"
+			);
+		}
 		// suspension cmd
 		else if (r.name === "⚠️") {
 			await this.resetBotEmbed(botSentMsg).catch(() => { });
@@ -939,16 +951,6 @@ export class ConfigureSectionCommand extends Command {
 				section,
 				guild.channels.cache.get(guildData.generalChannels.raidRequestChannel),
 				"generalChannels.raidRequestChannel"
-			);
-		}
-		else if (r.name === "📢") {
-			await this.resetBotEmbed(botSentMsg).catch(() => { });
-			res = await this.updateChannelCommand(
-				msg,
-				"Network Announcements Channel",
-				section,
-				guild.channels.cache.get(guildData.generalChannels.networkAnnouncementsChannel),
-				"generalChannels.networkAnnouncementsChannel"
 			);
 		}
 		else if (r.name === "📋") {
@@ -2186,6 +2188,7 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 		const controlPanelChannel: GuildChannel | undefined = guild.channels.cache.get(section.channels.controlPanelChannel);
 		const verificationChannel: GuildChannel | undefined = guild.channels.cache.get(section.channels.verificationChannel);
 		const manualVerificationChannel: GuildChannel | undefined = guild.channels.cache.get(section.channels.manualVerification);
+		const reactLogChannel: GuildChannel | undefined = guild.channels.cache.get(section.channels.logging.reactionLoggingChannel);
 
 		// logging channels for section
 		const verificationAttemptsChan: GuildChannel | undefined = guild.channels.cache.get(section.channels.logging.verificationAttemptsChannel);
@@ -2235,9 +2238,6 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 		}
 
 		const mutedRole: Role | undefined = guild.roles.cache.get(guildData.roles.optRoles.mutedRole);
-		const keyTier1: Role | undefined = guild.roles.cache.get(guildData.roles.optRoles.keyTier1.role);
-		const keyTier2: Role | undefined = guild.roles.cache.get(guildData.roles.optRoles.keyTier2.role);
-		const keyTier3: Role | undefined = guild.roles.cache.get(guildData.roles.optRoles.keyTier3.role);
 
 		const starReq: string = section.verification.stars.required ? "Enabled" : "Disabled";
 		const fameReq: string = section.verification.aliveFame.required ? "Enabled" : "Disabled";
@@ -2256,7 +2256,9 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 			.appendLine()
 			.append(`Verification Attempts Channel: ${typeof verificationAttemptsChan === "undefined" ? "N/A" : verificationAttemptsChan}`)
 			.appendLine()
-			.append(`Verification Success Channels: ${typeof verificationSuccessChan === "undefined" ? "N/A" : verificationSuccessChan}`);
+			.append(`Verification Success Channels: ${typeof verificationSuccessChan === "undefined" ? "N/A" : verificationSuccessChan}`)
+			.appendLine()
+			.append(`Reaction Logging Channel: ${typeof reactLogChannel === "undefined" ? "N/A" : reactLogChannel}`);
 
 		const roleSB: StringBuilder = new StringBuilder("__Role__")
 			.appendLine()
@@ -2339,13 +2341,7 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 				.appendLine()
 				.append(`Early Location Role: ${earlyReactionRoles.length === 0 ? "None" : earlyReactionRoles.join(", ")}`)
 				.appendLine()
-				.append(`Muted Role: ${typeof mutedRole === "undefined" ? "N/A" : mutedRole}`)
-				.appendLine()
-				.append(`Key Tier I Role: ${typeof keyTier1 === "undefined" ? "N/A" : keyTier1}`)
-				.appendLine()
-				.append(`Key Tier II Role: ${typeof keyTier2 === "undefined" ? "N/A" : keyTier2}`)
-				.appendLine()
-				.append(`Key Tier III Role: ${typeof keyTier3 === "undefined" ? "N/A" : keyTier3}`);
+				.append(`Muted Role: ${typeof mutedRole === "undefined" ? "N/A" : mutedRole}`);
 		}
 
 		return {

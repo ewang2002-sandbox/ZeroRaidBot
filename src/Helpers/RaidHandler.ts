@@ -588,7 +588,7 @@ export module RaidHandler {
 		// ==================================
 		// control panel stuff
 		// ==================================
-		const controlPanelDescription: string = `⇒ Raid Section: ${SECTION.nameOfSection}\n⇒ Initiator: ${member} (${member.displayName})\n⇒ Dungeon: ${SELECTED_DUNGEON.dungeonName} ${Zero.RaidClient.emojis.cache.get(SELECTED_DUNGEON.portalEmojiID)}\n⇒ Voice Channel: ${vcName}`;
+		const controlPanelDescription: string = `⇒ Raid Section: ${SECTION.nameOfSection}\n⇒ Initiator: ${member} (${member.displayName})\n⇒ Dungeon: ${SELECTED_DUNGEON.dungeonName} ${Zero.RaidClient.emojis.cache.get(SELECTED_DUNGEON.portalEmojiID)}\n⇒ Voice Channel: ${vcName}\n⇒ Location: Please react below.`;
 		const controlPanelEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(`Control Panel: ${vcName}`, SELECTED_DUNGEON.portalLink)
 			.setTitle(`**${SELECTED_DUNGEON.dungeonName} Raid**`)
@@ -665,10 +665,16 @@ export module RaidHandler {
 				return; // this should never hit.
 			}
 
-			const member: GuildMember | null = guild.member(user);
+			let member: GuildMember;
+			try {
+				member = await guild.members.fetch(user);
+			}
+			catch (e) {
+				return; 
+			}
 			// member not found OR member not in vc OR member not in raid vc 
 			// dont let them in
-			if (member === null || member.voice.channel === null || member.voice.channel.id !== NEW_RAID_VC.id) {
+			if (member.voice.channel === null || member.voice.channel.id !== NEW_RAID_VC.id) {
 				return;
 			}
 			// TODO somehow key entry (in end afk control panel) have data from the early react (merged data)

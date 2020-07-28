@@ -2256,7 +2256,9 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 			.appendLine()
 			.append(`Verification Attempts Channel: ${typeof verificationAttemptsChan === "undefined" ? "N/A" : verificationAttemptsChan}`)
 			.appendLine()
-			.append(`Verification Success Channels: ${typeof verificationSuccessChan === "undefined" ? "N/A" : verificationSuccessChan}`);
+			.append(`Verification Success Channels: ${typeof verificationSuccessChan === "undefined" ? "N/A" : verificationSuccessChan}`)
+			.appendLine()
+			.append(`Reaction Logging Channel: ${typeof reactLogChannel === "undefined" ? "N/A" : reactLogChannel}`);
 
 		const roleSB: StringBuilder = new StringBuilder("__Role__")
 			.appendLine()
@@ -2302,8 +2304,6 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 				.append(`Moderation Logging Channel: ${typeof moderationLoggingChannel === "undefined" ? "N/A" : moderationLoggingChannel}`)
 				.appendLine()
 				.append(`Suspension Logging Channel: ${typeof suspensionLoggingChannel === "undefined" ? "N/A" : suspensionLoggingChannel}`)
-				.appendLine()
-				.append(`Reaction Logging Channel: ${typeof reactLogChannel === "undefined" ? "N/A" : reactLogChannel}`)
 				.appendLine()
 				.append(`Join & Leave Channel: ${typeof joinLeaveLoggingChannel === "undefined" ? "N/A" : joinLeaveLoggingChannel}`)
 				.appendLine()

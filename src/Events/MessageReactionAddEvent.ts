@@ -404,7 +404,14 @@ export async function setNewLocationPrompt(
 	if (typeof curRaidDataArrElem === "undefined") {
 		let hasMessaged: string[] = [];
 		for await (const person of raidInfo.earlyReacts) {
-			const memberToMsg: GuildMember | null = guild.member(person);
+			let memberToMsg: GuildMember | null;
+			try {
+				memberToMsg = await guild.members.fetch(person);
+			}
+			catch (e) {
+				memberToMsg = null;
+			}	
+	
 			if (memberToMsg === null) {
 				continue;
 			}
@@ -416,7 +423,13 @@ export async function setNewLocationPrompt(
 			if (hasMessaged.includes(entry.userId)) {
 				continue;
 			}
-			const memberToMsg: GuildMember | null = guild.member(entry.userId);
+			let memberToMsg: GuildMember | null;
+			try {
+				memberToMsg = await guild.members.fetch(entry.userId);
+			}
+			catch (e) {
+				memberToMsg = null;
+			}	
 			if (memberToMsg === null) {
 				continue;
 			}

@@ -262,8 +262,11 @@ export module RaidHandler {
 
 				reactCollector.on("collect", async (r: MessageReaction, u: User) => {
 					await r.users.remove(u).catch(() => { });
-					const memberThatAnswered: GuildMember | null = guild.member(u);
-					if (memberThatAnswered === null) {
+					let memberThatAnswered: GuildMember;
+					try {
+						memberThatAnswered = await guild.members.fetch(u);
+					}
+					catch (e) {
 						return;
 					}
 
@@ -670,7 +673,7 @@ export module RaidHandler {
 				member = await guild.members.fetch(user);
 			}
 			catch (e) {
-				return; 
+				return;
 			}
 			// member not found OR member not in vc OR member not in raid vc 
 			// dont let them in
@@ -989,10 +992,14 @@ export module RaidHandler {
 			for (let i = 0; i < guildDb.activeRaidsAndHeadcounts.raidChannels.length; i++) {
 				if (guildDb.activeRaidsAndHeadcounts.raidChannels[i].vcID === raidVC.id) {
 					for (const react of guildDb.activeRaidsAndHeadcounts.raidChannels[i].keyReacts) {
-						const member: GuildMember | null = guild.member(react.userId);
-						if (member === null) {
+						let member: GuildMember;
+						try {
+							member = await guild.members.fetch(react.userId);
+						}
+						catch (e) {
 							continue;
 						}
+
 						if (peopleThatReactedToKey.has(react.keyId)) {
 							(peopleThatReactedToKey.get(react.keyId) as GuildMember[]).push(member);
 						}
@@ -1128,9 +1135,16 @@ export module RaidHandler {
 
 			// events
 			postAFKMoveIn.on("collect", async (r: MessageReaction, u: User) => {
-				const member: GuildMember | null = guild.member(u);
+				let member: GuildMember;
+				try {
+					member = await guild.members.fetch(u);
+				}
+				catch (e) {
+					return;
+				}
+
 				// TODO fix post afk not working 
-				if (member !== null && member.voice.channel !== null) {
+				if (member.voice.channel !== null) {
 					if (raidVc.userLimit === 0) {
 						await member.voice.setChannel(raidVC).catch(console.error);
 					}

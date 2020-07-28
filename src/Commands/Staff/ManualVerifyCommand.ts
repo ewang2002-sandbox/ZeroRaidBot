@@ -74,7 +74,14 @@ export class ManualVerifyCommand extends Command {
                 }
 
                 for (const manualVerifEntry of section.properties.manualVerificationEntries) {
-                    const member: GuildMember | null = guild.member(manualVerifEntry.userId);
+					let member: GuildMember | null;
+					try {
+						member = await guild.members.fetch(manualVerifEntry.userId);
+					}
+					catch (e) {
+						member = null;
+					}
+					
                     if (member === null) {
                         // remove entry
                         // TODO make this a function.

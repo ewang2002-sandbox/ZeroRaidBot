@@ -13,15 +13,16 @@ import { AxiosResponse } from "axios";
 import { FilterQuery, InsertOneWriteOpResult, WithId } from "mongodb";
 import { ArrayUtil } from "../Utility/ArrayUtil";
 import { INameHistory, IAPIError } from "../Definitions/ICustomREVerification";
-import { TestCasesNameHistory } from "../TestCases/TestCases";
 import { UserHandler } from "./UserHandler";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { IManualVerification } from "../Definitions/IManualVerification";
 import { IRealmEyeNoUser } from "../Definitions/IRealmEyeNoUser";
 import { IRealmEyeAPI } from "../Definitions/IRealmEyeAPI";
-import { PRIVATE_BOT } from "../Configuration/Config";
+import { UserAvailabilityHelper } from "./UserAvailabilityHelper";
 
 export module VerificationHandler {
+	export const IsInVerification: Collection<string, "GENERAL" | "ALT"> = new Collection<string, "GENERAL" | "ALT">();
+
 	interface ICheckResults {
 		characters: {
 			amt: [number, number, number, number, number, number, number, number, number];
@@ -57,7 +58,7 @@ export module VerificationHandler {
 	): Promise<void> {
 		try {
 			// already verified or no role
-			if (!guild.roles.cache.has(section.verifiedRole) || member.roles.cache.has(section.verifiedRole)) {
+			if (!guild.roles.cache.has(section.verifiedRole) || member.roles.cache.has(section.verifiedRole) || IsInVerification.has(member.id)) {
 				return;
 			}
 
@@ -81,15 +82,17 @@ export module VerificationHandler {
 
 			const allSections: ISection[] = [GuildUtil.getDefaultSection(guildDb), ...guildDb.sections];
 			for (const section of allSections) {
+				if (section.channels.verificationChannel !== verificationChannel.id) {
+					continue;
+				}
 				const manualVerifEntry: IManualVerification | undefined = section.properties.manualVerificationEntries
 					.find(x => x.userId === member.id);
 				if (typeof manualVerifEntry === "undefined") {
 					continue;
 				}
-				if (manualVerifEntry.userId === member.id) {
-					await member.send(`**\`[${section.isMain ? guild.name : section.nameOfSection}]\`** Your profile is currently under manual verification. Please try again later.`);
-					return;
-				}
+				
+				await member.send(`**\`[${section.isMain ? guild.name : section.nameOfSection}]\`** Your profile is currently under manual verification. Please try again later.`);
+				return;
 			}
 
 			//#region requirement text
@@ -124,13 +127,15 @@ export module VerificationHandler {
 
 			//#endregion
 
-			const userDb: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.getUserDbByDiscordId(member.id);
-			let inGameName: string = "";
-
 			// within the server we will be checking for other major reqs.
 			if (section.isMain) {
+				IsInVerification.set(member.id, "GENERAL");
+				UserAvailabilityHelper.InMenuCollection.set(member.id, UserAvailabilityHelper.MenuType.VERIFICATION);
+
+				const userDb: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.getUserDbByDiscordId(member.id);
+				let inGameName: string = "";
+
 				let isOldProfile: boolean = false;
-				let botMsg: Message = await member.send(new MessageEmbed());
 
 				if (typeof verificationAttemptsChannel !== "undefined") {
 					verificationAttemptsChannel.send(`▶️ **\`[${section.nameOfSection}]\`** ${member} has started the verification process.`).catch(() => { });
@@ -145,7 +150,7 @@ export module VerificationHandler {
 						.setColor("RANDOM");
 
 					const choice: boolean | "CANCEL_CMD" | "TIME_CMD" = await new Promise(async (resolve) => {
-						botMsg = await botMsg.edit(hasNameEmbed);
+						let botMsg = await dmChannel.send(hasNameEmbed);
 						const mc1: MessageAutoTick = new MessageAutoTick(
 							botMsg,
 							hasNameEmbed,
@@ -160,6 +165,7 @@ export module VerificationHandler {
 
 						msgCollector.on("end", (collected: Collection<string, Message>, reason: string) => {
 							mc1.disableAutoTick();
+							botMsg.delete().catch(e => { });
 							if (reason === "time") {
 								return resolve("TIME_CMD");
 							}
@@ -184,7 +190,7 @@ export module VerificationHandler {
 					});
 
 					if (choice === "TIME_CMD" || choice === "CANCEL_CMD") {
-						await botMsg.delete().catch(() => { });
+						UserAvailabilityHelper.InMenuCollection.delete(member.id);
 						return;
 					}
 
@@ -199,14 +205,15 @@ export module VerificationHandler {
 						member.user,
 						dmChannel,
 						guild,
-						null,
-						botMsg
+						null
 					);
 
 					if (nameToUse === "CANCEL_" || nameToUse === "TIME_") {
 						if (typeof verificationAttemptsChannel !== "undefined") {
 							verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member}'s verification process has been canceled.\n\t⇒ Reason: ${nameToUse.substring(0, nameToUse.length - 1)}`).catch(() => { });
 						}
+						IsInVerification.delete(member.id);
+						UserAvailabilityHelper.InMenuCollection.delete(member.id);
 						return;
 					}
 
@@ -220,8 +227,8 @@ export module VerificationHandler {
 				}
 
 				// verification embed
-				const verifEmbed: MessageEmbed = getVerificationEmbed(guild, inGameName, reqs, isOldProfile, code);
-				const verifMessage: Message = await botMsg.edit(verifEmbed);
+				const verifEmbed: MessageEmbed = getVerificationEmbed(guild, inGameName, isOldProfile, code);
+				const verifMessage: Message = await dmChannel.send(verifEmbed);
 				await verifMessage.react("✅").catch(() => { });
 				await verifMessage.react("❌").catch(() => { });
 
@@ -239,6 +246,11 @@ export module VerificationHandler {
 				// end collector
 				reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
 					mcd.disableAutoTick();
+					await verifMessage.delete().catch(e => { });
+					setTimeout(() => {
+						IsInVerification.delete(member.id);
+						UserAvailabilityHelper.InMenuCollection.delete(member.id);
+					}, 15 * 1000);
 					if (reason === "time") {
 						if (typeof verificationAttemptsChannel !== "undefined") {
 							verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member}'s verification process has been canceled.\n\t⇒ Reason: TIME`).catch(() => { });
@@ -250,7 +262,7 @@ export module VerificationHandler {
 							.setDescription("Your verification process has been stopped because the time limit has been reached.")
 							.setFooter(guild.name)
 							.setTimestamp();
-						await botMsg.edit(embed);
+						await dmChannel.send(embed).catch(e => { });
 					}
 				});
 
@@ -273,7 +285,7 @@ export module VerificationHandler {
 							.setDescription("You have stopped the verification process manually.")
 							.setFooter(guild.name)
 							.setTimestamp();
-						await botMsg.edit(embed);
+						await dmChannel.send(embed).catch(e => { });
 						return;
 					}
 
@@ -297,8 +309,8 @@ export module VerificationHandler {
 							.addField("Error Message", StringUtil.applyCodeBlocks(e))
 							.setColor("RED")
 							.setFooter("Verification Process: Stopped.");
-						await botMsg.edit(failedEmbed).catch(() => { });
-						return;
+							await dmChannel.send(failedEmbed).catch(e => { });
+							return;
 					}
 
 					if ("error" in requestData.data) {
@@ -326,8 +338,8 @@ export module VerificationHandler {
 							.addField("Error Message", StringUtil.applyCodeBlocks(e))
 							.setColor("RED")
 							.setFooter("Verification Process: Stopped.");
-						await botMsg.edit(failedEmbed).catch(() => { });
-						return;
+							await dmChannel.send(failedEmbed).catch(e => { });
+							return;
 					}
 
 					if ("errorMessage" in nameHistory) {
@@ -338,8 +350,6 @@ export module VerificationHandler {
 						canReact = true;
 						return;
 					}
-
-					nameHistory = TestCasesNameHistory.withNames();
 
 					const nameFromProfile: string = requestData.data.player;
 					if (!isOldProfile) {
@@ -359,7 +369,7 @@ export module VerificationHandler {
 							if (typeof verificationAttemptsChannel !== "undefined") {
 								verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the verification code, \`${code}\`, could not be found in his/her RealmEye profile.`).catch(() => { });
 							}
-							await member.send(`Your verification code, \`${code}\`, wasn't found in your RealmEye description! Make sure the code is on your description and then try again.`);
+							await member.send(`Your verification code, \`${code}\`, wasn't found in your RealmEye description! Make sure the code is on your description and then **try again in one minute!**`);
 							canReact = true;
 							return;
 						}
@@ -381,8 +391,8 @@ export module VerificationHandler {
 									.setColor("RANDOM")
 									.addField("Reason", blacklistEntry.reason)
 									.setFooter("Verification Process: Stopped.");
-								await botMsg.edit(failedEmbed).catch(() => { });
-								return;
+									await dmChannel.send(failedEmbed).catch(e => { });
+									return;
 							}
 						}
 					}
@@ -455,84 +465,14 @@ export module VerificationHandler {
 							}
 						}
 						else {
-							let descStr: string = "You did not meet the requirements for this server. ";
-							if (section.properties.showVerificationRequirements) {
-								descStr += `The requirements are: ${StringUtil.applyCodeBlocks(reqs.toString())}\nThe requirements you have failed to meet are listed below:\n${StringUtil.applyCodeBlocks(reqsFailedToMeet.toString())}`;
-							}
-							descStr += "\n\nWould you like to appeal the decision with a staff member? Unreact and react with ✅ to appeal with a staff member; otherwise, react with ❌.";
-
-							const wantsToBeManuallyVerified: boolean | "TIME_CMD" = await new Promise(async (resolve) => {
-								const failedAppealEmbed: MessageEmbed = new MessageEmbed(failedEmbed)
-									.addField("Consider the Following", "⇒ This process may take up to one day.\n⇒ You will not be able to verify while your profile is being reviewed.\n⇒ You are NOT guaranteed to be verified.")
-									.setDescription(descStr)
-									.setFooter("⏳ Time Remaining: 2 Minutes and 0 Seconds.");
-								const manaulVerifMsg: Message = await botMsg.edit(failedAppealEmbed);
-								await manaulVerifMsg.react("✅").catch(() => { });
-								await manaulVerifMsg.react("❌").catch(() => { });
-
-
-								const mcd: MessageAutoTick = new MessageAutoTick(manaulVerifMsg, failedAppealEmbed, 2 * 60 * 1000, null, "⏳ Time Remaining: {m} Minutes and {s} Seconds.");
-								// collector function 
-								const collFilter: (r: MessageReaction, u: User) => boolean = (reaction: MessageReaction, user: User) => {
-									return ["✅", "❌"].includes(reaction.emoji.name) && user.id === member.id;
-								}
-
-								// prepare collector
-								const reactCollector: ReactionCollector = manaulVerifMsg.createReactionCollector(collFilter, {
-									time: 2 * 60 * 1000,
-									max: 1
-								});
-
-								// end collector
-								reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
-									mcd.disableAutoTick();
-									if (reason === "time") {
-										return resolve("TIME_CMD");
-									}
-								});
-
-								reactCollector.on("collect", async (r: MessageReaction) => {
-									if (r.emoji.name === "❌") {
-										return resolve(false);
-									}
-
-									if (r.emoji.name === "✅") {
-										return resolve(true);
-									}
-								});
-							});
-
-							if (wantsToBeManuallyVerified === "TIME_CMD") {
-								if (typeof verificationAttemptsChannel !== "undefined") {
-									verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member}'s verification process has been canceled.\n\t⇒ Reason: TIME`).catch(() => { });
-								}
-								const embed: MessageEmbed = new MessageEmbed()
-									.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
-									.setTitle(`Verification For: **${guild.name}**`)
-									.setColor("RED")
-									.setDescription("Your verification process has been stopped because the time limit has been reached.")
-									.setFooter(guild.name)
-									.setTimestamp();
-								await botMsg.edit(embed);
-								return;
-							}
-
-							if (wantsToBeManuallyVerified) {
-								failedEmbed
-									.setDescription("You have chosen to have your profile manually reviewed by a staff member. Please be patient while a staff member checks your profile.")
-									.setFooter("Verification Process: Stopped.");
-								manualVerification(guild, member, requestData.data, manualVerificationChannel, section, reqsFailedToMeet, nameHistory);
-								outputLogs += `\nThis profile has been sent to the manual verification channel for further review.`;
-							}
-							else {
-								failedEmbed
-									.setDescription(`You have failed to meet the requirements for the server, and have chosen not to accept the manual verification offer. The server's verification requirements are below. ${StringUtil.applyCodeBlocks(reqs.toString())}`)
-									.addField("Missed Requirements", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()))
-									.setFooter("Verification Process: Stopped.");
-							}
+							failedEmbed
+								.setDescription("Your account is now under manual review by staff. Please do not attempt to verify again. If your account is not reviewed within the next 48 hours, please contact the staff through #help-desk or message an online helper or moderator. Otherwise, please refrain from messaging staff about your application review status. ")
+								.setFooter("Verification Process: Stopped.");
+							manualVerification(guild, member, requestData.data, manualVerificationChannel, section, reqsFailedToMeet, nameHistory);
+							outputLogs += `\nThis profile has been sent to the manual verification channel for further review.`;
 						}
+						await dmChannel.send(failedEmbed).catch(e => { });
 
-						await botMsg.edit(failedEmbed).catch(() => { });
 						if (typeof verificationAttemptsChannel !== "undefined") {
 							verificationAttemptsChannel.send(outputLogs).catch(() => { });
 						}
@@ -550,7 +490,7 @@ export module VerificationHandler {
 						.setDescription(guildDb.properties.successfulVerificationMessage.length === 0 ? "You have been successfully verified. Please make sure you read the rules posted in the server, if any, and any other regulations/guidelines. Good luck and have fun!" : guildDb.properties.successfulVerificationMessage)
 						.setColor("GREEN")
 						.setFooter("Verification Process: Stopped.");
-					await botMsg.edit(successEmbed);
+						await dmChannel.send(successEmbed).catch(e => { });
 					if (typeof verificationSuccessChannel !== "undefined") {
 						verificationSuccessChannel.send(`📥 **\`[${section.nameOfSection}]\`** ${member} has successfully been verified as \`${inGameName}\`.`).catch(console.error);
 					}
@@ -649,85 +589,15 @@ export module VerificationHandler {
 						}
 						else {
 							failedEmbed
-								.setDescription("You have failed to meet the requirements for the section. If you feel this is in error, please contact a staff member or go to #help-desk");
+								.setDescription("You have failed one or more requirements for the section. Requirements are generally hidden for multiple reasons; one of the most prominent reasons is to combat alternative accounts. If you feel this is in error, please contact a staff member or go to #help-desk");
 						}
 					}
 					else {
-						let descStr: string = "You did not meet the requirements for this server. ";
-						if (section.properties.showVerificationRequirements) {
-							descStr += `The requirements are: ${StringUtil.applyCodeBlocks(reqs.toString())}\nThe requirements you have failed to meet are listed below:\n${StringUtil.applyCodeBlocks(reqsFailedToMeet.toString())}`;
-						}
-						descStr += "\n\nWould you like to appeal the decision with a staff member? Unreact and react with ✅ to appeal with a staff member; otherwise, react with ❌.";
-
-						const wantsToBeManuallyVerified: boolean | "TIME_CMD" = await new Promise(async (resolve) => {
-							const failedAppealEmbed: MessageEmbed = new MessageEmbed(failedEmbed)
-								.setDescription(descStr)
-								.addField("Consider the Following", "⇒ This process may take up to one day.\n⇒ You will not be able to verify while your profile is being reviewed.\n⇒ You are NOT guaranteed to be verified.")
-								.setFooter("⏳ Time Remaining: 2 Minutes and 0 Seconds.");
-							const manaulVerifMsg: Message = await botMsg.edit(failedAppealEmbed);
-							await manaulVerifMsg.react("✅").catch(() => { });
-							await manaulVerifMsg.react("❌").catch(() => { });
-
-
-							const mcd: MessageAutoTick = new MessageAutoTick(manaulVerifMsg, failedAppealEmbed, 2 * 60 * 1000, null, "⏳ Time Remaining: {m} Minutes and {s} Seconds.");
-							// collector function 
-							const collFilter: (r: MessageReaction, u: User) => boolean = (reaction: MessageReaction, user: User) => {
-								return ["✅", "❌"].includes(reaction.emoji.name) && user.id === member.id;
-							}
-
-							// prepare collector
-							const reactCollector: ReactionCollector = manaulVerifMsg.createReactionCollector(collFilter, {
-								time: 2 * 60 * 1000,
-								max: 1
-							});
-
-							// end collector
-							reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
-								mcd.disableAutoTick();
-								if (reason === "time") {
-									return resolve("TIME_CMD");
-								}
-							});
-
-							reactCollector.on("collect", async (r: MessageReaction) => {
-								if (r.emoji.name === "❌") {
-									return resolve(false);
-								}
-
-								if (r.emoji.name === "✅") {
-									return resolve(true);
-								}
-							});
-						});
-
-						if (wantsToBeManuallyVerified === "TIME_CMD") {
-							if (typeof verificationAttemptsChannel !== "undefined") {
-								verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member}'s verification process has been canceled.\n\t⇒ Reason: TIME`).catch(() => { });
-							}
-							const embed: MessageEmbed = new MessageEmbed()
-								.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
-								.setTitle(`Verification For: **${guild.name}**`)
-								.setColor("RED")
-								.setDescription("Your verification process has been stopped because the time limit has been reached.")
-								.setFooter(guild.name)
-								.setTimestamp();
-							await botMsg.edit(embed);
-							return;
-						}
-
-						if (wantsToBeManuallyVerified) {
-							failedEmbed
-								.setDescription("You have chosen to have your profile manually reviewed by a staff member. Please be patient while a staff member checks your profile.")
-								.setFooter("Verification Process: Stopped.");
-							manualVerification(guild, member, requestData.data, manualVerificationChannel, section, reqsFailedToMeet);
-							outputLogs += `\nThis profile has been sent to the manual verification channel for further review.`;
-						}
-						else {
-							failedEmbed
-								.setDescription(`You have failed to meet the requirements for the section, and have chosen not to accept the manual verification offer. The section's verification requirements are below. ${StringUtil.applyCodeBlocks(reqs.toString())}`)
-								.addField("Missed Requirements", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()))
-								.setFooter("Verification Process: Stopped.");
-						}
+						failedEmbed
+							.setDescription("Your account is now under manual review by staff. Please do not attempt to verify again through this specific section. If your account is not reviewed within the next 48 hours, please contact the staff through #help-desk or message an online helper or moderator. Otherwise, please refrain from messaging staff about your application review status. ")
+							.setFooter("Verification Process: Stopped.");
+						manualVerification(guild, member, requestData.data, manualVerificationChannel, section, reqsFailedToMeet);
+						outputLogs += `\nThis profile has been sent to the manual verification channel for further review.`;
 					}
 
 					await botMsg.edit(failedEmbed).catch(() => { });
@@ -1011,7 +881,7 @@ export module VerificationHandler {
 					newEntry.general.leaderRuns[index].general.assists += leaderRunData.general.assists;
 					newEntry.general.leaderRuns[index].general.completed += leaderRunData.general.completed;
 					newEntry.general.leaderRuns[index].general.failed += leaderRunData.general.failed;
-					
+
 					newEntry.general.leaderRuns[index].realmClearing.assists += leaderRunData.realmClearing.assists;
 					newEntry.general.leaderRuns[index].realmClearing.completed += leaderRunData.realmClearing.completed;
 					newEntry.general.leaderRuns[index].realmClearing.failed += leaderRunData.realmClearing.failed;
@@ -1069,23 +939,22 @@ export module VerificationHandler {
 	 * @param {boolean} isOldProfile Whether the profile was pre-existing or not. 
 	 * @param {GuildMember} member The guild member. 
 	 */
-	function getVerificationEmbed(guild: Guild, inGameName: string, reqs: StringBuilder, isOldProfile: boolean, code: string) {
+	function getVerificationEmbed(guild: Guild, inGameName: string, isOldProfile: boolean, code: string) {
 		const verifEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
 			.setTitle(`Verification For: **${guild.name}**`)
 			.setDescription(`You have selected the in-game name: **\`${inGameName}\`**. To access your RealmEye profile, click [here](https://www.realmeye.com/player/${inGameName}).\n\nYou are almost done verifying; however, you need to do a few more things.\n\nTo stop the verification process, react with ❌.`)
 			.setColor("RANDOM")
-			.addField("1. Meet the Requirements", `Ensure you meet the requirements posted. For your convenience, the requirements are listed below.${StringUtil.applyCodeBlocks(reqs.toString())}`)
 			.setFooter("⏳ Time Remaining: 15 Minutes and 0 Seconds.");
 		if (isOldProfile) {
-			verifEmbed.addField("2. Get Your Verification Code", "Normally, I would require a verification code for your RealmEye profile; however, because I recognize you from a different server, you can skip this process completely.");
+			verifEmbed.addField("1. Get Your Verification Code", "Normally, I would require a verification code for your RealmEye profile; however, because I recognize you from a different server, you can skip this process completely.");
 		}
 		else {
-			verifEmbed.addField("2. Get Your Verification Code", `Your verification code is: ${StringUtil.applyCodeBlocks(code)}Please put this verification code in one of your three lines of your RealmEye profile's description.`);
+			verifEmbed.addField("1. Get Your Verification Code", `Your verification code is: ${StringUtil.applyCodeBlocks(code)}Please put this verification code in one of your three lines of your RealmEye profile's description.`);
 		}
-		verifEmbed.addField("3. Check Profile Settings", `Ensure __anyone__ can view your general profile (stars, alive fame), characters, fame history, and name history. You can access your profile settings [here](https://www.realmeye.com/settings-of/${inGameName}). If you don't have your RealmEye account password, you can learn how to get one [here](https://www.realmeye.com/mreyeball#password).`)
-			.addField("4. Wait", "Before you react with the check, make sure you wait. RealmEye may sometimes take up to 30 seconds to fully register your changes!")
-			.addField("5. Confirm", "React with ✅ to begin the verification check. If you have already reacted, un-react and react again.");
+		verifEmbed.addField("2. Check Profile Settings", `Ensure __anyone__ can view your general profile (stars, alive fame), characters, fame history, and name history. You can access your profile settings [here](https://www.realmeye.com/settings-of/${inGameName}). If you don't have your RealmEye account password, you can learn how to get one [here](https://www.realmeye.com/mreyeball#password).`)
+			.addField("3. Wait", "Before you react with the check, make sure you wait. RealmEye may sometimes take up to 30 seconds to fully register your changes!")
+			.addField("4. Confirm", "React with ✅ to begin the verification check. **If you have already reacted, un-react and react again.**");
 		return verifEmbed;
 	}
 
@@ -1271,19 +1140,27 @@ export module VerificationHandler {
 			.append(`⇒ **User:** ${member}`)
 			.appendLine()
 			.append(`⇒ **IGN:** ${verificationInfo.player}`)
-			.appendLine()
-			.append(`⇒ **First Seen**: ${PRIVATE_BOT ? verificationInfo.player_first_seen : "Not Available"}`)
+			.appendLine();
+
+		if (typeof verificationInfo.player_first_seen !== "undefined") {
+			desc.append(`⇒ **First Seen**: ${verificationInfo.player_first_seen}`)
+		}
+		else if (typeof verificationInfo.created !== "undefined") {
+			desc.append(`⇒ **Created**: ${verificationInfo.created}`);
+		}
+
+		desc
 			.appendLine()
 			.append(`⇒ **Last Seen**: ${verificationInfo.player_last_seen}`)
 			.appendLine()
 			.append(`⇒ **RealmEye:** [Profile](https://www.realmeye.com/player/${verificationInfo.player})`)
 			.appendLine()
 			.appendLine()
-			.append(`React with ☑️ to manually verify this person; otherwise, react with ❌.`)
+			.append(`React with ☑️ to manually verify this person; otherwise, react with ❌.`);
 
 		const manualVerifEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(member.user.tag, member.user.displayAvatarURL())
-			.setTitle(`Manual Verification Request: **${verificationInfo.player}**`)
+			.setTitle(`**${section.isMain ? "Server" : section.nameOfSection}** ⇒ Manual Verification Request: **${verificationInfo.player}**`)
 			.setDescription(desc.toString())
 			.addField("Unmet Requirements", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()), true)
 			.setColor("YELLOW")
@@ -1380,7 +1257,7 @@ export module VerificationHandler {
 			guild,
 			guildDb
 		);
-		
+
 		if (sectionForManualVerif.isMain) {
 			await manualVerifMember.setNickname(manualVerifMember.user.username === manualVerificationProfile.inGameName
 				? `${manualVerificationProfile.inGameName}.`
@@ -1400,7 +1277,7 @@ export module VerificationHandler {
 			await manualVerifMember.send(successEmbed).catch(() => { });
 		}
 		else {
-			await manualVerifMember.send(`**\`[${guild.name}]\`** You have successfully been verified in the **\`${sectionForManualVerif.nameOfSection}\`** section!`).catch(() => { });
+			await manualVerifMember.send(`**\`[${guild.name}]\`**: You have successfully been verified in the **\`${sectionForManualVerif.nameOfSection}\`** section!`).catch(() => { });
 		}
 
 		sendLogAndUpdateDb(loggingMsg, sectionForManualVerif, manualVerifMember);
@@ -1423,10 +1300,10 @@ export module VerificationHandler {
 		let loggingMsg: string = `❌ **\`[${sectionForManualVerif.nameOfSection}]\`** ${manualVerifMember} (${manualVerificationProfile.inGameName})'s manual verification review has been rejected by ${responsibleMember} (${responsibleMember.displayName})`;
 
 		if (sectionForManualVerif.isMain) {
-			await manualVerifMember.send(`**\`[${guild.name}]\`**: After manually reviewing your profile, we have determined that you do not meet the requirements defined by server. This manual review was done by ${responsibleMember} (${responsibleMember.displayName}).`).catch(() => { });
+			await manualVerifMember.send(`**\`[${guild.name}]\`**: After manually reviewing your profile, we have determined that you do not meet the requirements defined by server.`).catch(() => { });
 		}
 		else {
-			await manualVerifMember.send(`**\`[${guild.name}]\`**: After reviewing your profile, we have determined that your profile does not meet the minimum requirements for the **\`${sectionForManualVerif.nameOfSection}\`** section . This manual review was done by ${responsibleMember} (${responsibleMember.displayName}).`).catch(() => { });
+			await manualVerifMember.send(`**\`[${guild.name}]\`**: After reviewing your profile, we have determined that your profile does not meet the minimum requirements for the **\`${sectionForManualVerif.nameOfSection}\`** section.`).catch(() => { });
 		}
 
 		sendLogAndUpdateDb(loggingMsg, sectionForManualVerif, manualVerifMember);
@@ -1482,8 +1359,7 @@ export module VerificationHandler {
 		initUser: User,
 		dmChannel: DMChannel,
 		guild: Guild | null = null,
-		userDb: IRaidUser | null = null,
-		botMsg: Message | null = null
+		userDb: IRaidUser | null = null
 	): Promise<string> {
 		return new Promise(async (resolve) => {
 			let desc: string;
@@ -1501,18 +1377,12 @@ export module VerificationHandler {
 				.setColor("RANDOM")
 				.setFooter("⏳ Time Remaining: 2 Minutes and 0 Seconds.");
 
-			let resBotMsg: Message;
-			if (botMsg === null) {
-				resBotMsg = await dmChannel.send(nameEmbed);
-			}
-			else {
-				resBotMsg = await botMsg.edit(nameEmbed);
-			}
+			let resBotMsg: Message = await dmChannel.send(nameEmbed);
 
 			for await (const [, reaction] of resBotMsg.reactions.cache) {
 				for await (const [, user] of reaction.users.cache) {
 					if (user.bot) {
-						await reaction.remove().catch(e => { });
+						await reaction.remove().catch(() => { });
 						break;
 					}
 				}
@@ -1574,6 +1444,8 @@ export module VerificationHandler {
 
 			msgCollector.on("end", (collected: Collection<string, Message>, reason: string) => {
 				mcd.disableAutoTick();
+				reactCollector.stop();
+				resBotMsg.delete().catch(() => { });
 				if (reason === "time") {
 					return resolve("TIME_");
 				}

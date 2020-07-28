@@ -60,10 +60,6 @@ export class MessageSimpleTick {
 	 * Runs the process. This process will edit the footer and description of a MessageEmbed with the specified time left.
 	 */
     private async run(): Promise<void> {
-        // TODO round any inconsistent numbers to the lowest 5000 when displaying
-        // for example, 6000 -> 5000 (but account for the extra 1000 ms)
-        // 7500 -> 5000 (but account for the extra 2500 ms)
-        // 14000 -> 10000 (but account for the extra 4000 ms)
         this._interval = setInterval(async () => {
             if (this._duration <= 0) {
                 this.disableAutoTick();

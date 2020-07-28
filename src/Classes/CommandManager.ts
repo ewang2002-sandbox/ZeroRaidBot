@@ -40,6 +40,18 @@ import { AdminProfileUpdaterCommand } from "../Commands/Bot Owner/AdminProfileUp
 import { LogRuneWCCommand } from "../Commands/Logging/LogRuneWCCommand";
 import { LogVialCommand } from "../Commands/Logging/LogVialCommand";
 import { NoLoggedRunsCommand } from "../Commands/Moderator/NoLoggedRunsCommand";
+import { ModmailBlacklistCommand } from "../Commands/Moderator/ModmailBlacklistCommand";
+import { ModmailUnblacklistCommand } from "../Commands/Moderator/ModmailUnblacklistCommand";
+import { CheckModmailBlacklistCommand } from "../Commands/Staff/CheckModmailBlacklistCommand";
+import { SuggestionCommand } from "../Commands/Public/SuggestionCommand";
+import { BlacklistSuggestionUserCommand } from "../Commands/Bot Owner/BlacklistSuggestionUserCommand";
+import { UnblacklistSuggestionUserCommand } from "../Commands/Bot Owner/UnblacklistSuggestionUserCommand";
+import { EnableDisableSuggestionsCommand } from "../Commands/Bot Owner/EnableDisableSuggestionsCommand";
+import { ConfigureApplicationCommand } from "../Commands/Configuration/ConfigureApplicationCommand";
+import { SilenceCommand } from "../Commands/Moderator/SilenceCommand";
+import { VerifyCommand } from "../Commands/Public/VerifyCommand";
+import { ApplyCommand } from "../Commands/Public/ApplyCommand";
+import { PurgeCommand } from "../Commands/Staff/PurgeCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -73,7 +85,10 @@ export class CommandManager {
 
 		this.commands.set("Public", [
 			new HelpCommand(),
-			new PingCommand()
+			new PingCommand(),
+			new SuggestionCommand(),
+			new VerifyCommand(),
+			new ApplyCommand()
 		]);
 
 		this.commands.set("Server Information", [
@@ -86,7 +101,8 @@ export class CommandManager {
 		this.commands.set("Configuration", [
 			new ConfigureSectionCommand(),
 			new ConfigurePrefixCommand(),
-			new ConfigureVerifSuccessCommand()
+			new ConfigureVerifSuccessCommand(),
+			new ConfigureApplicationCommand()
 		]);
 
 		this.commands.set("Raid Leader", [
@@ -99,7 +115,10 @@ export class CommandManager {
 			new FindUserCommand(),
 			new PollCommand(),
 			new CheckBlacklistCommand(),
-			new ManualVerifyCommand()
+			new ManualVerifyCommand(),
+			new CheckModmailBlacklistCommand(),
+			new SilenceCommand(),
+			new PurgeCommand()
 		]);
 
 		this.commands.set("Moderation", [
@@ -110,7 +129,9 @@ export class CommandManager {
 			new BlacklistCommand(),
 			new UnblacklistCommand(),
 			new ResetQuotaCommand(),
-			new NoLoggedRunsCommand()
+			new NoLoggedRunsCommand(),
+			new ModmailBlacklistCommand(),
+			new ModmailUnblacklistCommand()
 		]);
 		
 		this.commands.set("User Profile", [
@@ -130,7 +151,10 @@ export class CommandManager {
 
 		this.commands.set("Bot Owner", [
 			new ReconnectDBCommand(),
-			new AdminProfileUpdaterCommand()
+			new AdminProfileUpdaterCommand(),
+			new BlacklistSuggestionUserCommand(),
+			new UnblacklistSuggestionUserCommand(),
+			new EnableDisableSuggestionsCommand()
 		]);
 
 		this.commands.set("Logging", [

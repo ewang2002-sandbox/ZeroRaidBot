@@ -9,3 +9,6 @@
 
 # Notes
 /notes/*
+
+# Profiling
+*.cpuprofile

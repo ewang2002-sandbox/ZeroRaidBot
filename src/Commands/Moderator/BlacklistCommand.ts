@@ -7,10 +7,11 @@ import { MessageUtil } from "../../Utility/MessageUtil";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
 import { UserHandler } from "../../Helpers/UserHandler";
 import { StringBuilder } from "../../Classes/String/StringBuilder";
+import { IRaidUser } from "../../Templates/IRaidUser";
+import { FilterQuery } from "mongodb";
+import { ArrayUtil } from "../../Utility/ArrayUtil";
 
 export class BlacklistCommand extends Command {
-	public static currentTimeout: { timeout: NodeJS.Timeout, id: string }[] = [];
-
 	public constructor() {
 		super(
 			new CommandDetail(
@@ -18,7 +19,7 @@ export class BlacklistCommand extends Command {
 				"blacklist",
 				["bl"],
 				"Blacklists a user, preventing them from verifying. If they are verified in the server, they will be banned.",
-				["blacklist <@Mention | ID | IGN> <Reason: STRING> [--silent]"],
+				["blacklist <IGN> <Reason: STRING> [--silent]"],
 				["blacklist EpicTest harassment of staff member", "blacklist SomeBadBoi cheating"],
 				2
 			),
@@ -35,7 +36,6 @@ export class BlacklistCommand extends Command {
 		);
 	}
 
-	// TODO only accept ign
 	public async executeCommand(
 		msg: Message,
 		args: string[],
@@ -48,7 +48,7 @@ export class BlacklistCommand extends Command {
 			args = args.join(" ").replace("--silent", "").split(" ");
 		}
 
-		let nameToBlacklist: string = args.shift() as string;
+		const nameToBlacklist: string = args.shift() as string;
 
 		const isBlacklisted: boolean = guildDb.moderation.blacklistedUsers
 			.some(x => x.inGameName.toLowerCase().trim() === nameToBlacklist.toLowerCase().trim());
@@ -63,7 +63,7 @@ export class BlacklistCommand extends Command {
 			await MessageUtil.send({ content: `The reason you provided is too long; your reasoning is ${reason.length} characters long, and the maximum length is 800 characters.` }, msg.channel);
 			return;
 		}
-		
+
 		const memberToBlacklist: GuildMember | null = await UserHandler.resolveMember(msg, guildDb);
 
 		// check to see if in server 
@@ -79,91 +79,106 @@ export class BlacklistCommand extends Command {
 			}
 		}
 
-		let desc: StringBuilder = new StringBuilder();
-		await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
-			$push: {
-				"moderation.blacklistedUsers": {
-					inGameName: nameToBlacklist.toLowerCase(),
-					reason: reason,
-					date: new Date().getTime(),
-					moderator: mod.displayName
-				}
-			}
-		});
+		// look for database
+		const filterQuery: FilterQuery<IRaidUser> = {};
+		filterQuery.$or = [];
 
-		desc.append(`⇒ **\`${nameToBlacklist}\`** has been blacklisted from the server.`)
-			.appendLine();
-
-		//#region commented out stuff
-		/*
-		const userMongo: MongoDbHelper.MongoDbUserManager = new MongoDbHelper.MongoDbUserManager(nameToBlacklist);
-		const dbInfo: IRaidUser[] = await userMongo.getUserDB();
-
-		if (dbInfo.length === 0) {
-			// this should never hit UNLESS
-			// the person has never verified
-			// with the bot
-
-			await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
-				$push: {
-					"moderation.blacklistedUsers": {
-						inGameName: nameToBlacklist.toLowerCase(),
-						reason: reason,
-						date: new Date().getTime(),
-						moderator: mod.id
-					}
-				}
+		let isIgn: boolean = false;
+		let isId: boolean = false; 
+		// mention (in server)
+		if (memberToBlacklist !== null) {
+			filterQuery.$or.push({
+				discordUserId: memberToBlacklist.id
 			});
+		}
 
-			desc.append(`**\`${nameToBlacklist}\`** has been blacklisted from the server.`)
-				.appendLine();
+		// id only
+		if (/^\d+$/.test(nameToBlacklist)) {
+			filterQuery.$or.push({
+				discordUserId: nameToBlacklist
+			});
+			isId = true;
+		}
+
+		if (/^[a-zA-Z]+$/.test(nameToBlacklist) && nameToBlacklist.length <= 10) {
+			filterQuery.$or.push(
+				{
+					rotmgLowercaseName: nameToBlacklist.toLowerCase()
+				},
+				{
+					"otherAccountNames.lowercase": nameToBlacklist.toLowerCase()
+				}
+			);
+			isIgn = true;
+		}
+
+		const invalidInputEmbed: MessageEmbed = new MessageEmbed()
+			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
+			.setTitle("Invalid Input Detected")
+			.setDescription(`Your input, ${(isIgn || isId) ? `\`${nameToBlacklist}\`` : nameToBlacklist}, is invalid. Please try again.`)
+			.setColor("RED")
+			.setFooter("Blacklist");
+
+		if (filterQuery.$or.length === 0) {
+			msg.channel.send(invalidInputEmbed)
+				.then(x => x.delete({ timeout: 5000 }));
+			return;
+		}
+
+		let ignsToBlacklist: string[] = [];
+		const searchResults: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient.findOne(filterQuery);
+		if (searchResults === null) {
+			if (isIgn) {
+				ignsToBlacklist.push(nameToBlacklist);
+			}
+			else {
+				invalidInputEmbed.addField("Reason", "The input you provided either wasn't a valid in-game name (10 __letters__ or less), or the ID/mention corresponding to the person that you wanted to blacklist wasn't found in the database.");
+				MessageUtil.send({ embed: invalidInputEmbed }, msg.channel);
+				return;
+			}
 		}
 		else {
-			const firstEntry: IRaidUser = dbInfo[0];
-			nameToBlacklist = firstEntry.rotmgDisplayName; // main acc
-			let accountsBlacklisted: string[] = [];
-			for await (const entry of [firstEntry.rotmgDisplayName, ...firstEntry.otherAccountNames.map(x => x.displayName)]) {
-				const isBlacklisted: boolean = guildDb.moderation.blacklistedUsers
-					.some(x => x.inGameName.toLowerCase().trim() === entry.toLowerCase().trim());
-				if (isBlacklisted) {
-					continue;
-				}
+			ignsToBlacklist.push(searchResults.rotmgLowercaseName, ...searchResults.otherAccountNames.map(x => x.lowercase));
+		}
 
-				accountsBlacklisted.push(entry);
-
-				MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
+		ignsToBlacklist = ArrayUtil.removeDuplicate<string>(ignsToBlacklist);
+		let namesThatWereBlacklisted: string[] = [];
+		let desc: StringBuilder = new StringBuilder();
+		for await (const ign of ignsToBlacklist) {
+			const index: number = guildDb.moderation.blacklistedUsers.findIndex(x => x.inGameName === ign);
+			if (index === -1) {
+				await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
 					$push: {
 						"moderation.blacklistedUsers": {
-							inGameName: entry.toLowerCase(),
+							inGameName: ign.toLowerCase(),
 							reason: reason,
 							date: new Date().getTime(),
-							moderator: mod.id
+							moderator: mod.displayName
 						}
 					}
 				});
+				namesThatWereBlacklisted.push(ign);
 			}
+		}
 
-			desc.append(`Accounts Blacklisted: ${accountsBlacklisted.length === 0 ? "None" : accountsBlacklisted.join(", ")}`)
-				.appendLine();
-		}*/
-
-		//#endregion end comments
+		desc.append(`⇒ **Blacklisted Names:** ${namesThatWereBlacklisted.join(", ")}`)
+			.appendLine();
 
 		if (memberToBlacklist !== null) {
 			if (!silent) {
 				await memberToBlacklist.send(`**\`[${guild.name}]\`** You have been blacklisted from the server for the following reason: ${reason}`).catch(() => { });
 			}
 			await memberToBlacklist.ban({
-				reason: `${nameToBlacklist} | ${reason}`
+				reason: `${ignsToBlacklist[0]} | ${reason}`
 			}).catch(() => { });
 			desc.append(`⇒ Banned: ${memberToBlacklist} (ID: ${memberToBlacklist.displayName})`)
 				.appendLine();
 		}
 
-        desc.append(`⇒ Reason: ${reason}`)
+		desc.append(`⇒ Reason: ${reason}`)
 			.appendLine();
-			
-		MessageUtil.send({ content: `**\`${nameToBlacklist}\`** has been blacklisted successfully.` }, msg.channel);
+
+		MessageUtil.send({ content: `${isIgn || isId ? `\`${nameToBlacklist}\`` : `${nameToBlacklist}`} has been blacklisted successfully.` }, msg.channel);
 
 		const moderationChannel: TextChannel | undefined = guild.channels.cache.get(guildDb.generalChannels.logging.moderationLogs) as TextChannel | undefined;
 

@@ -281,7 +281,6 @@ export module QuotaLoggingHandler {
             .setTimestamp()
             .setColor("RED");
 
-        console.log(leaderboardData);
         let str: string = "";
         for (const entry of leaderboardData) {
             const member: GuildMember | null = guild.member(entry[1].memberId);

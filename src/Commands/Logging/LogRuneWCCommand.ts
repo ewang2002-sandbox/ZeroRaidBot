@@ -3,7 +3,7 @@ import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
 import { Message, EmojiResolvable, Guild, GuildMember, MessageEmbed, Emoji } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
-import { IGeneralProperties, IRaidUser } from "../../Templates/IRaidUser";
+import { IRaidUser } from "../../Templates/IRaidUser";
 import { UserHandler } from "../../Helpers/UserHandler";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";

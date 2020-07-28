@@ -46,7 +46,6 @@ export module MongoDbHelper {
 			MongoBotSettingsClient = MongoDbHelper.MongoDbBase.MongoClient
 				.db(BotConfiguration.dbName)
 				.collection<IRaidBot>(BotConfiguration.botCollectionName);
-			Object.freeze(MongoBotSettingsClient); // will this work? 
 		}
 	}
 
@@ -210,6 +209,7 @@ export module MongoDbHelper {
 							botUpdatesChannel: "",
 							reactionLoggingChannel: ""
 						},
+						modMailStorage: "",
 						quotaChannel: "",
 						manualVerification: "",
 						modMailChannel: "",
@@ -255,6 +255,7 @@ export module MongoDbHelper {
 						}
 					},
 					properties: {
+						priorityQueue: false,
 						quotas: {
 							quotaDetails: [],
 							quotaMessage: "",
@@ -264,7 +265,8 @@ export module MongoDbHelper {
 						modMail: [],
 						manualVerificationEntries: [],
 						dungeons: AFKDungeon.map(x => x.id),
-						showVerificationRequirements: true
+						showVerificationRequirements: true,
+						application: []
 					},
 					moderation: {
 						blacklistedUsers: [],

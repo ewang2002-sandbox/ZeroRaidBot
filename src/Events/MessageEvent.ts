@@ -1,4 +1,4 @@
-import { Message, ClientApplication, User, MessageEmbed, GuildMember } from "discord.js";
+import { Message, ClientApplication, User, MessageEmbed, GuildMember, Collection } from "discord.js";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { DefaultPrefix, BotConfiguration } from "../Configuration/Config";
 import { Command } from "../Templates/Command/Command";
@@ -7,6 +7,11 @@ import { StringUtil } from "../Utility/StringUtil";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
 import { MessageUtil } from "../Utility/MessageUtil";
 import { OtherUtil } from "../Utility/OtherUtil";
+import { ModMailHandler } from "../Helpers/ModMailHandler";
+import { UserAvailabilityHelper } from "../Helpers/UserAvailabilityHelper";
+
+// guild id, all users
+export const SilencedUsers: Collection<string, string[]> = new Collection<string, string[]>();
 
 export async function onMessageEvent(msg: Message): Promise<void> {
 	// make sure we have a regular message to handle
@@ -21,6 +26,11 @@ export async function onMessageEvent(msg: Message): Promise<void> {
 
 	// ensure no bot.
 	if (msg.author.bot) {
+		return;
+	}
+
+	if (msg.guild !== null && SilencedUsers.has(msg.guild.id) && (SilencedUsers.get(msg.guild.id) as string[]).includes(msg.author.id)) {
+		await msg.delete().catch(e => { });
 		return;
 	}
 
@@ -59,7 +69,9 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 		}
 	}
 
+	// no prefix = modmail
 	if (typeof prefix === "undefined") {
+		checkModMail(msg);
 		return;
 	}
 
@@ -74,6 +86,7 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 	if (command === null) {
 		return;
 	}
+
 	const embed: MessageEmbed = new MessageEmbed()
 		.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 		.setColor("RED")
@@ -186,4 +199,17 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 
 	await msg.delete().catch(() => { });
 	command.executeCommand(msg, args, guildHandler);
+}
+
+/**
+ * Initiates modmail. 
+ * @param msg The message.
+ */
+async function checkModMail(msg: Message): Promise<void> {
+	// has to be in dms + cannot be in another menu
+	if (msg.guild !== null || UserAvailabilityHelper.InMenuCollection.has(msg.author.id)) {
+		return;
+	}
+	
+	ModMailHandler.initiateModMailContact(msg.author, msg);
 }

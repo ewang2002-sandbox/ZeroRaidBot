@@ -18,6 +18,7 @@ import { StringBuilder } from "../../Classes/String/StringBuilder";
 import { IRealmEyeNoUser } from "../../Definitions/IRealmEyeNoUser";
 import { IRealmEyeAPI } from "../../Definitions/IRealmEyeAPI";
 import { ArrayUtil } from "../../Utility/ArrayUtil";
+import { UserAvailabilityHelper } from "../../Helpers/UserAvailabilityHelper";
 
 export class AddAltAccountCommand extends Command {
 	public static readonly MAX_ALTS_ALLOWED: number = 10;
@@ -27,7 +28,7 @@ export class AddAltAccountCommand extends Command {
 			new CommandDetail(
 				"Add Alternative Account Command",
 				"addaltaccount",
-				[],
+				["updateoldname", "changemainign"],
 				"Adds an alternative account to your profile or updates your name in case of a name change.",
 				["addaltaccount"],
 				["addaltaccount"],
@@ -66,15 +67,17 @@ export class AddAltAccountCommand extends Command {
 			return;
 		}
 
+		UserAvailabilityHelper.InMenuCollection.set(msg.author.id, UserAvailabilityHelper.MenuType.USER_PROFILE);
+
 		const inGameName: string | "CANCEL_" | "TIME_" = await VerificationHandler.getInGameNameByPrompt(
 			msg.author,
 			dmChannel,
 			null,
-			userDb,
-			null
+			userDb
 		);
 
 		if (inGameName === "CANCEL_" || inGameName === "TIME_") {
+			UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
 			return;
 		}
 
@@ -107,6 +110,10 @@ export class AddAltAccountCommand extends Command {
 
 		// end collector
 		reactCollector.on("end", () => {
+			verifMessage.delete().catch(e => { });
+			setTimeout(() => {
+				UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
+			}, 10 * 1000);
 			mcd.disableAutoTick();
 		});
 
@@ -126,7 +133,7 @@ export class AddAltAccountCommand extends Command {
 					.setDescription("You have stopped the verification process manually.")
 					.setFooter("Profile Management System")
 					.setTimestamp();
-				await verifMessage.edit(embed);
+				await dmChannel.send(embed);
 				return;
 			}
 
@@ -293,7 +300,7 @@ export class AddAltAccountCommand extends Command {
 				.setDescription(statusSb.toString())
 				.setColor("GREEN")
 				.setFooter("Verification Process: Stopped.");
-			await verifMessage.edit(successEmbed);
+			await dmChannel.send(successEmbed);
 
 			// we need to check each guild
 			// to see if we can replace the old

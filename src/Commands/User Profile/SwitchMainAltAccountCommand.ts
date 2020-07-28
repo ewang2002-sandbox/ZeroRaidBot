@@ -9,6 +9,7 @@ import { MessageUtil } from "../../Utility/MessageUtil";
 import { StringUtil } from "../../Utility/StringUtil";
 import { GenericMessageCollector } from "../../Classes/Message/GenericMessageCollector";
 import { TimeUnit } from "../../Definitions/TimeUnit";
+import { UserAvailabilityHelper } from "../../Helpers/UserAvailabilityHelper";
 
 export class SwitchMainAltAccountCommand extends Command {
     public constructor() {
@@ -60,6 +61,8 @@ export class SwitchMainAltAccountCommand extends Command {
             return;
         }
 
+		UserAvailabilityHelper.InMenuCollection.set(msg.author.id, UserAvailabilityHelper.MenuType.USER_PROFILE);
+
         const embed: MessageEmbed = new MessageEmbed()
             .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
             .setTitle("**Switch Main & Alternative Accounts**")
@@ -92,6 +95,7 @@ export class SwitchMainAltAccountCommand extends Command {
         ).send(GenericMessageCollector.getNumber(dmChannel, 1, userDb.otherAccountNames.length));
 
         if (num === "CANCEL_CMD" || num === "TIME_CMD") {
+			UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
             return;
         }
 
@@ -104,6 +108,7 @@ export class SwitchMainAltAccountCommand extends Command {
                 "otherAccountNames.$.lowercase": userDb.rotmgLowercaseName,
                 "otherAccountNames.$.displayName": userDb.rotmgDisplayName
             }
-        });
+		});
+		UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
     }
 }

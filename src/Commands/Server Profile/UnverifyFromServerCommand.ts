@@ -8,6 +8,7 @@ import { MessageUtil } from "../../Utility/MessageUtil";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
 import { GenericMessageCollector } from "../../Classes/Message/GenericMessageCollector";
 import { TimeUnit } from "../../Definitions/TimeUnit";
+import { UserAvailabilityHelper } from "../../Helpers/UserAvailabilityHelper";
 
 export class UnverifyFromServerCommand extends Command {
     public constructor() {
@@ -48,15 +49,18 @@ export class UnverifyFromServerCommand extends Command {
             return;
         }
 
+		UserAvailabilityHelper.InMenuCollection.set(msg.author.id, UserAvailabilityHelper.MenuType.SERVER_PROFILE);
         let guild: Guild;
         if (msg.guild === null) {
             const response: Guild | "CANCEL_CMD" | null = await GuildUtil.getGuild(msg, dmChannel);
             if (response === "CANCEL_CMD") {
+				UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
                 return;
             }
 
             if (response === null) {
                 MessageUtil.send({ content: "You are unable to use this command because you are not verified in any servers that the bot is in." }, msg.channel);
+				UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
                 return;
             }
 
@@ -72,17 +76,20 @@ export class UnverifyFromServerCommand extends Command {
 
         const member: GuildMember | null = guild.member(msg.author);
         if (member === null) {
+			UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
             return;
         }
         
         if (!member.roles.cache.has(resolvedGuildDb.roles.raider)) {
             MessageUtil.send({ content: "You are not verified in the server." }, msg.author);
+			UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
             return;
         }
 
         const badRoles: string[] = [resolvedGuildDb.roles.optRoles.mutedRole, resolvedGuildDb.roles.suspended];
         if (member.roles.cache.some(x => badRoles.includes(x.id))) {
             MessageUtil.send({ content: "You cannot unverify at this time because you are either muted or suspended." }, msg.author);
+			UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
             return;
         }
 
@@ -102,6 +109,7 @@ export class UnverifyFromServerCommand extends Command {
         ).send(GenericMessageCollector.getYesNoPrompt(dmChannel));
 
         if (wantsToBeUnverified === "CANCEL_CMD" || wantsToBeUnverified === "TIME_CMD") {
+			UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
             return;
         }
 
@@ -111,5 +119,6 @@ export class UnverifyFromServerCommand extends Command {
             }
             await member.setNickname(msg.author.username).catch(e => { });
         }
+		UserAvailabilityHelper.InMenuCollection.delete(msg.author.id);
     }
 }

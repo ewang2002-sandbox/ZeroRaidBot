@@ -1,5 +1,5 @@
 import { IRaidInfo } from "../Definitions/IRaidInfo";
-import { IBlacklistedUser } from "../Definitions/IBlacklistedUser";
+import { IBlacklistedUser, IModmailBlacklistedUser } from "../Definitions/IBlacklistedUser";
 import { IModMail } from "../Definitions/IModMail";
 import { ISection } from "./ISection";
 import { IVerification } from "../Definitions/IVerification";
@@ -7,6 +7,7 @@ import { IHeadCountInfo } from "../Definitions/IHeadCountInfo";
 import { IMutedData, ISuspendedData } from "../Definitions/IPunishmentObject";
 import { IManualVerification } from "../Definitions/IManualVerification";
 import { IQuotaDbInfo } from "../Definitions/IQuotaDbInfo";
+import { IApplication } from "../Definitions/IApplication";
 
 /**
  * Everything here (excluding "sections") represents ESSENTIALS needed for the core bot functions to work properly.
@@ -205,6 +206,11 @@ export interface IRaidGuild {
 		modMailChannel: string;
 
 		/**
+		 * Modmail storage channel.
+		 */
+		modMailStorage: string; 
+
+		/**
 		 * The general AFK check channel, where raid checks will be posted.
 		 */
 		generalRaidAfkCheckChannel: string;
@@ -245,6 +251,11 @@ export interface IRaidGuild {
 	 */
 	properties: {
 		/**
+		 * Whether to use the priority queue system or not. 
+		 */
+		priorityQueue: boolean;
+
+		/**
 		 * Quota details.
 		 */
 		quotas: {
@@ -277,6 +288,11 @@ export interface IRaidGuild {
 		 * All ongoing manual verification.
 		 */
 		manualVerificationEntries: IManualVerification[];
+
+		/**
+		 * Application for section.
+		 */
+		application: IApplication[];
 	};
 
 	/**
@@ -321,7 +337,7 @@ export interface IRaidGuild {
 		/**
 		 * IDs of accounts that will not be able to use modmail.
 		 */
-		blacklistedModMailUsers: string[];
+		blacklistedModMailUsers: IModmailBlacklistedUser[];
 
 		/**
 		 * People that are muted.

@@ -35,5 +35,5 @@ export interface IConfigurationSettings {
     /**
      * Colors for the bot.
      */
-    botColors: ColorResolvable[];
+	botColors: ColorResolvable[];
 }

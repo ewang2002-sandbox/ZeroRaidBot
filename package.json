@@ -1,23 +1,25 @@
 {
 	"name": "raidbot",
-	"version": "0.5.1",
+	"version": "0.6.0",
 	"description": "A simple Discord bot for Realm of the Mad God servers, designed for verification and raid management. ",
 	"main": "index.js",
 	"dependencies": {
 		"axios": "^0.19.2",
 		"discord.js": "^12.2.0",
+		"erlpack": "github:discordapp/erlpack",
 		"mongodb": "^3.5.9"
 	},
 	"devDependencies": {
 		"@types/axios": "^0.14.0",
-		"@types/mongodb": "^3.5.23",
-		"@types/node": "^12.12.47",
+		"@types/mongodb": "^3.5.25",
+		"@types/node": "^12.12.52",
 		"@types/ws": "^6.0.4",
-		"typescript": "^3.9.5"
+		"typescript": "^3.9.7"
 	},
 	"scripts": {
 		"compile": "tsc -p .",
-		"start": "npm run compile && node out/index.js"
+		"start": "npm run compile && node out/index.js",
+		"getDep": "npm install --only=prod"
 	},
 	"repository": {
 		"type": "git",

@@ -113,6 +113,11 @@ export module RaidHandler {
 			return;
 		}
 
+		if (!guild.roles.cache.has(SECTION.verifiedRole)) {
+			MessageUtil.send({ content: "The verified role does not exist. Please try again." }, msg.channel as TextChannel);
+			return;
+		}
+
 		const CONTROL_PANEL_CHANNEL: TextChannel | undefined = guild.channels.cache
 			.get(SECTION.channels.controlPanelChannel) as TextChannel | undefined;
 

@@ -112,10 +112,11 @@ export class FastReactionMenuManager {
 
     /**
 	 * Reacts to a message fast. This static method should be used instead of the class as a whole if all you need is to react to a message at a faster rate than what is allowed. 
-	 * @param msg The message to react to fast.
-	 * @param reactions The set of reactions to use.
+	 * @param {Message} msg The message to react to fast.
+	 * @param {EmojiResolvable[]} reactions The set of reactions to use.
+	 * @param {number} [intervalTime = 500] The interval time, in ms.
 	 */
-	public static reactFaster(msg: Message, reactions: EmojiResolvable[]): void {
+	public static reactFaster(msg: Message, reactions: EmojiResolvable[], intervalTime: number = 500): void {
 		let i: number = 0;
 		const interval: NodeJS.Timeout = setInterval(() => {
 			// think of this as a for loop
@@ -132,7 +133,7 @@ export class FastReactionMenuManager {
 				clearInterval(interval);
 			}
 			i++;
-		}, 500);
+		}, intervalTime);
 	}
 
     /**

@@ -129,7 +129,7 @@ export async function onMessageReactionAdd(
 		}
 
 		if (reaction.emoji.name === "📝") {
-			ModMailHandler.respondToModmail(reaction.message, member);
+			ModMailHandler.respondToGeneralModmail(reaction.message, member);
 		}
 		else if (reaction.emoji.name === "🗑️") {
 			const oldEmbed: MessageEmbed = reaction.message.embeds[0];

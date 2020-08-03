@@ -10,6 +10,7 @@ import { DateUtil } from "../Utility/DateUtil";
 import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuManager";
 import { createWriteStream, WriteStream } from "fs";
 import { StringBuilder } from "../Classes/String/StringBuilder";
+import { OtherUtil } from "../Utility/OtherUtil";
 
 export module ModMailHandler {
 	// K = the mod that is responding
@@ -167,19 +168,63 @@ export module ModMailHandler {
 			return;
 		}
 
+		const createdTime: string = DateUtil.getTime();
+
 		let threadChannel: TextChannel = await convertedToThreadBy.guild.channels.create(`${authorOfModmail.user.username}-${authorOfModmail.user.discriminator}`, {
 			type: "text",
 			parent: modmailCategory,
-			topic: `Modmail Thread For: ${authorOfModmail}\nCreated By: ${convertedToThreadBy}\nCreated Time: ${DateUtil.getTime()}`
+			topic: `Modmail Thread For: ${authorOfModmail}\nCreated By: ${convertedToThreadBy}\nCreated Time: ${createdTime}`
 		});
-
 		await threadChannel.lockPermissions().catch(e => { });
 
 		// create base message
 		const baseMsgEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(authorOfModmail.user)
-			.setTitle(`Modmail Thread`);
+			.setTitle(`Modmail Thread ⇒ ${authorOfModmail.user.tag}`)
+			.setDescription(`⇒ **Converted To Thread By:** ${convertToThread}\n⇒ **Author of Modmail:** ${authorOfModmail}\n **Thread Creation Time:** ${createdTime}`)
+			.addField("Reactions", "⇒ React with 🛑 to close this thread. A copy of all messages will be sent.\n⇒ React with 🚫 to modmail blacklist the author of this modmail.")
+			.setTimestamp()
+			.setFooter("Modmail Thread");
 
-			// TODO continue
+		const baseMessage: Message = await threadChannel.send(baseMsgEmbed);
+		FastReactionMenuManager.reactFaster(baseMessage, ["🛑", "🚫"]);
+		await baseMessage.pin().catch(e => { });
+
+		// send first message
+		const firstMsgEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(authorOfModmail.user)
+			.setTitle(`${authorOfModmail.user.tag} ⇒ Modmail Thread`)
+			.setFooter(`${authorOfModmail.id} • Modmail Message`)
+			.setTimestamp();
+		const attachmentsIndex: number = originalModMailMessage.embeds[0].fields
+			.findIndex(x => x.name === "Attachments");
+		if (typeof originalModMailMessage.embeds[0].description !== "undefined") {
+			firstMsgEmbed.setDescription(originalModMailMessage.embeds[0].description);
+		}
+		if (attachmentsIndex !== -1) {
+			firstMsgEmbed.addField("Attachments", originalModMailMessage.embeds[0].fields[attachmentsIndex].value);
+		}
+
+		const firstMsg: Message = await threadChannel.send(firstMsgEmbed);
+		firstMsg.react("📝").catch(e => { });
+
+		// save to db
+		await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: convertedToThreadBy.id }, {
+			$push: {
+				"properties.modMail": {
+					originalModmailAuthor: authorOfModmail.id,
+					baseMsg: baseMessage.id,
+					startedOn: createdTime,
+					channel: threadChannel.id,
+					threadMessages: [
+						{
+							msgContent: typeof originalModMailMessage.embeds[0].description !== "undefined" ? originalModMailMessage.embeds[0].description : "",
+							attachments: [],
+							dateTime: originalModMailMessage.createdTimestamp,
+							author: authorOfModmail.id
+						}
+					]
+				}
+			}
+		});
 	}
 
 	/**
@@ -264,12 +309,16 @@ export module ModMailHandler {
 		await moderationChannel.send(modEmbed).catch(e => { });
 	}
 
+	export async function respondToThreadModmail(originalModMailMessage: Message, memberThatWillRespond: GuildMember): Promise<void> {
+
+	}
+
 	/**
 	 * Allows a person to respond to a modmail message. 
 	 * @param originalModMailMessage The message from the mod mail channel that the person is going to respond to.
 	 * @param memberThatWillRespond The person that will be responding to the modmail sender/initator. 
 	 */
-	export async function respondToModmail(originalModMailMessage: Message, memberThatWillRespond: GuildMember): Promise<void> {
+	export async function respondToGeneralModmail(originalModMailMessage: Message, memberThatWillRespond: GuildMember): Promise<void> {
 		// no permission
 		if (memberThatWillRespond.guild.me !== null && !memberThatWillRespond.guild.me.hasPermission("MANAGE_CHANNELS")) {
 			return;

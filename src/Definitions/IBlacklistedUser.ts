@@ -29,7 +29,7 @@ export interface INetworkBlacklistedUser extends IBlacklistedUser {
     guildName: string; 
 }
 
-export interface IModmailBlacklistedUser {
+export interface ISubBlacklistedUser {
 	/**
 	 * ID of user.
 	 */

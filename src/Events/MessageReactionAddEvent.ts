@@ -1,4 +1,4 @@
-import { MessageReaction, User, Message, Guild, GuildMember, TextChannel, RoleResolvable, MessageCollector, DMChannel, VoiceChannel, Collection, PartialUser, Role, MessageEmbedFooter, MessageEmbed, Emoji, ClientUser } from "discord.js";
+import { MessageReaction, User, Message, Guild, GuildMember, TextChannel, RoleResolvable, DMChannel, VoiceChannel, PartialUser, Role, MessageEmbedFooter, MessageEmbed, Emoji, ClientUser } from "discord.js";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
@@ -19,8 +19,6 @@ import { TimeUnit } from "../Definitions/TimeUnit";
 import { UserAvailabilityHelper } from "../Helpers/UserAvailabilityHelper";
 import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuManager";
 import { Zero } from "../Zero";
-import { DateUtil } from "../Utility/DateUtil";
-import { NitroEmoji } from "../Constants/EmojiData";
 import { ReactionLoggingHandler } from "../Helpers/ReactionLoggingHandler";
 
 export async function onMessageReactionAdd(
@@ -136,7 +134,7 @@ export async function onMessageReactionAdd(
 		else if (reaction.emoji.name === "🗑️") {
 			const oldEmbed: MessageEmbed = reaction.message.embeds[0];
 			if (typeof oldEmbed.description !== "undefined" && oldEmbed.description.length > 20) {
-				await reaction.message.reactions.removeAll().catch(e => { });
+				await reaction.message.reactions.removeAll().catch(() => { });
 				const askDeleteEmbed: MessageEmbed = new MessageEmbed()
 					.setAuthor(member.user.tag, member.user.displayAvatarURL())
 					.setTitle("Confirm Delete Modmail")
@@ -154,7 +152,7 @@ export async function onMessageReactionAdd(
 				).react();
 
 				if (deleteResp === "TIME_CMD" || deleteResp.name === "❌") {
-					await reaction.message.edit(oldEmbed).catch(e => { });
+					await reaction.message.edit(oldEmbed).catch(() => { });
 					// respond reaction
 					await reaction.message.react("📝").catch(() => { });
 					// garbage reaction
@@ -165,7 +163,7 @@ export async function onMessageReactionAdd(
 					return;
 				}
 			}
-			await reaction.message.delete().catch(e => { });
+			await reaction.message.delete().catch(() => { });
 		}
 		else if (reaction.emoji.name === "🚫") {
 			ModMailHandler.blacklistFromModmail(reaction.message, member, guildDb);
@@ -338,7 +336,7 @@ export async function onMessageReactionAdd(
 							.setDescription(`The location of the raid (information below) is: ${StringUtil.applyCodeBlocks(raidFromReaction.location)}`)
 							.addField("Location Rules", "- Do not give this location out to anyone else.\n- Pay attention to any directions your raid leader may have.")
 							.addField("Raid Information", `Guild: ${guild.name}\nRaid Section: ${raidFromReaction.section.nameOfSection}\nRaid VC: ${member.voice.channel.name}\nDungeon: ${raidFromReaction.dungeonInfo.dungeonName}`);
-						await user.send(locEmbed).catch(e => { });
+						await user.send(locEmbed).catch(() => { });
 					}
 				}
 			}
@@ -377,7 +375,7 @@ export async function onMessageReactionAdd(
 							.setDescription(`The location of the raid (information below) is: ${StringUtil.applyCodeBlocks(raidFromReaction.location)}`)
 							.addField("Location Rules", "- Do not give this location out to anyone else.\n- Pay attention to any directions your raid leader may have.")
 							.addField("Raid Information", `Guild: ${guild.name}\nRaid Section: ${raidFromReaction.section.nameOfSection}\nRaid VC: ${member.voice.channel.name}\nDungeon: ${raidFromReaction.dungeonInfo.dungeonName}`);
-						await user.send(locEmbed).catch(e => { });
+						await user.send(locEmbed).catch(() => { });
 					}
 				}
 			}

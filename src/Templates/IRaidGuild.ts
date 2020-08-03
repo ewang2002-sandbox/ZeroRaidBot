@@ -1,5 +1,5 @@
 import { IRaidInfo } from "../Definitions/IRaidInfo";
-import { IBlacklistedUser, IModmailBlacklistedUser } from "../Definitions/IBlacklistedUser";
+import { IBlacklistedUser, ISubBlacklistedUser } from "../Definitions/IBlacklistedUser";
 import { IModMail } from "../Definitions/IModMail";
 import { ISection } from "./ISection";
 import { IVerification } from "../Definitions/IVerification";
@@ -275,7 +275,7 @@ export interface IRaidGuild {
 		showVerificationRequirements: boolean;
 
 		/**
-		 * An array of current modmail users. 
+		 * An array of current modmail threads. 
 		 */
 		modMail: IModMail[];
 
@@ -324,6 +324,7 @@ export interface IRaidGuild {
 	 * The moderation stuff.
 	 */
 	moderation: {
+		blacklistedApplicants: ISubBlacklistedUser[]; 
 		/**
 		 * Amount of suspensions that has occurred in the server.
 		 */
@@ -337,7 +338,7 @@ export interface IRaidGuild {
 		/**
 		 * IDs of accounts that will not be able to use modmail.
 		 */
-		blacklistedModMailUsers: IModmailBlacklistedUser[];
+		blacklistedModMailUsers: ISubBlacklistedUser[];
 
 		/**
 		 * People that are muted.

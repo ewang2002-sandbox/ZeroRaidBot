@@ -65,7 +65,6 @@ export module VerificationHandler {
 			}
 
 			const verifiedRole: Role = guild.roles.cache.get(section.verifiedRole) as Role;
-			const dmChannel: DMChannel = await member.user.createDM();
 
 			// channel declaration
 			// yes, we know these can be textchannels b/c that's the input in configsections
@@ -92,7 +91,7 @@ export module VerificationHandler {
 				if (typeof manualVerifEntry === "undefined") {
 					continue;
 				}
-				
+
 				await member.send(`**\`[${section.isMain ? guild.name : section.nameOfSection}]\`** Your profile is currently under manual verification. Please try again later.`);
 				return;
 			}
@@ -131,6 +130,16 @@ export module VerificationHandler {
 
 			// within the server we will be checking for other major reqs.
 			if (section.isMain) {
+				let dmChannel: DMChannel;
+
+				try {
+					dmChannel = await member.user.createDM();
+				}
+				catch (e) {
+					MessageUtil.send({ content: `${member}, I am unable to message you. Please make sure your privacy settings are set so anyone can DM you.` }, verificationChannel as TextChannel, 20 * 1000);
+					return;
+				}
+	
 				IsInVerification.set(member.id, "GENERAL");
 				UserAvailabilityHelper.InMenuCollection.set(member.id, UserAvailabilityHelper.MenuType.VERIFICATION);
 
@@ -311,8 +320,8 @@ export module VerificationHandler {
 							.addField("Error Message", StringUtil.applyCodeBlocks(e))
 							.setColor("RED")
 							.setFooter("Verification Process: Stopped.");
-							await dmChannel.send(failedEmbed).catch(e => { });
-							return;
+						await dmChannel.send(failedEmbed).catch(e => { });
+						return;
 					}
 
 					if ("error" in requestData.data) {
@@ -340,8 +349,8 @@ export module VerificationHandler {
 							.addField("Error Message", StringUtil.applyCodeBlocks(e))
 							.setColor("RED")
 							.setFooter("Verification Process: Stopped.");
-							await dmChannel.send(failedEmbed).catch(e => { });
-							return;
+						await dmChannel.send(failedEmbed).catch(e => { });
+						return;
 					}
 
 					if ("errorMessage" in nameHistory) {
@@ -393,8 +402,8 @@ export module VerificationHandler {
 									.setColor("RANDOM")
 									.addField("Reason", blacklistEntry.reason)
 									.setFooter("Verification Process: Stopped.");
-									await dmChannel.send(failedEmbed).catch(e => { });
-									return;
+								await dmChannel.send(failedEmbed).catch(e => { });
+								return;
 							}
 						}
 					}
@@ -492,7 +501,7 @@ export module VerificationHandler {
 						.setDescription(guildDb.properties.successfulVerificationMessage.length === 0 ? "You have been successfully verified. Please make sure you read the rules posted in the server, if any, and any other regulations/guidelines. Good luck and have fun!" : guildDb.properties.successfulVerificationMessage)
 						.setColor("GREEN")
 						.setFooter("Verification Process: Stopped.");
-						await dmChannel.send(successEmbed).catch(e => { });
+					await dmChannel.send(successEmbed).catch(e => { });
 					if (typeof verificationSuccessChannel !== "undefined") {
 						verificationSuccessChannel.send(`📥 **\`[${section.nameOfSection}]\`** ${member} has successfully been verified as \`${inGameName}\`.`).catch(console.error);
 					}
@@ -549,7 +558,13 @@ export module VerificationHandler {
 						return;
 					}
 
-					const botMsg: Message = await dmChannel.send(new MessageEmbed());
+					let botMsg: Message | null;
+					try {
+						botMsg = await member.send(new MessageEmbed());
+					}
+					catch (e) {
+						botMsg = null;
+					}
 
 					const reqsFailedToMeet: StringBuilder = new StringBuilder();
 					if (!prelimCheck.aliveFame.passed) {
@@ -602,7 +617,10 @@ export module VerificationHandler {
 						outputLogs += `\nThis profile has been sent to the manual verification channel for further review.`;
 					}
 
-					await botMsg.edit(failedEmbed).catch(() => { });
+					if (botMsg !== null) {
+						await botMsg.edit(failedEmbed).catch(() => { });
+					}
+					
 					if (typeof verificationAttemptsChannel !== "undefined") {
 						verificationAttemptsChannel.send(outputLogs).catch(() => { });
 					}

@@ -251,7 +251,8 @@ export module MongoDbHelper {
 						mainSectionLeaderRole: {
 							sectionAlmostLeaderRole: "",
 							sectionLeaderRole: "",
-							sectionTrialLeaderRole: ""
+							sectionTrialLeaderRole: "",
+							sectionHeadRaidLeader: ""
 						}
 					},
 					properties: {
@@ -273,7 +274,8 @@ export module MongoDbHelper {
 						amtSuspensions: 0,
 						blacklistedModMailUsers: [],
 						mutedUsers: [],
-						suspended: []
+						suspended: [],
+						blacklistedApplicants: []
 					},
 					activeRaidsAndHeadcounts: {
 						raidChannels: [],

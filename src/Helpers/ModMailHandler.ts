@@ -11,6 +11,7 @@ import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuMan
 import { createWriteStream, WriteStream } from "fs";
 import { StringBuilder } from "../Classes/String/StringBuilder";
 import { OtherUtil } from "../Utility/OtherUtil";
+import { IModmailThread } from "../Definitions/IModMail";
 
 export module ModMailHandler {
 	// K = the mod that is responding
@@ -192,7 +193,7 @@ export module ModMailHandler {
 		// send first message
 		const firstMsgEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(authorOfModmail.user)
 			.setTitle(`${authorOfModmail.user.tag} ⇒ Modmail Thread`)
-			.setFooter(`${authorOfModmail.id} • Modmail Message`)
+			.setFooter(`${authorOfModmail.id} • Modmail Thread`)
 			.setTimestamp();
 		const attachmentsIndex: number = originalModMailMessage.embeds[0].fields
 			.findIndex(x => x.name === "Attachments");
@@ -217,6 +218,7 @@ export module ModMailHandler {
 					threadMessages: [
 						{
 							msgContent: typeof originalModMailMessage.embeds[0].description !== "undefined" ? originalModMailMessage.embeds[0].description : "",
+							// TODO account for attachments somehow. 
 							attachments: [],
 							dateTime: originalModMailMessage.createdTimestamp,
 							author: authorOfModmail.id
@@ -309,8 +311,25 @@ export module ModMailHandler {
 		await moderationChannel.send(modEmbed).catch(e => { });
 	}
 
-	export async function respondToThreadModmail(originalModMailMessage: Message, memberThatWillRespond: GuildMember): Promise<void> {
+	/**
+	 * Responds to a message sent in a modmail thread. 
+	 * @param originalModMailMessage The original modmail message. This message should be in the specific thread channel.
+	 * @param memberThatWillRespond The member that will respond.
+	 * @param guildDb The guild document.
+	 */
+	export async function respondToThreadModmail(
+		originalModMailMessage: Message, 
+		memberThatWillRespond: GuildMember, 
+		guildDb: IRaidGuild
+	): Promise<void> {
+		const threadIndex: number = guildDb.properties.modMail
+			.findIndex(x => x.channel === originalModMailMessage.channel.id);
+		
+		if (typeof threadIndex === "undefined") {
+			return; 
+		}
 
+		
 	}
 
 	/**

@@ -548,16 +548,16 @@ export module RaidHandler {
 		let reactWithNitroBoosterEmoji: boolean = false;
 		if (existingEarlyLocRoles.length !== 0) {
 			if (existingEarlyLocRoles.length === 1) {
-				optionalReactsField += `⇒ If you have the ${existingEarlyLocRoles[0]} role, react with ${earlyLocationEmoji} to get the raid location early.\n`;
+				optionalReactsField += `⇒ If you have the ${existingEarlyLocRoles[0]} role, react with ${earlyLocationEmoji} to get the raid location early. If you are in queue, you will be dragged in.\n`;
 			}
 			else {
-				optionalReactsField += `⇒ If you have one of the following roles, ${existingEarlyLocRoles.join(" ")}, react with ${earlyLocationEmoji} to get the raid location early.\n`;
+				optionalReactsField += `⇒ If you have one of the following early location roles, ${existingEarlyLocRoles.join(" ")}, react with ${earlyLocationEmoji} to get the raid location early. If you are in queue, you will be dragged in.\n`;
 			}
 			reactWithNitroBoosterEmoji = true;
 		}
 
 		if (SELECTED_DUNGEON.keyEmojIDs.length !== 0) {
-			optionalReactsField += `⇒ If you have ${SELECTED_DUNGEON.keyEmojIDs.length === 1 ? `a ${SELECTED_DUNGEON.keyEmojIDs[0].keyEmojiName}` : "one of the following keys"}, react accordingly with ${SELECTED_DUNGEON.keyEmojIDs.map(x => msg.client.emojis.cache.get(x.keyEmojID)).join(" ")}\n`;
+			optionalReactsField += `⇒ If you have ${SELECTED_DUNGEON.keyEmojIDs.length === 1 ? `a ${SELECTED_DUNGEON.keyEmojIDs[0].keyEmojiName}` : "one of the following keys"}, join VC and react accordingly with ${SELECTED_DUNGEON.keyEmojIDs.map(x => msg.client.emojis.cache.get(x.keyEmojID)).join(" ")}.\n`;
 		}
 		optionalReactsField += `⇒ React with the emoji(s) corresponding to your class and gear choices.`;
 
@@ -682,21 +682,27 @@ export module RaidHandler {
 			}
 			// member not found OR member not in vc OR member not in raid vc 
 			// dont let them in
-			if (member.voice.channel === null || member.voice.channel.id !== NEW_RAID_VC.id) {
+			if (member.voice.channel === null) {
 				return;
 			}
 			// TODO somehow key entry (in end afk control panel) have data from the early react (merged data)
 			// check on this
 			if (rs.dungeonInfo.keyEmojIDs.some(x => x.keyEmojID === reaction.emoji.id)
 				&& !hasUserReactedWithSpecificKey(keysThatReacted, reaction.emoji.id, user.id)) {
-				// only want 8 keys
-				if (getAmountOfKeys(keysThatReacted, reaction.emoji.id) + 1 > maximumKeysAllowed) {
+				// only want some keys
+				if (getAmountOfKeys(keysThatReacted, reaction.emoji.id)	+ 1 > maximumKeysAllowed) {
 					await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** Thank you for your interest in contributing a key to the raid. However, we have enough people for now! A leader will give instructions if keys are needed; please ensure you are paying attention to the leader.`).catch(() => { });
 					return;
 				}
+
 				// key react 
 				let hasAccepted: boolean = await keyReact(user, guild, NEW_RAID_VC, rs, reaction);
 				if (hasAccepted) {
+					// make sure we dont go above the limit
+					if (getAmountOfKeys(keysThatReacted, reaction.emoji.id) + 1 > maximumKeysAllowed) {
+						await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** Thank you for your interest in contributing a key to the raid. However, you were too slow in reacting to the needed keys. Please try again later.`).catch(() => { });
+						return;
+					}
 					const currData: IStoredRaidData | undefined = CURRENT_RAID_DATA.get(rs.vcID);
 					if (typeof currData === "undefined") {
 						reactCollector.stop();
@@ -718,6 +724,10 @@ export module RaidHandler {
 					}
 					controlPanelEmbed.setDescription(cpDescWithKey);
 					controlPanelMsg.edit(controlPanelEmbed).catch(() => { });
+
+					if (member.voice.channel !== NEW_RAID_VC) {
+						await member.voice.setChannel(NEW_RAID_VC).catch(e => { });
+					}
 				}
 			}
 
@@ -759,6 +769,10 @@ export module RaidHandler {
 				}
 				controlPanelEmbed.setDescription(cpDescWithEarly);
 				controlPanelMsg.edit(controlPanelEmbed).catch(() => { });
+
+				if (member.voice.channel !== NEW_RAID_VC) {
+					await member.voice.setChannel(NEW_RAID_VC).catch(e => { });
+				}
 			}
 		});
 

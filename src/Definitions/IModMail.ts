@@ -1,4 +1,4 @@
-export interface IModMail {
+export interface IModmailThread {
 	// the person that started this
 	originalModmailAuthor: string;
 	// base message id

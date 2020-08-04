@@ -1,6 +1,6 @@
 import { IRaidInfo } from "../Definitions/IRaidInfo";
 import { IBlacklistedUser, ISubBlacklistedUser } from "../Definitions/IBlacklistedUser";
-import { IModMail } from "../Definitions/IModMail";
+import { IModmailThread } from "../Definitions/IModMail";
 import { ISection } from "./ISection";
 import { IVerification } from "../Definitions/IVerification";
 import { IHeadCountInfo } from "../Definitions/IHeadCountInfo";
@@ -153,6 +153,7 @@ export interface IRaidGuild {
 			sectionLeaderRole: string;
 			sectionAlmostLeaderRole: string; 
 			sectionTrialLeaderRole: string;
+			sectionHeadRaidLeader: string; 
 		}
 	};
 
@@ -277,7 +278,7 @@ export interface IRaidGuild {
 		/**
 		 * An array of current modmail threads. 
 		 */
-		modMail: IModMail[];
+		modMail: IModmailThread[];
 
 		/**
 		 * The dungeons to allow. 

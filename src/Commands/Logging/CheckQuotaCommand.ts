@@ -26,7 +26,7 @@ export class CheckQuotaCommand extends Command {
                 [],
                 [],
                 ["support"],
-                ["ALL_RL_TYPE"],
+                ["ALL_RLS"],
                 true
             ),
             true,

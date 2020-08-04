@@ -69,12 +69,20 @@ export module OtherUtil {
             // rl
             const roleOrder: [string, RoleNames][] = [
                 [moderator, "moderator"],
-                [headRaidLeader, "headRaidLeader"],
-                [officer, "officer"],
-                [universalRaidLeader, "universalRaidLeader"],
+                [headRaidLeader, "headRaidLeader"]
             ];
 
-            if (command.getSecRLAccountType().includes("ALL_RL_TYPE")
+            if (command.getSecRLAccountType().includes("ALL_RLS")
+                || command.getSecRLAccountType().includes("SECTION_HRL")) {
+                // head leader
+                for (const sec of allSections) {
+                    roleOrder.push([sec.roles.headLeaderRole, "headRaidLeader"]); // for now
+                }
+            }
+
+            roleOrder.push([officer, "officer"], [universalRaidLeader, "universalRaidLeader"]);
+
+            if (command.getSecRLAccountType().includes("ALL_RLS")
                 || command.getSecRLAccountType().includes("SECTION_RL")) {
                 // rl
                 for (const sec of allSections) {
@@ -83,7 +91,7 @@ export module OtherUtil {
             }
 
             roleOrder.push([universalAlmostRaidLeader, "universalAlmostRaidLeader"]);
-            if (command.getSecRLAccountType().includes("ALL_RL_TYPE")
+            if (command.getSecRLAccountType().includes("ALL_RLS")
                 || command.getSecRLAccountType().includes("SECTION_ARL")) {
                 // arl
                 for (const sec of allSections) {
@@ -91,7 +99,7 @@ export module OtherUtil {
                 }
             }
 
-            if (command.getSecRLAccountType().includes("ALL_RL_TYPE")
+            if (command.getSecRLAccountType().includes("ALL_RLS")
                 || command.getSecRLAccountType().includes("SECTION_TRL")) {
                 // trl
                 for (const sec of allSections) {

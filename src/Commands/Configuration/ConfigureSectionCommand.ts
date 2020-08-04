@@ -517,6 +517,7 @@ export class ConfigureSectionCommand extends Command {
 					nameOfSection: nameOfSection,
 					verifiedRole: verifiedRole.id,
 					roles: {
+						headLeaderRole: "",
 						trialLeaderRole: "",
 						raidLeaderRole: "",
 						almostLeaderRole: ""

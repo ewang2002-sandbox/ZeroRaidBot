@@ -200,6 +200,7 @@ export module ModMailHandler {
 		if (typeof originalModMailMessage.embeds[0].description !== "undefined") {
 			firstMsgEmbed.setDescription(originalModMailMessage.embeds[0].description);
 		}
+		
 		if (attachmentsIndex !== -1) {
 			firstMsgEmbed.addField("Attachments", originalModMailMessage.embeds[0].fields[attachmentsIndex].value);
 		}

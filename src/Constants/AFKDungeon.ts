@@ -63,6 +63,33 @@ export const AFKDungeon: IDungeonData[] = [
 		] 
 	},
 	{
+		id: 41,
+		dungeonName: "Ancient Ruins",
+		portalEmojiID: "745810341115461694",
+		keyEmojIDs: [
+			{
+				keyEmojID: "745810341312593950",
+				keyEmojiName: "Ancient Ruins Key"
+			}
+		],
+		reactions: [
+			Paralyze,
+			Slow,
+			Knight
+		],
+		portalLink: "https://i.imgur.com/d7MSK2x.png",
+		bossLink: [
+			"https://i.imgur.com/z01EB30.png",
+			"https://i.imgur.com/jXZrNGl.png"
+		],
+		colors: [
+			0xe6d485,
+			0xbaa263,
+			0xb7934b,
+			0x94643a
+		]
+	}
+	{
 		id: 3,
 		dungeonName: "Candyland Hunting Grounds",
 		portalEmojiID: "561248700916301825",
@@ -1067,4 +1094,4 @@ export const AFKDungeon: IDungeonData[] = [
 		]
 	}
 ];
-// max ID: 40 -- heroic abyss
+// max ID: 41 -- ancient ruins

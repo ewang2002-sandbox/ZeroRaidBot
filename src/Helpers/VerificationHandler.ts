@@ -1183,6 +1183,7 @@ export module VerificationHandler {
 			.setTitle(`**${section.isMain ? "Server" : section.nameOfSection}** ⇒ Manual Verification Request: **${verificationInfo.player}**`)
 			.setDescription(desc.toString())
 			.addField("Unmet Requirements", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()), true)
+			.addField("Current Status", StringUtil.applyCodeBlocks("❌ Not Handled.\n🔓 Unlocked."))
 			.setColor("YELLOW")
 			.setFooter(member.id)
 			.setTimestamp();
@@ -1212,7 +1213,8 @@ export module VerificationHandler {
 					aFame: verificationInfo.fame,
 					nameHistory: nameHistoryInfo,
 					msgId: m.id,
-					manualVerificationChannel: manualVerificationChannel.id
+					manualVerificationChannel: manualVerificationChannel.id,
+					currentHandler: ""
 				}
 			}
 		});
@@ -1318,6 +1320,7 @@ export module VerificationHandler {
 		sectionForManualVerif: ISection,
 		manualVerificationProfile: IManualVerification
 	): Promise<void> {
+		// TODO add reason
 		const guild: Guild = manualVerifMember.guild;
 		let loggingMsg: string = `❌ **\`[${sectionForManualVerif.nameOfSection}]\`** ${manualVerifMember} (${manualVerificationProfile.inGameName})'s manual verification review has been rejected by ${responsibleMember} (${responsibleMember.displayName})`;
 

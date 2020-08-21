@@ -35,4 +35,9 @@ export interface IManualVerification {
      * The ID of the manual verification channel.
      */
     manualVerificationChannel: string;
+
+    /**
+     * The person that is currently looking into it.
+     */
+    currentHandler: string;
 }

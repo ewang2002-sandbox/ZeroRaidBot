@@ -42,15 +42,7 @@ export async function onMessageReactionAdd(
 		reaction.message = fetchedMessage;
 	}
 
-	if (reaction.message.guild === null) {
-		return;
-	}
-
-	if (user.bot) {
-		return;
-	}
-
-	if (reaction.message.type !== "DEFAULT") {
+	if (reaction.message.guild === null || user.bot || reaction.message.type !== "DEFAULT") {
 		return;
 	}
 
@@ -197,7 +189,7 @@ export async function onMessageReactionAdd(
 
 		if (typeof manualVerificationProfile !== "undefined"
 			&& typeof sectionForManualVerif !== "undefined"
-			&& ["☑️", "❌"].includes(reaction.emoji.name)) {
+			&& ["☑️", "❌", "🔓", "🔒", "📧"].includes(reaction.emoji.name)) {
 			const manualVerifMember: GuildMember | undefined = guild.members.cache
 				.get(manualVerificationProfile.userId);
 			const sectionVerifiedRole: Role | undefined = guild.roles.cache
@@ -213,6 +205,12 @@ export async function onMessageReactionAdd(
 			}
 			else if (reaction.emoji.name === "❌") {
 				VerificationHandler.denyManualVerification(manualVerifMember, member, sectionForManualVerif, manualVerificationProfile);
+			}
+			else if (reaction.emoji.name === "📧") {
+				ModMailHandler.startThreadedModmailWithMember(manualVerifMember, member, guildDb);
+			}
+			else {
+				// lock or unlock
 			}
 		}
 	}

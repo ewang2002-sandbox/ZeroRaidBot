@@ -168,6 +168,9 @@ export async function onMessageReactionAdd(
 		else if (reaction.emoji.name === "🚫") {
 			ModMailHandler.blacklistFromModmail(reaction.message, member, guildDb);
 		}
+		else if (reaction.emoji.name === "🔀") {
+			ModMailHandler.convertToThread(reaction.message, member);
+		}
 		return;
 	}
 	//#endregion
@@ -208,7 +211,7 @@ export async function onMessageReactionAdd(
 			if (reaction.emoji.name === "☑️") {
 				VerificationHandler.acceptManualVerification(manualVerifMember, member, sectionForManualVerif, manualVerificationProfile, guildDb);
 			}
-			else {
+			else if (reaction.emoji.name === "❌") {
 				VerificationHandler.denyManualVerification(manualVerifMember, member, sectionForManualVerif, manualVerificationProfile);
 			}
 		}

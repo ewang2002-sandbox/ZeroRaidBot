@@ -88,7 +88,7 @@ export const AFKDungeon: IDungeonData[] = [
 			0xb7934b,
 			0x94643a
 		]
-	}
+	},
 	{
 		id: 3,
 		dungeonName: "Candyland Hunting Grounds",

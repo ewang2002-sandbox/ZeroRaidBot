@@ -37,7 +37,7 @@ export module ModMailHandler {
 	}
 
 	/**
-	 * Initiates modmail. I know, best description ever. :) 
+	 * This function is called when someone DMs the bot. This basically initiates modmail by forwarding a modmail message to the server.
 	 * @param initiator The person responsible for this mod mail.
 	 * @param message The message content.
 	 */
@@ -76,33 +76,48 @@ export module ModMailHandler {
 			++indexAttachment;
 		}
 
-		const modMailEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(initiator, "RED")
-			.setTimestamp()
-			// so we can find the id 
-			.setFooter(`${initiator.id} • Modmail Message`)
-			// the content of the modmail msg
-			.setDescription(message.content)
-			// title -- ❌ means no responses
-			.setTitle("❌ Modmail Entry");
-		if (attachments.length !== 0) {
-			modMailEmbed.addField("Attachments", attachments);
-		}
-
-		modMailEmbed.addField("Sender Information", `⇒ Mention: ${initiator}\n⇒ Tag: ${initiator.tag}\n⇒ ID: ${initiator.id}`)
-			// responses -- any mods that have responded
-			.addField("Last Response By", "None.");
-
 		// determine the channel that this modmail message will
 		// go to
 		const indexOfModmail: number = guildDb.properties.modMail.findIndex(x => x.originalModmailAuthor === initiator.id);
 
-		if (indexOfModmail !== -1 && selectedGuild.channels.cache.has(guildDb.properties.modMail[indexOfModmail].channel)) {
+		const modMailEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(initiator, "RED")
+			// the content of the modmail msg
+			.setDescription(message.content);
+
+		if (indexOfModmail !== -1
+			&& selectedGuild.channels.cache.has(guildDb.properties.modMail[indexOfModmail].channel)) {
+			// send TO modmail thread			
+			modMailEmbed.setTitle(`${initiator.tag} ⇒ ${selectedGuild.name}`)
+				.setFooter(`${initiator.id} • Modmail Thread`);
+
+			if (attachments.length !== 0) {
+				modMailEmbed.addField("Attachments", attachments);
+			}
+
+			// threaded modmail
 			const channel: TextChannel = selectedGuild.channels.cache.get(guildDb.properties.modMail[indexOfModmail].channel) as TextChannel;
 			const modMailMessage: Message = await channel.send(modMailEmbed);
 			// respond reaction
 			await modMailMessage.react("📝").catch(() => { });
+			// garbage reaction
+			await modMailMessage.react("🗑️").catch(() => { });
 		}
 		else {
+			// default modmail 
+			modMailEmbed
+				.setTimestamp()
+				// so we can find the id 
+				.setFooter(`${initiator.id} • Modmail Message`)
+				// title -- ❌ means no responses
+				.setTitle("❌ Modmail Entry");
+			if (attachments.length !== 0) {
+				modMailEmbed.addField("Attachments", attachments);
+			}
+
+			modMailEmbed.addField("Sender Information", `⇒ Mention: ${initiator}\n⇒ Tag: ${initiator.tag}\n⇒ ID: ${initiator.id}`)
+				// responses -- any mods that have responded
+				.addField("Last Response By", "None.");
+
 			const modMailMessage: Message = await modmailChannel.send(modMailEmbed);
 			// respond reaction
 			await modMailMessage.react("📝").catch(() => { });
@@ -116,11 +131,59 @@ export module ModMailHandler {
 	}
 
 	/**
-	 * Converts a modmail message to a thread.
+	 * This creates a new channel where all modmail messages from `targetMember` will be redirected to said channel.
+	 * @param targetMember The member to initiate the modmail conversation with.
+	 * @param initiatedBy The member that initiated the modmail conversation.
+	 */
+	export async function startThreadedModmailWithMember(
+		targetMember: GuildMember,
+		initiatedBy: GuildMember,
+		guildDb: IRaidGuild
+	): Promise<void> {
+		const guild: Guild = initiatedBy.guild;
+		const index: number = guildDb.properties.modMail.findIndex(x => x.originalModmailAuthor === targetMember.id);
+		if (index !== -1) {
+			if (guild.channels.cache.has(guildDb.properties.modMail[index].channel)) {
+				const channel: TextChannel = guild.channels.cache
+					.get(guildDb.properties.modMail[index].channel) as TextChannel;
+				await channel.send(`${initiatedBy}`).catch(e => { });
+				return;
+			}
+
+			// assume channel deleted
+			guildDb = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id }, {
+				$pull: {
+					"properties.modMail": {
+						channel: guildDb.properties.modMail[index].channel
+					}
+				}
+			}, { returnOriginal: false })).value as IRaidGuild;
+		}
+
+		// create new channel
+		const modmailChannel: TextChannel = guild.channels.cache
+			.get(guildDb.generalChannels.modMailChannel) as TextChannel;
+		const modmailCategory: CategoryChannel | null = modmailChannel.parent;
+
+		if (modmailCategory === null) {
+			return;
+		}
+
+		// max size of category = 50
+		if (modmailCategory.children.size + 1 > 50) {
+			return;
+		}
+	}
+
+	/**
+	 * Converts a modmail message to a thread. Should be called when reacting to 🔀.
 	 * @param modmailMessage The original modmail message.
 	 * @param convertedToThreadBy The person that converted the modmail message to a thread.
 	 */
-	export async function convertToThread(originalModMailMessage: Message, convertedToThreadBy: GuildMember): Promise<void> {
+	export async function convertToThread(
+		originalModMailMessage: Message,
+		convertedToThreadBy: GuildMember
+	): Promise<void> {
 		if (convertedToThreadBy.guild.me === null || !convertedToThreadBy.guild.me.hasPermission("MANAGE_CHANNELS")) {
 			return;
 		}
@@ -145,7 +208,7 @@ export module ModMailHandler {
 			return;
 		}
 
-		const index: number = guildDb.properties.modMail.findIndex(x => x.originalModmailAuthor);
+		const index: number = guildDb.properties.modMail.findIndex(x => x.originalModmailAuthor === authorOfModmail.id);
 		if (index !== -1) {
 			if (convertedToThreadBy.guild.channels.cache.has(guildDb.properties.modMail[index].channel)) {
 				return;
@@ -169,6 +232,11 @@ export module ModMailHandler {
 			return;
 		}
 
+		// max size of category = 50
+		if (modmailCategory.children.size + 1 > 50) {
+			return;
+		}
+
 		const createdTime: string = DateUtil.getTime();
 
 		let threadChannel: TextChannel = await convertedToThreadBy.guild.channels.create(`${authorOfModmail.user.username}-${authorOfModmail.user.discriminator}`, {
@@ -181,8 +249,8 @@ export module ModMailHandler {
 		// create base message
 		const baseMsgEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(authorOfModmail.user)
 			.setTitle(`Modmail Thread ⇒ ${authorOfModmail.user.tag}`)
-			.setDescription(`⇒ **Converted To Thread By:** ${convertToThread}\n⇒ **Author of Modmail:** ${authorOfModmail}\n **Thread Creation Time:** ${createdTime}`)
-			.addField("Reactions", "⇒ React with 🛑 to close this thread. A copy of all messages will be sent.\n⇒ React with 🚫 to modmail blacklist the author of this modmail.")
+			.setDescription(`⇒ **Converted By:** ${convertToThread}\n⇒ **Author of Modmail:** ${authorOfModmail}\n **Thread Creation Time:** ${createdTime}`)
+			.addField("Reactions", "⇒ React with 🛑 to close this thread.\n⇒ React with 🚫 to modmail blacklist the author of this modmail.")
 			.setTimestamp()
 			.setFooter("Modmail Thread");
 
@@ -200,7 +268,7 @@ export module ModMailHandler {
 		if (typeof originalModMailMessage.embeds[0].description !== "undefined") {
 			firstMsgEmbed.setDescription(originalModMailMessage.embeds[0].description);
 		}
-		
+
 		if (attachmentsIndex !== -1) {
 			firstMsgEmbed.addField("Attachments", originalModMailMessage.embeds[0].fields[attachmentsIndex].value);
 		}
@@ -215,16 +283,7 @@ export module ModMailHandler {
 					originalModmailAuthor: authorOfModmail.id,
 					baseMsg: baseMessage.id,
 					startedOn: createdTime,
-					channel: threadChannel.id,
-					threadMessages: [
-						{
-							msgContent: typeof originalModMailMessage.embeds[0].description !== "undefined" ? originalModMailMessage.embeds[0].description : "",
-							// TODO account for attachments somehow. 
-							attachments: [],
-							dateTime: originalModMailMessage.createdTimestamp,
-							author: authorOfModmail.id
-						}
-					]
+					channel: threadChannel.id
 				}
 			}
 		});
@@ -319,18 +378,18 @@ export module ModMailHandler {
 	 * @param guildDb The guild document.
 	 */
 	export async function respondToThreadModmail(
-		originalModMailMessage: Message, 
-		memberThatWillRespond: GuildMember, 
+		originalModMailMessage: Message,
+		memberThatWillRespond: GuildMember,
 		guildDb: IRaidGuild
 	): Promise<void> {
 		const threadIndex: number = guildDb.properties.modMail
 			.findIndex(x => x.channel === originalModMailMessage.channel.id);
-		
+
 		if (typeof threadIndex === "undefined") {
-			return; 
+			return;
 		}
 
-		
+
 	}
 
 	/**

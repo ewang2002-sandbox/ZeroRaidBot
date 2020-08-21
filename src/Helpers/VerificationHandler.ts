@@ -636,7 +636,7 @@ export module VerificationHandler {
 			}
 		}
 		catch (e) {
-			// TODO: find better way to make this apparant 
+			// good error handling
 			return;
 		}
 	}
@@ -1189,7 +1189,9 @@ export module VerificationHandler {
 		const m: Message = await manualVerificationChannel.send(manualVerifEmbed);
 		await m.react("☑️").catch(() => { });
 		await m.react("❌").catch(() => { });
-
+		await m.react("🔒").catch(() => { });
+		await m.react("📧").catch(() => { });
+		
 		const filterQuery: FilterQuery<IRaidGuild> = section.isMain
 			? { guildID: guild.id }
 			: {

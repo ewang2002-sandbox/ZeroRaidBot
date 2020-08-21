@@ -9,13 +9,4 @@ export interface IModmailThread {
 	startedOn: number;
 	// channel
 	channel: string;
-	// message content
-	threadMessages: IModmailThreadedMessage[];
-}
-
-export interface IModmailThreadedMessage {
-	msgContent: string; 
-	attachments: string[];
-	dateTime: string; 
-	author: string; 
 }

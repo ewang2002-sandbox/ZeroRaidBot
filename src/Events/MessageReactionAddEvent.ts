@@ -161,7 +161,7 @@ export async function onMessageReactionAdd(
 			await reaction.message.delete().catch(() => { });
 		}
 		else if (reaction.emoji.name === "🚫") {
-			ModMailHandler.blacklistFromModmail(reaction.message, member, guildDb, false);
+			ModMailHandler.blacklistFromModmail(reaction.message, member, guildDb);
 		}
 		else if (reaction.emoji.name === "🔀") {
 			ModMailHandler.convertToThread(reaction.message, member);
@@ -203,7 +203,7 @@ export async function onMessageReactionAdd(
 				await reaction.message.channel.delete().catch(e => { });
 			}
 			else {
-				ModMailHandler.blacklistFromModmail(reaction.message, member, guildDb, true);
+				ModMailHandler.blacklistFromModmail(reaction.message, member, guildDb, modmailThreadInfo);
 			}
 		}
 		else if (reaction.emoji.name === "📝" && reaction.message.author.bot) {
@@ -316,7 +316,7 @@ export async function onMessageReactionAdd(
 				}
 			}
 			else {
-				if (manualVerificationProfile.userId !== ""
+				if (manualVerificationProfile.currentHandler !== ""
 					&& manualVerificationProfile.currentHandler !== member.id) {
 					let userHandlingIt: GuildMember | null = null;
 					try {

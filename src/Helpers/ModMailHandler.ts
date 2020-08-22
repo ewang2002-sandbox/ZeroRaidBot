@@ -137,6 +137,22 @@ export module ModMailHandler {
 		initiatedBy: GuildMember,
 		guildDb: IRaidGuild
 	): Promise<void> {
+		// make sure the person isnt blacklisted from modmail
+		const indexOfBlacklist: number = guildDb.moderation.blacklistedModMailUsers
+			.findIndex(x => x.id === targetMember.id);
+
+		if (indexOfBlacklist !== -1) {
+			const noUserFoundEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(targetMember.user, "RED")
+				.setTitle("User Blacklisted From Modmail")
+				.setDescription(`${targetMember} is currently blacklisted from using modmail. You are unable to create a thread for this person.`)
+				.addField("Reason", guildDb.moderation.blacklistedModMailUsers[indexOfBlacklist].reason)
+				.setFooter("Modmail");
+			await initiatedBy.send(noUserFoundEmbed)
+				.then(x => x.delete({ timeout: 30 * 1000 }))
+				.catch(() => { });
+			return;
+		}
+
 		const guild: Guild = initiatedBy.guild;
 		const index: number = guildDb.properties.modMail.findIndex(x => x.originalModmailAuthor === targetMember.id);
 		if (index !== -1) {
@@ -233,7 +249,23 @@ export module ModMailHandler {
 				.setDescription("The person you were trying to find wasn't found. The person may have left the server. This modmail entry will be deleted in 10 seconds.")
 				.setFooter("Modmail");
 			await originalModMailMessage.edit(noUserFoundEmbed)
-				.then(x => x.delete({ timeout: 10 * 1000 }))
+				.then(x => x.delete({ timeout: 5 * 1000 }))
+				.catch(() => { });
+			return;
+		}
+
+		// make sure the person isnt blacklisted from modmail
+		const indexOfBlacklist: number = guildDb.moderation.blacklistedModMailUsers
+			.findIndex(x => x.id === authorOfModmail.id);
+
+		if (indexOfBlacklist !== -1) {
+			const noUserFoundEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(convertedToThreadBy.user, "RED")
+				.setTitle("User Blacklisted From Modmail")
+				.setDescription(`${authorOfModmail} is currently blacklisted from using modmail. You are unable to create a thread for this person.`)
+				.addField("Reason", guildDb.moderation.blacklistedModMailUsers[indexOfBlacklist].reason)
+				.setFooter("Modmail");
+			await originalModMailMessage.edit(noUserFoundEmbed)
+				.then(x => x.delete({ timeout: 5 * 1000 }))
 				.catch(() => { });
 			return;
 		}
@@ -241,6 +273,7 @@ export module ModMailHandler {
 		const index: number = guildDb.properties.modMail.findIndex(x => x.originalModmailAuthor === authorOfModmail.id);
 		if (index !== -1) {
 			if (convertedToThreadBy.guild.channels.cache.has(guildDb.properties.modMail[index].channel)) {
+				await (convertedToThreadBy.guild.channels.cache.get(guildDb.properties.modMail[index].channel) as TextChannel).send(`${convertedToThreadBy}`).catch(e => { });
 				return;
 			}
 
@@ -329,11 +362,18 @@ export module ModMailHandler {
 	 * @param originalModMailMessage The message from the modmail channel.
 	 * @param mod The moderator. 
 	 * @param guildDb The guild doc.
-	 * @param isThread Whether this is a threaded modmail message or not.
+	 * @param threadInfo The thread info, if any.
 	 */
-	export async function blacklistFromModmail(originalModMailMessage: Message, mod: GuildMember, guildDb: IRaidGuild, isThread: boolean): Promise<void> {
+	export async function blacklistFromModmail(
+		originalModMailMessage: Message,
+		mod: GuildMember,
+		guildDb: IRaidGuild,
+		threadInfo?: IModmailThread
+	): Promise<void> {
 		const oldEmbed: MessageEmbed = originalModMailMessage.embeds[0];
-		const authorOfModmailId: string = ((oldEmbed.footer as MessageEmbedFooter).text as string).split("•")[0].trim();
+		const authorOfModmailId: string = typeof threadInfo === "undefined"
+			? ((oldEmbed.footer as MessageEmbedFooter).text as string).split("•")[0].trim()
+			: threadInfo.originalModmailAuthor;
 
 		await originalModMailMessage.reactions.removeAll().catch(e => { });
 		const confirmBlacklist: MessageEmbed = MessageUtil.generateBlankEmbed(mod.user)
@@ -351,7 +391,7 @@ export module ModMailHandler {
 		).react();
 		if (resultantReaction === "TIME_CMD" || resultantReaction.name === "❌") {
 			await originalModMailMessage.edit(oldEmbed).catch(e => { });
-			if (isThread) {
+			if (typeof threadInfo !== "undefined") {
 				FastReactionMenuManager.reactFaster(originalModMailMessage, ["📝", "🛑", "🚫"]);
 			}
 			else {
@@ -385,7 +425,7 @@ export module ModMailHandler {
 			wasAlreadyBlacklisted = true;
 		}
 
-		if (isThread) {
+		if (typeof threadInfo !== "undefined") {
 			// end thread
 			await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: mod.guild.id }, {
 				$pull: {
@@ -448,7 +488,7 @@ export module ModMailHandler {
 				.setDescription("The person you were trying to find wasn't found. The person may have left the server. This modmail thread will be deleted in 10 seconds.")
 				.setFooter("Modmail");
 			await channel.send(noUserFoundEmbed)
-				.then(x => x.delete({ timeout: 10 * 1000 }))
+				.then(x => x.delete({ timeout: 5 * 1000 }))
 				.catch(() => { });
 
 			await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: memberThatWillRespond.guild.id }, {
@@ -583,7 +623,7 @@ export module ModMailHandler {
 				.setDescription("The person you were trying to find wasn't found. The person may have left the server. This modmail entry will be deleted in 10 seconds.")
 				.setFooter("Modmail");
 			await originalModMailMessage.edit(noUserFoundEmbed)
-				.then(x => x.delete({ timeout: 10 * 1000 }))
+				.then(x => x.delete({ timeout: 5 * 1000 }))
 				.catch(() => { });
 			return;
 		}

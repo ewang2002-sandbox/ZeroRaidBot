@@ -59,8 +59,8 @@ export module MongoDbHelper {
 		 * @param {string} inGameName The display in-game name. The resulting name will not have any symbols.
 		 */
 		public constructor(inGameName: string) {
-			if (inGameName.length > 10) {
-				throw new TypeError("Name cannot be greater than 10 characters.");
+			if (inGameName.length > 14) {
+				throw new TypeError("Name cannot be greater than 14 characters.");
 			}
 			this._inGameName = inGameName.replace(/[^A-Za-z]/g, "");
 		}

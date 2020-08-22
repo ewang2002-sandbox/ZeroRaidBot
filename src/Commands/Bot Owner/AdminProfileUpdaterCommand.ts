@@ -803,11 +803,11 @@ export class AdminProfileUpdaterCommand extends Command {
 					return "CANCEL_CMD";
 				}
 
-				if (!/^[a-zA-Z]+$/.test(response) || response.length > 10) {
+				if (!/^[a-zA-Z]+$/.test(response) || response.length > 14) {
 					const copyEmbed: MessageEmbed = new MessageEmbed(responseEmbed);
 					copyEmbed.setTitle("Invalid Name")
 						.setColor("RED")
-						.setDescription(`The name you provided, \`${response}\`, can only have letters. Furthermore, the name can only be 10 letters long or less.`);
+						.setDescription(`The name you provided, \`${response}\`, can only have letters. Furthermore, the name can only be 14 letters long or less.`);
 					await botMsg.edit(copyEmbed).catch(e => { });
 					await OtherUtil.waitFor(3 * 1000);
 				}

@@ -22,6 +22,7 @@ import { Zero } from "../Zero";
 import { ReactionLoggingHandler } from "../Helpers/ReactionLoggingHandler";
 import { OtherUtil } from "../Utility/OtherUtil";
 import { FilterQuery } from "mongodb";
+import { IModmailThread } from "../Definitions/IModMail";
 
 export async function onMessageReactionAdd(
 	reaction: MessageReaction,
@@ -160,12 +161,54 @@ export async function onMessageReactionAdd(
 			await reaction.message.delete().catch(() => { });
 		}
 		else if (reaction.emoji.name === "🚫") {
-			ModMailHandler.blacklistFromModmail(reaction.message, member, guildDb);
+			ModMailHandler.blacklistFromModmail(reaction.message, member, guildDb, false);
 		}
 		else if (reaction.emoji.name === "🔀") {
 			ModMailHandler.convertToThread(reaction.message, member);
 		}
 		return;
+	}
+	//#endregion
+
+	//#region modmail thread
+	let modmailThreadInfo: IModmailThread | undefined;
+	for (let i = 0; i < guildDb.properties.modMail.length; i++) {
+		if (guildDb.properties.modMail[i].channel === reaction.message.channel.id) {
+			modmailThreadInfo = guildDb.properties.modMail[i];
+			break;
+		}
+	}
+
+	if (typeof modmailThreadInfo !== "undefined") {
+		if (reaction.message.author.id === (Zero.RaidClient.user as ClientUser).id) {
+			await reaction.users.remove(user.id).catch(() => { });
+		}
+		// base message
+		if (reaction.message.id === modmailThreadInfo.baseMsg
+			&& (["📝", "🛑", "🚫"].includes(reaction.emoji.name))) {
+			// base msg reacted to
+			// check reaction
+			if (reaction.emoji.name === "📝") {
+				ModMailHandler.respondToThreadModmail(modmailThreadInfo, member, reaction.message.channel as TextChannel);
+			}
+			else if (reaction.emoji.name === "🛑") {
+				// end thread
+				await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
+					$pull: {
+						"properties.modMail": {
+							channel: reaction.message.channel.id
+						}
+					}
+				});
+				await reaction.message.channel.delete().catch(e => { });
+			}
+			else {
+				ModMailHandler.blacklistFromModmail(reaction.message, member, guildDb, true);
+			}
+		}
+		else if (reaction.emoji.name === "📝" && reaction.message.author.bot) {
+			ModMailHandler.respondToThreadModmail(modmailThreadInfo, member, reaction.message.channel as TextChannel);
+		}
 	}
 	//#endregion
 
@@ -201,12 +244,12 @@ export async function onMessageReactionAdd(
 				return;
 			}
 
-			await reaction.message.delete().catch(() => { });
-
 			if (reaction.emoji.name === "🚩") {
 				let userHandlingIt: GuildMember | null = null;
 				try {
-					userHandlingIt = await guild.members.fetch(manualVerificationProfile.currentHandler);
+					if (manualVerificationProfile.currentHandler !== "") {
+						userHandlingIt = await guild.members.fetch(manualVerificationProfile.currentHandler);
+					}
 				}
 				finally {
 					if (userHandlingIt !== null) {
@@ -235,12 +278,14 @@ export async function onMessageReactionAdd(
 							const result: Emoji | "TIME_CMD" = await new FastReactionMenuManager(
 								reaction.message,
 								member,
-								["✅", "❌"],
+								["✅", "🚫"],
 								1,
 								TimeUnit.MINUTE
 							).react();
 
 							if (typeof result === "object" && result.name === "✅") {
+								await reaction.message.edit(oldEmbed).catch(e => { });
+								await OtherUtil.waitFor(500);
 								await VerificationHandler.lockOrUnlockManualRequest(
 									manualVerificationProfile,
 									sectionForManualVerif,
@@ -248,8 +293,10 @@ export async function onMessageReactionAdd(
 									reaction.message
 								);
 							}
+							else {
+								await reaction.message.edit(oldEmbed).catch(e => { });
+							}
 
-							await reaction.message.edit(oldEmbed).catch(e => { });
 							await reaction.message.react("☑️").catch(() => { });
 							await reaction.message.react("❌").catch(() => { });
 							await reaction.message.react("🚩").catch(() => { });
@@ -269,10 +316,11 @@ export async function onMessageReactionAdd(
 				}
 			}
 			else {
-				if (manualVerificationProfile.userId !== "") {
+				if (manualVerificationProfile.userId !== ""
+					&& manualVerificationProfile.currentHandler !== member.id) {
 					let userHandlingIt: GuildMember | null = null;
 					try {
-						userHandlingIt = await guild.members.fetch(manualVerificationProfile.userId);
+						userHandlingIt = await guild.members.fetch(manualVerificationProfile.currentHandler);
 					}
 					finally {
 						if (userHandlingIt !== null && userHandlingIt.id !== member.id) {
@@ -293,14 +341,17 @@ export async function onMessageReactionAdd(
 				}
 				if (reaction.emoji.name === "☑️") {
 					VerificationHandler.acceptManualVerification(manualVerifMember, member, sectionForManualVerif, manualVerificationProfile, guildDb);
+					await reaction.message.delete().catch(() => { });
 				}
 				else if (reaction.emoji.name === "❌") {
 					VerificationHandler.denyManualVerification(manualVerifMember, member, sectionForManualVerif, manualVerificationProfile);
+					await reaction.message.delete().catch(() => { });
 				}
 				else if (reaction.emoji.name === "📧") {
 					ModMailHandler.startThreadedModmailWithMember(manualVerifMember, member, guildDb);
 				}
 			}
+			return;
 		}
 	}
 	//#endregion

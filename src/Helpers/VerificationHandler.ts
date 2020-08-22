@@ -1255,7 +1255,10 @@ export module VerificationHandler {
 				[updateKey]: {
 					userId: manualVerifMember.id
 				}
-			},
+			}
+		});
+
+		await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne(filterQuery, {
 			$push: {
 				[updateKey]: manualVerificationProfile
 			}

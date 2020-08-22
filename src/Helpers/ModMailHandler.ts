@@ -85,6 +85,21 @@ export module ModMailHandler {
 			// the content of the modmail msg
 			.setDescription(message.content);
 
+		// if there was a thread
+		// but it was deleted
+		// then update db
+		if (indexOfModmail !== -1
+			&& !selectedGuild.channels.cache.has(guildDb.properties.modMail[indexOfModmail].channel)) {
+			// assume channel deleted
+			await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: selectedGuild.id }, {
+				$pull: {
+					"properties.modMail": {
+						channel: guildDb.properties.modMail[indexOfModmail].channel
+					}
+				}
+			});
+		}
+
 		if (indexOfModmail !== -1
 			&& selectedGuild.channels.cache.has(guildDb.properties.modMail[indexOfModmail].channel)) {
 			// send TO modmail thread			
@@ -97,15 +112,9 @@ export module ModMailHandler {
 
 			// threaded modmail
 			const channel: TextChannel = selectedGuild.channels.cache.get(guildDb.properties.modMail[indexOfModmail].channel) as TextChannel;
-			try {
-				const modMailMessage: Message = await channel.send(modMailEmbed);
-				// respond reaction
-				await modMailMessage.react("📝").catch(() => { });
-			}
-			catch (e) {
-				console.log("YEET");
-				console.error(e);
-			}
+			const modMailMessage: Message = await channel.send(modMailEmbed);
+			// respond reaction
+			await modMailMessage.react("📝").catch(() => { });
 		}
 		else {
 			// default modmail 
@@ -286,7 +295,7 @@ export module ModMailHandler {
 			}
 
 			// some idiot deleted the channel
-			guildDb = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: convertedToThreadBy.id }, {
+			guildDb = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: convertedToThreadBy.guild.id }, {
 				$pull: {
 					"properties.modMail": {
 						channel: guildDb.properties.modMail[index].channel

@@ -244,6 +244,13 @@ export async function onMessageReactionAdd(
 				.get(sectionForManualVerif.verifiedRole);
 
 			if (typeof manualVerifMember === "undefined" || typeof sectionVerifiedRole === "undefined") {
+				VerificationHandler.sendLogAndUpdateDb(
+					`⚠️**\`[${sectionForManualVerif.nameOfSection}]\`** Something went wrong when trying to perform your action for the member with ID \`${manualVerificationProfile.userId}\`. This can either be due to the person leaving the server or the verified role not existing.`,
+					sectionForManualVerif,
+					guild,
+					manualVerificationProfile.userId
+				);
+				await reaction.message.delete().catch(() => { });
 				return;
 			}
 

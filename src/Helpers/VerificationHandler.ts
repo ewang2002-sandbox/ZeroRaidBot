@@ -1350,7 +1350,7 @@ export module VerificationHandler {
 			await manualVerifMember.send(`**\`[${guild.name}]\`**: You have successfully been verified in the **\`${sectionForManualVerif.nameOfSection}\`** section!`).catch(() => { });
 		}
 
-		sendLogAndUpdateDb(loggingMsg, sectionForManualVerif, manualVerifMember);
+		sendLogAndUpdateDb(loggingMsg, sectionForManualVerif, manualVerifMember.guild, manualVerifMember);
 	}
 
 	/**
@@ -1377,22 +1377,22 @@ export module VerificationHandler {
 			await manualVerifMember.send(`**\`[${guild.name}]\`**: After reviewing your profile, we have determined that your profile does not meet the minimum requirements for the **\`${sectionForManualVerif.nameOfSection}\`** section.`).catch(() => { });
 		}
 
-		sendLogAndUpdateDb(loggingMsg, sectionForManualVerif, manualVerifMember);
+		sendLogAndUpdateDb(loggingMsg, sectionForManualVerif, manualVerifMember.guild,manualVerifMember);
 	}
 
 	/**
 	 * Updates the db and logs the manual verification event.
 	 * @param {string} logging The message to send to the logging channel. 
 	 * @param {ISection} sectionForManualVerif The section where the person tried to get manually verified. 
-	 * @param {GuildMember} manualVerifMember The member that tried to get a manual verification. 
+	 * @param {Guild} guild The guild.
+	 * @param {(GuildMember | string)} manualVerifMember The member that tried to get a manual verification. 
 	 */
-	async function sendLogAndUpdateDb(
+	export async function sendLogAndUpdateDb(
 		logging: string,
 		sectionForManualVerif: ISection,
-		manualVerifMember: GuildMember
+		guild: Guild,
+		manualVerifMember: GuildMember | string
 	): Promise<void> {
-		const guild: Guild = manualVerifMember.guild as Guild;
-
 		const verificationLoggingChannel: TextChannel | undefined = guild.channels.cache
 			.get(sectionForManualVerif.channels.logging.verificationSuccessChannel) as TextChannel | undefined;
 		if (typeof verificationLoggingChannel !== "undefined") {
@@ -1412,7 +1412,7 @@ export module VerificationHandler {
 		await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne(filterQuery, {
 			$pull: {
 				[updateKey]: {
-					userId: manualVerifMember.id
+					userId: typeof manualVerifMember === "string" ? manualVerifMember : manualVerifMember.id
 				}
 			}
 		});

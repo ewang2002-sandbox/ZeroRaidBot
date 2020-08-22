@@ -690,7 +690,7 @@ export module RaidHandler {
 			if (rs.dungeonInfo.keyEmojIDs.some(x => x.keyEmojID === reaction.emoji.id)
 				&& !hasUserReactedWithSpecificKey(keysThatReacted, reaction.emoji.id, user.id)) {
 				// only want some keys
-				if (getAmountOfKeys(keysThatReacted, reaction.emoji.id)	+ 1 > maximumKeysAllowed) {
+				if (getAmountOfKeys(keysThatReacted, reaction.emoji.id) + 1 > maximumKeysAllowed) {
 					await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** Thank you for your interest in contributing a key to the raid. However, we have enough people for now! A leader will give instructions if keys are needed; please ensure you are paying attention to the leader.`).catch(() => { });
 					return;
 				}
@@ -1268,21 +1268,26 @@ export module RaidHandler {
 	export async function endRun(
 		memberThatEnded: GuildMember,
 		guild: Guild,
-		rs: IRaidInfo
+		rs: IRaidInfo,
+		vcDeleted: boolean = false
 	): Promise<void> {
 		const afkCheckChannel: TextChannel = guild.channels.cache.get(rs.section.channels.afkCheckChannel) as TextChannel;
 		let raidMsg: Message = await afkCheckChannel.messages.fetch(rs.msgID);
 		const controlPanelChannel: TextChannel = guild.channels.cache.get(rs.section.channels.controlPanelChannel) as TextChannel;
 		let cpMsg: Message = await controlPanelChannel.messages.fetch(rs.controlPanelMsgId);
-		const raidVC: VoiceChannel = guild.channels.cache.get(rs.vcID) as VoiceChannel;
-		const membersLeft: Collection<string, GuildMember> = raidVC.members;
+		const raidVC: VoiceChannel | null = vcDeleted
+			? null
+			: guild.channels.cache.get(rs.vcID) as VoiceChannel;
+		const membersLeft: Collection<string, GuildMember> = raidVC === null
+			? new Collection<string, GuildMember>()
+			: raidVC.members;
 
 		// if we're in post afk 
 		if (typeof raidMsg.embeds[0].description !== "undefined" && raidMsg.embeds[0].description.includes("Join any available voice channel and then")) {
 			return;
 		}
 
-		await RaidDbHelper.removeRaidChannel(guild, raidVC.id);
+		await RaidDbHelper.removeRaidChannelFromDatabase(guild, rs.vcID);
 
 		const endedRun: MessageEmbed = new MessageEmbed()
 			.setAuthor(`${memberThatEnded.displayName} has ended the ${rs.dungeonInfo.dungeonName} raid.`, rs.dungeonInfo.portalLink)
@@ -1294,11 +1299,14 @@ export module RaidHandler {
 		await raidMsg.unpin().catch(() => { });
 		await cpMsg.delete().catch(() => { });
 		await logCompletedRunsForRaiders(guild, membersLeft, rs, 1);
-		if (rs.vcInfo.isOld) {
-			await raidVC.overwritePermissions(rs.vcInfo.oldPerms).catch(e => { });
-		}
-		else {
-			await movePeopleOutAndDeleteRaidVc(guild, raidVC);
+		
+		if (raidVC !== null) {
+			if (rs.vcInfo.isOld) {
+				await raidVC.overwritePermissions(rs.vcInfo.oldPerms).catch(e => { });
+			}
+			else {
+				await movePeopleOutAndDeleteRaidVc(guild, raidVC);
+			}
 		}
 	}
 
@@ -1355,7 +1363,8 @@ export module RaidHandler {
 	export async function abortAfk(
 		guild: Guild,
 		rs: IRaidInfo,
-		raidVC: VoiceChannel
+		raidVC: VoiceChannel,
+		vcDeleted: boolean = false
 	): Promise<void> {
 		const afkCheckChannel: TextChannel = guild.channels.cache.get(rs.section.channels.afkCheckChannel) as TextChannel;
 		let raidMsg: Message = await afkCheckChannel.messages.fetch(rs.msgID);
@@ -1370,7 +1379,7 @@ export module RaidHandler {
 			curRaidDataArrElem.mst.disableAutoTick();
 			clearInterval(curRaidDataArrElem.timeout);
 		}
-		await RaidDbHelper.removeRaidChannel(guild, raidVC.id);
+		await RaidDbHelper.removeRaidChannelFromDatabase(guild, raidVC.id);
 
 		const abortAfk: MessageEmbed = new MessageEmbed()
 			.setAuthor(`The ${rs.dungeonInfo.dungeonName} AFK Check has been aborted.`, rs.dungeonInfo.portalLink)
@@ -1380,11 +1389,13 @@ export module RaidHandler {
 		await raidMsg.edit("Unfortunately, the AFK check has been aborted.", abortAfk);
 		await raidMsg.unpin().catch(() => { });
 		await cpMsg.delete().catch(console.error);
-		if (rs.vcInfo.isOld) {
-			await raidVC.overwritePermissions(rs.vcInfo.oldPerms).catch(console.error);
-		}
-		else {
-			await movePeopleOutAndDeleteRaidVc(guild, raidVC);
+		if (!vcDeleted) {
+			if (rs.vcInfo.isOld) {
+				await raidVC.overwritePermissions(rs.vcInfo.oldPerms).catch(console.error);
+			}
+			else {
+				await movePeopleOutAndDeleteRaidVc(guild, raidVC);
+			}
 		}
 	}
 

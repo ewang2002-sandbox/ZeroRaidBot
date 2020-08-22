@@ -20,6 +20,8 @@ import { UserAvailabilityHelper } from "../Helpers/UserAvailabilityHelper";
 import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuManager";
 import { Zero } from "../Zero";
 import { ReactionLoggingHandler } from "../Helpers/ReactionLoggingHandler";
+import { OtherUtil } from "../Utility/OtherUtil";
+import { FilterQuery } from "mongodb";
 
 export async function onMessageReactionAdd(
 	reaction: MessageReaction,
@@ -189,28 +191,115 @@ export async function onMessageReactionAdd(
 
 		if (typeof manualVerificationProfile !== "undefined"
 			&& typeof sectionForManualVerif !== "undefined"
-			&& ["☑️", "❌", "🔓", "🔒", "📧"].includes(reaction.emoji.name)) {
+			&& ["☑️", "❌", "🚩", "📧"].includes(reaction.emoji.name)) {
 			const manualVerifMember: GuildMember | undefined = guild.members.cache
 				.get(manualVerificationProfile.userId);
 			const sectionVerifiedRole: Role | undefined = guild.roles.cache
 				.get(sectionForManualVerif.verifiedRole);
 
 			if (typeof manualVerifMember === "undefined" || typeof sectionVerifiedRole === "undefined") {
-				return; // GuildMemberRemove should auto take care of this
+				return;
 			}
 
 			await reaction.message.delete().catch(() => { });
-			if (reaction.emoji.name === "☑️") {
-				VerificationHandler.acceptManualVerification(manualVerifMember, member, sectionForManualVerif, manualVerificationProfile, guildDb);
-			}
-			else if (reaction.emoji.name === "❌") {
-				VerificationHandler.denyManualVerification(manualVerifMember, member, sectionForManualVerif, manualVerificationProfile);
-			}
-			else if (reaction.emoji.name === "📧") {
-				ModMailHandler.startThreadedModmailWithMember(manualVerifMember, member, guildDb);
+
+			if (reaction.emoji.name === "🚩") {
+				let userHandlingIt: GuildMember | null = null;
+				try {
+					userHandlingIt = await guild.members.fetch(manualVerificationProfile.currentHandler);
+				}
+				finally {
+					if (userHandlingIt !== null) {
+						// member wants to unlock it
+						if (userHandlingIt.id === member.id) {
+							await VerificationHandler.lockOrUnlockManualRequest(
+								manualVerificationProfile,
+								sectionForManualVerif,
+								manualVerifMember,
+								reaction.message
+							);
+						}
+						else {
+							// need to ask for confirmation
+							const oldEmbed: MessageEmbed = reaction.message.embeds[0];
+							const confirmEmbed: MessageEmbed = new MessageEmbed()
+								.setAuthor(member.displayName, member.user.displayAvatarURL())
+								.setTitle("Unlock Request")
+								.setDescription(`${userHandlingIt} is currently handling this manual verification request. Are you sure you want to unlock this manual verification request?`)
+								.setColor("RED")
+								.setFooter("Unlock Request.");
+
+							await reaction.message.edit(confirmEmbed).catch(e => { });
+							await reaction.message.reactions.removeAll().catch(e => { });
+
+							const result: Emoji | "TIME_CMD" = await new FastReactionMenuManager(
+								reaction.message,
+								member,
+								["✅", "❌"],
+								1,
+								TimeUnit.MINUTE
+							).react();
+
+							if (typeof result === "object" && result.name === "✅") {
+								await VerificationHandler.lockOrUnlockManualRequest(
+									manualVerificationProfile,
+									sectionForManualVerif,
+									manualVerifMember,
+									reaction.message
+								);
+							}
+
+							await reaction.message.edit(oldEmbed).catch(e => { });
+							await reaction.message.react("☑️").catch(() => { });
+							await reaction.message.react("❌").catch(() => { });
+							await reaction.message.react("🚩").catch(() => { });
+							await reaction.message.react("📧").catch(() => { });
+						}
+					}
+					else {
+						// lock it.
+						await VerificationHandler.lockOrUnlockManualRequest(
+							manualVerificationProfile,
+							sectionForManualVerif,
+							manualVerifMember,
+							reaction.message,
+							member
+						);
+					}
+				}
 			}
 			else {
-				// lock or unlock
+				if (manualVerificationProfile.userId !== "") {
+					let userHandlingIt: GuildMember | null = null;
+					try {
+						userHandlingIt = await guild.members.fetch(manualVerificationProfile.userId);
+					}
+					finally {
+						if (userHandlingIt !== null && userHandlingIt.id !== member.id) {
+							const oldEmbed: MessageEmbed = reaction.message.embeds[0];
+
+							const confirmEmbed: MessageEmbed = new MessageEmbed()
+								.setAuthor(member.displayName, member.user.displayAvatarURL())
+								.setTitle("Manual Verification Request Locked")
+								.setDescription(`${userHandlingIt} is currently handling this manual verification request. Please ask ${userHandlingIt} first before doing anything.\n\nTo unlock this request, react with 🚩.`)
+								.setColor("RED")
+								.setFooter("Manual Verification Request Locked.");
+							await reaction.message.edit(confirmEmbed).catch(e => { });
+							await OtherUtil.waitFor(10000);
+							await reaction.message.edit(oldEmbed).catch(e => { });
+							return;
+						}
+					}
+				}
+				if (reaction.emoji.name === "☑️") {
+					VerificationHandler.acceptManualVerification(manualVerifMember, member, sectionForManualVerif, manualVerificationProfile, guildDb);
+				}
+				else if (reaction.emoji.name === "❌") {
+					VerificationHandler.denyManualVerification(manualVerifMember, member, sectionForManualVerif, manualVerificationProfile);
+				}
+				else if (reaction.emoji.name === "📧") {
+					ModMailHandler.startThreadedModmailWithMember(manualVerifMember, member, guildDb);
+				}
 			}
 		}
 	}

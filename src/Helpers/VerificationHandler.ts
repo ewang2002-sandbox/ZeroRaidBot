@@ -1182,15 +1182,15 @@ export module VerificationHandler {
 			.setAuthor(member.user.tag, member.user.displayAvatarURL())
 			.setTitle(`**${section.isMain ? "Server" : section.nameOfSection}** ⇒ Manual Verification Request: **${verificationInfo.player}**`)
 			.setDescription(desc.toString())
-			.addField("Unmet Requirements", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()), true)
-			.addField("Current Status", StringUtil.applyCodeBlocks("❌ Not Handled.\n🔓 Unlocked."))
+			.addField("Unmet Requirements", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()))
+			.addField("Current Status", StringUtil.applyCodeBlocks("🔓 Status: Unlocked"))
 			.setColor("YELLOW")
 			.setFooter(member.id)
 			.setTimestamp();
 		const m: Message = await manualVerificationChannel.send(manualVerifEmbed);
 		await m.react("☑️").catch(() => { });
 		await m.react("❌").catch(() => { });
-		await m.react("🔒").catch(() => { });
+		await m.react("🚩").catch(() => { });
 		await m.react("📧").catch(() => { });
 		
 		const filterQuery: FilterQuery<IRaidGuild> = section.isMain
@@ -1219,6 +1219,55 @@ export module VerificationHandler {
 			}
 		});
 	}
+
+	/**
+	 * Locks or unlocks the manual verification request. 
+	 * @param {IManualVerification} manualVerificationProfile The manual verification profile.
+	 * @param {ISection} sectionForManualVerif The section.
+	 * @param {GuildMember} manualVerifMember The member to be manually verified.
+	 * @param {Message} message The msg with the manual verification request.
+	 * @param {(GuildMember | null)} [handler = null] Who is currently handling the request. Do not specify this parameter if no one is handling the case.
+	 */
+	export async function lockOrUnlockManualRequest(
+		manualVerificationProfile: IManualVerification,
+		sectionForManualVerif: ISection,
+		manualVerifMember: GuildMember,
+		message: Message,
+		handler: GuildMember | null = null
+	): Promise<void> {
+		const filterQuery: FilterQuery<IRaidGuild> = sectionForManualVerif.isMain
+			? { guildID: manualVerifMember.guild.id }
+			: {
+				guildID: manualVerifMember.guild.id,
+				"sections.channels.manualVerification": sectionForManualVerif.channels.manualVerification
+			};
+		const updateKey: string = sectionForManualVerif.isMain
+			? "properties.manualVerificationEntries"
+			: "sections.$.properties.manualVerificationEntries";
+	
+	
+		manualVerificationProfile.currentHandler = handler === null
+			? ""
+			: handler.id;
+
+		await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne(filterQuery, {
+			$pull: {
+				[updateKey]: {
+					userId: manualVerifMember.id
+				}
+			},
+			$push: {
+				[updateKey]: manualVerificationProfile
+			}
+		});
+	
+		// update message
+		const oldEmbed: MessageEmbed = message.embeds[0];
+		oldEmbed.spliceFields(oldEmbed.fields.findIndex(x => x.name === "Current Status"), 1);
+		oldEmbed.addField("Current Status", StringUtil.applyCodeBlocks(handler === null ? "🔓 Status: Unlocked." : `🔒 Status: Locked by ${handler.displayName}`));
+		oldEmbed.setColor(handler === null ? "YELLOW" : "RED");
+		await message.edit(oldEmbed).catch(e => { });
+	}	
 
 	/**
 	 * Looks for another member with the same name and UNVERIFIES them. 

@@ -90,7 +90,8 @@ export class PurgeCommand extends Command {
 				msgs = msgs.filter(x => !x.pinned);
 			}
 
-			const deletedMsg: Collection<string, Message> | void = await msg.channel.bulkDelete(msgs, true).catch(e => { });
+			const deletedMsg: Collection<string, Message> | void = await (msg.channel as TextChannel)
+				.bulkDelete(msgs, true).catch(e => { });
 			if (typeof deletedMsg !== "undefined") {
 				if (deletedMsg.size === 0) {
 					break;

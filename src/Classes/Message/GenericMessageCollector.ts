@@ -287,7 +287,7 @@ export class GenericMessageCollector<T> {
 			let reactCollector: ReactionCollector | undefined;
 			if (msgReactions.length !== 0) {
 				if (reactToMsg) {
-					FastReactionMenuManager.reactFaster(botMsg, msgReactions);
+					FastReactionMenuManager.reactFaster(botMsg, msgReactions, 650);
 				}
 
 				reactCollector = new ReactionCollector(

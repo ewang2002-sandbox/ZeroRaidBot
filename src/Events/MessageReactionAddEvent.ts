@@ -21,13 +21,16 @@ import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuMan
 import { Zero } from "../Zero";
 import { ReactionLoggingHandler } from "../Helpers/ReactionLoggingHandler";
 import { OtherUtil } from "../Utility/OtherUtil";
-import { FilterQuery } from "mongodb";
 import { IModmailThread } from "../Definitions/IModMail";
 
 export async function onMessageReactionAdd(
 	reaction: MessageReaction,
 	user: User | PartialUser
 ): Promise<void> {
+	if (user.bot || reaction.message.type !== "DEFAULT") {
+		return;
+	}
+
 	// PRECHECK AND PRELOAD
 	if (reaction.partial) {
 		let fetchedReaction: MessageReaction | void = await reaction.fetch().catch(() => { });
@@ -45,7 +48,7 @@ export async function onMessageReactionAdd(
 		reaction.message = fetchedMessage;
 	}
 
-	if (reaction.message.guild === null || user.bot || reaction.message.type !== "DEFAULT") {
+	if (reaction.message.guild === null) {
 		return;
 	}
 

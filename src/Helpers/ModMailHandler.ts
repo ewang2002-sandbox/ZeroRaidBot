@@ -50,7 +50,8 @@ export module ModMailHandler {
 			await MessageUtil.send({ embed: errorEmbed }, initiator).catch(() => { });
 			return;
 		}
-		const guildDb: IRaidGuild = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOne({ guildID: selectedGuild.id })) as IRaidGuild;
+		const guildDb: IRaidGuild = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient
+			.findOne({ guildID: selectedGuild.id })) as IRaidGuild;
 
 		if (!canUseModMail(selectedGuild, guildDb)) {
 			return;
@@ -61,7 +62,7 @@ export module ModMailHandler {
 			return;
 		}
 
-		await message.react("📧").catch(e => { });
+		await message.react("📧").catch(() => { });
 		const modmailChannel: TextChannel = selectedGuild.channels.cache.get(guildDb.generalChannels.modMailChannel) as TextChannel;
 
 		let attachments: string = "";
@@ -77,7 +78,8 @@ export module ModMailHandler {
 
 		// determine the channel that this modmail message will
 		// go to
-		const indexOfModmail: number = guildDb.properties.modMail.findIndex(x => x.originalModmailAuthor === initiator.id);
+		const indexOfModmail: number = guildDb.properties.modMail
+			.findIndex(x => x.originalModmailAuthor === initiator.id);
 
 		const modMailEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(initiator, "RED")
 			// the content of the modmail msg
@@ -95,9 +97,15 @@ export module ModMailHandler {
 
 			// threaded modmail
 			const channel: TextChannel = selectedGuild.channels.cache.get(guildDb.properties.modMail[indexOfModmail].channel) as TextChannel;
-			const modMailMessage: Message = await channel.send(modMailEmbed);
-			// respond reaction
-			await modMailMessage.react("📝").catch(() => { });
+			try {
+				const modMailMessage: Message = await channel.send(modMailEmbed);
+				// respond reaction
+				await modMailMessage.react("📝").catch(() => { });
+			}
+			catch (e) {
+				console.log("YEET");
+				console.error(e);
+			}
 		}
 		else {
 			// default modmail 
@@ -322,7 +330,7 @@ export module ModMailHandler {
 		await baseMessage.pin().catch(e => { });
 
 		// send first message
-		const firstMsgEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(authorOfModmail.user)
+		const firstMsgEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(authorOfModmail.user, "RED")
 			.setTitle(`${authorOfModmail.user.tag} ⇒ Modmail Thread`)
 			.setFooter(`${authorOfModmail.id} • Modmail Thread`)
 			.setTimestamp();
@@ -577,19 +585,20 @@ export module ModMailHandler {
 				}
 			}
 		} // end while
-		await botMsg.delete().catch(e => { });
+
+		await botMsg.delete().catch(console.error);
 		const replyEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(anonymous ? memberThatWillRespond.guild : memberThatWillRespond.user)
 			.setTitle(`${memberThatWillRespond.guild} ⇒ You`)
 			.setDescription(responseToMail)
 			.setFooter("Modmail Response");
 
-		const replyRecordsEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(memberThatWillRespond.user)
+		const replyRecordsEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(memberThatWillRespond.user, "GREEN")
 			.setTitle(`${memberThatWillRespond.displayName} ⇒ ${memberToRespondTo.user.tag}`)
 			.setDescription(responseToMail)
 			.setFooter(`Sent ${anonymous ? "Anonymously" : "Publicly"}`)
 			.setTimestamp();
-		await channel.send(replyRecordsEmbed).catch(e => { });
-		await memberToRespondTo.send(replyEmbed).catch(e => { });
+		await channel.send(replyRecordsEmbed).catch(console.error);
+		await memberToRespondTo.send(replyEmbed).catch(console.error);
 		CurrentlyRespondingToModMail.delete(memberThatWillRespond.id);
 	}
 

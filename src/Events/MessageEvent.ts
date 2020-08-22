@@ -20,12 +20,7 @@ export async function onMessageEvent(msg: Message): Promise<void> {
 		return;
 	}
 
-	if (msg.type !== "DEFAULT") {
-		return;
-	}
-
-	// ensure no bot.
-	if (msg.author.bot) {
+	if (msg.type !== "DEFAULT" || msg.author.bot) {
 		return;
 	}
 

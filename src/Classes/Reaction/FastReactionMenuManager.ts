@@ -127,7 +127,7 @@ export class FastReactionMenuManager {
 					return; 
 				}
 
-				msg.react(reactions[i]);
+				msg.react(reactions[i]).catch(e => { });
 			}
 			else {
 				clearInterval(interval);

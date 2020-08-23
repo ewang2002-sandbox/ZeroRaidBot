@@ -265,7 +265,9 @@ export module MongoDbHelper {
 						manualVerificationEntries: [],
 						dungeons: AFKDungeon.map(x => x.id),
 						showVerificationRequirements: true,
-						application: []
+						application: [],
+						blockedCommands: [],
+						removeEarlyLocKeyReacts: false
 					},
 					moderation: {
 						blacklistedUsers: [],

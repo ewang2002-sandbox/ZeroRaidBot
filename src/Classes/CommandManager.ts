@@ -52,6 +52,7 @@ import { SilenceCommand } from "../Commands/Moderator/SilenceCommand";
 import { VerifyCommand } from "../Commands/Public/VerifyCommand";
 import { ApplyCommand } from "../Commands/Public/ApplyCommand";
 import { PurgeCommand } from "../Commands/Staff/PurgeCommand";
+import { ConfigureBlockCmdCommand } from "../Commands/Configuration/ConfigureBlockCmdCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -131,7 +132,8 @@ export class CommandManager {
 			new ResetQuotaCommand(),
 			new NoLoggedRunsCommand(),
 			new ModmailBlacklistCommand(),
-			new ModmailUnblacklistCommand()
+			new ModmailUnblacklistCommand(),
+			new ConfigureBlockCmdCommand()
 		]);
 		
 		this.commands.set("User Profile", [

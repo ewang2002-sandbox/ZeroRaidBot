@@ -23,6 +23,7 @@ import { StringBuilder } from "../Classes/String/StringBuilder";
 import { FilterQuery } from "mongodb";
 import { IRaidUser } from "../Templates/IRaidUser";
 import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuManager";
+import { setNewLocationPrompt } from "../Events/MessageReactionAddEvent";
 
 export module RaidHandler {
 	/**
@@ -60,6 +61,61 @@ export module RaidHandler {
 	}
 
 	/**
+	 * Configuration settings for the AFK check.
+	 */
+	interface IAfkCheckConfiguration {
+		selectedDungeon: IDungeonData;
+		selectedLocation: string;
+
+		/**
+		 * @default false
+		 */
+		removeEarlyLocAndKeyReacts: boolean;
+
+		/**
+		 * -1 = automatically determine.
+		 * 0 = no post-afk check
+		 * >= 1 = specific post-afk check timeout
+		 * 
+		 * @default -1
+		 */
+		postAfkTimeout: number;
+
+		/**
+		 * -1 = automatically determine.
+		 * >= 0 = specific keys allowed
+		 */
+		maxKeysAllowed: number;
+
+		/**
+		 * -1 = automatically determine
+		 * >= 0 = specific early locations allowed
+		 */
+		maxEarlyLocationsAllowed: number;
+
+		/**
+		 * Whether the person has to be in Raid VC in order
+		 * to get early location.
+		 * 
+		 * @default false 
+		 */
+		inVcToGetEarlyLocKeyReact: boolean;
+
+		/**
+		 * The VC limit.
+		 * 0 || > 99 = no limit
+		 * @default 99 
+		 */
+		vcLimit: number;
+
+		/**
+		 * length of afk check in seconds.
+		 * @default 480
+		 */
+		afkCheckTimeLength: number;
+	}
+
+	/**
 	 * Consists of all currently running AFK checks. This stores only the voice channel ID, the MessageSimpleTick, and the ReactionCollector associated with the pending AFK check, and should be cleared after the AFK check is over. 
 	 */
 	export const CURRENT_RAID_DATA: Collection<string, IStoredRaidData> = new Collection<string, IStoredRaidData>();
@@ -68,6 +124,106 @@ export module RaidHandler {
 	 * Consists of all currently running headcounts. This stores only the message (of the headcount) ID, the MessageSimpleTick, and the ReactionCollector associated with the pending headcount, and should be cleared after the headcount is over. 
 	 */
 	export const CURRENT_HEADCOUNT_DATA: Collection<string, IStoredHeadcountData> = new Collection<string, IStoredHeadcountData>();
+
+	//#region a potential WIP :o
+	/*
+	export async function configureAfkCheck(
+		member: GuildMember,
+		channel: TextChannel,
+		dungeon: IDungeonData,
+		location: string
+	): Promise<IAfkCheckConfiguration | "CANCEL"> {
+		const response: IAfkCheckConfiguration = {
+			selectedDungeon: dungeon,
+			selectedLocation: location,
+			removeEarlyLocAndKeyReacts: false,
+			postAfkTimeout: -1,
+			maxKeysAllowed: [38].includes(dungeon.id)
+				? 3
+				: 8,
+			maxEarlyLocationsAllowed: [38].includes(dungeon.id)
+				? 10
+				: 15,
+			inVcToGetEarlyLocKeyReact: false,
+			vcLimit: 99,
+			afkCheckTimeLength: 480
+		};
+
+		function getEmbed(): MessageEmbed {
+			const sb: StringBuilder = new StringBuilder()
+				.append(`⇒ **Selected Dungeon:** ${response.selectedDungeon.dungeonName}`)
+				.appendLine()
+				.append(`⇒ **Selected Location:** ${response.selectedLocation}`)
+				.appendLine()
+				.appendLine()
+				.append(`⇒ **Remove Early Location & Key Reactions:** ${response.removeEarlyLocAndKeyReacts ? "Yes" : "No"}`)
+				.appendLine()
+				.append(`⇒ **Must be in VC to React:** ${response.inVcToGetEarlyLocKeyReact ? "Yes" : "No"}`)
+				.appendLine()
+				.appendLine()
+				.append(`⇒ **AFK Check Time Limit:** ${response.afkCheckTimeLength} Seconds (${(response.afkCheckTimeLength / 60).toFixed(2)} Minutes)`)
+				.appendLine()
+				.append(`⇒ **Post AFK Timeout:** ${response.postAfkTimeout === -1 ? "Automatically Determine" : `${response.postAfkTimeout} Second(s)`}`)
+				.appendLine()
+				.append(`⇒ **Maximum Keys Allowed:** ${response.maxKeysAllowed} Of Each Key`)
+				.appendLine()
+				.append(`⇒ **Maximum Early Locations Allowed:** ${response.maxEarlyLocationsAllowed} People`)
+				.appendLine()
+				.append(`⇒ **VC Limit:** ${response.vcLimit <= 0 || response.vcLimit > 99 ? `${response.vcLimit} People` : "Unlimited"}`)
+				.appendLine()
+
+			return MessageUtil.generateBlankEmbed(member.user)
+				.setDescription(sb.toString())
+				.addField("Cancel AFK Check", "React with ❌ to cancel the AFK check completely.")
+				.addField("Start AFK Check", "React with ✅ to start the AFK check with the configured settings above.")
+				.addField("Set Location", "React with 🗺️ to set the location for this AFK check.")
+				.addField("Remove Reactions", `React with 🗑️ if ${response.removeEarlyLocAndKeyReacts ? "you do not want key & early location reactions to be removed from the AFK check." : "you want key & early location reactions to be removed from the AFK check."}`)
+				.addField("VC & Reactions", `React with 🔈 if ${response.inVcToGetEarlyLocKeyReact ? "you do not require people reacting with key or early location to be in raid VC." : "you require people reacting with key or early location to be in raid VC."}`)
+				.addField("Set AFK Check Time Limit", "React with ⌨️ if you want to set the AFK check time limit.")
+				.addField("Set Post AFK Check Time Limit", "React with ⌛ if you want to set the Post AFK Check time limit.")
+				.addField("Set Maximum Keys Allowed", "React with 🔑 if you want to set a limit on how many of each key will get early location.")
+				.addField("Set Maximum Early Location Reacts", "React with 🏃 if you want to set a limit on how many people can get early location.")
+				.addField("Set VC Limit", "React with 🕐 if you want to set a limit on how many people can be in the raid VC.")
+				.setTimestamp();
+		}
+
+		let botMsg: Message | null = null;
+		let hasReacted: boolean = false;
+		while (true) {
+			const embed: MessageEmbed = getEmbed();
+			if (botMsg === null) {
+				botMsg = await channel.send(embed);
+				FastReactionMenuManager.reactFaster(botMsg, ["❌", "✅", "🗺️", "🗑️", "🔈", "⌨️", "⌛", "🔑", "🏃", "🕐"]);
+			}
+			else {
+				await botMsg.edit(embed);
+			}
+
+			const chosenReaction: Emoji | "TIME_CMD" = await new FastReactionMenuManager(
+				botMsg,
+				member.user,
+				["❌", "✅", "🗺️", "🗑️", "🔈", "⌨️", "⌛", "🔑", "🏃", "🕐"],
+				5,
+				TimeUnit.MINUTE
+			).enableDisableReact(false).react();
+
+			if (chosenReaction === "TIME_CMD" || chosenReaction.name === "❌") {
+				await botMsg.delete().catch(() => { });
+				return "CANCEL";
+			}
+
+			if (chosenReaction.name === "✅") {
+				break;
+			}
+			else if (chosenReaction.name === "🗺️") {
+				const newEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(member.user);
+			}
+		}
+
+		return response;
+	}*/
+
+	//#endregion
 
     /**
      * Starts an AFK check. This function should be called only from the `StartAfkCheckCommand` file.
@@ -565,7 +721,7 @@ export module RaidHandler {
 			// TODO check if mobile can see the emoji.
 			.setAuthor(`${member.displayName} has initiated a ${SELECTED_DUNGEON.dungeonName} AFK Check.`, SELECTED_DUNGEON.portalLink)
 			.setDescription(`⇒ **Join** the **${NEW_RAID_VC.name}** voice channel to participate in this raid.\n⇒ **React** to the ${msg.client.emojis.cache.get(SELECTED_DUNGEON.portalEmojiID)} emoji to show that you are joining in on this raid.`)
-			.addField("Optional Reactions", optionalReactsField)
+			.addField("Optional Reactions __(Join Raid VC First)__", optionalReactsField)
 			.setColor(ArrayUtil.getRandomElement(SELECTED_DUNGEON.colors))
 			.setThumbnail(ArrayUtil.getRandomElement(SELECTED_DUNGEON.bossLink))
 			.setFooter(`${guild.name}: Raid AFK Check`);
@@ -669,6 +825,10 @@ export module RaidHandler {
 		let keysThatReacted: Collection<string, GuildMember[]> = new Collection<string, GuildMember[]>();
 		let earlyReactions: GuildMember[] = [];
 		reactCollector.on("collect", async (reaction: MessageReaction, user: User) => {
+			if (guildDb.properties.removeEarlyLocKeyReacts) {
+				reaction.remove().catch(e => { });
+			}
+			
 			if (reaction.emoji.id === null) {
 				return; // this should never hit.
 			}
@@ -1298,8 +1458,10 @@ export module RaidHandler {
 		await raidMsg.edit("The raid is now over. Thanks to everyone for attending!", endedRun);
 		await raidMsg.unpin().catch(() => { });
 		await cpMsg.delete().catch(() => { });
-		await logCompletedRunsForRaiders(guild, membersLeft, rs, 1);
-		
+		if (!vcDeleted || membersLeft.size > 0) {
+			await logCompletedRunsForRaiders(guild, membersLeft, rs, 1);
+		}
+
 		if (raidVC !== null) {
 			if (rs.vcInfo.isOld) {
 				await raidVC.overwritePermissions(rs.vcInfo.oldPerms).catch(e => { });

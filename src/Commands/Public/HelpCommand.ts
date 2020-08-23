@@ -1,7 +1,7 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, MessageEmbed, ClientApplication, User, MessageCollector, TextChannel } from "discord.js";
+import { Message, MessageEmbed, ClientApplication, User, MessageCollector, TextChannel, GuildMember } from "discord.js";
 import { StringUtil } from "../../Utility/StringUtil";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { Zero } from "../../Zero";
@@ -73,6 +73,13 @@ export class HelpCommand extends Command {
 							}
 						}
 						else {
+							if (guildDb !== null
+								&& typeof guildDb.properties.blockedCommands !== "undefined"
+								&& guildDb.properties.blockedCommands.includes(command.getMainCommandName())
+								&& !((msg.member as GuildMember).hasPermission("ADMINISTRATOR"))) {
+								continue;
+							}
+
 							cmdCount++;
 							commands += command.getMainCommandName() + "\n";
 						}
@@ -83,14 +90,13 @@ export class HelpCommand extends Command {
 						continue;
 					}
 
-					const cmdUserPerm: [boolean, boolean, boolean] = OtherUtil.checkCommandPerms(msg, command, guildDb);
-					let canRunCommand: boolean;
-					if (cmdUserPerm[2]) {
-						canRunCommand = cmdUserPerm[0] || cmdUserPerm[1];
+					if (typeof guildDb.properties.blockedCommands !== "undefined"
+						&& guildDb.properties.blockedCommands.includes(command.getMainCommandName())
+						&& !((msg.member as GuildMember).hasPermission("ADMINISTRATOR"))) {
+						continue;
 					}
-					else {
-						canRunCommand = cmdUserPerm[1];
-					}
+
+					let canRunCommand: boolean = OtherUtil.checkCommandPerms(msg, command, guildDb);
 
 					if (canRunCommand) {
 						cmdCount++;

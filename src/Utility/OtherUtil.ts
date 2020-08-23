@@ -41,15 +41,17 @@ export module OtherUtil {
      * @param {Message} msg The message that is supposed to execute the command. THIS MESSAGE MUST BE SENT IN A GUILD.
      * @param {Command} command The command to check.
      * @param {IRaidGuild} guildHandler The guild document.
-     * @returns Three boolean values. The first boolean value is whether the person has server permissions. The second boolean value is whether the person has role permissions. And the third boolean value is whether there are any server permissions whatsoever defined for the command.
+     * @returns Whether you can run the command.
      */
-    export function checkCommandPerms(msg: Message, command: Command, guildHandler: IRaidGuild): [boolean, boolean, boolean] {
+    export function checkCommandPerms(msg: Message, command: Command, guildHandler: IRaidGuild): boolean {
         const member: GuildMember = msg.member as GuildMember;
-        let hasServerPerms: boolean = member.permissions.has("ADMINISTRATOR")
-            ? true
-            : command.getGeneralPermissions().length === 0
-                ? false
-                : command.getGeneralPermissions().every(x => member.hasPermission(x));
+        let hasServerPerms: boolean = true;
+
+        for (const perm of command.getGeneralPermissions()) {
+            if (!member.hasPermission(perm)) {
+                hasServerPerms = false;
+            }
+        }
 
         // check to see if the member has role perms
         let hasRolePerms: boolean = true;
@@ -141,6 +143,22 @@ export module OtherUtil {
             hasRolePerms = hasPermArr.some(x => x);
         }
 
-        return [hasServerPerms, hasRolePerms, command.getGeneralPermissions().length !== 0];
+        if (member.hasPermission("ADMINISTRATOR") || member.permissions.has("ADMINISTRATOR")) {
+            return true; 
+        }
+
+        if (command.getRolePermissions().length !== 0 && hasRolePerms) {
+            return true; 
+        }
+
+        if (command.getGeneralPermissions().length !== 0 && hasServerPerms) {
+            return true; 
+        }
+
+        if (command.getRolePermissions().length === 0 && command.getGeneralPermissions().length === 0) {
+            return true;
+        }
+
+        return false; 
     }
 }

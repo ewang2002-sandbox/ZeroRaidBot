@@ -263,7 +263,7 @@ export interface IRaidGuild {
 			quotaDetails: IQuotaDbInfo[];
 			quotaMessage: string;
 			lastReset: number;
-		} 
+		};
 		
 		/**
 		 * The message that users will receive after they are verified.
@@ -294,6 +294,16 @@ export interface IRaidGuild {
 		 * Application for section.
 		 */
 		application: IApplication[];
+
+		/**
+		 * Blocked commands
+		 */
+		blockedCommands: string[];
+
+		/**
+		 * Remove early location + key reactions from AFK checks.
+		 */
+		removeEarlyLocKeyReacts: boolean; 
 	};
 
 	/**

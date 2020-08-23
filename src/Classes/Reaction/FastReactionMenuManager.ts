@@ -64,7 +64,7 @@ export class FastReactionMenuManager {
      * @param {boolean} [clearReactsAfter = true] Whether to clear the reactions after the designated person reacts.
      * @returns Either the resolved emoji that has been reacted to, or "TIME_CMD" if time has been reached.
      */
-	public react(delay: number = 750, clearReactsAfter: boolean = true): Promise<GuildEmoji | ReactionEmoji | "TIME_CMD"> {
+	public react(delay: number = 550, clearReactsAfter: boolean = true): Promise<GuildEmoji | ReactionEmoji | "TIME_CMD"> {
 		if (delay < 500) {
 			delay = 500;
 		}
@@ -131,7 +131,7 @@ export class FastReactionMenuManager {
 	 * @param {EmojiResolvable[]} reactions The set of reactions to use.
 	 * @param {number} [intervalTime = 500] The interval time, in ms.
 	 */
-	public static reactFaster(msg: Message, reactions: EmojiResolvable[], intervalTime: number = 750): void {
+	public static reactFaster(msg: Message, reactions: EmojiResolvable[], intervalTime: number = 550): void {
 		let i: number = 0;
 		const interval: NodeJS.Timeout = setInterval(() => {
 			// think of this as a for loop

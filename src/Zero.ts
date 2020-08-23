@@ -22,8 +22,9 @@ export class Zero {
 			"MESSAGE", 
 			"CHANNEL", 
 			"REACTION"
-		]
-	});;
+		],
+		restTimeOffset: 350
+	});
 
 	/**
 	 * The token for the bot.

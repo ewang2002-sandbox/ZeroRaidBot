@@ -1,3 +1,5 @@
+// https://github.com/discordjs/discord.js/issues/3665
+
 import { Zero } from "./Zero";
 import { BotConfiguration } from "./Configuration/Config";
 import { DateUtil } from "./Utility/DateUtil";

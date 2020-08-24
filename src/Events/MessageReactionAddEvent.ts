@@ -195,15 +195,7 @@ export async function onMessageReactionAdd(
 				ModMailHandler.respondToThreadModmail(modmailThreadInfo, member, reaction.message.channel as TextChannel);
 			}
 			else if (reaction.emoji.name === "🛑") {
-				// end thread
-				await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
-					$pull: {
-						"properties.modMail": {
-							channel: reaction.message.channel.id
-						}
-					}
-				});
-				await reaction.message.channel.delete().catch(e => { });
+				ModMailHandler.closeModmailThread(reaction.message.channel as TextChannel, modmailThreadInfo, guildDb, member);
 			}
 			else {
 				ModMailHandler.blacklistFromModmail(reaction.message, member, guildDb, modmailThreadInfo);

@@ -11,6 +11,7 @@ import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuMan
 import { StringBuilder } from "../Classes/String/StringBuilder";
 import { OtherUtil } from "../Utility/OtherUtil";
 import { IModmailThread } from "../Definitions/IModMail";
+import { ArrayUtil } from "../Utility/ArrayUtil";
 
 export module ModMailHandler {
 	// K = the mod that is responding
@@ -205,19 +206,19 @@ export module ModMailHandler {
 		}
 
 		// create channel
-		const createdTime: string = DateUtil.getTime();
+		const createdTime: number = new Date().getTime();
 
 		let threadChannel: TextChannel = await guild.channels.create(`${targetMember.user.username}-${targetMember.user.discriminator}`, {
 			type: "text",
 			parent: modmailCategory,
-			topic: `Modmail Thread For: ${targetMember}\nCreated By: ${initiatedBy}\nCreated Time: ${createdTime}`
+			topic: `Modmail Thread For: ${targetMember}\nCreated By: ${initiatedBy}\nCreated Time: ${DateUtil.getTime(createdTime)}`
 		});
 		await threadChannel.lockPermissions().catch(e => { });
 
 		// create base message
 		const baseMsgEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(targetMember.user)
 			.setTitle(`Modmail Thread ⇒ ${targetMember.user.tag}`)
-			.setDescription(`⇒ **Initiated By:** ${targetMember}\n⇒ **Recipient:** ${targetMember}\n⇒ **Thread Creation Time:** ${createdTime}`)
+			.setDescription(`⇒ **Initiated By:** ${targetMember}\n⇒ **Recipient:** ${targetMember}\n⇒ **Thread Creation Time:** ${DateUtil.getTime(createdTime)}`)
 			.addField("Reactions", "⇒ React with 📝 to send a message. You may also use the `;respond` command.\n⇒ React with 🛑 to close this thread.\n⇒ React with 🚫 to modmail blacklist the author of this modmail.")
 			.setTimestamp()
 			.setFooter("Modmail Thread • Created");
@@ -232,7 +233,8 @@ export module ModMailHandler {
 					originalModmailAuthor: targetMember.id,
 					baseMsg: baseMessage.id,
 					startedOn: createdTime,
-					channel: threadChannel.id
+					channel: threadChannel.id,
+					originalModmailMessage: ""
 				}
 			}
 		});
@@ -317,19 +319,19 @@ export module ModMailHandler {
 			return;
 		}
 
-		const createdTime: string = DateUtil.getTime();
+		const createdTime: number = new Date().getTime();
 
 		let threadChannel: TextChannel = await convertedToThreadBy.guild.channels.create(`${authorOfModmail.user.username}-${authorOfModmail.user.discriminator}`, {
 			type: "text",
 			parent: modmailCategory,
-			topic: `Modmail Thread For: ${authorOfModmail}\nCreated By: ${convertedToThreadBy}\nCreated Time: ${createdTime}`
+			topic: `Modmail Thread For: ${authorOfModmail}\nCreated By: ${convertedToThreadBy}\nCreated Time: ${DateUtil.getTime(createdTime)}`
 		});
 		await threadChannel.lockPermissions().catch(e => { });
 
 		// create base message
 		const baseMsgEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(authorOfModmail.user)
 			.setTitle(`Modmail Thread ⇒ ${authorOfModmail.user.tag}`)
-			.setDescription(`⇒ **Converted By:** ${convertedToThreadBy}\n⇒ **Author of Modmail:** ${authorOfModmail}\n⇒ **Thread Creation Time:** ${createdTime}`)
+			.setDescription(`⇒ **Converted By:** ${convertedToThreadBy}\n⇒ **Author of Modmail:** ${authorOfModmail}\n⇒ **Thread Creation Time:** ${DateUtil.getTime(createdTime)}`)
 			.addField("Reactions", "⇒ React with 📝 to send a message. You may also use the `;respond` command.\n⇒ React with 🛑 to close this thread.\n⇒ React with 🚫 to modmail blacklist the author of this modmail.")
 			.setTimestamp()
 			.setFooter("Modmail Thread • Converted");
@@ -363,13 +365,14 @@ export module ModMailHandler {
 					originalModmailAuthor: authorOfModmail.id,
 					baseMsg: baseMessage.id,
 					startedOn: createdTime,
-					channel: threadChannel.id
+					channel: threadChannel.id,
+					originalModmailMessage: originalModMailMessage.id
 				}
 			}
 		});
 
 		oldEmbed.setFooter("Converted to Modmail Thread.");
-		oldEmbed.addField("Modmail Thread Information", `This modmail message was converted to a modmail thread.\n⇒ Time: ${createdTime}\n⇒ Converted By: ${convertedToThreadBy}`);
+		oldEmbed.addField("Modmail Thread Information", `This modmail message was converted to a modmail thread.\n⇒ Time: ${DateUtil.getTime(createdTime)}\n⇒ Converted By: ${convertedToThreadBy}`);
 		await originalModMailMessage.edit(oldEmbed).catch(e => { });
 		await originalModMailMessage.reactions.removeAll().catch(e => { });
 	}
@@ -959,5 +962,76 @@ export module ModMailHandler {
 		UserAvailabilityHelper.InMenuCollection.delete(user.id)
 
 		return selectedGuild === "CANCEL" ? null : selectedGuild;
+
+
+	}
+
+	/**
+	 * Closes the modmail thread.
+	 * @param threadChannel The thread channel to remove.
+	 * @param threadInfo The modmail thread info.
+	 * @param guildDb The guild doc.
+	 * @param closedBy The person that closed this modmail thread.
+	 */
+	export async function closeModmailThread(
+		threadChannel: TextChannel, 
+		threadInfo: IModmailThread, 
+		guildDb: IRaidGuild,
+		closedBy: GuildMember
+	): Promise<void> {
+		if (threadInfo.originalModmailMessage !== "" && threadChannel.guild.channels.cache.has(guildDb.generalChannels.modMailChannel)) {
+			const modmailChannel: TextChannel = threadChannel.guild.channels.resolve(guildDb.generalChannels.modMailChannel) as TextChannel;
+			let oldModMailMessage: Message | null = null;
+			try {
+				oldModMailMessage = await modmailChannel.messages.fetch(threadInfo.originalModmailMessage);
+			}
+			finally {
+				if (oldModMailMessage !== null) {
+					// we have message
+					const modmailEmbed: MessageEmbed = oldModMailMessage.embeds[0];
+					const modmailThreadInfoIndex: number = modmailEmbed
+						.fields.findIndex(x => x.name === "Modmail Thread Information");
+					if (modmailThreadInfoIndex !== -1) {
+						modmailEmbed.spliceFields(modmailThreadInfoIndex, 1);
+					}
+					const allPossibleFields: EmbedField[] = modmailEmbed.fields.filter(x => x.name === "Last Response By");
+					const lastResponseByIndex: number = modmailEmbed.fields.findIndex(x => x.value === allPossibleFields[allPossibleFields.length - 1].value);
+
+					if (lastResponseByIndex !== -1) {
+						let addRespInfo: string = `${closedBy} (${DateUtil.getTime()}) \`[Thread Closed]\`\n`;
+						if (modmailEmbed.fields[lastResponseByIndex].value === "None.") {
+							modmailEmbed.fields[lastResponseByIndex].value = addRespInfo;
+						}
+						else {
+							if (modmailEmbed.fields[lastResponseByIndex].value.length + addRespInfo.length > 1000) {
+								modmailEmbed.addField("Last Response By", addRespInfo);
+							}
+							else {
+								modmailEmbed.fields[lastResponseByIndex].value += `\n${addRespInfo}`;
+							}
+						}
+					}
+
+					modmailEmbed.setTitle("✅ Modmail Entry");
+					modmailEmbed.setColor("GREEN");
+					modmailEmbed.setFooter(`${threadInfo.originalModmailAuthor} • Modmail Message`);
+
+					await oldModMailMessage.edit(modmailEmbed).catch(e => { });
+					await oldModMailMessage.react("📝").catch(() => { });
+					await oldModMailMessage.react("🗑️").catch(() => { });
+					await oldModMailMessage.react("🚫").catch(() => { });
+					await oldModMailMessage.react("🔀").catch(() => { });
+				}
+			}
+		}
+
+		await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: threadChannel.guild.id }, {
+			$pull: {
+				"properties.modMail": {
+					channel: threadChannel.id
+				}
+			}
+		});
+		await threadChannel.delete().catch(e => { });
 	}
 }

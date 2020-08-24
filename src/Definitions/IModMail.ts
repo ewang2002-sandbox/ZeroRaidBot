@@ -9,4 +9,7 @@ export interface IModmailThread {
 	startedOn: number;
 	// channel
 	channel: string;
+	// original message
+	// if any
+	originalModmailMessage: string; 
 }

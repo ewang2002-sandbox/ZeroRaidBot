@@ -53,6 +53,7 @@ import { VerifyCommand } from "../Commands/Public/VerifyCommand";
 import { ApplyCommand } from "../Commands/Public/ApplyCommand";
 import { PurgeCommand } from "../Commands/Staff/PurgeCommand";
 import { ConfigureBlockCmdCommand } from "../Commands/Configuration/ConfigureBlockCmdCommand";
+import { DeveloperTestCommand } from "../Commands/Bot Owner/DeveloperTestCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -156,7 +157,8 @@ export class CommandManager {
 			new AdminProfileUpdaterCommand(),
 			new BlacklistSuggestionUserCommand(),
 			new UnblacklistSuggestionUserCommand(),
-			new EnableDisableSuggestionsCommand()
+			new EnableDisableSuggestionsCommand(),
+			new DeveloperTestCommand()
 		]);
 
 		this.commands.set("Logging", [

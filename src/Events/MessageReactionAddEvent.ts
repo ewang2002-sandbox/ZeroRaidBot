@@ -1,4 +1,4 @@
-import { MessageReaction, User, Message, Guild, GuildMember, TextChannel, RoleResolvable, MessageCollector, DMChannel, VoiceChannel, Collection, PartialUser, Role, MessageEmbedFooter, MessageEmbed, Emoji, ClientUser } from "discord.js";
+import { MessageReaction, User, Message, Guild, GuildMember, TextChannel, RoleResolvable, DMChannel, VoiceChannel, PartialUser, Role, MessageEmbedFooter, MessageEmbed, Emoji, ClientUser } from "discord.js";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
@@ -19,14 +19,18 @@ import { TimeUnit } from "../Definitions/TimeUnit";
 import { UserAvailabilityHelper } from "../Helpers/UserAvailabilityHelper";
 import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuManager";
 import { Zero } from "../Zero";
-import { DateUtil } from "../Utility/DateUtil";
-import { NitroEmoji } from "../Constants/EmojiData";
 import { ReactionLoggingHandler } from "../Helpers/ReactionLoggingHandler";
+import { OtherUtil } from "../Utility/OtherUtil";
+import { IModmailThread } from "../Definitions/IModMail";
 
 export async function onMessageReactionAdd(
 	reaction: MessageReaction,
 	user: User | PartialUser
 ): Promise<void> {
+	if (user.bot || reaction.message.type !== "DEFAULT") {
+		return;
+	}
+
 	// PRECHECK AND PRELOAD
 	if (reaction.partial) {
 		let fetchedReaction: MessageReaction | void = await reaction.fetch().catch(() => { });
@@ -45,14 +49,6 @@ export async function onMessageReactionAdd(
 	}
 
 	if (reaction.message.guild === null) {
-		return;
-	}
-
-	if (user.bot) {
-		return;
-	}
-
-	if (reaction.message.type !== "DEFAULT") {
 		return;
 	}
 
@@ -131,12 +127,12 @@ export async function onMessageReactionAdd(
 		}
 
 		if (reaction.emoji.name === "📝") {
-			ModMailHandler.respondToModmail(reaction.message, member);
+			ModMailHandler.respondToGeneralModmail(reaction.message, member);
 		}
 		else if (reaction.emoji.name === "🗑️") {
 			const oldEmbed: MessageEmbed = reaction.message.embeds[0];
 			if (typeof oldEmbed.description !== "undefined" && oldEmbed.description.length > 20) {
-				await reaction.message.reactions.removeAll().catch(e => { });
+				await reaction.message.reactions.removeAll().catch(() => { });
 				const askDeleteEmbed: MessageEmbed = new MessageEmbed()
 					.setAuthor(member.user.tag, member.user.displayAvatarURL())
 					.setTitle("Confirm Delete Modmail")
@@ -154,7 +150,7 @@ export async function onMessageReactionAdd(
 				).react();
 
 				if (deleteResp === "TIME_CMD" || deleteResp.name === "❌") {
-					await reaction.message.edit(oldEmbed).catch(e => { });
+					await reaction.message.edit(oldEmbed).catch(() => { });
 					// respond reaction
 					await reaction.message.react("📝").catch(() => { });
 					// garbage reaction
@@ -165,12 +161,49 @@ export async function onMessageReactionAdd(
 					return;
 				}
 			}
-			await reaction.message.delete().catch(e => { });
+			await reaction.message.delete().catch(() => { });
 		}
 		else if (reaction.emoji.name === "🚫") {
 			ModMailHandler.blacklistFromModmail(reaction.message, member, guildDb);
 		}
+		else if (reaction.emoji.name === "🔀") {
+			ModMailHandler.convertToThread(reaction.message, member);
+		}
 		return;
+	}
+	//#endregion
+
+	//#region modmail thread
+	let modmailThreadInfo: IModmailThread | undefined;
+	for (let i = 0; i < guildDb.properties.modMail.length; i++) {
+		if (guildDb.properties.modMail[i].channel === reaction.message.channel.id) {
+			modmailThreadInfo = guildDb.properties.modMail[i];
+			break;
+		}
+	}
+
+	if (typeof modmailThreadInfo !== "undefined") {
+		if (reaction.message.author.id === (Zero.RaidClient.user as ClientUser).id) {
+			await reaction.users.remove(user.id).catch(() => { });
+		}
+		// base message
+		if (reaction.message.id === modmailThreadInfo.baseMsg
+			&& (["📝", "🛑", "🚫"].includes(reaction.emoji.name))) {
+			// base msg reacted to
+			// check reaction
+			if (reaction.emoji.name === "📝") {
+				ModMailHandler.respondToThreadModmail(modmailThreadInfo, member, reaction.message.channel as TextChannel);
+			}
+			else if (reaction.emoji.name === "🛑") {
+				ModMailHandler.closeModmailThread(reaction.message.channel as TextChannel, modmailThreadInfo, guildDb, member);
+			}
+			else {
+				ModMailHandler.blacklistFromModmail(reaction.message, member, guildDb, modmailThreadInfo);
+			}
+		}
+		else if (reaction.emoji.name === "📝" && reaction.message.author.bot) {
+			ModMailHandler.respondToThreadModmail(modmailThreadInfo, member, reaction.message.channel as TextChannel);
+		}
 	}
 	//#endregion
 
@@ -196,23 +229,131 @@ export async function onMessageReactionAdd(
 
 		if (typeof manualVerificationProfile !== "undefined"
 			&& typeof sectionForManualVerif !== "undefined"
-			&& ["☑️", "❌"].includes(reaction.emoji.name)) {
+			&& ["☑️", "❌", "🚩", "📧"].includes(reaction.emoji.name)) {
 			const manualVerifMember: GuildMember | undefined = guild.members.cache
 				.get(manualVerificationProfile.userId);
 			const sectionVerifiedRole: Role | undefined = guild.roles.cache
 				.get(sectionForManualVerif.verifiedRole);
 
 			if (typeof manualVerifMember === "undefined" || typeof sectionVerifiedRole === "undefined") {
-				return; // GuildMemberRemove should auto take care of this
+				VerificationHandler.sendLogAndUpdateDb(
+					`⚠️**\`[${sectionForManualVerif.nameOfSection}]\`** Something went wrong when trying to perform your action for the member with ID \`${manualVerificationProfile.userId}\`. This can either be due to the person leaving the server or the verified role not existing.`,
+					sectionForManualVerif,
+					guild,
+					manualVerificationProfile.userId
+				);
+				await reaction.message.delete().catch(() => { });
+				return;
 			}
 
-			await reaction.message.delete().catch(() => { });
-			if (reaction.emoji.name === "☑️") {
-				VerificationHandler.acceptManualVerification(manualVerifMember, member, sectionForManualVerif, manualVerificationProfile, guildDb);
+			if (reaction.emoji.name === "🚩") {
+				let userHandlingIt: GuildMember | null = null;
+				try {
+					if (manualVerificationProfile.currentHandler !== "") {
+						userHandlingIt = await guild.members.fetch(manualVerificationProfile.currentHandler);
+					}
+				}
+				finally {
+					if (userHandlingIt !== null) {
+						// member wants to unlock it
+						if (userHandlingIt.id === member.id) {
+							await VerificationHandler.lockOrUnlockManualRequest(
+								manualVerificationProfile,
+								sectionForManualVerif,
+								manualVerifMember,
+								reaction.message
+							);
+						}
+						else {
+							// need to ask for confirmation
+							const oldEmbed: MessageEmbed = reaction.message.embeds[0];
+							const confirmEmbed: MessageEmbed = new MessageEmbed()
+								.setAuthor(member.displayName, member.user.displayAvatarURL())
+								.setTitle("Unlock Request")
+								.setDescription(`${userHandlingIt} is currently handling this manual verification request. Are you sure you want to unlock this manual verification request?`)
+								.setColor("RED")
+								.setFooter("Unlock Request.");
+
+							await reaction.message.edit(confirmEmbed).catch(e => { });
+							await reaction.message.reactions.removeAll().catch(e => { });
+
+							const result: Emoji | "TIME_CMD" = await new FastReactionMenuManager(
+								reaction.message,
+								member,
+								["✅", "🚫"],
+								1,
+								TimeUnit.MINUTE
+							).react();
+
+							if (typeof result === "object" && result.name === "✅") {
+								await reaction.message.edit(oldEmbed).catch(e => { });
+								await OtherUtil.waitFor(500);
+								await VerificationHandler.lockOrUnlockManualRequest(
+									manualVerificationProfile,
+									sectionForManualVerif,
+									manualVerifMember,
+									reaction.message
+								);
+							}
+							else {
+								await reaction.message.edit(oldEmbed).catch(e => { });
+							}
+
+							await reaction.message.react("☑️").catch(() => { });
+							await reaction.message.react("❌").catch(() => { });
+							await reaction.message.react("🚩").catch(() => { });
+							await reaction.message.react("📧").catch(() => { });
+						}
+					}
+					else {
+						// lock it.
+						await VerificationHandler.lockOrUnlockManualRequest(
+							manualVerificationProfile,
+							sectionForManualVerif,
+							manualVerifMember,
+							reaction.message,
+							member
+						);
+					}
+				}
 			}
 			else {
-				VerificationHandler.denyManualVerification(manualVerifMember, member, sectionForManualVerif, manualVerificationProfile);
+				if (manualVerificationProfile.currentHandler !== ""
+					&& manualVerificationProfile.currentHandler !== member.id) {
+					let userHandlingIt: GuildMember | null = null;
+					try {
+						userHandlingIt = await guild.members.fetch(manualVerificationProfile.currentHandler);
+					}
+					finally {
+						if (userHandlingIt !== null && userHandlingIt.id !== member.id) {
+							const oldEmbed: MessageEmbed = reaction.message.embeds[0];
+
+							const confirmEmbed: MessageEmbed = new MessageEmbed()
+								.setAuthor(member.displayName, member.user.displayAvatarURL())
+								.setTitle("Manual Verification Request Locked")
+								.setDescription(`${userHandlingIt} is currently handling this manual verification request. Please ask ${userHandlingIt} first before doing anything.\n\nTo unlock this request, react with 🚩.`)
+								.setColor("RED")
+								.setFooter("Manual Verification Request Locked.");
+							await reaction.message.edit(confirmEmbed).catch(e => { });
+							await OtherUtil.waitFor(10000);
+							await reaction.message.edit(oldEmbed).catch(e => { });
+							return;
+						}
+					}
+				}
+				if (reaction.emoji.name === "☑️") {
+					VerificationHandler.acceptManualVerification(manualVerifMember, member, sectionForManualVerif, manualVerificationProfile, guildDb);
+					await reaction.message.delete().catch(() => { });
+				}
+				else if (reaction.emoji.name === "❌") {
+					VerificationHandler.denyManualVerification(manualVerifMember, member, sectionForManualVerif, manualVerificationProfile);
+					await reaction.message.delete().catch(() => { });
+				}
+				else if (reaction.emoji.name === "📧") {
+					ModMailHandler.startThreadedModmailWithMember(manualVerifMember, member, guildDb);
+				}
 			}
+			return;
 		}
 	}
 	//#endregion
@@ -338,7 +479,7 @@ export async function onMessageReactionAdd(
 							.setDescription(`The location of the raid (information below) is: ${StringUtil.applyCodeBlocks(raidFromReaction.location)}`)
 							.addField("Location Rules", "- Do not give this location out to anyone else.\n- Pay attention to any directions your raid leader may have.")
 							.addField("Raid Information", `Guild: ${guild.name}\nRaid Section: ${raidFromReaction.section.nameOfSection}\nRaid VC: ${member.voice.channel.name}\nDungeon: ${raidFromReaction.dungeonInfo.dungeonName}`);
-						await user.send(locEmbed).catch(e => { });
+						await user.send(locEmbed).catch(() => { });
 					}
 				}
 			}
@@ -377,7 +518,7 @@ export async function onMessageReactionAdd(
 							.setDescription(`The location of the raid (information below) is: ${StringUtil.applyCodeBlocks(raidFromReaction.location)}`)
 							.addField("Location Rules", "- Do not give this location out to anyone else.\n- Pay attention to any directions your raid leader may have.")
 							.addField("Raid Information", `Guild: ${guild.name}\nRaid Section: ${raidFromReaction.section.nameOfSection}\nRaid VC: ${member.voice.channel.name}\nDungeon: ${raidFromReaction.dungeonInfo.dungeonName}`);
-						await user.send(locEmbed).catch(e => { });
+						await user.send(locEmbed).catch(() => { });
 					}
 				}
 			}

@@ -24,7 +24,7 @@ export class UnsuspendCommand extends Command {
                 ["KICK_MEMBERS"],
                 ["MANAGE_ROLES", "EMBED_LINKS"],
                 ["universalRaidLeader", "headRaidLeader", "officer", "moderator"],
-                ["SECTION_RL"],
+                ["SECTION_RL", "SECTION_HRL"],
 				false
 			),
 			true,

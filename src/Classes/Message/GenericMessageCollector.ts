@@ -79,7 +79,7 @@ export class GenericMessageCollector<T> {
 	/**
 	 * Attachments. 
 	 */
-	private readonly _attachments?: (string | MessageAttachment | FileOptions | Buffer | Stream)[];
+	private readonly _attachments?: readonly (string | MessageAttachment | FileOptions | Buffer | Stream)[];
 
 	/**
  	 * A class that sends an embed and resolves a response. Should be used to make code more concise. 
@@ -287,7 +287,7 @@ export class GenericMessageCollector<T> {
 			let reactCollector: ReactionCollector | undefined;
 			if (msgReactions.length !== 0) {
 				if (reactToMsg) {
-					FastReactionMenuManager.reactFaster(botMsg, msgReactions);
+					FastReactionMenuManager.reactFaster(botMsg, msgReactions, 650);
 				}
 
 				reactCollector = new ReactionCollector(

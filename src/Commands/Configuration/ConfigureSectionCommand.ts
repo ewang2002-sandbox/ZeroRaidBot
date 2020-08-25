@@ -194,11 +194,18 @@ export class ConfigureSectionCommand extends Command {
 			sectMongo: ""
 		},
 		{
-			q: "Configure Head Leader Role",
+			q: "Configure Universal Head Leader Role",
 			d: "Mention, or type the ID of, the role that you want to make the Head Leader role. Head Leaders will have the ability to promote and demote members and are generally in charge of raiding affairs.",
 			m: true,
 			mainMongo: "roles.headRaidLeader",
 			sectMongo: ""
+		},
+		{
+			q: "Configure Section Head Leader Role",
+			d: "Mention, or type the ID of, the role that you want to make the Section Head Leader role. Section Head Leaders will have all the permissions that a universal Head Leader has.",
+			m: false,
+			mainMongo: "roles.mainSectionLeaderRole.sectionHeadLeaderRole",
+			sectMongo: "sections.$.roles.headLeaderRole"
 		},
 		{
 			q: "Configure Officer Role",
@@ -517,6 +524,7 @@ export class ConfigureSectionCommand extends Command {
 					nameOfSection: nameOfSection,
 					verifiedRole: verifiedRole.id,
 					roles: {
+						headLeaderRole: "",
 						trialLeaderRole: "",
 						raidLeaderRole: "",
 						almostLeaderRole: ""
@@ -1025,17 +1033,18 @@ export class ConfigureSectionCommand extends Command {
 		embed
 			.addField("Go Back", "React with ⬅️ to go back to the Main Menu.")
 			.addField("Configure Member Role", "React with 💳 to configure the Member/Verified role.")
+			.addField("Configure __Section__ Head Leader Role", "React with 🏁 to configure the section head leader role. Section head leaders will have head leader permissions in their respective section only.")
 			.addField("Configure __Section__ Leader Role", "React with 🏳️ to configure the section leader role. Section leaders will be able to start AFK checks and headcounts in their respective section only.")
 			.addField("Configure __Section__ Almost Leader Role", "React with 🏴 to configure the section almost leader role. Section almost leaders will be able to start AFK checks and headcounts in their respective sections only.")
 			.addField("Configure __Section__ Trial Leader Role", "React with 🚩 to configure the section trial leader role. Section trial leaders will be able to start AFK checks (after getting approval from a leader) in their respective section only.");
 
-		reactions.push("⬅️", "💳", "🏳️", "🏴", "🚩");
+		reactions.push("⬅️", "💳", "🏁", "🏳️", "🏴", "🚩");
 
 		if (section.isMain) {
 			embed
 				.addField("Configure Team Role", "React with 👪 to configure the Team role.")
 				.addField("Configure Moderator Role", "React with ⚒️ to configure the Moderator role.")
-				.addField("Configure Head Leader Role", "React with 🥇 to configure the Head Leader role.")
+				.addField("Configure Universal Head Leader Role", "React with 🥇 to configure the Universal Head Leader role.")
 				.addField("Configure Officer Role", "React with 👮 to configure the Officer role.")
 				.addField("Configure Universal Leader Role", "React with 🥈 to configure the Universal Leader role.")
 				.addField("Configure Universal Almost Leader Role", "React with 🥉 to configure the Universal Almost Leader role.")
@@ -1117,7 +1126,7 @@ export class ConfigureSectionCommand extends Command {
 			await this.resetBotEmbed(botSentMsg).catch(() => { });
 			res = await this.updateRoleCommand(
 				msg,
-				"Head Leader Role",
+				"Universal Head Leader Role",
 				section,
 				guild.roles.cache.get(guildData.roles.headRaidLeader),
 				"roles.headRaidLeader"
@@ -1197,6 +1206,19 @@ export class ConfigureSectionCommand extends Command {
 				"roles.earlyLocationRoles",
 				guildData.roles.earlyLocationRoles
 			);
+		}
+		// sec head leader role
+		else if (r.name === "🏁") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateRoleCommand(
+				msg,
+				"Section Head Leader Roles",
+				section,
+				guild.roles.cache.get(section.roles.headLeaderRole),
+				section.isMain
+					? "roles.mainSectionLeaderRole.sectionHeadLeaderRole"
+					: "sections.$.roles.headLeaderRole"
+			);	
 		}
 		// sec leader role
 		else if (r.name === "🏳️") {
@@ -2208,6 +2230,7 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 		const secRaidLeaderRole: Role | undefined = guild.roles.cache.get(section.roles.raidLeaderRole);
 		const secAlmostRaidLeaderRole: Role | undefined = guild.roles.cache.get(section.roles.almostLeaderRole);
 		const secTrialLeaderRole: Role | undefined = guild.roles.cache.get(section.roles.trialLeaderRole);
+		const secHeadLeaderRole: Role | undefined = guild.roles.cache.get(section.roles.headLeaderRole);
 
 		// roles for the guild
 		const teamRole: Role | undefined = guild.roles.cache.get(guildData.roles.teamRole);
@@ -2263,6 +2286,8 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 		const roleSB: StringBuilder = new StringBuilder("__Role__")
 			.appendLine()
 			.append(`Verified Role: ${typeof verifiedRole === "undefined" ? "N/A" : verifiedRole}`)
+			.appendLine()
+			.append(`Section Head Leader Role: ${typeof secHeadLeaderRole === "undefined" ? "N/A" : secHeadLeaderRole}`)
 			.appendLine()
 			.append(`Section Leader Role: ${typeof secRaidLeaderRole === "undefined" ? "N/A" : secRaidLeaderRole}`)
 			.appendLine()
@@ -2321,7 +2346,7 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 				.appendLine()
 				.append(`Moderator Role: ${typeof moderatorRole === "undefined" ? "N/A" : moderatorRole}`)
 				.appendLine()
-				.append(`Head Leader Role: ${typeof headLeaderRole === "undefined" ? "N/A" : headLeaderRole}`)
+				.append(`Universal Head Leader Role: ${typeof headLeaderRole === "undefined" ? "N/A" : headLeaderRole}`)
 				.appendLine()
 				.append(`Officer Role: ${typeof officerRole === "undefined" ? "N/A" : officerRole}`)
 				.appendLine()

@@ -127,7 +127,7 @@ export module RaidDbHelper {
 	 * @param {string} vcID The ID of the voice channel associated with the raid that has ended.
 	 * @returns {Promise<IRaidGuild>} The new document.
 	 */
-	export async function removeRaidChannel(
+	export async function removeRaidChannelFromDatabase(
 		guild: Guild,
 		vcID: string
 	): Promise<IRaidGuild> {

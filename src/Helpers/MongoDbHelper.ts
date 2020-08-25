@@ -30,9 +30,7 @@ export module MongoDbHelper {
 		public async connect(): Promise<void> {
 			const mongoDbClient: MongoClient = new MongoClient(BotConfiguration.dbURL, {
 				useNewUrlParser: true,
-				autoReconnect: true,
-				reconnectInterval: 2500,
-				reconnectTries: 90
+				useUnifiedTopology: true
 			});
 
 			MongoDbHelper.MongoDbBase.MongoClient = await mongoDbClient.connect();
@@ -61,8 +59,8 @@ export module MongoDbHelper {
 		 * @param {string} inGameName The display in-game name. The resulting name will not have any symbols.
 		 */
 		public constructor(inGameName: string) {
-			if (inGameName.length > 10) {
-				throw new TypeError("Name cannot be greater than 10 characters.");
+			if (inGameName.length > 14) {
+				throw new TypeError("Name cannot be greater than 14 characters.");
 			}
 			this._inGameName = inGameName.replace(/[^A-Za-z]/g, "");
 		}
@@ -251,7 +249,8 @@ export module MongoDbHelper {
 						mainSectionLeaderRole: {
 							sectionAlmostLeaderRole: "",
 							sectionLeaderRole: "",
-							sectionTrialLeaderRole: ""
+							sectionTrialLeaderRole: "",
+							sectionHeadRaidLeader: ""
 						}
 					},
 					properties: {
@@ -266,14 +265,17 @@ export module MongoDbHelper {
 						manualVerificationEntries: [],
 						dungeons: AFKDungeon.map(x => x.id),
 						showVerificationRequirements: true,
-						application: []
+						application: [],
+						blockedCommands: [],
+						removeEarlyLocKeyReacts: false
 					},
 					moderation: {
 						blacklistedUsers: [],
 						amtSuspensions: 0,
 						blacklistedModMailUsers: [],
 						mutedUsers: [],
-						suspended: []
+						suspended: [],
+						blacklistedApplicants: []
 					},
 					activeRaidsAndHeadcounts: {
 						raidChannels: [],

@@ -77,7 +77,7 @@ export class ModmailBlacklistCommand extends Command {
 			}
 		});
 
-		MessageUtil.send({ content: `${memberToModmailBl} has been blacklisted from modmail successfully.` }, msg.channel);
+		MessageUtil.send({ content: `${memberToModmailBl} has been blacklisted from modmail successfully.` }, msg.channel);		
 
 		const moderationChannel: TextChannel | undefined = guild.channels.cache.get(guildDb.generalChannels.logging.moderationLogs) as TextChannel | undefined;
 

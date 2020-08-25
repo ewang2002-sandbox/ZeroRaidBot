@@ -24,7 +24,7 @@ export class PingCommand extends Command {
             new CommandPermission(
                 [],
                 [],
-                ["suspended"],
+                [],
                 [],
                 true
             ),

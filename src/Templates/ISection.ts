@@ -26,6 +26,11 @@ export interface ISection {
 	 */
 	roles: {
 		/**
+		 * Head leader role.
+		 */
+		headLeaderRole: string; 
+		
+		/**
 		 * Raid leader role.
 		 */
 		raidLeaderRole: string;

@@ -20,12 +20,7 @@ export async function onMessageEvent(msg: Message): Promise<void> {
 		return;
 	}
 
-	if (msg.type !== "DEFAULT") {
-		return;
-	}
-
-	// ensure no bot.
-	if (msg.author.bot) {
+	if (msg.type !== "DEFAULT" || msg.author.bot) {
 		return;
 	}
 
@@ -113,6 +108,14 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 	if (msg.guild !== null) {
 		// because this is a guild, we have the following vars as NOT null
 		guildHandler = guildHandler as IRaidGuild;
+		if (typeof guildHandler.properties.blockedCommands !== "undefined"
+			&& guildHandler.properties.blockedCommands.includes(command.getMainCommandName()) 
+			&& !(msg.member as GuildMember).hasPermission("ADMINISTRATOR")) {
+			embed.setTitle("**Command Blocked**")
+				.setDescription("Your server administrator has blocked the use of this command. Please try again later.");
+			MessageUtil.send(embed, msg.channel, 8 * 1000).catch(() => { });
+			return;
+		}
 
 		if (command.isServerOwnerOnly() && msg.author.id !== msg.guild.ownerID) {
 			embed.setTitle("**Server Owner Command Only**")
@@ -121,15 +124,8 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 			return;
 		}
 
-		const [hasServerPerms, hasRolePerms, considerServerPerms]: [boolean, boolean, boolean] = OtherUtil.checkCommandPerms(msg, command, guildHandler);
+		let canRunCommand: boolean = OtherUtil.checkCommandPerms(msg, command, guildHandler);
 		
-		let canRunCommand: boolean;
-		if (considerServerPerms) {
-			canRunCommand = hasServerPerms || hasRolePerms;
-		}
-		else {
-			canRunCommand = hasRolePerms;
-		}
 		if (!canRunCommand) {
 			embed.setTitle("**Missing Permissions**")
 				.setDescription("You are missing either server or role permissions. Please use the help command to look up the permissions needed to run this command.")
@@ -210,6 +206,6 @@ async function checkModMail(msg: Message): Promise<void> {
 	if (msg.guild !== null || UserAvailabilityHelper.InMenuCollection.has(msg.author.id)) {
 		return;
 	}
-	
+
 	ModMailHandler.initiateModMailContact(msg.author, msg);
 }

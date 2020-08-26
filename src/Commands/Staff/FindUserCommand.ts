@@ -31,7 +31,8 @@ export class FindUserCommand extends Command {
 			),
 			true, // guild-only command. 
 			false,
-			false
+			false,
+			5
 		);
 	}
 

@@ -43,7 +43,8 @@ export class AddAltAccountCommand extends Command {
 			),
 			false, // guild-only command. 
 			false,
-			false
+			false,
+			0
 		);
 	}
 

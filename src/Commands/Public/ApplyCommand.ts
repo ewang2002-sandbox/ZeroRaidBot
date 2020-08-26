@@ -49,7 +49,8 @@ export class ApplyCommand extends Command {
 			),
 			true,
 			false,
-			false
+			false,
+			0
 		);
 	}
 

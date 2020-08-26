@@ -27,7 +27,8 @@ export class NoLoggedRunsCommand extends Command {
             ),
             true,
             false,
-            false
+            false,
+            0
         );
     }
 

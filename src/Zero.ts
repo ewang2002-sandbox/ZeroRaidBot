@@ -12,6 +12,7 @@ import { onGuildMemberUpdate } from "./Events/GuildMemberUpdate";
 import { onError } from "./Events/ErrorEvent";
 import { LoggerClient } from "./Classes/LoggerClient";
 import { onChannelDelete } from "./Events/GuildChannelDelete";
+import { PRODUCTION_BOT } from "./Configuration/Config";
 
 export class Zero {
 	/** 
@@ -75,6 +76,11 @@ export class Zero {
 			.on("error", async (error: Error) => onError(error));
 		Zero.RaidClient
 			.on("channelDelete", async (channel: Channel | PartialDMChannel) => await onChannelDelete(channel));
+
+		// testing
+		if (!PRODUCTION_BOT) {
+			process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0'
+		}
 	}
 
 	/**

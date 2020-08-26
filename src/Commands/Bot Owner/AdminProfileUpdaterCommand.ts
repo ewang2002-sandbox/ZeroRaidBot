@@ -34,7 +34,8 @@ export class AdminProfileUpdaterCommand extends Command {
 			),
 			true,
 			false,
-			true
+			true,
+			0
 		);
 	}
 

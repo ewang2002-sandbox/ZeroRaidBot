@@ -27,7 +27,8 @@ export class EnableDisableSuggestionsCommand extends Command {
 			),
 			false,
 			false,
-			true
+			true,
+			0
 		);
 	}
 

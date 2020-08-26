@@ -32,7 +32,8 @@ export class LogVialCommand extends Command {
             ),
             true,
             false,
-            false
+            false,
+            5
         );
     }
 

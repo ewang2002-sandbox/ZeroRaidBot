@@ -28,7 +28,8 @@ export class SilenceCommand extends Command {
 			),
 			true,
 			false,
-			false
+			false,
+			0
 		);
 	}
 

@@ -302,7 +302,8 @@ export class ConfigureSectionCommand extends Command {
 			),
 			true,
 			false,
-			false
+			false,
+			0
 		);
 	}
 

@@ -29,7 +29,8 @@ export class RoleInfoCommand extends Command {
             ),
             true, // guild-only command. 
             false,
-            false
+			false,
+			0
         );
     }
 

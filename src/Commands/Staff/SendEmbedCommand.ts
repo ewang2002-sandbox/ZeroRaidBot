@@ -43,7 +43,8 @@ export class SendEmbedCommand extends Command {
 			),
 			true, // guild-only command. 
 			false,
-			false
+			false,
+			0
 		);
 	}
 

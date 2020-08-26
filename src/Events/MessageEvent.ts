@@ -193,7 +193,14 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 		return;
 	}
 
-	await msg.delete().catch(() => { });
+	if (msg.guild !== null && command.getDurationUntilDeleteCmd() !== -1) {
+		if (command.getDurationUntilDeleteCmd() === 0) {
+			await msg.delete().catch(() => { });
+		}
+		else {
+			await msg.delete({ timeout: command.getDurationUntilDeleteCmd() }).catch(() => { });
+		}
+	}
 	command.executeCommand(msg, args, guildHandler);
 }
 

@@ -250,7 +250,7 @@ export module MongoDbHelper {
 							sectionAlmostLeaderRole: "",
 							sectionLeaderRole: "",
 							sectionTrialLeaderRole: "",
-							sectionHeadRaidLeader: ""
+							sectionHeadLeaderRole: ""
 						}
 					},
 					properties: {

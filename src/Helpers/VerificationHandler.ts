@@ -21,6 +21,7 @@ import { IRealmEyeAPI } from "../Definitions/IRealmEyeAPI";
 import { UserAvailabilityHelper } from "./UserAvailabilityHelper";
 
 export module VerificationHandler {
+	// TODO make this a set? 
 	export const IsInVerification: Collection<string, "GENERAL" | "ALT"> = new Collection<string, "GENERAL" | "ALT">();
 	export const PeopleThatWereMessaged: Set<string> = new Set();
 

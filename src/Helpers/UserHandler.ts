@@ -32,7 +32,7 @@ export namespace UserHandler {
 
 		// get each individual section rl roles
 		for (const section of [GuildUtil.getDefaultSection(guildData), ...guildData.sections]) {
-			staffRoles.push(section.roles.almostLeaderRole, section.roles.raidLeaderRole, section.roles.trialLeaderRole);
+			staffRoles.push(section.roles.almostLeaderRole, section.roles.raidLeaderRole, section.roles.trialLeaderRole, section.roles.headLeaderRole);
 		}
 
 		const allStaffRoles: Role[] = [];

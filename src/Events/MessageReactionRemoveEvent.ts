@@ -1,11 +1,10 @@
-import { MessageReaction, User, Message, Guild, PartialUser, TextChannel, MessageEmbed, GuildMember } from "discord.js";
+import { MessageReaction, User, Message, Guild, PartialUser, GuildMember } from "discord.js";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
 import { ISection } from "../Templates/ISection";
 import { GuildUtil } from "../Utility/GuildUtil";
-import { MessageUtil } from "../Utility/MessageUtil";
-import { DateUtil } from "../Utility/DateUtil";
 import { ReactionLoggingHandler } from "../Helpers/ReactionLoggingHandler";
+import { BotConfiguration } from "../Configuration/Config";
 
 export async function onMessageReactionRemove(
 	reaction: MessageReaction,
@@ -29,6 +28,10 @@ export async function onMessageReactionRemove(
 	}
 
 	if (reaction.message.guild === null) {
+		return;
+	}
+
+	if (BotConfiguration.exemptGuild.includes(reaction.message.guild.id)) {
 		return;
 	}
 

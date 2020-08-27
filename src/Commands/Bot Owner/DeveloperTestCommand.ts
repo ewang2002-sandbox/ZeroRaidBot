@@ -36,11 +36,11 @@ export class DeveloperTestCommand extends Command {
 		msg: Message,
 		args: string[]
 	): Promise<void> {
-
+		/*
 		const resp: AxiosResponse<string> = await Zero.AxiosClient.post(`https://localhost:5001/api/dungeoneer/parse`, {
 			image: msg.content
 		}, {});
 
-		msg.channel.send(resp.data);
+		msg.channel.send(resp.data);*/
 	}
 }

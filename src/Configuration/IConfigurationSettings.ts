@@ -35,5 +35,9 @@ export interface IConfigurationSettings {
     /**
      * Colors for the bot.
      */
-	botColors: ColorResolvable[];
+    botColors: ColorResolvable[];
+    /**
+     * Guilds that don't need a guild db.
+     */
+    exemptGuild: string[]; 
 }

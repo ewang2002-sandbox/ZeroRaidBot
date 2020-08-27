@@ -5,10 +5,15 @@ import { IMutedData, ISuspendedData } from "../Definitions/IPunishmentObject";
 import { MuteCommand } from "../Commands/Moderator/MuteCommand";
 import { StringUtil } from "../Utility/StringUtil";
 import { DateUtil } from "../Utility/DateUtil";
+import { BotConfiguration } from "../Configuration/Config";
 
 export async function onGuildMemberAdd(
     member: GuildMember | PartialGuildMember
 ): Promise<void> {
+    if (BotConfiguration.exemptGuild.includes(member.guild.id)) {
+        return;
+    }
+    
     const guildMember: GuildMember = await member.fetch();
 
     const db: IRaidGuild = await new MongoDbHelper.MongoDbGuildManager(guildMember.guild.id).findOrCreateGuildDb();
@@ -24,7 +29,7 @@ export async function onGuildMemberAdd(
             .addField("User ID", StringUtil.applyCodeBlocks(member.id))
             .setThumbnail(guildMember.user.displayAvatarURL())
             .setTimestamp()
-            .setColor("RANDOM")
+            .setColor("GREEN")
             .setFooter(member.guild.name);
         await joinLeaveChannel.send(joinEmbed).catch(e => { });
     }

@@ -21,7 +21,7 @@ export class NoLoggedRunsCommand extends Command {
             new CommandPermission(
                 [],
                 [],
-                ["headRaidLeader"],
+                ["officer"],
                 [],
                 true
             ),

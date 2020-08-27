@@ -26,7 +26,7 @@ export class ResetQuotaCommand extends Command {
             new CommandPermission(
                 [],
                 [],
-                ["headRaidLeader"],
+                ["officer"],
                 [],
                 true
             ),

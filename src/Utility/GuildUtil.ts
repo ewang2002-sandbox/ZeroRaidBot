@@ -50,7 +50,11 @@ export namespace GuildUtil {
 			roleType: null
 		};
 
-		if (member.roles.cache.has(section.roles.raidLeaderRole)) {
+		if (member.roles.cache.has(section.roles.headLeaderRole)) {
+			returnVal.highestLeaderRole = section.roles.headLeaderRole;
+			returnVal.roleType = "HRL";
+		}
+		else if (member.roles.cache.has(section.roles.raidLeaderRole)) {
 			returnVal.highestLeaderRole = section.roles.raidLeaderRole;
 			returnVal.roleType = "RL";
 		}
@@ -87,6 +91,9 @@ export namespace GuildUtil {
 		}
 
 		// check section
+		if (member.roles.cache.has(section.roles.headLeaderRole)) {
+			return "HRL";
+		}
 		if (member.roles.cache.has(section.roles.raidLeaderRole)) {
 			return "RL";
 		}
@@ -114,7 +121,7 @@ export namespace GuildUtil {
 				trialLeaderRole: guildData.roles.mainSectionLeaderRole.sectionTrialLeaderRole,
 				almostLeaderRole: guildData.roles.mainSectionLeaderRole.sectionAlmostLeaderRole,
 				raidLeaderRole: guildData.roles.mainSectionLeaderRole.sectionLeaderRole,
-				headLeaderRole: guildData.roles.mainSectionLeaderRole.sectionHeadRaidLeader
+				headLeaderRole: guildData.roles.mainSectionLeaderRole.sectionHeadLeaderRole
 			},
 			channels: {
 				verificationChannel: guildData.generalChannels.verificationChan,
@@ -160,7 +167,7 @@ export namespace GuildUtil {
 	 * @param section The section.
 	 */
 	export function getSectionRaidLeaderRoles(section: ISection): string[] {
-		return [section.roles.trialLeaderRole, section.roles.almostLeaderRole, section.roles.raidLeaderRole];
+		return [section.roles.trialLeaderRole, section.roles.almostLeaderRole, section.roles.raidLeaderRole, section.roles.headLeaderRole];
 	}
 
 	/**
@@ -256,6 +263,7 @@ export namespace GuildUtil {
 
 		for (const section of [GuildUtil.getDefaultSection(guildDb), ...guildDb.sections]) {
 			const leaderRoles: (Role | undefined)[] = [
+				guild.roles.cache.get(section.roles.headLeaderRole),
 				guild.roles.cache.get(section.roles.almostLeaderRole),
 				guild.roles.cache.get(section.roles.raidLeaderRole),
 				guild.roles.cache.get(section.roles.trialLeaderRole)

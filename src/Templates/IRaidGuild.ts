@@ -153,7 +153,7 @@ export interface IRaidGuild {
 			sectionLeaderRole: string;
 			sectionAlmostLeaderRole: string; 
 			sectionTrialLeaderRole: string;
-			sectionHeadRaidLeader: string; 
+			sectionHeadLeaderRole: string; 
 		}
 	};
 

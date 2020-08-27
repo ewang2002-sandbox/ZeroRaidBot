@@ -22,6 +22,7 @@ import { UserAvailabilityHelper } from "./UserAvailabilityHelper";
 
 export module VerificationHandler {
 	export const IsInVerification: Collection<string, "GENERAL" | "ALT"> = new Collection<string, "GENERAL" | "ALT">();
+	export const PeopleThatWereMessaged: Set<string> = new Set();
 
 	interface ICheckResults {
 		characters: {
@@ -59,7 +60,9 @@ export module VerificationHandler {
 		calledFrom: "REACT" | "COMMAND"
 	): Promise<void> {
 		// already verified or no role
-		if (!guild.roles.cache.has(section.verifiedRole) || member.roles.cache.has(section.verifiedRole) || IsInVerification.has(member.id)) {
+		if (!guild.roles.cache.has(section.verifiedRole) 
+			|| member.roles.cache.has(section.verifiedRole) 
+			|| IsInVerification.has(member.id)) {
 			return;
 		}
 
@@ -74,7 +77,8 @@ export module VerificationHandler {
 		const manualVerificationChannel: TextChannel | undefined = guild.channels.cache
 			.get(section.channels.manualVerification) as TextChannel | undefined;
 
-		const verificationChannel: GuildChannel | undefined = guild.channels.cache.get(section.channels.verificationChannel);
+		const verificationChannel: GuildChannel | undefined = guild.channels.cache
+			.get(section.channels.verificationChannel);
 
 		if (typeof verificationChannel === "undefined") {
 			return;
@@ -126,19 +130,33 @@ export module VerificationHandler {
 		}
 
 		//#endregion
+		let dmChannel: DMChannel;
 
-		// within the server we will be checking for other major reqs.
-		if (section.isMain) {
-			let dmChannel: DMChannel;
-
-			try {
-				dmChannel = await member.user.createDM();
+		try {
+			dmChannel = await member.user.createDM();
+			await dmChannel.send("This is a check to make sure I can DM you. Please ignore it; the real verification message will come soon.")
+				.then(x => x.delete());
+		}
+		catch (e) {
+			if (typeof verificationAttemptsChannel !== "undefined") {
+				verificationAttemptsChannel.send(`🔇 **\`[${section.nameOfSection}]\`** ${member} tried to verify, but his or her DMs were set so no one can message him or her.`).catch(() => { });
 			}
-			catch (e) {
-				MessageUtil.send({ content: `${member}, I am unable to message you. Please make sure your privacy settings are set so anyone can DM you.` }, verificationChannel as TextChannel, 20 * 1000);
+			
+			if (PeopleThatWereMessaged.has(member.id)) {
 				return;
 			}
+			else {
+				MessageUtil.send({ content: `${member}, I am unable to message you. Please make sure your privacy settings are set so anyone can DM you.` }, verificationChannel as TextChannel);
+			}
+			PeopleThatWereMessaged.add(member.id);
+			setTimeout(() => {
+				PeopleThatWereMessaged.delete(member.id);
+			}, 5000);
+			return;
+		}
 
+		// within the server we will be checking for other major reqs.
+		if (section.isMain) {			
 			IsInVerification.set(member.id, "GENERAL");
 			UserAvailabilityHelper.InMenuCollection.set(member.id, UserAvailabilityHelper.MenuType.VERIFICATION);
 

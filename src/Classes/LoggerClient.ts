@@ -6,11 +6,9 @@ import { DateUtil } from "../Utility/DateUtil";
 export class LoggerClient {
 	private _allProcessLogs: [string, ProcessLogType][];
 	private _allBotLogs: [string, BotLogType][];
-	private _useDelay: boolean;
 	private _lock: boolean = false;
 
-	public constructor(delay: boolean = false) {
-		this._useDelay = delay;
+	public constructor() {
 		this._allProcessLogs = [];
 		this._allBotLogs = [];
 	}

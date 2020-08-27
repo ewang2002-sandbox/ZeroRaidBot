@@ -1,7 +1,7 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, GuildMember } from "discord.js";
+import { Message, GuildMember, Guild } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { ModMailHandler } from "../../Helpers/ModMailHandler";
 import { UserHandler } from "../../Helpers/UserHandler";
@@ -34,7 +34,8 @@ export class StartModmailThreadCommand extends Command {
     }
     
     public async executeCommand(msg: Message, args: string[], guildDb: IRaidGuild): Promise<void> {
-		let target: GuildMember | null = await UserHandler.resolveMember(msg, guildDb);
+		const guild: Guild = msg.guild as Guild;
+		let target: GuildMember | null = await UserHandler.resolveMemberWithStr(args.shift() as string, guild, guildDb);
 
 		if (target === null) {
 			await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "NO_MEMBER_FOUND", null), msg.channel);

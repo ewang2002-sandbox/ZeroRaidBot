@@ -392,7 +392,8 @@ export async function onMessageReactionAdd(
 				return;
 			}
 			await member.roles.remove(sectionForVerification.verifiedRole).catch(() => { });
-			await member.send(`**\`[${guild.name}]\`**: You have successfully been unverified from the **\`${sectionForVerification.nameOfSection}\`** section!`);
+			// doesn't matter if we can send msg to the user
+			await member.send(`**\`[${guild.name}]\`**: You have successfully been unverified from the **\`${sectionForVerification.nameOfSection}\`** section!`).catch(e => { });
 			if (typeof verificationSuccessChannel !== "undefined") {
 				verificationSuccessChannel.send(`📤 **\`[${sectionForVerification.nameOfSection}]\`** ${member} has been unverified from the section.`).catch(() => { });
 			}

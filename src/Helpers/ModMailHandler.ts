@@ -221,7 +221,7 @@ export module ModMailHandler {
 		// create base message
 		const baseMsgEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(targetMember.user)
 			.setTitle(`Modmail Thread ⇒ ${targetMember.user.tag}`)
-			.setDescription(`⇒ **Initiated By:** ${targetMember}\n⇒ **Recipient:** ${targetMember}\n⇒ **Thread Creation Time:** ${DateUtil.getTime(createdTime)}`)
+			.setDescription(`⇒ **Initiated By:** ${initiatedBy}\n⇒ **Recipient:** ${targetMember}\n⇒ **Thread Creation Time:** ${DateUtil.getTime(createdTime)}`)
 			.addField("Reactions", "⇒ React with 📝 to send a message. You may also use the `;respond` command.\n⇒ React with 🛑 to close this thread.\n⇒ React with 🚫 to modmail blacklist the author of this modmail.")
 			.setTimestamp()
 			.setFooter("Modmail Thread • Created");
@@ -242,9 +242,11 @@ export module ModMailHandler {
 			}
 		});
 
+		MessageUtil.send({ content: initiatedBy.toString() }, threadChannel, 2000);
+
 		if (typeof initialContent !== "undefined") {
 			const replyEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(initiatedBy.guild)
-				.setTitle(`${initiatedBy.guild} ⇒ You`)
+				.setTitle(`${initiatedBy.guild.name} ⇒ You`)
 				.setDescription(initialContent)
 				.setFooter("Modmail");
 
@@ -263,7 +265,7 @@ export module ModMailHandler {
 				.setTimestamp();
 
 			if (!sent) {
-				replyRecordsEmbed.addField("⚠️ Error", "Something went wrong when trying to send this modmail message. The recipient has most likely blocked the bot.");
+				replyRecordsEmbed.addField("⚠️ Error", "Something went wrong when trying to send this modmail message. The recipient has either blocked the bot or prevented server members from DMing him/her.");
 			}
 			await threadChannel.send(replyRecordsEmbed).catch(console.error);
 		}
@@ -533,13 +535,12 @@ export module ModMailHandler {
 				.fetch(modmailThread.originalModmailAuthor);
 		}
 		catch (e) {
+			await closeModmailThread(channel, modmailThread, guildDb, memberThatWillRespond);
 			const noUserFoundEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(memberThatWillRespond.user)
 				.setTitle("User Not Found")
-				.setDescription("The person you were trying to find wasn't found. The person may have left the server. This modmail thread will be deleted in 5 seconds.")
+				.setDescription("The person you were trying to contact couldn't be found; maybe he or she left the server? The modmail thread has been deleted as a result.")
 				.setFooter("Modmail");
-			await channel.send(noUserFoundEmbed).catch(e => { });
-			await OtherUtil.waitFor(5000);
-			await closeModmailThread(channel, modmailThread, guildDb, memberThatWillRespond);
+			await memberThatWillRespond.send(noUserFoundEmbed).catch(e => { });
 			return;
 		}
 
@@ -641,7 +642,7 @@ export module ModMailHandler {
 			.setTimestamp();
 
 		if (!sent) {
-			replyRecordsEmbed.addField("⚠️ Error", "Something went wrong when trying to send this modmail message. The recipient has most likely blocked the bot.");
+			replyRecordsEmbed.addField("⚠️ Error", "Something went wrong when trying to send this modmail message. The recipient has either blocked the bot or prevented server members from DMing him/her.");
 		}
 
 		await channel.send(replyRecordsEmbed).catch(e => { });
@@ -1020,7 +1021,8 @@ export module ModMailHandler {
 		guildDb: IRaidGuild,
 		closedBy: GuildMember
 	): Promise<void> {
-		if (threadInfo.originalModmailMessage !== "" && threadChannel.guild.channels.cache.has(guildDb.generalChannels.modMailChannel)) {
+		if (threadInfo.originalModmailMessage !== "" 
+			&& threadChannel.guild.channels.cache.has(guildDb.generalChannels.modMailChannel)) {
 			const modmailChannel: TextChannel = threadChannel.guild.channels.resolve(guildDb.generalChannels.modMailChannel) as TextChannel;
 			let oldModMailMessage: Message | null = null;
 			try {

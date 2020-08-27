@@ -16,6 +16,7 @@ import { PRODUCTION_BOT, BotConfiguration } from "./Configuration/Config";
 import { IRaidGuild } from "./Templates/IRaidGuild";
 import { RaidStatus } from "./Definitions/RaidStatus";
 import { RaidHandler } from "./Helpers/RaidHandler";
+import { onGuildMemberRemove } from "./Events/GuildMemberRemove";
 
 export class Zero {
 	/** 
@@ -71,6 +72,8 @@ export class Zero {
 			.on("messageReactionRemove", async (reaction: MessageReaction, user: User | PartialUser) => await onMessageReactionRemove(reaction, user));
 		Zero.RaidClient
 			.on("guildMemberAdd", async (member: GuildMember | PartialGuildMember) => await onGuildMemberAdd(member));
+		Zero.RaidClient
+			.on("guildMemberRemove", async (member: GuildMember | PartialGuildMember) => await onGuildMemberRemove(member));
 		Zero.RaidClient
 			.on("guildCreate", async (guild: Guild) => await onGuildCreate(guild));
 		Zero.RaidClient
@@ -166,6 +169,6 @@ export class Zero {
 					}
 				}
 			}
-		}, 0.25 * 60 * 1000);
+		}, 2 * 60 * 1000);
 	}
 }

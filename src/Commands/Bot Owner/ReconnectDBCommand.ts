@@ -29,7 +29,8 @@ export class ReconnectDBCommand extends Command {
             ),
             false, // guild-only command. 
             false,
-            true
+            true,
+            0
         );
     }
 

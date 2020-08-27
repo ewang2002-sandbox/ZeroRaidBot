@@ -30,6 +30,9 @@ export async function onMessageEvent(msg: Message): Promise<void> {
 	}
 
 	if (msg.guild !== null) {
+		if (BotConfiguration.exemptGuild.includes(msg.guild.id)) {
+			return;
+		}
 		const mongoGuild: MongoDbHelper.MongoDbGuildManager = new MongoDbHelper.MongoDbGuildManager(msg.guild.id);
 		await commandHandler(msg, await mongoGuild.findOrCreateGuildDb());
 	}
@@ -193,7 +196,14 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 		return;
 	}
 
-	await msg.delete().catch(() => { });
+	if (msg.guild !== null && command.getDurationUntilDeleteCmd() !== -1) {
+		if (command.getDurationUntilDeleteCmd() === 0) {
+			msg.delete().catch(() => { });
+		}
+		else {
+			msg.delete({ timeout: command.getDurationUntilDeleteCmd() * 1000 }).catch(() => { });
+		}
+	}
 	command.executeCommand(msg, args, guildHandler);
 }
 

@@ -35,7 +35,9 @@ export const BotConfiguration: IConfigurationSettings = PRODUCTION_BOT
 		// a good one is just "botsettings."
         botCollectionName: "",
         botOwners: [],
-        botColors: []
+		botColors: [],
+		// guilds that dont need a db entry
+		exemptGuild: []
     } : {
         token: "",
         dbURL: "",
@@ -44,7 +46,8 @@ export const BotConfiguration: IConfigurationSettings = PRODUCTION_BOT
         guildCollectionName: "",
         botCollectionName: "",
         botOwners: [],
-        botColors: []
+		botColors: [],
+		exemptGuild: []
     };
 
 /**

@@ -8,11 +8,16 @@ import { IRaidBot } from "../Templates/IRaidBot";
 import { DateUtil } from "../Utility/DateUtil";
 import { BOT_VERSION } from "../Constants/ConstantVars";
 import { ReactionLoggingHandler } from "../Helpers/ReactionLoggingHandler";
+import { BotConfiguration } from "../Configuration/Config";
 
 export async function onReadyEvent() {
 	await mongoPreloader();
 	const guildBots: string[] = [];
 	for await (let [id, guild] of Zero.RaidClient.guilds.cache) {
+		if (BotConfiguration.exemptGuild.includes(guild.id)) {
+			continue;
+		}
+		
 		guildBots.push(id);
 		const g = new MongoDbHelper.MongoDbGuildManager(id);
 		const doc: IRaidGuild = await g.findOrCreateGuildDb();

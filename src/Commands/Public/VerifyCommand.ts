@@ -27,7 +27,8 @@ export class VerifyCommand extends Command {
             ),
             true, // guild-only command. 
             false,
-            false
+            false,
+            0
         );
     }
 

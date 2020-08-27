@@ -149,11 +149,14 @@ export module ModMailHandler {
 	 * This creates a new channel where all modmail messages from `targetMember` will be redirected to said channel.
 	 * @param targetMember The member to initiate the modmail conversation with.
 	 * @param initiatedBy The member that initiated the modmail conversation.
+	 * @param guildDb The guild doc.
+	 * @param {string} [initialContent]
 	 */
 	export async function startThreadedModmailWithMember(
 		targetMember: GuildMember,
 		initiatedBy: GuildMember,
-		guildDb: IRaidGuild
+		guildDb: IRaidGuild,
+		initialContent?: string
 	): Promise<void> {
 		// make sure the person isnt blacklisted from modmail
 		const indexOfBlacklist: number = guildDb.moderation.blacklistedModMailUsers
@@ -238,6 +241,32 @@ export module ModMailHandler {
 				}
 			}
 		});
+
+		if (typeof initialContent !== "undefined") {
+			const replyEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(initiatedBy.guild)
+				.setTitle(`${initiatedBy.guild} ⇒ You`)
+				.setDescription(initialContent)
+				.setFooter("Modmail");
+
+			let sent: boolean = true;
+			try {
+				await targetMember.send(replyEmbed);
+			}
+			catch (e) {
+				sent = false;
+			}
+
+			const replyRecordsEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(initiatedBy.user, sent ? "GREEN" : "YELLOW")
+				.setTitle(`${initiatedBy.displayName} ⇒ ${targetMember.user.tag}`)
+				.setDescription(initialContent)
+				.setFooter("Sent Anonymously")
+				.setTimestamp();
+
+			if (!sent) {
+				replyRecordsEmbed.addField("⚠️ Error", "Something went wrong when trying to send this modmail message. The recipient has most likely blocked the bot.");
+			}
+			await threadChannel.send(replyRecordsEmbed).catch(console.error);
+		}
 	}
 
 	/**
@@ -265,7 +294,7 @@ export module ModMailHandler {
 		catch (e) {
 			const noUserFoundEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(convertedToThreadBy.user)
 				.setTitle("User Not Found")
-				.setDescription("The person you were trying to find wasn't found. The person may have left the server. This modmail entry will be deleted in 10 seconds.")
+				.setDescription("The person you were trying to find wasn't found. The person may have left the server. This modmail entry will be deleted in 5 seconds.")
 				.setFooter("Modmail");
 			await originalModMailMessage.edit(noUserFoundEmbed)
 				.then(x => x.delete({ timeout: 5 * 1000 }))
@@ -464,10 +493,10 @@ export module ModMailHandler {
 
 		const embedToReplaceOld: MessageEmbed = MessageUtil.generateBlankEmbed(mod.user)
 			.setTitle("Blacklisted From Modmail")
-			.setDescription(`The user with ID \`${authorOfModmailId}\` has been blacklisted from using modmail. This message will delete in 10 seconds.`)
+			.setDescription(`The user with ID \`${authorOfModmailId}\` has been blacklisted from using modmail. This message will delete in 5 seconds.`)
 			.setFooter("Blacklisted from Modmail.");
 		await originalModMailMessage.edit(embedToReplaceOld)
-			.then(x => x.delete({ timeout: 10000 }))
+			.then(x => x.delete({ timeout: 5000 }))
 			.catch(e => { });
 
 		const moderationChannel: TextChannel | undefined = mod.guild.channels.cache.get(guildDb.generalChannels.logging.moderationLogs) as TextChannel | undefined;
@@ -494,6 +523,7 @@ export module ModMailHandler {
 	export async function respondToThreadModmail(
 		modmailThread: IModmailThread,
 		memberThatWillRespond: GuildMember,
+		guildDb: IRaidGuild,
 		channel: TextChannel
 	): Promise<void> {
 		// make sure member exists
@@ -505,19 +535,11 @@ export module ModMailHandler {
 		catch (e) {
 			const noUserFoundEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(memberThatWillRespond.user)
 				.setTitle("User Not Found")
-				.setDescription("The person you were trying to find wasn't found. The person may have left the server. This modmail thread will be deleted in 10 seconds.")
+				.setDescription("The person you were trying to find wasn't found. The person may have left the server. This modmail thread will be deleted in 5 seconds.")
 				.setFooter("Modmail");
-			await channel.send(noUserFoundEmbed)
-				.then(x => x.delete({ timeout: 5 * 1000 }))
-				.catch(() => { });
-
-			await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: memberThatWillRespond.guild.id }, {
-				$pull: {
-					"properties.modMail": {
-						channel: channel.id
-					}
-				}
-			});
+			await channel.send(noUserFoundEmbed).catch(e => { });
+			await OtherUtil.waitFor(5000);
+			await closeModmailThread(channel, modmailThread, guildDb, memberThatWillRespond);
 			return;
 		}
 
@@ -604,13 +626,25 @@ export module ModMailHandler {
 			.setDescription(responseToMail)
 			.setFooter("Modmail Response");
 
-		const replyRecordsEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(memberThatWillRespond.user, "GREEN")
+		let sent: boolean = true;
+		try {
+			await memberToRespondTo.send(replyEmbed);
+		}
+		catch (e) {
+			sent = false;
+		}
+
+		const replyRecordsEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(memberThatWillRespond.user, sent ? "GREEN" : "YELLOW")
 			.setTitle(`${memberThatWillRespond.displayName} ⇒ ${memberToRespondTo.user.tag}`)
 			.setDescription(responseToMail)
 			.setFooter(`Sent ${anonymous ? "Anonymously" : "Publicly"}`)
 			.setTimestamp();
-		await channel.send(replyRecordsEmbed).catch(console.error);
-		await memberToRespondTo.send(replyEmbed).catch(console.error);
+
+		if (!sent) {
+			replyRecordsEmbed.addField("⚠️ Error", "Something went wrong when trying to send this modmail message. The recipient has most likely blocked the bot.");
+		}
+
+		await channel.send(replyRecordsEmbed).catch(e => { });
 		CurrentlyRespondingToModMail.delete(memberThatWillRespond.id);
 	}
 
@@ -641,7 +675,7 @@ export module ModMailHandler {
 		catch (e) {
 			const noUserFoundEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(memberThatWillRespond.user)
 				.setTitle("User Not Found")
-				.setDescription("The person you were trying to find wasn't found. The person may have left the server. This modmail entry will be deleted in 10 seconds.")
+				.setDescription("The person you were trying to find wasn't found. The person may have left the server. This modmail entry will be deleted in 5 seconds.")
 				.setFooter("Modmail");
 			await originalModMailMessage.edit(noUserFoundEmbed)
 				.then(x => x.delete({ timeout: 5 * 1000 }))
@@ -828,7 +862,14 @@ export module ModMailHandler {
 			.addField("Original Message", originalModMailContent.length === 0 ? "N/A" : (originalModMailContent.length > 1012 ? originalModMailContent.substring(0, 1000) + "..." : originalModMailContent))
 			.setFooter("Modmail Response");
 
-		await authorOfModmail.send(replyEmbed).catch(e => { });
+		let sent: boolean = true;
+		try {
+			await authorOfModmail.send(replyEmbed);
+		}
+		catch (e) {
+			sent = false;
+		}
+
 		await responseChannel.delete().catch(() => { });
 		CurrentlyRespondingToModMail.delete(memberThatWillRespond.id);
 
@@ -856,7 +897,9 @@ export module ModMailHandler {
 			.appendLine()
 			.append(`Responder Tag: ${memberThatWillRespond.user.tag}`)
 			.appendLine()
-			.append(`Time: ${DateUtil.getTime()} (UTC)`);
+			.append(`Time: ${DateUtil.getTime()} (UTC)`)
+			.appendLine()
+			.append(`Sent Status: ${sent ? "Message Sent Successfully" : "Message Failed To Send"}`);
 
 		// see if we should store 
 		const modMailStorage: TextChannel | undefined = memberThatWillRespond.guild.channels.cache
@@ -874,7 +917,7 @@ export module ModMailHandler {
 		const oldRespArr: EmbedField[] = oldEmbed.fields.splice(oldEmbed.fields.findIndex(x => x.name === "Last Response By"), 1);
 		const lastResponse: EmbedField = oldRespArr[0];
 
-		let tempLastResp: string = `${memberThatWillRespond} (${DateUtil.getTime()}) ${addLogStr}`;
+		let tempLastResp: string = `${memberThatWillRespond} (${DateUtil.getTime()}) ${addLogStr} ${!sent ? "`⚠️`" : ""}`;
 		let lastRespByStr: string = "";
 		if (lastResponse.value === "None.") {
 			lastRespByStr = tempLastResp;
@@ -962,8 +1005,6 @@ export module ModMailHandler {
 		UserAvailabilityHelper.InMenuCollection.delete(user.id)
 
 		return selectedGuild === "CANCEL" ? null : selectedGuild;
-
-
 	}
 
 	/**
@@ -974,8 +1015,8 @@ export module ModMailHandler {
 	 * @param closedBy The person that closed this modmail thread.
 	 */
 	export async function closeModmailThread(
-		threadChannel: TextChannel, 
-		threadInfo: IModmailThread, 
+		threadChannel: TextChannel,
+		threadInfo: IModmailThread,
 		guildDb: IRaidGuild,
 		closedBy: GuildMember
 	): Promise<void> {

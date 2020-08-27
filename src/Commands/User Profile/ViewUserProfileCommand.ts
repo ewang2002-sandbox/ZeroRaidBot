@@ -29,7 +29,8 @@ export class ViewUserProfileCommand extends Command {
             ),
             false, // guild-only command. 
             false,
-            false
+            false,
+			0
         );
     }
 

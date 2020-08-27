@@ -56,7 +56,8 @@ export class ConfigureApplicationCommand extends Command {
 			),
 			true,
 			false,
-			false
+			false,
+			0
 		);
 	}
 

@@ -33,7 +33,8 @@ export class LogRunsCommand extends Command {
 			),
 			true,
 			false,
-			false
+			false,
+			5
 		);
 	}
 

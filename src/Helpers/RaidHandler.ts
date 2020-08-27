@@ -1458,7 +1458,7 @@ export module RaidHandler {
 		await raidMsg.edit("The raid is now over. Thanks to everyone for attending!", endedRun);
 		await raidMsg.unpin().catch(() => { });
 		await cpMsg.delete().catch(() => { });
-		if (!vcDeleted || membersLeft.size > 0) {
+		if (!vcDeleted && membersLeft.size > 0) {
 			await logCompletedRunsForRaiders(guild, membersLeft, rs, 1);
 		}
 

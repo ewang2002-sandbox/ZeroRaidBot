@@ -33,7 +33,8 @@ export class AddToNicknameCommand extends Command {
             ),
             false, // guild-only command. 
             false,
-            false
+            false,
+			0
         );
     }
 

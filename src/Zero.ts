@@ -1,4 +1,4 @@
-import { Client, Message, MessageReaction, User, PartialUser, GuildMember, PartialGuildMember, Guild, ClientUser, Channel, PartialDMChannel } from "discord.js";
+import { Client, Message, MessageReaction, User, PartialUser, GuildMember, PartialGuildMember, Guild, ClientUser, Channel, PartialDMChannel, VoiceChannel } from "discord.js";
 import { MongoDbHelper } from "./Helpers/MongoDbHelper";
 import { CommandManager } from "./Classes/CommandManager";
 import axios, { AxiosInstance } from "axios";
@@ -12,6 +12,10 @@ import { onGuildMemberUpdate } from "./Events/GuildMemberUpdate";
 import { onError } from "./Events/ErrorEvent";
 import { LoggerClient } from "./Classes/LoggerClient";
 import { onChannelDelete } from "./Events/GuildChannelDelete";
+import { PRODUCTION_BOT, BotConfiguration } from "./Configuration/Config";
+import { IRaidGuild } from "./Templates/IRaidGuild";
+import { RaidStatus } from "./Definitions/RaidStatus";
+import { RaidHandler } from "./Helpers/RaidHandler";
 
 export class Zero {
 	/** 
@@ -75,6 +79,13 @@ export class Zero {
 			.on("error", async (error: Error) => onError(error));
 		Zero.RaidClient
 			.on("channelDelete", async (channel: Channel | PartialDMChannel) => await onChannelDelete(channel));
+
+		// testing
+		if (!PRODUCTION_BOT) {
+			process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0'
+		}
+
+		this.startServices();
 	}
 
 	/**
@@ -90,5 +101,71 @@ export class Zero {
 		catch (e) {
 			throw new ReferenceError(e);
 		}
+	}
+
+	private _startedServices: boolean = false; 
+
+	/**
+	 * Starts any applicable services.
+	 */
+	private async startServices(): Promise<void> {
+		if (this._startedServices) {
+			return;
+		}
+
+		this._startedServices = true;
+		
+		// check raid vcs and clean
+		setInterval(async () => {
+			const docs: IRaidGuild[] = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.find({}).toArray();
+			for await (const doc of docs) {
+				if (BotConfiguration.exemptGuild.includes(doc.guildID)) {
+					continue;
+				}
+
+				let guild: Guild;
+				try {
+					guild = await Zero.RaidClient.guilds.fetch(doc.guildID);
+				}
+				catch (e) {
+					continue;
+				}
+
+				for (const raidInfo of doc.activeRaidsAndHeadcounts.raidChannels) {
+					let vc: VoiceChannel | null = null;
+					try {
+						vc = await Zero.RaidClient.channels.fetch(raidInfo.vcID) as VoiceChannel;
+					}
+					finally {
+						if (vc !== null 
+							&& raidInfo.status === RaidStatus.InRun 
+							&& vc.members.size === 0
+							&& (guild.me as GuildMember).permissions.has("MANAGE_CHANNELS")) {
+							let personThatCreatedVc: GuildMember;
+							try {
+								personThatCreatedVc = await guild.members.fetch(raidInfo.startedBy);
+							}
+							catch (e) {
+								personThatCreatedVc = guild.me as GuildMember;
+							}
+		
+							await RaidHandler.endRun(personThatCreatedVc, guild, raidInfo);
+							continue;
+						}
+
+						if (vc === null) {
+							let personThatCreatedVc: GuildMember;
+							try {
+								personThatCreatedVc = await guild.members.fetch(raidInfo.startedBy);
+							}
+							catch (e) {
+								personThatCreatedVc = guild.me as GuildMember;
+							}
+							await RaidHandler.endRun(personThatCreatedVc, guild, raidInfo, true);
+						}
+					}
+				}
+			}
+		}, 0.25 * 60 * 1000);
 	}
 }

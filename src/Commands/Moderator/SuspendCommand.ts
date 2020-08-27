@@ -30,7 +30,8 @@ export class SuspendCommand extends Command {
 			),
 			true,
 			false,
-			false
+			false,
+			5
 		);
 	}
 

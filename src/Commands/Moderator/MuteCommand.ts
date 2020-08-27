@@ -30,7 +30,8 @@ export class MuteCommand extends Command {
 			),
 			true,
 			false,
-			false
+			false,
+			5
 		);
 	}
 

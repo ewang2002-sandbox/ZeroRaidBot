@@ -22,6 +22,7 @@ import { Zero } from "../Zero";
 import { ReactionLoggingHandler } from "../Helpers/ReactionLoggingHandler";
 import { OtherUtil } from "../Utility/OtherUtil";
 import { IModmailThread } from "../Definitions/IModMail";
+import { BotConfiguration } from "../Configuration/Config";
 
 export async function onMessageReactionAdd(
 	reaction: MessageReaction,
@@ -49,6 +50,10 @@ export async function onMessageReactionAdd(
 	}
 
 	if (reaction.message.guild === null) {
+		return;
+	}
+
+	if (BotConfiguration.exemptGuild.includes(reaction.message.guild.id)) {
 		return;
 	}
 
@@ -192,7 +197,7 @@ export async function onMessageReactionAdd(
 			// base msg reacted to
 			// check reaction
 			if (reaction.emoji.name === "📝") {
-				ModMailHandler.respondToThreadModmail(modmailThreadInfo, member, reaction.message.channel as TextChannel);
+				ModMailHandler.respondToThreadModmail(modmailThreadInfo, member, guildDb, reaction.message.channel as TextChannel);
 			}
 			else if (reaction.emoji.name === "🛑") {
 				ModMailHandler.closeModmailThread(reaction.message.channel as TextChannel, modmailThreadInfo, guildDb, member);
@@ -202,7 +207,7 @@ export async function onMessageReactionAdd(
 			}
 		}
 		else if (reaction.emoji.name === "📝" && reaction.message.author.bot) {
-			ModMailHandler.respondToThreadModmail(modmailThreadInfo, member, reaction.message.channel as TextChannel);
+			ModMailHandler.respondToThreadModmail(modmailThreadInfo, member, guildDb, reaction.message.channel as TextChannel);
 		}
 	}
 	//#endregion

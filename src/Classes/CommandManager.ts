@@ -54,6 +54,9 @@ import { ApplyCommand } from "../Commands/Public/ApplyCommand";
 import { PurgeCommand } from "../Commands/Staff/PurgeCommand";
 import { ConfigureBlockCmdCommand } from "../Commands/Configuration/ConfigureBlockCmdCommand";
 import { DeveloperTestCommand } from "../Commands/Bot Owner/DeveloperTestCommand";
+import { CloseModmailThreadCommand } from "../Commands/Modmail Management/CloseModmailThreadCommand";
+import { ReplyModmailThreadCommand } from "../Commands/Modmail Management/ReplyModmailThreadCommand";
+import { StartModmailThreadCommand } from "../Commands/Modmail Management/StartModmailThreadCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -105,6 +108,12 @@ export class CommandManager {
 			new ConfigurePrefixCommand(),
 			new ConfigureVerifSuccessCommand(),
 			new ConfigureApplicationCommand()
+		]);
+
+		this.commands.set("Modmail Management", [
+			new CloseModmailThreadCommand(),
+			new ReplyModmailThreadCommand(),
+			new StartModmailThreadCommand()
 		]);
 
 		this.commands.set("Raid Leader", [

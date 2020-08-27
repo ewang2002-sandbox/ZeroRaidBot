@@ -35,7 +35,8 @@ export class ConfigureBlockCmdCommand extends Command {
             ),
             true, // guild-only command. 
             false,
-            false
+            false,
+            5
         );
     }
 

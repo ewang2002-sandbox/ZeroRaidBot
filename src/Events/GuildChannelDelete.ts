@@ -4,14 +4,20 @@ import { MongoDbHelper } from "../Helpers/MongoDbHelper";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { RaidStatus } from "../Definitions/RaidStatus";
 import { RaidHandler } from "../Helpers/RaidHandler";
+import { BotConfiguration } from "../Configuration/Config";
 
-export async function onChannelDelete(channel: Channel | PartialDMChannel): Promise<void> {
+export async function onChannelDelete(channel: Channel | PartialDMChannel): Promise<void> {    
     // we only care if it's a guild channel
     if (channel instanceof DMChannel || !(channel instanceof GuildChannel)) {
         return;
     }
 
     const guild: Guild = channel.guild;
+
+    if (BotConfiguration.exemptGuild.includes(guild.id)) {
+        return;
+    }
+
     const guildDb: IRaidGuild = await new MongoDbHelper.MongoDbGuildManager(guild.id)
         .findOrCreateGuildDb();
 

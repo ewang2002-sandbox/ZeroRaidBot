@@ -29,7 +29,8 @@ export class ConfigureVerifSuccessCommand extends Command {
             ),
             true, // guild-only command. 
             false,
-            false
+            false,
+            0
         );
     }
 

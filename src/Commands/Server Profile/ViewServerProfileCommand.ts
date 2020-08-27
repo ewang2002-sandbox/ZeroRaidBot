@@ -32,7 +32,8 @@ export class ViewServerProfileCommand extends Command {
             ),
             false, // guild-only command. 
             false,
-            false
+            false,
+			0
         );
     }
 

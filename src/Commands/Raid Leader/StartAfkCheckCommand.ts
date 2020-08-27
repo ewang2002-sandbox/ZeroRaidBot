@@ -28,7 +28,8 @@ export class StartAfkCheckCommand extends Command {
 			),
 			true,
 			false,
-			false
+			false,
+			0
 		);
 	}
 

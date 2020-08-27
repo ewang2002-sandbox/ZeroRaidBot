@@ -28,7 +28,8 @@ export class ModmailUnblacklistCommand extends Command {
 			),
 			true,
 			false,
-			false
+			false,
+			5
 		);
 	}
 

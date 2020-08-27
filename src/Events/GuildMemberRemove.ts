@@ -1,4 +1,4 @@
-import { GuildMember, PartialGuildMember, TextChannel, MessageEmbed, Message } from "discord.js";
+import { GuildMember, PartialGuildMember, TextChannel, MessageEmbed, Message, User } from "discord.js";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
 import { StringUtil } from "../Utility/StringUtil";
@@ -7,27 +7,29 @@ import { FilterQuery } from "mongodb";
 import { ISection } from "../Templates/ISection";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { IManualVerification } from "../Definitions/IManualVerification";
+import { BotConfiguration } from "../Configuration/Config";
 
 export async function onGuildMemberRemove(
     member: GuildMember | PartialGuildMember
 ): Promise<void> {
-    // TODO will this work/
-    member = await member.fetch();
+    if (BotConfiguration.exemptGuild.includes(member.guild.id)) {
+        return;
+    }
+
+    const user: User = member.user as User;
 
     const db: IRaidGuild = await new MongoDbHelper.MongoDbGuildManager(member.guild.id).findOrCreateGuildDb();
     const joinLeaveChannel: TextChannel | undefined = member.guild.channels.cache
         .get(db.generalChannels.logging.joinLeaveChannel) as TextChannel | undefined;
     if (typeof joinLeaveChannel !== "undefined") {
         const joinEmbed: MessageEmbed = new MessageEmbed()
-            .setAuthor(member.user.tag, member.user.displayAvatarURL())
-            .setTitle("📥 New Member Joined")
-            .setDescription(`${member} has joined **\`${member.guild.name}\`**.`)
-            .addField("Joined Server", StringUtil.applyCodeBlocks(DateUtil.getTime(new Date())))
-            .addField("Registered Account", StringUtil.applyCodeBlocks(DateUtil.getTime(member.user.createdAt)))
-            .addField("User ID", StringUtil.applyCodeBlocks(member.id))
-            .setThumbnail(member.user.displayAvatarURL())
+            .setAuthor(user.tag, user.displayAvatarURL())
+            .setTitle("📤 Member Left")
+            .setDescription(`${member} has left **\`${member.guild.name}\`**.`)
+            .addField("Left Server", StringUtil.applyCodeBlocks(DateUtil.getTime(new Date())))
+            .setThumbnail(user.displayAvatarURL())
             .setTimestamp()
-            .setColor("RANDOM")
+            .setColor("RED")
             .setFooter(member.guild.name);
         await joinLeaveChannel.send(joinEmbed).catch(e => { });
     }

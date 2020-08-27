@@ -31,25 +31,41 @@ export abstract class Command {
 	private _botOwnerOnly: boolean;
 
 	/**
+	 * How long to delete the command.
+	 */
+	private _deleteCommandAfter: number; 
+
+	/**
 	 * This class represents a command, which is essentially a "feature" that a bot is designed to do.
 	 * @param {CommandDetail} commandDetails The command details.
 	 * @param {CommandPermission} commandPermissions The command permissions.
 	 * @param {boolean} guildOnly Whether the command can be run in a guild only. 
 	 * @param {boolean} serverOwnerOnly Whether the server owner is the only one that can run this command. 
 	 * @param {boolean} botOwnerOnly Whether the bot owner is the only one that can run this command. 
+	 * @param {number} deleteCommandAfter How long until the bot deletes the command.
 	 */
 	protected constructor(
 		commandDetails: CommandDetail,
 		commandPermissions: CommandPermission,
 		guildOnly: boolean,
 		serverOwnerOnly: boolean,
-		botOwnerOnly: boolean
+		botOwnerOnly: boolean,
+		deleteCommandAfter: number 
 	) {
 		this._commandDetails = commandDetails;
 		this._commandPermissions = commandPermissions;
 		this._guildOnly = guildOnly;
 		this._serverOwnerOnly = serverOwnerOnly;
 		this._botOwnerOnly = botOwnerOnly;
+		this._deleteCommandAfter = deleteCommandAfter;
+	}
+
+	/**
+	 * Gets the duration until the bot deletes the command.
+	 * @returns {number} How long until the bot deletes the command.
+	 */
+	public getDurationUntilDeleteCmd(): number {
+		return this._deleteCommandAfter;
 	}
 
 	/**

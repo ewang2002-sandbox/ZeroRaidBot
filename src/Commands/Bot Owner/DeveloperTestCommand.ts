@@ -1,7 +1,10 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, Guild, TextChannel } from "discord.js";
+import { Message, Guild, TextChannel, MessageAttachment } from "discord.js";
+import { Zero } from "../../Zero";
+import { AxiosResponse } from "axios";
+import { FORMERR } from "dns";
 
 export class DeveloperTestCommand extends Command {
 	public constructor() {
@@ -24,7 +27,8 @@ export class DeveloperTestCommand extends Command {
 			),
 			true,
 			false,
-			true
+			true,
+			5
 		);
 	}
 
@@ -32,10 +36,11 @@ export class DeveloperTestCommand extends Command {
 		msg: Message,
 		args: string[]
 	): Promise<void> {
-        /*
-        const guild: Guild = msg.guild as Guild;
-        const channel: TextChannel = guild.channels.cache.get("703614830497628210") as TextChannel;
-        const message: Message = await channel.messages.fetch("747290398400970833");
-        console.log(message.content);*/
-    }
+		/*
+		const resp: AxiosResponse<string> = await Zero.AxiosClient.post(`https://localhost:5001/api/dungeoneer/parse`, {
+			image: msg.content
+		}, {});
+
+		msg.channel.send(resp.data);*/
+	}
 }

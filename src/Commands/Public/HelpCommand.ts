@@ -106,7 +106,13 @@ export class HelpCommand extends Command {
 				}
 
 				if (commands.length !== 0) {
-					cmdEmbed.addField(name, StringUtil.applyCodeBlocks(commands));
+					cmdEmbed.addField(name, StringUtil.applyCodeBlocks(
+						commands
+							.split("\n")
+							.map(x => x.trim())
+							.filter(x => x.length !== 0)
+							.join(", "))
+						);
 					commands = "";
 				}
 			}

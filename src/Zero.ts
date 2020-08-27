@@ -8,15 +8,15 @@ import { onMessageReactionAdd } from "./Events/MessageReactionAddEvent";
 import { onMessageReactionRemove } from "./Events/MessageReactionRemoveEvent";
 import { onGuildMemberAdd } from "./Events/GuildMemberAddEvent";
 import { onGuildCreate } from "./Events/GuildCreateEvent";
-import { onGuildMemberUpdate } from "./Events/GuildMemberUpdate";
+import { onGuildMemberUpdate } from "./Events/GuildMemberUpdateEvent";
 import { onError } from "./Events/ErrorEvent";
 import { LoggerClient } from "./Classes/LoggerClient";
-import { onChannelDelete } from "./Events/GuildChannelDelete";
+import { onChannelDelete } from "./Events/GuildChannelDeleteEvent";
 import { PRODUCTION_BOT, BotConfiguration } from "./Configuration/Config";
 import { IRaidGuild } from "./Templates/IRaidGuild";
 import { RaidStatus } from "./Definitions/RaidStatus";
 import { RaidHandler } from "./Helpers/RaidHandler";
-import { onGuildMemberRemove } from "./Events/GuildMemberRemove";
+import { onGuildMemberRemove } from "./Events/GuildMemberRemoveEvent";
 
 export class Zero {
 	/** 

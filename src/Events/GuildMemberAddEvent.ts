@@ -6,6 +6,7 @@ import { MuteCommand } from "../Commands/Moderator/MuteCommand";
 import { StringUtil } from "../Utility/StringUtil";
 import { DateUtil } from "../Utility/DateUtil";
 import { BotConfiguration } from "../Configuration/Config";
+import { SuspendCommand } from "../Commands/Moderator/SuspendCommand";
 
 export async function onGuildMemberAdd(
     member: GuildMember | PartialGuildMember
@@ -78,7 +79,7 @@ export async function onGuildMemberAdd(
     }
 
     if (typeof suspendedData !== "undefined" && typeof suspendedRole !== "undefined") {
-        // they left while muted
+        // they left while suspended
         await guildMember.roles.add(suspendedRole).catch(e => { });
         // because they left the server to avoid their suspension
         // they will be suspended for another full duration
@@ -91,7 +92,7 @@ export async function onGuildMemberAdd(
                     "moderation.suspended.$.endsAt": (new Date().getTime() + suspendedData.duration)
                 }
             });
-            MuteCommand.timeMute(guildMember.guild, guildMember, suspendedData.duration);
+            SuspendCommand.timeSuspend(guildMember.guild, guildMember, suspendedData.duration, suspendedData.roles);
         }
     }
 }

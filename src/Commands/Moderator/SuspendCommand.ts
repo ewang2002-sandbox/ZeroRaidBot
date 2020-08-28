@@ -136,7 +136,7 @@ export class SuspendCommand extends Command {
 			return;
 		}
 		await MessageUtil.send({ content: `${memberToSuspend} has been suspended successfully.` }, msg.channel).catch(() => { });
-		
+
 		// send to member 
 		await memberToSuspend.send(`**\`[${guild.name}]\`** You have been suspended from \`${guild.name}\`.\n\t⇒ Reason: ${reason}\n\tDuration: ${suspensionTime[1]}`).catch(() => { });
 
@@ -190,18 +190,18 @@ export class SuspendCommand extends Command {
 		}
 
 		const to: NodeJS.Timeout = setTimeout(async () => {
-			if (memberToSuspend.roles.cache.has(suspendedRole.id)) {
+			if (memberToSuspend.roles.cache.has(suspendedRole.id) && guild.members.cache.has(memberToSuspend.id)) {
 				await memberToSuspend.roles.remove(suspendedRole).catch(() => { });
 				await memberToSuspend.roles.set(oldRoles).catch(() => { });
 
-				const embed: MessageEmbed = new MessageEmbed()
-					.setAuthor(memberToSuspend.user.tag, memberToSuspend.user.displayAvatarURL())
-					.setTitle("🏁 Member Unsuspended")
-					.setDescription(`⇒ Unsuspended Member: ${memberToSuspend} (${memberToSuspend.displayName})\n⇒ Moderator: Automatic\n⇒ Reason: The member has served his or her time fully.`)
-					.setColor("GREEN")
-					.setTimestamp()
-					.setFooter("Unsuspended At");
 				if (typeof suspensionChannel !== "undefined") {
+					const embed: MessageEmbed = new MessageEmbed()
+						.setAuthor(memberToSuspend.user.tag, memberToSuspend.user.displayAvatarURL())
+						.setTitle("🏁 Member Unsuspended")
+						.setDescription(`⇒ Unsuspended Member: ${memberToSuspend} (${memberToSuspend.displayName})\n⇒ Moderator: Automatic\n⇒ Reason: The member has served his or her time fully.`)
+						.setColor("GREEN")
+						.setTimestamp()
+						.setFooter("Unsuspended At");
 					await suspensionChannel.send(embed).catch(() => { });
 				}
 
@@ -215,6 +215,11 @@ export class SuspendCommand extends Command {
 					}
 				}
 			});
+
+			const suspendIndex: number = SuspendCommand.currentTimeout.findIndex(x => x.id === memberToSuspend.id);
+			if (suspendIndex !== -1) {
+				SuspendCommand.currentTimeout.splice(suspendIndex, 1);
+			}
 		}, timeTosuspend);
 		SuspendCommand.currentTimeout.push({ timeout: to, id: memberToSuspend.id });
 	}

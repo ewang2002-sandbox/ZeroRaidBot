@@ -199,14 +199,14 @@ export class MuteCommand extends Command {
 		const to: NodeJS.Timeout = setTimeout(async () => {
 			if (memberToMute.roles.cache.has(mutedRole.id)) {
 				await memberToMute.roles.remove(mutedRole).catch(() => { });
-				const embed: MessageEmbed = new MessageEmbed()
-					.setAuthor(memberToMute.user.tag, memberToMute.user.displayAvatarURL())
-					.setTitle("🔈 Member Unmuted")
-					.setDescription(`⇒ ${memberToMute} (${memberToMute.displayName}) has been unmuted.\n⇒ Moderator: Automatic\n⇒ Reason: The member has served his or her time fully.`)
-					.setColor("GREEN")
-					.setTimestamp()
-					.setFooter("Unmuted At");
 				if (typeof moderationChannel !== "undefined") {
+					const embed: MessageEmbed = new MessageEmbed()
+						.setAuthor(memberToMute.user.tag, memberToMute.user.displayAvatarURL())
+						.setTitle("🔈 Member Unmuted")
+						.setDescription(`⇒ ${memberToMute} (${memberToMute.displayName}) has been unmuted.\n⇒ Moderator: Automatic\n⇒ Reason: The member has served his or her time fully.`)
+						.setColor("GREEN")
+						.setTimestamp()
+						.setFooter("Unmuted At");
 					await moderationChannel.send(embed).catch(() => { });
 				}
 			}
@@ -218,6 +218,11 @@ export class MuteCommand extends Command {
 					}
 				}
 			});
+
+			const muteIndex: number = MuteCommand.currentTimeout.findIndex(x => x.id === memberToMute.id);
+			if (muteIndex !== -1) {
+				MuteCommand.currentTimeout.splice(muteIndex, 1);
+			}
 		}, timeToMute);
 		MuteCommand.currentTimeout.push({ timeout: to, id: memberToMute.id });
 	}

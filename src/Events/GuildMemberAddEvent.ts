@@ -37,7 +37,6 @@ export async function onGuildMemberAdd(
 
     // check if muted
     const mutedRole: Role | undefined = guildMember.guild.roles.cache.get(db.roles.optRoles.mutedRole) as Role | undefined;
-
     let muteData: IMutedData | undefined;
 
     for (const muteEntry of db.moderation.mutedUsers) {
@@ -68,7 +67,6 @@ export async function onGuildMemberAdd(
 
     // check if suspended
     const suspendedRole: Role | undefined = guildMember.guild.roles.cache.get(db.roles.suspended) as Role | undefined;
-
     let suspendedData: ISuspendedData | undefined;
 
     for (const suspendedEntry of db.moderation.suspended) {

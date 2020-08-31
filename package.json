@@ -17,12 +17,11 @@
 	},
 	"scripts": {
 		"compile": "tsc -p .",
-		"start": "npm run compile && node out/index.js",
-		"getDep": "npm install --only=prod"
+		"start": "npm run compile && node out/index.js"
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/ewang20027/Zero"
+		"url": "https://github.com/DungeoneerExalt/ZeroRaidBot/"
 	},
 	"author": "Edward Wang",
 	"license": "MIT"

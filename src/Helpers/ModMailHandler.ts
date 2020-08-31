@@ -1,5 +1,5 @@
 import { IRaidGuild } from "../Templates/IRaidGuild";
-import { User, Guild, Message, MessageEmbed, TextChannel, GuildMember, MessageEmbedFooter, MessageAttachment, FileOptions, EmbedField, Collection, Emoji, EmojiResolvable, SystemChannelFlags, CategoryChannel } from "discord.js";
+import { User, Guild, Message, MessageEmbed, TextChannel, GuildMember, MessageEmbedFooter, MessageAttachment, FileOptions, EmbedField, Collection, Emoji, EmojiResolvable, SystemChannelFlags, CategoryChannel, DMChannel } from "discord.js";
 import { MongoDbHelper } from "./MongoDbHelper";
 import { StringUtil } from "../Utility/StringUtil";
 import { UserAvailabilityHelper } from "./UserAvailabilityHelper";
@@ -42,7 +42,15 @@ export module ModMailHandler {
 	 * @param message The message content.
 	 */
 	export async function initiateModMailContact(initiator: User, message: Message): Promise<void> {
-		const selectedGuild: Guild | null = await chooseGuild(initiator);
+		UserAvailabilityHelper.InMenuCollection.set(initiator.id, UserAvailabilityHelper.MenuType.PRE_MODMAIL);
+		const selectedGuild: Guild | "cancel" | null = await chooseGuild(initiator);
+		setTimeout(() => {
+			UserAvailabilityHelper.InMenuCollection.delete(initiator.id);
+		}, 1000);
+		if (selectedGuild === "cancel") {
+			return;
+		}
+
 		if (selectedGuild === null) {
 			const errorEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(initiator, "RED")
 				.setTitle("No Valid Servers")
@@ -51,6 +59,7 @@ export module ModMailHandler {
 			await MessageUtil.send({ embed: errorEmbed }, initiator).catch(() => { });
 			return;
 		}
+
 		const guildDb: IRaidGuild = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient
 			.findOne({ guildID: selectedGuild.id })) as IRaidGuild;
 
@@ -950,7 +959,7 @@ export module ModMailHandler {
 	 * Selects a guild for modmail. 
 	 * @param user The user that initated this.
 	 */
-	async function chooseGuild(user: User): Promise<Guild | null> {
+	async function chooseGuild(user: User): Promise<Guild | "cancel" | null> {
 		const guildsToChoose: Guild[] = [];
 
 		const allGuilds: IRaidGuild[] = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.find({}).toArray();
@@ -975,7 +984,6 @@ export module ModMailHandler {
 			return guildsToChoose[0];
 		}
 
-		UserAvailabilityHelper.InMenuCollection.set(user.id, UserAvailabilityHelper.MenuType.PRE_MODMAIL);
 		const selectedGuild: Guild | "CANCEL" = await new Promise(async (resolve) => {
 			const embed: MessageEmbed = new MessageEmbed()
 				.setAuthor(user.tag, user.displayAvatarURL())
@@ -988,13 +996,14 @@ export module ModMailHandler {
 				embed.addField("Possible Guilds", elem);
 			}
 
+			const dmChannel: DMChannel = await user.createDM();
 			const numSelected: number | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<number>(
 				user,
 				{ embed: embed },
 				5,
 				TimeUnit.MINUTE,
-				user
-			).send(GenericMessageCollector.getNumber(user, 1, arrFieldsContent.length));
+				dmChannel
+			).send(GenericMessageCollector.getNumber(dmChannel, 1, guildsToChoose.length));
 
 			if (numSelected === "CANCEL_CMD" || numSelected === "TIME_CMD") {
 				resolve("CANCEL");
@@ -1003,7 +1012,6 @@ export module ModMailHandler {
 				resolve(guildsToChoose[numSelected - 1]);
 			}
 		});
-		UserAvailabilityHelper.InMenuCollection.delete(user.id)
 
 		return selectedGuild === "CANCEL" ? null : selectedGuild;
 	}

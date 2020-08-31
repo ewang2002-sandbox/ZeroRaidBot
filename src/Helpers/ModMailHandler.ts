@@ -44,9 +44,11 @@ export module ModMailHandler {
 	export async function initiateModMailContact(initiator: User, message: Message): Promise<void> {
 		UserAvailabilityHelper.InMenuCollection.set(initiator.id, UserAvailabilityHelper.MenuType.PRE_MODMAIL);
 		const selectedGuild: Guild | "cancel" | null = await chooseGuild(initiator);
+		// delay it so dm from bot doesnt trigger it
 		setTimeout(() => {
 			UserAvailabilityHelper.InMenuCollection.delete(initiator.id);
 		}, 1000);
+
 		if (selectedGuild === "cancel") {
 			return;
 		}
@@ -1013,7 +1015,9 @@ export module ModMailHandler {
 			}
 		});
 
-		return selectedGuild === "CANCEL" ? null : selectedGuild;
+		return selectedGuild === "CANCEL" 
+			? "cancel" 
+			: selectedGuild;
 	}
 
 	/**

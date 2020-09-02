@@ -138,12 +138,13 @@ export class SuspendCommand extends Command {
 		await MessageUtil.send({ content: `${memberToSuspend} has been suspended successfully.` }, msg.channel).catch(() => { });
 
 		// send to member 
-		await memberToSuspend.send(`**\`[${guild.name}]\`** You have been suspended from \`${guild.name}\`.\n\t⇒ Reason: ${reason}\n\tDuration: ${suspensionTime[1]}`).catch(() => { });
+		await memberToSuspend.send(`**\`[${guild.name}]\`** You have been suspended from \`${guild.name}\`.\n\t⇒ Reason: ${reason}\n\t⇒ Duration: ${suspensionTime[1]}`).catch(() => { });
 
 		const embed: MessageEmbed = new MessageEmbed()
 			.setAuthor(memberToSuspend.user.tag, memberToSuspend.user.displayAvatarURL())
 			.setTitle("🚩 Member Suspended")
-			.setDescription(`⇒ Suspended Member: ${memberToSuspend} (${memberToSuspend.displayName})\n⇒ Moderator: ${moderator} (${moderator.displayName})\n⇒ Reason: ${reason}\n⇒ Duration: ${suspensionTime[1]}`)
+			.setDescription(`⇒ Suspended Member: ${memberToSuspend} (${memberToSuspend.displayName})\n⇒ Moderator: ${moderator} (${moderator.displayName})\n⇒ Duration: ${suspensionTime[1]}`)
+			.addField("⇒ Suspension Reason", reason)
 			.setColor("RED")
 			.setTimestamp()
 			.setFooter("Suspension Command Executed At");
@@ -198,7 +199,8 @@ export class SuspendCommand extends Command {
 					const embed: MessageEmbed = new MessageEmbed()
 						.setAuthor(memberToSuspend.user.tag, memberToSuspend.user.displayAvatarURL())
 						.setTitle("🏁 Member Unsuspended")
-						.setDescription(`⇒ Unsuspended Member: ${memberToSuspend} (${memberToSuspend.displayName})\n⇒ Moderator: Automatic\n⇒ Reason: The member has served his or her time fully.`)
+						.setDescription(`⇒ Unsuspended Member: ${memberToSuspend} (${memberToSuspend.displayName})\n⇒ Moderator: Automatic`)
+						.addField("⇒ Unsuspension Reason", "The person has served his or her time fully.")
 						.setColor("GREEN")
 						.setTimestamp()
 						.setFooter("Unsuspended At");

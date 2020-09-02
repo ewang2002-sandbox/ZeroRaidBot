@@ -98,7 +98,7 @@ export class PurgeCommand extends Command {
 					break;
 				}
 				for (const [id, m] of deletedMsg) {
-					sb.append(`[${DateUtil.getTime(m.createdAt)}] ${(m.member as GuildMember).displayName} • ${m.author.tag} • ${m.author.id}`)
+					sb.append(`[${DateUtil.getTime(m.createdAt)}] ${m.author.tag} • ${m.author.id}`)
 						.appendLine()
 						.append(`Message ID: ${m.id}`)
 						.appendLine()

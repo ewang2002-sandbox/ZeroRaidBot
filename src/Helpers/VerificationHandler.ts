@@ -19,6 +19,7 @@ import { IManualVerification } from "../Definitions/IManualVerification";
 import { IRealmEyeNoUser } from "../Definitions/IRealmEyeNoUser";
 import { IRealmEyeAPI } from "../Definitions/IRealmEyeAPI";
 import { UserAvailabilityHelper } from "./UserAvailabilityHelper";
+import { IBlacklistedUser } from "../Definitions/IBlacklistedUser";
 
 export module VerificationHandler {
 	// TODO make this a set? 
@@ -61,8 +62,8 @@ export module VerificationHandler {
 		calledFrom: "REACT" | "COMMAND"
 	): Promise<void> {
 		// already verified or no role
-		if (!guild.roles.cache.has(section.verifiedRole) 
-			|| member.roles.cache.has(section.verifiedRole) 
+		if (!guild.roles.cache.has(section.verifiedRole)
+			|| member.roles.cache.has(section.verifiedRole)
 			|| IsInVerification.has(member.id)) {
 			return;
 		}
@@ -142,7 +143,7 @@ export module VerificationHandler {
 			if (typeof verificationAttemptsChannel !== "undefined") {
 				verificationAttemptsChannel.send(`🔇 **\`[${section.nameOfSection}]\`** ${member} tried to verify, but his or her DMs were set so no one can message him or her.`).catch(() => { });
 			}
-			
+
 			if (PeopleThatWereMessaged.has(member.id)) {
 				return;
 			}
@@ -157,7 +158,7 @@ export module VerificationHandler {
 		}
 
 		// within the server we will be checking for other major reqs.
-		if (section.isMain) {			
+		if (section.isMain) {
 			IsInVerification.set(member.id, "GENERAL");
 			UserAvailabilityHelper.InMenuCollection.set(member.id, UserAvailabilityHelper.MenuType.VERIFICATION);
 
@@ -407,22 +408,61 @@ export module VerificationHandler {
 				// we know this is the right person.
 				// BLACKLIST CHECK
 				for (const blacklistEntry of guildDb.moderation.blacklistedUsers) {
-					for (const nameEntry of nameHistory.map(x => x.name)) {
+					for (const nameEntry of [nameFromProfile, ...nameHistory.map(x => x.name)]) {
 						if (blacklistEntry.inGameName.toLowerCase() === nameEntry.toLowerCase()) {
 							reactCollector.stop();
 							if (typeof verificationAttemptsChannel !== "undefined") {
-								verificationAttemptsChannel.send(`⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the in-game name, \`${nameEntry}\`${nameEntry.toLowerCase() === inGameName.toLowerCase() ? "" : " (found in Name History)"}, has been blacklisted due to the following reason: ${blacklistEntry.reason}`).catch(() => { });
+								verificationAttemptsChannel.send(`⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the in-game name, \`${nameEntry}\`${nameEntry.toLowerCase() === nameFromProfile.toLowerCase() ? "" : " (found in Name History)"}, has been blacklisted due to the following reason: ${blacklistEntry.reason}`).catch(() => { });
 							}
 							const failedEmbed: MessageEmbed = new MessageEmbed()
 								.setTitle(`Verification For: **${guild.name}**`)
 								.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
-								.setDescription("You have been blacklisted from the server.")
+								.setDescription("You have been blacklisted from the server; as a result, you are not able to verify.")
 								.setColor("RANDOM")
-								.addField("Reason", blacklistEntry.reason)
+								.addField("Blacklist Reason", blacklistEntry.reason)
 								.setFooter("Verification Process: Stopped.");
 							await dmChannel.send(failedEmbed).catch(e => { });
 							return;
 						}
+					}
+				}
+
+				// if they passed, let's see if they have a guild doc
+				// with the bot
+				// we want to make sure they didn't just get a new
+				// realm account and decided to use their old discord account
+				// that was previous associated with a blacklisted name
+				if (userDb !== null) {
+					const namesAssociatedWithDb: string[] = [
+						userDb.rotmgLowercaseName,
+						...userDb.otherAccountNames.map(x => x.lowercase)
+					];
+
+					let prevBlacklistedUser: IBlacklistedUser | undefined;
+					for (const nameBlProfile of guildDb.moderation.blacklistedUsers) {
+						for (const associatedNames of namesAssociatedWithDb) {
+							if (nameBlProfile.inGameName.toLowerCase() === associatedNames.toLowerCase()) {
+								prevBlacklistedUser = nameBlProfile;
+								break;
+							}
+						}
+					}
+
+
+					if (typeof prevBlacklistedUser !== "undefined") {
+						reactCollector.stop();
+						if (typeof verificationAttemptsChannel !== "undefined") {
+							verificationAttemptsChannel.send(`⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`; however, this Discord account has one or more IGNs linked to it that is blacklisted from the server.\n- Blacklisted Name: ${prevBlacklistedUser.inGameName}\n- Reason: ${prevBlacklistedUser.reason}.`).catch(() => { });
+						}
+						const failedEmbed: MessageEmbed = new MessageEmbed()
+							.setTitle(`Verification For: **${guild.name}**`)
+							.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+							.setDescription("Your Discord account has one or more IGNs linked to it that is blacklisted from the server. As a result, you are not able to verify with this server at this time.")
+							.setColor("RANDOM")
+							.addField("Blacklist Reason", prevBlacklistedUser.reason)
+							.setFooter("Verification Process: Stopped.");
+						await dmChannel.send(failedEmbed).catch(e => { });
+						return;
 					}
 				}
 
@@ -1396,7 +1436,7 @@ export module VerificationHandler {
 			await manualVerifMember.send(`**\`[${guild.name}]\`**: After reviewing your profile, we have determined that your profile does not meet the minimum requirements for the **\`${sectionForManualVerif.nameOfSection}\`** section.`).catch(() => { });
 		}
 
-		sendLogAndUpdateDb(loggingMsg, sectionForManualVerif, manualVerifMember.guild,manualVerifMember);
+		sendLogAndUpdateDb(loggingMsg, sectionForManualVerif, manualVerifMember.guild, manualVerifMember);
 	}
 
 	/**

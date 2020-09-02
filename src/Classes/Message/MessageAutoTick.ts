@@ -176,7 +176,7 @@ export class MessageAutoTick {
 	 * Ends the process, stopping the auto-_embed updating.
 	 */
 	public disableAutoTick(): void {
-		clearTimeout(this._interval as NodeJS.Timeout);
+		clearInterval(this._interval as NodeJS.Timeout);
 	}
 
 	/**

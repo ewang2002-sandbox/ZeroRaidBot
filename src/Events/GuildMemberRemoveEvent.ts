@@ -84,7 +84,7 @@ export async function onGuildMemberRemove(
     if (suspendIndex !== -1) {
         clearTimeout(SuspendCommand.currentTimeout[suspendIndex].timeout);
         SuspendCommand.currentTimeout.splice(
-            SuspendCommand.currentTimeout.findIndex(x => x.id === member.id),
+            suspendIndex,
             1
         );
     }

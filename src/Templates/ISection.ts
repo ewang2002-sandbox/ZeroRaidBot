@@ -106,6 +106,11 @@ export interface ISection {
 		dungeons: number[];
 
 		/**
+		 * The games to allow or exclude.
+		 */
+		games: number[];
+
+		/**
 		 * All ongoing manual verification.
 		 */
 		manualVerificationEntries: IManualVerification[];

@@ -18,6 +18,7 @@ import { StringUtil } from "../../Utility/StringUtil";
 import { NumberUtil } from "../../Utility/NumberUtil";
 import { FastReactionMenuManager } from "../../Classes/Reaction/FastReactionMenuManager";
 import { OtherUtil } from "../../Utility/OtherUtil";
+import { AFKGame } from "../../Constants/GameAFK";
 
 type QType = {
 	q: string;
@@ -559,7 +560,8 @@ export class ConfigureSectionCommand extends Command {
 					properties: {
 						dungeons: AFKDungeon.map(x => x.id),
 						manualVerificationEntries: [],
-						showVerificationRequirements: true
+						showVerificationRequirements: true,
+						games: AFKGame.map(x => x.id)
 					}
 				}
 			}

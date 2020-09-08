@@ -23,7 +23,6 @@ import { StringBuilder } from "../Classes/String/StringBuilder";
 import { FilterQuery } from "mongodb";
 import { IRaidUser } from "../Templates/IRaidUser";
 import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuManager";
-import { setNewLocationPrompt } from "../Events/MessageReactionAddEvent";
 
 export module RaidHandler {
 	/**
@@ -614,7 +613,9 @@ export module RaidHandler {
 			},
 			{
 				id: guildDb.roles.support,
-				allow: ["VIEW_CHANNEL", "CONNECT", "MOVE_MEMBERS"]
+				allow: guildDb.roles.talkingRoles.indexOf(guildDb.roles.support) === -1
+					? ["VIEW_CHANNEL", "CONNECT", "MOVE_MEMBERS"]
+					: ["VIEW_CHANNEL", "CONNECT", "MOVE_MEMBERS", "SPEAK"]
 			},
 			{
 				id: sectionRLRoles[0],
@@ -661,6 +662,12 @@ export module RaidHandler {
 
 		for (const role of guildDb.roles.talkingRoles) {
 			if (guild.roles.cache.has(role)) {
+				const index: number = realPermissions.findIndex(x => x.id === role);
+
+				if (index !== -1) {
+					continue;
+				}
+				
 				realPermissions.push({
 					id: role,
 					allow: ["VIEW_CHANNEL", "SPEAK"]
@@ -828,7 +835,7 @@ export module RaidHandler {
 			if (guildDb.properties.removeEarlyLocKeyReacts) {
 				reaction.remove().catch(e => { });
 			}
-			
+
 			if (reaction.emoji.id === null) {
 				return; // this should never hit.
 			}
@@ -1930,7 +1937,7 @@ export module RaidHandler {
 	/**
 	 * Returns the AFK check (and the section). 
 	 */
-	async function getAfkCheckChannel(
+	export async function getAfkCheckChannel(
 		msg: Message,
 		guild: Guild,
 		guildDb: IRaidGuild,
@@ -2047,7 +2054,7 @@ export module RaidHandler {
 	 * @param {GuildChannel} vc The voice channel.  
 	 * @returns {boolean} Whether the VC ends with a number or not. 
 	 */
-	function vcEndsWithNumber(vc: GuildChannel): boolean {
+	export function vcEndsWithNumber(vc: GuildChannel): boolean {
 		return !Number.isNaN(Number.parseInt(vc.name.split(" ")[vc.name.split(" ").length - 1]));
 	}
 

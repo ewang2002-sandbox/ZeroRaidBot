@@ -285,7 +285,6 @@ export module GameHandler {
             msgToDmPeople: postMsg
         };
 
-
         
     }
 

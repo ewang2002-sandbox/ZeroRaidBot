@@ -80,93 +80,20 @@ export module GameDbHelper {
 	}
 
 	/**
-	 * Edits the specified raiding category's location with the provided location.
+	 * Edits the specified game's message with the provided message.
 	 * @param {Guild} guild The target guild. 
 	 * @param {string} vcID The ID of the voice channel associated with the raid that has progressed to RAID status.
-	 * @param {string} location The new location. 
+	 * @param {string} msgToDmPeople The new message. 
 	 * @returns {Promise<IRaidGuild>} The new document.
 	 */
-	export async function editLocation(
+	export async function editMessage(
 		guild: Guild,
 		vcID: string,
 		location: string
 	): Promise<IRaidGuild> {
-		const data: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "activeRaidsAndHeadcounts.raidChannels.vcID": vcID }, {
+		const data: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "activeRaidsAndHeadcounts.gameChannels.vcId": vcID }, {
 			$set: {
-				"activeRaidsAndHeadcounts.raidChannels.$.location": location
-			}
-		}, { returnOriginal: false });
-		return data.value as IRaidGuild;
-	}
-
-	/**
-	 * Increments -- or decrements -- the dungeons that have been completed in the raid by a certain amount.
-	 * @param {Guild} guild The target guild. 
-	 * @param {string} vcID The ID of the voice channel associated with the raid that has progressed to RAID status.
-	 * @param {number} incrementBy The amount to increment by. 
-	 * @returns {Promise<number>} The current amount of dungeons that have been completed.
-	 */
-	export async function incrementDungeonsDone(
-		guild: Guild,
-		vcID: string,
-		incrementBy: number
-	): Promise<number> {
-		const data: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "activeRaidsAndHeadcounts.raidChannels.vcID": vcID }, {
-			$inc: {
-				"activeRaidsAndHeadcounts.raidChannels.$.dungeonsDone": incrementBy
-			}
-		}, { returnOriginal: false });
-
-		if (typeof data.value === "undefined") {
-			return -1;
-		}
-
-		const indexOfRaid: number = data.value.activeRaidsAndHeadcounts.raidChannels
-			.findIndex(x => x.vcID === vcID);
-		
-		if (indexOfRaid === -1) {
-			return -1;
-		}
-
-
-		return data.value.activeRaidsAndHeadcounts.raidChannels[indexOfRaid].dungeonsDone;
-	}
-
-	/**
-	 * Edits the specified raiding category's location with the provided location.
-	 * @param {Guild} guild The target guild. 
-	 * @param {string} vcID The ID of the voice channel associated with the raid that has progressed to RAID status.
-	 * @param {string} top The top string to update.
-	 * @returns {Promise<IRaidGuild>} The new document.
-	 */
-	export async function updateTopString(
-		guild: Guild,
-		vcID: string,
-		top: string
-	): Promise<IRaidGuild> {
-		const data: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "activeRaidsAndHeadcounts.raidChannels.vcID": vcID }, {
-			$set: {
-				"activeRaidsAndHeadcounts.raidChannels.$.controlPanelDesc.top": top
-			}
-		}, { returnOriginal: false });
-		return data.value as IRaidGuild;
-	}
-
-	/**
-	 * Edits the specified raiding category's location with the provided location.
-	 * @param {Guild} guild The target guild. 
-	 * @param {string} vcID The ID of the voice channel associated with the raid that has progressed to RAID status.
-	 * @param {string} bottom The bottom string to update.
-	 * @returns {Promise<IRaidGuild>} The new document.
-	 */
-	export async function updateBottomString(
-		guild: Guild,
-		vcID: string,
-		bottom: string
-	): Promise<IRaidGuild> {
-		const data: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id, "activeRaidsAndHeadcounts.raidChannels.vcID": vcID }, {
-			$set: {
-				"activeRaidsAndHeadcounts.raidChannels.$.controlPanelDesc.bottom": bottom
+				"activeRaidsAndHeadcounts.gameChannels.$.msgToDmPeople": location
 			}
 		}, { returnOriginal: false });
 		return data.value as IRaidGuild;

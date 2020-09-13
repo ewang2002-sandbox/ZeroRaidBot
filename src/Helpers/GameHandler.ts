@@ -1,10 +1,9 @@
-import { Message, Guild, GuildMember, TextChannel, CategoryChannel, MessageEmbed, OverwriteResolvable, ChannelCreationOverwrites, VoiceChannel, Emoji, EmojiResolvable, ColorResolvable } from "discord.js";
+import { Message, Guild, GuildMember, TextChannel, CategoryChannel, MessageEmbed, OverwriteResolvable, ChannelCreationOverwrites, VoiceChannel, Emoji, EmojiResolvable, ColorResolvable, Collection, ReactionCollector, ClientUser, MessageReaction, Role, User } from "discord.js";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { ISection } from "../Templates/ISection";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { RaidHandler } from "./RaidHandler";
 import { MessageUtil } from "../Utility/MessageUtil";
-import { IDungeonData } from "../Definitions/IDungeonData";
 import { AFKDungeon } from "../Constants/AFKDungeon";
 import { Zero } from "../Zero";
 import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollector";
@@ -13,14 +12,33 @@ import { IGameData } from "../Definitions/IGameData";
 import { AFKGame } from "../Constants/GameAFK";
 import { NumberUtil } from "../Utility/NumberUtil";
 import { ArrayUtil } from "../Utility/ArrayUtil";
-import { RaidDbHelper } from "./RaidDbHelper";
 import { MessageSimpleTick } from "../Classes/Message/MessageSimpleTick";
 import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuManager";
 import { IGameInfo } from "../Definitions/IGameInfo";
 import { RaidStatus } from "../Definitions/RaidStatus";
+import { GameDbHelper } from "./GameDbHelper";
+import { IRaidInfo } from "../Definitions/IRaidInfo";
 
 export module GameHandler {
+    /**
+     * THe maximum time left.
+     */
     const MAX_TIME_LEFT: number = 10 * 60 * 1000;
+
+    /**
+	 * An interface defining each pending AFK check. Each AFK check has its own ReactionCollector (for )
+	 */
+	export interface IStoredRaidData {
+		mst: MessageSimpleTick;
+		timeout: NodeJS.Timeout;
+		keyReacts: Collection<string, GuildMember[]>; // string = key emoji, GuildMember[] = members that have said key
+		earlyReacts: GuildMember[];
+    }
+    
+    /**
+	 * Consists of all currently running AFK checks. This stores only the voice channel ID, the MessageSimpleTick, and the ReactionCollector associated with the pending AFK check, and should be cleared after the AFK check is over. 
+	 */
+	export const CURRENT_RAID_DATA: Collection<string, IStoredRaidData> = new Collection<string, IStoredRaidData>();
 
     export async function startGameAfkCheck(
         msg: Message,
@@ -171,13 +189,11 @@ export module GameHandler {
             },
             {
                 id: SECTION.verifiedRole,
-                allow: ["VIEW_CHANNEL"]
+                allow: ["VIEW_CHANNEL", "STREAM"]
             },
             {
                 id: guildDb.roles.support,
-                allow: guildDb.roles.talkingRoles.indexOf(guildDb.roles.support) === -1
-                    ? ["VIEW_CHANNEL", "CONNECT", "MOVE_MEMBERS"]
-                    : ["VIEW_CHANNEL", "CONNECT", "MOVE_MEMBERS"]
+                allow: ["VIEW_CHANNEL", "CONNECT", "MOVE_MEMBERS", "STREAM"]
             },
             {
                 id: sectionRLRoles[0],
@@ -210,6 +226,10 @@ export module GameHandler {
             {
                 id: guildDb.roles.moderator,
                 allow: ["VIEW_CHANNEL", "CONNECT", "MUTE_MEMBERS", "MOVE_MEMBERS", "DEAFEN_MEMBERS", "STREAM"]
+            },
+            {
+                id: guildDb.roles.teamRole,
+                allow: ["VIEW_CHANNEL", "CONNECT", "STREAM", "MOVE_MEMBERS"]
             }
         ];
 
@@ -235,7 +255,7 @@ export module GameHandler {
         const afkCheckEmbed: MessageEmbed = new MessageEmbed()
             // TODO check if mobile can see the emoji.
             .setAuthor(`${member.displayName} has initiated a ${SELECTED_GAME.gameName} AFK Check.`, SELECTED_GAME.gameLogoLink)
-            .setDescription(`⇒ **Join** the **${NEW_GAME_VC.name}** voice channel to participate.\n⇒ **React** to the ${msg.client.emojis.cache.get(SELECTED_GAME.mainReactionId)} emoji to show that you are joining in on this raid.`)
+            .setDescription(`⇒ **Join** the **${NEW_GAME_VC.name}** voice channel to participate.`)
             .setColor(ArrayUtil.getRandomElement(SELECTED_GAME.colors))
             .setThumbnail(ArrayUtil.getRandomElement(SELECTED_GAME.gameImageLink))
             .setFooter(`${guild.name}: Game AFK Check`);
@@ -254,11 +274,14 @@ export module GameHandler {
         const mst: MessageSimpleTick = new MessageSimpleTick(afkCheckMessage, `@here, a new ${SELECTED_GAME.gameName} AFK check is currently ongoing. There are {m} minutes and {s} seconds remaining on this AFK check.`, MAX_TIME_LEFT);
         
         afkCheckMessage.pin().catch(() => { });
-		let emojisToReactTo: EmojiResolvable[] = [SELECTED_GAME.mainReactionId];
+		let emojisToReactTo: EmojiResolvable[] = [];
         emojisToReactTo.push(...SELECTED_GAME.specialReactions.map(x => x[0]));
-        FastReactionMenuManager.reactFaster(afkCheckMessage, emojisToReactTo);
 
-        const controlPanelDescription: string = `⇒ Raid Section: ${SECTION.nameOfSection}\n⇒ Initiator: ${member} (${member.displayName})\n⇒ Dungeon: ${SELECTED_GAME.gameName} ${Zero.RaidClient.emojis.cache.get(SELECTED_GAME.mainReactionId)}\n⇒ Voice Channel: ${vcName}\n⇒ Location: Please react below.`;
+        if (emojisToReactTo.length !== 0) {
+            FastReactionMenuManager.reactFaster(afkCheckMessage, emojisToReactTo);
+        }
+
+        const controlPanelDescription: string = `⇒ Raid Section: ${SECTION.nameOfSection}\n⇒ Initiator: ${member} (${member.displayName})\n⇒ Dungeon: ${SELECTED_GAME.gameName} ${Zero.RaidClient.emojis.cache.get(SELECTED_GAME.mainReactionId)}\n⇒ Voice Channel: ${vcName}\n⇒ Message: Please react below.`;
 		const controlPanelEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(`Control Panel: ${vcName}`, SELECTED_GAME.gameLogoLink)
 			.setTitle(`**${SELECTED_GAME.gameName}**`)
@@ -282,10 +305,19 @@ export module GameHandler {
             startedBy: msg.author.id,
             status: RaidStatus.AFKCheck,
             peopleWithSpecialReactions: [],
-            msgToDmPeople: postMsg
+            msgToDmPeople: postMsg,
+            controlPanelMsgId: controlPanelMsg.id
         };
 
-        
+        guildDb = await GameDbHelper.addGameChannel(guild, gi);
+
+        CURRENT_RAID_DATA.set(NEW_GAME_VC.id, {
+			mst: mst,
+			keyReacts: new Collection<string, GuildMember[]>(),
+            earlyReacts: [],
+            // TODO
+			timeout: new NodeJS.Timeout()
+		});
     }
 
 
@@ -304,5 +336,4 @@ export module GameHandler {
         }
         return dungeonData;
     }
-
 }

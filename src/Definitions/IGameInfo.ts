@@ -11,5 +11,6 @@ export interface IGameInfo {
     peopleWithSpecialReactions: { keyId: string; userId: string; }[];
     msgToDmPeople: string; 
     msgId: string;
+    controlPanelMsgId: string; 
     vcId: string; 
 }

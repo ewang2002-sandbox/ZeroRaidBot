@@ -1011,10 +1011,6 @@ export module RaidHandler {
 	 * Whether a person has reacted with the key or not.
 	 * @param col The key collection
 	 * @param keyId The key ID. 
- 	 * @param keyId The key ID. 
-	 * @param keyId The key ID. 
-     * @param keyId The key ID. 
-	 * @param keyId The key ID. 
 	 * @param userId The person that reacted.
 	 */
 	function hasUserReactedWithSpecificKey(col: Collection<string, GuildMember[]>, keyId: string, userId: string): boolean {

@@ -21,7 +21,7 @@ import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuMan
 import { Zero } from "../Zero";
 import { ReactionLoggingHandler } from "../Helpers/ReactionLoggingHandler";
 import { OtherUtil } from "../Utility/OtherUtil";
-import { IModmailThread } from "../Definitions/IModMail";
+import { IModmailThread } from "../Definitions/gi";
 import { BotConfiguration } from "../Configuration/Config";
 
 export async function onMessageReactionAdd(

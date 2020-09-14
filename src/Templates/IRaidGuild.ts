@@ -1,6 +1,6 @@
 import { IRaidInfo } from "../Definitions/IRaidInfo";
 import { IBlacklistedUser, ISubBlacklistedUser } from "../Definitions/IBlacklistedUser";
-import { IModmailThread } from "../Definitions/IModMail";
+import { IModmailThread } from "../Definitions/gi";
 import { ISection } from "./ISection";
 import { IVerification } from "../Definitions/IVerification";
 import { IHeadCountInfo } from "../Definitions/IHeadCountInfo";

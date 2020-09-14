@@ -13,4 +13,5 @@ export interface IGameInfo {
     msgId: string;
     controlPanelMsgId: string; 
     vcId: string; 
+    vcNum: number;
 }

@@ -23,6 +23,8 @@ import { ReactionLoggingHandler } from "../Helpers/ReactionLoggingHandler";
 import { OtherUtil } from "../Utility/OtherUtil";
 import { IModmailThread } from "../Definitions/gi";
 import { BotConfiguration } from "../Configuration/Config";
+import { IGameInfo } from "../Definitions/IGameInfo";
+import { GameHandler } from "../Helpers/GameHandler";
 
 export async function onMessageReactionAdd(
 	reaction: MessageReaction,
@@ -67,8 +69,8 @@ export async function onMessageReactionAdd(
 	const guild: Guild = reaction.message.guild;
 
 	/**
-     * the member that reacted
-     */
+	 * the member that reacted
+	 */
 	let member: GuildMember;
 	try {
 		member = await guild.members.fetch(user.id);
@@ -399,7 +401,6 @@ export async function onMessageReactionAdd(
 			}
 		}
 	}
-
 	//#endregion
 
 	//#region control panel
@@ -417,12 +418,24 @@ export async function onMessageReactionAdd(
 		guildDb.roles.headRaidLeader
 	];
 
+	const allStaffRoles: RoleResolvable[] = [
+		guildDb.roles.headRaidLeader,
+		guildDb.roles.moderator,
+		guildDb.roles.officer,
+		guildDb.roles.support,
+		guildDb.roles.teamRole,
+		guildDb.roles.universalAlmostRaidLeader,
+		guildDb.roles.universalRaidLeader,
+		guildDb.roles.verifier
+	];
+
 	if (typeof sectionFromControlPanel !== "undefined"  // from control panel
 		&& reaction.message.embeds.length > 0 // has embed
 		&& reaction.message.embeds[0].footer !== null // embed footer isnt null
 		&& typeof reaction.message.embeds[0].footer.text !== "undefined" // embed footer text exists
 		&& reaction.message.embeds[0].footer.text.startsWith("Control Panel • ")) { // embed footer has control panel
 		leaderRoles.push(...GuildUtil.getSectionRaidLeaderRoles(sectionFromControlPanel));
+		allStaffRoles.push(...GuildUtil.getSectionRaidLeaderRoles(sectionFromControlPanel));
 
 		// let's check headcounts first
 		if (reaction.message.embeds[0].footer.text === "Control Panel • Headcount Ended"
@@ -452,83 +465,110 @@ export async function onMessageReactionAdd(
 		const raidFromReaction: IRaidInfo | undefined = guildDb.activeRaidsAndHeadcounts.raidChannels
 			.find(x => x.controlPanelMsgId === reaction.message.id);
 
-		if (typeof raidFromReaction === "undefined") {
+		const gameFromReaction: IGameInfo | undefined = guildDb.activeRaidsAndHeadcounts.gameChannels
+			.find(x => x.controlPanelMsgId === reaction.message.id);
+
+		if (member.voice.channel === null) {
 			return;
 		}
 
-		// has to be in same vc
-		if (member.voice.channel !== null && member.voice.channel.id === raidFromReaction.vcID) {
-			// afk check
-			if (reaction.message.embeds[0].footer.text.includes("Control Panel • AFK Check")
-				&& raidFromReaction.status === RaidStatus.AFKCheck) {
-				if (member.roles.cache.some(x => leaderRoles.includes(x.id))
-					|| member.hasPermission("ADMINISTRATOR")) {
-					// end afk
-					if (reaction.emoji.name === "⏹️") {
-						RaidHandler.endAfkCheck(guildDb, guild, raidFromReaction, member.voice.channel, member);
-					}
-					// abort afk
-					else if (reaction.emoji.name === "🗑️") {
-						RaidHandler.abortAfk(guild, raidFromReaction, member.voice.channel);
-					}
-					// set loc
-					else if (reaction.emoji.name === "✏️") {
-						await setNewLocationPrompt(guild, guildDb, raidFromReaction, member);
-					}
-				}
-
-				if (member.roles.cache.has(guildDb.roles.teamRole) || member.hasPermission("ADMINISTRATOR")) {
-					// get loc
-					if (reaction.emoji.name === "🗺️") {
-						const locEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(guild)
-							.setTitle("Early Location")
-							.setDescription(`The location of the raid (information below) is: ${StringUtil.applyCodeBlocks(raidFromReaction.location)}`)
-							.addField("Location Rules", "- Do not give this location out to anyone else.\n- Pay attention to any directions your raid leader may have.")
-							.addField("Raid Information", `Guild: ${guild.name}\nRaid Section: ${raidFromReaction.section.nameOfSection}\nRaid VC: ${member.voice.channel.name}\nDungeon: ${raidFromReaction.dungeonInfo.dungeonName}`);
-						await user.send(locEmbed).catch(() => { });
+		if (typeof gameFromReaction !== "undefined") {
+			if (member.voice.channel.id === gameFromReaction.vcId) {
+				if (reaction.message.embeds[0].footer.text.includes("Control Panel • Game AFK Check")
+					&& gameFromReaction.status === RaidStatus.AFKCheck) {
+					if (member.roles.cache.some(x => allStaffRoles.includes(x.id))
+						|| member.hasPermission("ADMINISTRATOR")) {
+						// end afk
+						if (reaction.emoji.name === "⏹️") {
+							GameHandler.endAfkCheck(guildDb, guild, gameFromReaction, member.voice.channel, member);
+						}
+						// abort afk
+						else if (reaction.emoji.name === "🗑️") {
+							GameHandler.abortAfk(guild, gameFromReaction, member.voice.channel);
+						}
+						// set message
+						else if (reaction.emoji.name === "✏️") {
+							await setNewLocationPrompt(guild, guildDb, gameFromReaction, member);
+						}
 					}
 				}
 			}
-			// in raid
-			else if (reaction.message.embeds[0].footer.text.includes("Control Panel • In Raid")
-				&& raidFromReaction.status === RaidStatus.InRun) {
-				if (member.roles.cache.some(x => leaderRoles.includes(x.id))
-					|| member.hasPermission("ADMINISTRATOR")) {
-					// end run
-					if (reaction.emoji.name === "⏹️") {
-						RaidHandler.endRun(member, guild, raidFromReaction);
+		}
+		else if (typeof raidFromReaction !== "undefined") {
+			// has to be in same vc
+			if (member.voice.channel.id === raidFromReaction.vcID) {
+				// afk check
+				if (reaction.message.embeds[0].footer.text.includes("Control Panel • AFK Check")
+					&& raidFromReaction.status === RaidStatus.AFKCheck) {
+					if (member.roles.cache.some(x => leaderRoles.includes(x.id))
+						|| member.hasPermission("ADMINISTRATOR")) {
+						// end afk
+						if (reaction.emoji.name === "⏹️") {
+							RaidHandler.endAfkCheck(guildDb, guild, raidFromReaction, member.voice.channel, member);
+						}
+						// abort afk
+						else if (reaction.emoji.name === "🗑️") {
+							RaidHandler.abortAfk(guild, raidFromReaction, member.voice.channel);
+						}
+						// set loc
+						else if (reaction.emoji.name === "✏️") {
+							await setNewLocationPrompt(guild, guildDb, raidFromReaction, member);
+						}
 					}
-					// set loc
-					else if (reaction.emoji.name === "✏️") {
-						await setNewLocationPrompt(guild, guildDb, raidFromReaction, member);
-					}
-					// lock vc
-					else if (reaction.emoji.name === "🔒") {
-						await member.voice.channel.updateOverwrite(guild.roles.everyone, {
-							CONNECT: false
-						});
-					}
-					// unlock vc
-					else if (reaction.emoji.name === "🔓") {
-						await member.voice.channel.updateOverwrite(guild.roles.everyone, {
-							CONNECT: null
-						});
-					}
-				}
 
-				if (member.roles.cache.has(guildDb.roles.teamRole) || member.hasPermission("ADMINISTRATOR")) {
-					// get loc
-					if (reaction.emoji.name === "🗺️") {
-						const locEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(guild)
-							.setTitle("Early Location")
-							.setDescription(`The location of the raid (information below) is: ${StringUtil.applyCodeBlocks(raidFromReaction.location)}`)
-							.addField("Location Rules", "- Do not give this location out to anyone else.\n- Pay attention to any directions your raid leader may have.")
-							.addField("Raid Information", `Guild: ${guild.name}\nRaid Section: ${raidFromReaction.section.nameOfSection}\nRaid VC: ${member.voice.channel.name}\nDungeon: ${raidFromReaction.dungeonInfo.dungeonName}`);
-						await user.send(locEmbed).catch(() => { });
+					if (member.roles.cache.has(guildDb.roles.teamRole) || member.hasPermission("ADMINISTRATOR")) {
+						// get loc
+						if (reaction.emoji.name === "🗺️") {
+							const locEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(guild)
+								.setTitle("Early Location")
+								.setDescription(`The location of the raid (information below) is: ${StringUtil.applyCodeBlocks(raidFromReaction.location)}`)
+								.addField("Location Rules", "- Do not give this location out to anyone else.\n- Pay attention to any directions your raid leader may have.")
+								.addField("Raid Information", `Guild: ${guild.name}\nRaid Section: ${raidFromReaction.section.nameOfSection}\nRaid VC: ${member.voice.channel.name}\nDungeon: ${raidFromReaction.dungeonInfo.dungeonName}`);
+							await user.send(locEmbed).catch(() => { });
+						}
 					}
 				}
-			}
-		} // end major if
+				// in raid
+				else if (reaction.message.embeds[0].footer.text.includes("Control Panel • In Raid")
+					&& raidFromReaction.status === RaidStatus.InRun) {
+					if (member.roles.cache.some(x => leaderRoles.includes(x.id))
+						|| member.hasPermission("ADMINISTRATOR")) {
+						// end run
+						if (reaction.emoji.name === "⏹️") {
+							RaidHandler.endRun(member, guild, raidFromReaction);
+						}
+						// set loc
+						else if (reaction.emoji.name === "✏️") {
+							await setNewLocationPrompt(guild, guildDb, raidFromReaction, member);
+						}
+						// lock vc
+						else if (reaction.emoji.name === "🔒") {
+							await member.voice.channel.updateOverwrite(guild.roles.everyone, {
+								CONNECT: false
+							});
+						}
+						// unlock vc
+						else if (reaction.emoji.name === "🔓") {
+							await member.voice.channel.updateOverwrite(guild.roles.everyone, {
+								CONNECT: null
+							});
+						}
+					}
+
+					if (member.roles.cache.has(guildDb.roles.teamRole) || member.hasPermission("ADMINISTRATOR")) {
+						// get loc
+						if (reaction.emoji.name === "🗺️") {
+							const locEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(guild)
+								.setTitle("Early Location")
+								.setDescription(`The location of the raid (information below) is: ${StringUtil.applyCodeBlocks(raidFromReaction.location)}`)
+								.addField("Location Rules", "- Do not give this location out to anyone else.\n- Pay attention to any directions your raid leader may have.")
+								.addField("Raid Information", `Guild: ${guild.name}\nRaid Section: ${raidFromReaction.section.nameOfSection}\nRaid VC: ${member.voice.channel.name}\nDungeon: ${raidFromReaction.dungeonInfo.dungeonName}`);
+							await user.send(locEmbed).catch(() => { });
+						}
+					}
+				}
+			} // end major if
+		}
 	}
 
 	//#endregion

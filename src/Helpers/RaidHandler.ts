@@ -1478,7 +1478,7 @@ export module RaidHandler {
 	/**
 	 * Move people out of the raid VC (if possible) and deletes the raiding voice channel. 
 	 */
-	async function movePeopleOutAndDeleteRaidVc(guild: Guild, raidVC: VoiceChannel) {
+	export async function movePeopleOutAndDeleteRaidVc(guild: Guild, raidVC: VoiceChannel) {
 		const loungeVC: VoiceChannel | undefined = guild.channels.cache
 			.filter(x => x.type === "voice")
 			.filter(x => x.parentID === raidVC.parentID)

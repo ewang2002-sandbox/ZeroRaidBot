@@ -421,7 +421,44 @@ export module GameHandler {
 			.setColor(ArrayUtil.getRandomElement<ColorResolvable>(gi.gameInfo.colors))
 			.setTimestamp()
 			.setFooter(`Control Panel • In Game • ${gi.gameInfo.gameName} ${gi.vcNum}`);
-		await cpMsg.edit("**NOTICE:** Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the raid; this control panel message can only be used to control the corresponding raid.\n**NOTICE:** When you are done with the raid, you MUST end the run.", startRunControlPanelEmbed).catch(() => { });
+		await cpMsg.edit("**NOTICE:** Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding this gaming session; this control panel message can only be used to control the corresponding gaming session.\n**NOTICE:** When you are done with the gaming session, you MUST end the session.", startRunControlPanelEmbed).catch(() => { });
 		FastReactionMenuManager.reactFaster(cpMsg, ["⏹️", "✏️", "🗺️", "🔒", "🔓"]);
 	} // end function
+
+	/**Ends the gaming session. */
+	export async function endGamingSession(
+		memberThatEnded: GuildMember,
+		guild: Guild,
+		gi: IGameInfo
+	): Promise<void> {
+		const afkCheckChannel: TextChannel = guild.channels.cache.get(gi.section.channels.afkCheckChannel) as TextChannel;
+		let raidMsg: Message = await afkCheckChannel.messages.fetch(gi.msgId);
+		const controlPanelChannel: TextChannel = guild.channels.cache.get(gi.section.channels.controlPanelChannel) as TextChannel;
+		let cpMsg: Message = await controlPanelChannel.messages.fetch(gi.controlPanelMsgId);
+		const raidVC: VoiceChannel | undefined = guild.channels.cache.get(gi.vcId) as VoiceChannel;
+
+		const membersLeft: Collection<string, GuildMember> = typeof raidVC === "undefined"
+			? new Collection<string, GuildMember>()
+			: raidVC.members;
+
+		// if we're in post afk 
+		if (typeof raidMsg.embeds[0].description !== "undefined" && raidMsg.embeds[0].description.includes("Join any available voice channel and then")) {
+			return;
+		}
+
+		await GameDbHelper.removeGameChannelFromDatabase(guild, gi.vcId);
+
+		const endedRun: MessageEmbed = new MessageEmbed()
+			.setAuthor(`${memberThatEnded.displayName} has ended the ${gi.gameInfo.gameName} gaming session.`, gi.gameInfo.gameLogoLink)
+			.setDescription(`The ${gi.gameInfo.gameName} session is now finished. Thanks for coming!`)
+			.setColor(ArrayUtil.getRandomElement<ColorResolvable>(gi.gameInfo.colors))
+			.setFooter(guild.name);
+		await raidMsg.edit("The gaming session is now over. Thanks to everyone for attending!", endedRun);
+		await raidMsg.unpin().catch(() => { });
+		await cpMsg.delete().catch(() => { });
+
+		if (raidVC !== null) {
+			await RaidHandler.movePeopleOutAndDeleteRaidVc(guild, raidVC);
+		}
+	}
 }

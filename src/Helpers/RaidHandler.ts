@@ -43,7 +43,7 @@ export module RaidHandler {
 	/**
 	 * An interface defining each pending AFK check. Each AFK check has its own ReactionCollector (for )
 	 */
-	interface IStoredRaidData {
+	export interface IStoredRaidData {
 		reactCollector: ReactionCollector;
 		mst: MessageSimpleTick;
 		timeout: NodeJS.Timeout;
@@ -224,10 +224,10 @@ export module RaidHandler {
 
 	//#endregion
 
-    /**
-     * Starts an AFK check. This function should be called only from the `StartAfkCheckCommand` file.
-     * Precondition: The command must be run in a server.
-     */
+	/**
+	 * Starts an AFK check. This function should be called only from the `StartAfkCheckCommand` file.
+	 * Precondition: The command must be run in a server.
+	 */
 	export async function startAfkCheck(
 		msg: Message,
 		guildDb: IRaidGuild,
@@ -667,7 +667,7 @@ export module RaidHandler {
 				if (index !== -1) {
 					continue;
 				}
-				
+
 				realPermissions.push({
 					id: role,
 					allow: ["VIEW_CHANNEL", "SPEAK"]
@@ -1435,9 +1435,19 @@ export module RaidHandler {
 		vcDeleted: boolean = false
 	): Promise<void> {
 		const afkCheckChannel: TextChannel = guild.channels.cache.get(rs.section.channels.afkCheckChannel) as TextChannel;
-		let raidMsg: Message = await afkCheckChannel.messages.fetch(rs.msgID);
 		const controlPanelChannel: TextChannel = guild.channels.cache.get(rs.section.channels.controlPanelChannel) as TextChannel;
-		let cpMsg: Message = await controlPanelChannel.messages.fetch(rs.controlPanelMsgId);
+		let raidMsg: Message | null = null;
+		try {
+			raidMsg = await afkCheckChannel.messages.fetch(rs.msgID);
+		}
+		catch (e) { }
+
+		let cpMsg: Message | null = null;
+		try {
+			cpMsg = await controlPanelChannel.messages.fetch(rs.controlPanelMsgId);
+		}
+		catch (e) { }
+
 		const raidVC: VoiceChannel | null = vcDeleted
 			? null
 			: guild.channels.cache.get(rs.vcID) as VoiceChannel;
@@ -1446,7 +1456,9 @@ export module RaidHandler {
 			: raidVC.members;
 
 		// if we're in post afk 
-		if (typeof raidMsg.embeds[0].description !== "undefined" && raidMsg.embeds[0].description.includes("Join any available voice channel and then")) {
+		if (raidMsg !== null &&
+			typeof raidMsg.embeds[0].description !== "undefined"
+			&& raidMsg.embeds[0].description.includes("Join any available voice channel and then")) {
 			return;
 		}
 
@@ -1458,9 +1470,15 @@ export module RaidHandler {
 			.setThumbnail("https://static.drips.pw/rotmg/wiki/Enemies/Event%20Chest.png")
 			.setColor(ArrayUtil.getRandomElement<ColorResolvable>(rs.dungeonInfo.colors))
 			.setFooter(guild.name);
-		await raidMsg.edit("The raid is now over. Thanks to everyone for attending!", endedRun);
-		await raidMsg.unpin().catch(() => { });
-		await cpMsg.delete().catch(() => { });
+		if (raidMsg !== null) {
+			await raidMsg.edit("The raid is now over. Thanks to everyone for attending!", endedRun);
+			await raidMsg.unpin().catch(() => { });
+		}
+		
+		if (cpMsg != null) {
+			await cpMsg.delete().catch(() => { });
+		}
+		
 		if (!vcDeleted && membersLeft.size > 0) {
 			await logCompletedRunsForRaiders(guild, membersLeft, rs, 1);
 		}

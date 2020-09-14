@@ -461,4 +461,38 @@ export module GameHandler {
 			await RaidHandler.movePeopleOutAndDeleteRaidVc(guild, raidVC);
 		}
 	}
+
+	export async function abortAfk(
+		guild: Guild,
+		gi: IGameInfo,
+		raidVC: VoiceChannel,
+		vcDeleted: boolean = false
+	): Promise<void> {
+		const afkCheckChannel: TextChannel = guild.channels.cache.get(gi.section.channels.afkCheckChannel) as TextChannel;
+		let raidMsg: Message = await afkCheckChannel.messages.fetch(gi.msgId);
+		const controlPanelChannel: TextChannel = guild.channels.cache.get(gi.section.channels.controlPanelChannel) as TextChannel;
+		let cpMsg: Message = await controlPanelChannel.messages.fetch(gi.controlPanelMsgId);
+
+		// and remove entry from array with react collector & 
+		// mst info
+		const curRaidDataArrElem: IStoredRaidData | void = RaidHandler.CURRENT_RAID_DATA.get(gi.vcId);
+		if (typeof curRaidDataArrElem !== "undefined") {
+			curRaidDataArrElem.mst.disableAutoTick();
+			clearInterval(curRaidDataArrElem.timeout);
+		}
+		
+		await GameDbHelper.removeGameChannelFromDatabase(guild, raidVC.id);
+
+		const abortAfk: MessageEmbed = new MessageEmbed()
+			.setAuthor(`The ${gi.gameInfo.gameName} AFK Check has been aborted.`, gi.gameInfo.gameLogoLink)
+			.setDescription("This is usually due to a lack of players.")
+			.setColor(ArrayUtil.getRandomElement(gi.gameInfo.colors))
+			.setFooter(guild.name);
+		await raidMsg.edit("Unfortunately, the AFK check has been aborted.", abortAfk);
+		await raidMsg.unpin().catch(() => { });
+		await cpMsg.delete().catch(console.error);
+		if (!vcDeleted) {
+			await RaidHandler.movePeopleOutAndDeleteRaidVc(guild, raidVC);
+		}
+	}
 }

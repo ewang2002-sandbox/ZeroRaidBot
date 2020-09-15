@@ -479,10 +479,8 @@ export async function onMessageReactionAdd(
 					&& gameFromReaction.status === RaidStatus.AFKCheck) {
 					if (member.roles.cache.some(x => allStaffRoles.includes(x.id))
 						|| member.hasPermission("ADMINISTRATOR")) {
-						console.log(reaction.emoji);
 						// end afk
 						if (reaction.emoji.name === "⏹️") {
-							console.log("Stop!");
 							GameHandler.endAfkCheck(guildDb, guild, gameFromReaction, member.voice.channel, member);
 						}
 						// abort afk

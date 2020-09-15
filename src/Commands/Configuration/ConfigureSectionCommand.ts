@@ -19,6 +19,7 @@ import { NumberUtil } from "../../Utility/NumberUtil";
 import { FastReactionMenuManager } from "../../Classes/Reaction/FastReactionMenuManager";
 import { OtherUtil } from "../../Utility/OtherUtil";
 import { AFKGame } from "../../Constants/GameAFK";
+import { IGameData } from "../../Definitions/IGameData";
 
 type QType = {
 	q: string;
@@ -38,6 +39,11 @@ type DungeonSelectionType = {
 	data: IDungeonData;
 	isIncluded: boolean;
 };
+
+type GameSelectionType = {
+	data: IGameData;
+	isIncluded: boolean;
+}
 
 export class ConfigureSectionCommand extends Command {
 	private static MAX_SECTIONS: number = 8;
@@ -620,8 +626,9 @@ export class ConfigureSectionCommand extends Command {
 		// you can't start raids unless you have an afk check channel
 		if (typeof afkCheckChannel !== "undefined"
 			&& typeof controlPanelChannel !== "undefined") {
-			embed.addField("Configure Section Dungeon", "React with 🏃 to configure the dungeons that a raid leader can or cannot start an AFK check for.");
-			emojisToReact.push("🏃");
+			embed.addField("Configure Section Dungeon", "React with 🏃 to configure the dungeons that a raid leader can or cannot start an AFK check for.")
+				.addField("Configure Games", "React with 🎮 to configure the games that a staff member can or cannot start an AFK check for.");
+			emojisToReact.push("🏃", "🎮");
 		}
 
 		if (!section.isMain) {
@@ -680,6 +687,12 @@ export class ConfigureSectionCommand extends Command {
 		else if (r.name === "🏃") {
 			await this.resetBotEmbed(m).catch(() => { });
 			guildData = await this.configDungeonCommand(msg, section, guildData);
+			this.modifyMainMenu(msg, guildData, section, m);
+			return;
+		}
+		else if (r.name === "🎮") {
+			await this.resetBotEmbed(m).catch(() => { });
+			guildData = await this.configGameCommand(msg, section, guildData);
 			this.modifyMainMenu(msg, guildData, section, m);
 			return;
 		}
@@ -2065,6 +2078,96 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 	}
 
 	/**
+	 * Configures the games that can be run in a section.
+	 * @param {Message} msg The message object. 
+	 * @param {ISection} section The section. 
+	 * @param {IRaidGuild} guildDb The guild db. 
+	 */
+	private async configGameCommand(
+		msg: Message,
+		section: ISection,
+		guildDb: IRaidGuild
+	): Promise<IRaidGuild> {
+		const guild: Guild = msg.guild as Guild;
+		return new Promise(async (resolve) => {
+			const d: GameSelectionType[] = [];
+			for (const dData of AFKGame) {
+				d.push({ data: dData, isIncluded: section.properties.dungeons.includes(dData.id) });
+			}
+
+			const editorMessage: Message | void = await msg.channel.send(this.getAllowedGameEditorEmbed(msg, d, section))
+				.catch(() => { });
+			if (typeof editorMessage === "undefined") {
+				return guildDb;
+			}
+
+			const collector: MessageCollector = new MessageCollector(msg.channel as TextChannel, ((m: Message) => m.author.id === msg.author.id));
+
+			collector.on("end", async (collected: Collection<string, Message>, reason: string) => {
+				await editorMessage.delete().catch(() => { });
+				if (reason === "SAVE") {
+					const filterQuery: FilterQuery<IRaidGuild> = section.isMain
+						? { guildID: guild.id }
+						: { guildID: guild.id, "sections.verifiedRole": section.verifiedRole };
+					const updateQuery: UpdateQuery<IRaidGuild> = section.isMain
+						? { $set: { "properties.games": d.filter(x => x.isIncluded).map(x => x.data.id) } }
+						: { $set: { "sections.$.properties.games": d.filter(x => x.isIncluded).map(x => x.data.id) } };
+
+					guildDb = (await MongoDbHelper
+						.MongoDbGuildManager
+						.MongoGuildClient
+						.findOneAndUpdate(filterQuery, updateQuery, { returnOriginal: false })).value as IRaidGuild;
+
+					return resolve(guildDb);
+				}
+				else {
+					return resolve(guildDb);
+				}
+			});
+
+			collector.on("collect", async (m: Message) => {
+				await m.delete().catch(() => { });
+
+				if (m.content === "cancel") {
+					collector.stop("PROCESS_CANCELED");
+					return;
+				}
+
+				if (m.content === "save") {
+					collector.stop("SAVE");
+					return;
+				}
+
+				if (m.content === "disableAll") {
+					for (let i = 0; i < d.length; i++) {
+						d[i].isIncluded = false;
+					}
+					await editorMessage.edit(this.getAllowedGameEditorEmbed(msg, d, section));
+					return;
+				}
+
+				if (m.content === "enableAll") {
+					for (let i = 0; i < d.length; i++) {
+						d[i].isIncluded = true;
+					}
+					await editorMessage.edit(this.getAllowedGameEditorEmbed(msg, d, section));
+					return;
+				}
+
+				const nums: number[] = NumberUtil.parseNumbersFromString(m.content);
+				for (const num of nums) {
+					if (num - 1 < 0 || num - 1 >= d.length) {
+						return; // out of index
+					}
+
+					d[num - 1].isIncluded = !d[num - 1].isIncluded;
+				}
+				await editorMessage.edit(this.getAllowedGameEditorEmbed(msg, d, section));
+			});
+		});
+	}
+
+	/**
 	 * Configures the dungeons that can be run in a section.
 	 * @param {Message} msg The message object. 
 	 * @param {ISection} section The section. 
@@ -2082,7 +2185,8 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 				d.push({ data: dData, isIncluded: section.properties.dungeons.includes(dData.id) });
 			}
 
-			const editorMessage: Message | void = await msg.channel.send(this.getAllowedDungeonEditorEmbed(msg, d, section)).catch(() => { });
+			const editorMessage: Message | void = await msg.channel.send(this.getAllowedDungeonEditorEmbed(msg, d, section))
+				.catch(() => { });
 			if (typeof editorMessage === "undefined") {
 				return guildDb;
 			}
@@ -2191,6 +2295,43 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 		return allowedDungeonEmbed;
 	}
 
+	/**
+	 * Generates an embed showing all the games that have been selected from a list.
+	 * @param {Message} msg The message object. 
+	 * @param {GameSelectionType[]} d The current games that are selected.
+	 */
+	private getAllowedGameEditorEmbed(
+		msg: Message,
+		d: GameSelectionType[],
+		section: ISection
+	): MessageEmbed {
+		const allowedDungeonEmbed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", { authorType: "GUILD" })
+			.setTitle(`Section Dungeon Editor: **${section.nameOfSection}**`)
+			.setDescription("Please type a number (e.g. `4`, `19`) or a range of numbers (e.g. `1-4`, `18-22, 24, 26`) corresponding to the dungeon(s) you want to allow in this section.\n\nA ☑️ next to the dungeon name means raid leaders will be able to use the dungeon in headcounts and AFK checks.\nA ❌ means the dungeon will not be part of the section.\n\nTo unselect all, type `disableAll`. To select all, type `enableAll`. To save, type `save`. To cancel, type `cancel`.")
+			.setColor("RANDOM")
+			.setFooter((msg.guild as Guild).name);
+		let i: number = 0;
+		let k: number = 0;
+		let l: number = 0;
+		while (d.length > 0) {
+			i++;
+			let str: string = "";
+			for (let j = 0; j < d.slice(0, 10).length; j++) {
+				k = j + l;
+				str += `\`[${k + 1}]\` ${d[j].isIncluded ? "☑️" : "❌"} ${Zero.RaidClient.emojis.cache.get(d[j].data.mainReactionId)} ${d[j].data.gameName}\n`;
+			}
+			l += 10;
+			allowedDungeonEmbed.addFields({
+				name: `Dungeon Selection: Part ${i}`,
+				value: str,
+				inline: true
+			});
+			d = d.slice(10);
+			str = "";
+		}
+
+		return allowedDungeonEmbed;
+	}
 
 
 	// ================================================ //

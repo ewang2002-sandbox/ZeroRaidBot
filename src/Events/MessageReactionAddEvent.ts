@@ -21,7 +21,7 @@ import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuMan
 import { Zero } from "../Zero";
 import { ReactionLoggingHandler } from "../Helpers/ReactionLoggingHandler";
 import { OtherUtil } from "../Utility/OtherUtil";
-import { IModmailThread } from "../Definitions/gi";
+import { IModmailThread } from "../Definitions/IModmailThread";
 import { BotConfiguration } from "../Configuration/Config";
 import { IGameInfo } from "../Definitions/IGameInfo";
 import { GameHandler } from "../Helpers/GameHandler";

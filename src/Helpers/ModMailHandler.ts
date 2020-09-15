@@ -10,7 +10,7 @@ import { DateUtil } from "../Utility/DateUtil";
 import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuManager";
 import { StringBuilder } from "../Classes/String/StringBuilder";
 import { OtherUtil } from "../Utility/OtherUtil";
-import { IModmailThread } from "../Definitions/gi";
+import { IModmailThread } from "../Definitions/IModmailThread";
 import { ArrayUtil } from "../Utility/ArrayUtil";
 
 export module ModMailHandler {

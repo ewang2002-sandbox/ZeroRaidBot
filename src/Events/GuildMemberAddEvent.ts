@@ -7,6 +7,7 @@ import { StringUtil } from "../Utility/StringUtil";
 import { DateUtil } from "../Utility/DateUtil";
 import { BotConfiguration } from "../Configuration/Config";
 import { SuspendCommand } from "../Commands/Moderator/SuspendCommand";
+import { IRaidUser } from "../Templates/IRaidUser";
 
 export async function onGuildMemberAdd(
     member: GuildMember | PartialGuildMember
@@ -78,6 +79,14 @@ export async function onGuildMemberAdd(
 
     if (typeof suspendedData !== "undefined" && typeof suspendedRole !== "undefined") {
         // they left while suspended
+        const userDb: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient
+            .findOne({ discordUserId: suspendedData.userId });
+        
+        if (userDb !== null) {
+            await guildMember.setNickname(userDb.rotmgDisplayName === guildMember.user.username
+                ? `${userDb.rotmgDisplayName}.`
+                : userDb.rotmgDisplayName).catch(e => { });
+        }
         await guildMember.roles.add(suspendedRole).catch(e => { });
         // because they left the server to avoid their suspension
         // they will be suspended for another full duration

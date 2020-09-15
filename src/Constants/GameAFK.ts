@@ -10,7 +10,12 @@ export const AFKGame: IGameData[] = [
         gameImageLink: [
             "https://cdn.cloudflare.steamstatic.com/steam/apps/945360/header.jpg"
         ],
-        colors: [],
+        colors: [
+            0xFFDE2A,
+            0xF21717,
+            0x75DBF4,
+            0x880933
+        ],
         maxVcLimit: 10
     }
 ]

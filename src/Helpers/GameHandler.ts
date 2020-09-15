@@ -18,6 +18,7 @@ import { IGameInfo } from "../Definitions/IGameInfo";
 import { RaidStatus } from "../Definitions/RaidStatus";
 import { GameDbHelper } from "./GameDbHelper";
 import { IRaidInfo } from "../Definitions/IRaidInfo";
+import { MongoDbHelper } from "./MongoDbHelper";
 
 export module GameHandler {
 	/**
@@ -273,6 +274,14 @@ export module GameHandler {
 
 		const mst: MessageSimpleTick = new MessageSimpleTick(afkCheckMessage, `@here, a new ${SELECTED_GAME.gameName} AFK check is currently ongoing. There are {m} minutes and {s} seconds remaining on this AFK check.`, MAX_TIME_LEFT);
 
+		// timeout in case we reach the 5 min mark
+		// TODO find a way to stop timeout if rl ends afk check early.
+		const timeout: NodeJS.Timeout = setTimeout(async () => {
+			mst.disableAutoTick();
+			guildDb = await (new MongoDbHelper.MongoDbGuildManager(guild.id).findOrCreateGuildDb());
+			endAfkCheck(guildDb, guild, gi, NEW_GAME_VC, "AUTO");
+		}, MAX_TIME_LEFT);
+
 		afkCheckMessage.pin().catch(() => { });
 		let emojisToReactTo: EmojiResolvable[] = [];
 		emojisToReactTo.push(...SELECTED_GAME.specialReactions.map(x => x[0]));
@@ -295,6 +304,7 @@ export module GameHandler {
 			.setFooter(`Control Panel • Game AFK Check • ${vcName}`);
 
 		const controlPanelMsg: Message = await CONTROL_PANEL_CHANNEL.send("**NOTICE:** Control panel commands will only work if you are in the corresponding voice channel. Below are details regarding the raid; this control panel message can only be used to control the corresponding raid.", controlPanelEmbed);
+		FastReactionMenuManager.reactFaster(controlPanelMsg, ["⏹️", "🗑️", "✏️", "🗺️"]);
 
 		const gi: IGameInfo = {
 			vcId: NEW_GAME_VC.id,
@@ -317,7 +327,7 @@ export module GameHandler {
 			keyReacts: new Collection<string, GuildMember[]>(),
 			earlyReacts: [],
 			// TODO
-			timeout: new NodeJS.Timeout()
+			timeout: timeout
 		});
 	}
 
@@ -349,8 +359,8 @@ export module GameHandler {
 		endedBy: GuildMember | "AUTO"
 	): Promise<void> {
 		let raidEntryExists: boolean = false;
-		for (const raidEntry of guildDb.activeRaidsAndHeadcounts.raidChannels) {
-			if (raidEntry.msgID === gi.msgId && raidEntry.vcID === raidVC.id) {
+		for (const raidEntry of guildDb.activeRaidsAndHeadcounts.gameChannels) {
+			if (raidEntry.msgId === gi.msgId && raidEntry.vcId === raidVC.id) {
 				raidEntryExists = true;
 				break;
 			}

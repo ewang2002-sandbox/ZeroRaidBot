@@ -57,6 +57,7 @@ import { DeveloperTestCommand } from "../Commands/Bot Owner/DeveloperTestCommand
 import { CloseModmailThreadCommand } from "../Commands/Modmail Management/CloseModmailThreadCommand";
 import { ReplyModmailThreadCommand } from "../Commands/Modmail Management/ReplyModmailThreadCommand";
 import { StartModmailThreadCommand } from "../Commands/Modmail Management/StartModmailThreadCommand";
+import { StartGameAfkCheckCommand } from "../Commands/Raid Leader/StartGameAfkCheckCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -118,7 +119,8 @@ export class CommandManager {
 
 		this.commands.set("Raid Leader", [
 			new StartAfkCheckCommand(), 
-			new StartHeadcountCommand()
+			new StartHeadcountCommand(),
+			new StartGameAfkCheckCommand()
 		]);
 
 		this.commands.set("Staff", [

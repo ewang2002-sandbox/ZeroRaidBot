@@ -479,8 +479,10 @@ export async function onMessageReactionAdd(
 					&& gameFromReaction.status === RaidStatus.AFKCheck) {
 					if (member.roles.cache.some(x => allStaffRoles.includes(x.id))
 						|| member.hasPermission("ADMINISTRATOR")) {
+						console.log(reaction.emoji);
 						// end afk
 						if (reaction.emoji.name === "⏹️") {
+							console.log("Stop!");
 							GameHandler.endAfkCheck(guildDb, guild, gameFromReaction, member.voice.channel, member);
 						}
 						// abort afk
@@ -490,6 +492,13 @@ export async function onMessageReactionAdd(
 						// set message
 						else if (reaction.emoji.name === "✏️") {
 							await setNewLocationPrompt(guild, guildDb, gameFromReaction, member);
+						}
+					}
+
+					if (member.roles.cache.has(guildDb.roles.teamRole) || member.hasPermission("ADMINISTRATOR")) {
+						// get loc
+						if (reaction.emoji.name === "🗺️") {
+							await earlyLocSend(guild, gameFromReaction, member, user);
 						}
 					}
 				}
@@ -516,6 +525,13 @@ export async function onMessageReactionAdd(
 							await member.voice.channel.updateOverwrite(guild.roles.everyone, {
 								CONNECT: null
 							});
+						}
+					}
+
+					if (member.roles.cache.has(guildDb.roles.teamRole) || member.hasPermission("ADMINISTRATOR")) {
+						// get loc
+						if (reaction.emoji.name === "🗺️") {
+							await earlyLocSend(guild, gameFromReaction, member, user);
 						}
 					}
 				}
@@ -546,12 +562,7 @@ export async function onMessageReactionAdd(
 					if (member.roles.cache.has(guildDb.roles.teamRole) || member.hasPermission("ADMINISTRATOR")) {
 						// get loc
 						if (reaction.emoji.name === "🗺️") {
-							const locEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(guild)
-								.setTitle("Early Location")
-								.setDescription(`The location of the raid (information below) is: ${StringUtil.applyCodeBlocks(raidFromReaction.location)}`)
-								.addField("Location Rules", "- Do not give this location out to anyone else.\n- Pay attention to any directions your raid leader may have.")
-								.addField("Raid Information", `Guild: ${guild.name}\nRaid Section: ${raidFromReaction.section.nameOfSection}\nRaid VC: ${member.voice.channel.name}\nDungeon: ${raidFromReaction.dungeonInfo.dungeonName}`);
-							await user.send(locEmbed).catch(() => { });
+							await earlyLocSend(guild, raidFromReaction, member, user);
 						}
 					}
 				}
@@ -585,12 +596,7 @@ export async function onMessageReactionAdd(
 					if (member.roles.cache.has(guildDb.roles.teamRole) || member.hasPermission("ADMINISTRATOR")) {
 						// get loc
 						if (reaction.emoji.name === "🗺️") {
-							const locEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(guild)
-								.setTitle("Early Location")
-								.setDescription(`The location of the raid (information below) is: ${StringUtil.applyCodeBlocks(raidFromReaction.location)}`)
-								.addField("Location Rules", "- Do not give this location out to anyone else.\n- Pay attention to any directions your raid leader may have.")
-								.addField("Raid Information", `Guild: ${guild.name}\nRaid Section: ${raidFromReaction.section.nameOfSection}\nRaid VC: ${member.voice.channel.name}\nDungeon: ${raidFromReaction.dungeonInfo.dungeonName}`);
-							await user.send(locEmbed).catch(() => { });
+							await earlyLocSend(guild, raidFromReaction, member, user);
 						}
 					}
 				}
@@ -599,6 +605,33 @@ export async function onMessageReactionAdd(
 	}
 
 	//#endregion
+}
+
+async function earlyLocSend(
+	guild: Guild,
+	raidFromReaction: IRaidInfo | IGameInfo,
+	member: GuildMember,
+	user: User
+): Promise<void> {
+	if (member.voice.channel === null) {
+		return;
+	}
+
+	const locEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(guild);
+	if ("gameInfo" in raidFromReaction) {
+		locEmbed
+			.setTitle("Early Message")
+			.setDescription(`The game session message is now below: ${StringUtil.applyCodeBlocks(raidFromReaction.msgToDmPeople)}`)
+			.addField("Game Information", `Guild: ${guild.name}\nGame Section: ${raidFromReaction.section.nameOfSection}\nGame VC: ${member.voice.channel.name}\nGame: ${raidFromReaction.gameInfo.gameName}`);
+	}
+	else {
+		locEmbed
+			.setTitle("Early Location")
+			.setDescription(`The location of the raid (information below) is: ${StringUtil.applyCodeBlocks(raidFromReaction.location)}`)
+			.addField("Location Rules", "- Do not give this location out to anyone else.\n- Pay attention to any directions your raid leader may have.")
+			.addField("Raid Information", `Guild: ${guild.name}\nRaid Section: ${raidFromReaction.section.nameOfSection}\nRaid VC: ${member.voice.channel.name}\nDungeon: ${raidFromReaction.dungeonInfo.dungeonName}`);
+	}
+	await user.send(locEmbed).catch(() => { });
 }
 
 export async function setNewLocationPrompt(
@@ -619,7 +652,7 @@ export async function setNewLocationPrompt(
 	UserAvailabilityHelper.InMenuCollection.set(memberRequested.id, UserAvailabilityHelper.MenuType.KEY_ASK);
 
 	const isRaid: boolean = "location" in info;
-	const vcNameToDisplay: string = "location" in info 
+	const vcNameToDisplay: string = "location" in info
 		? info.vcName
 		: `${info.gameInfo.gameName} ${info.vcNum}`;
 
@@ -652,14 +685,14 @@ export async function setNewLocationPrompt(
 				catch (e) {
 					memberToMsg = null;
 				}
-	
+
 				if (memberToMsg === null) {
 					continue;
 				}
 				await memberToMsg.send(`**\`[${guild.name} ⇒ ${info.section.nameOfSection}]\`** A __new__ location for this raid has been set by a leader. The location is: ${StringUtil.applyCodeBlocks(resolvedMsg)}Do not tell anyone this location.`).catch(() => { });
 				hasMessaged.push(person);
 			}
-	
+
 			for await (const entry of info.keyReacts) {
 				if (hasMessaged.includes(entry.userId)) {
 					continue;
@@ -684,7 +717,7 @@ export async function setNewLocationPrompt(
 				await person.send(`**\`[${guild.name} ⇒ ${info.section.nameOfSection}]\`** A __new__ location for this raid has been set by a leader. The location is: ${StringUtil.applyCodeBlocks(resolvedMsg)}Do not tell anyone this location.`).catch(() => { });
 				hasMessaged.push(person.id);
 			}
-	
+
 			for await (const [, members] of curRaidDataArrElem.keyReacts) {
 				for (const member of members) {
 					if (hasMessaged.includes(member.id)) {

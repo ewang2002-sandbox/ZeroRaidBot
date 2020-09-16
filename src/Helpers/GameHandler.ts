@@ -1,4 +1,4 @@
-import { Message, Guild, GuildMember, TextChannel, CategoryChannel, MessageEmbed, OverwriteResolvable, ChannelCreationOverwrites, VoiceChannel, Emoji, EmojiResolvable, ColorResolvable, Collection, ReactionCollector, ClientUser, MessageReaction, Role, User } from "discord.js";
+import { Message, Guild, GuildMember, TextChannel, CategoryChannel, MessageEmbed, OverwriteResolvable, ChannelCreationOverwrites, VoiceChannel, Emoji, EmojiResolvable, ColorResolvable, Collection, ReactionCollector, ClientUser, MessageReaction, Role, User, PermissionOverwrites, Permissions, PermissionOverwriteOption, PermissionOverwriteOptions } from "discord.js";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { ISection } from "../Templates/ISection";
 import { GuildUtil } from "../Utility/GuildUtil";
@@ -19,6 +19,7 @@ import { RaidStatus } from "../Definitions/RaidStatus";
 import { GameDbHelper } from "./GameDbHelper";
 import { IRaidInfo } from "../Definitions/IRaidInfo";
 import { MongoDbHelper } from "./MongoDbHelper";
+import { StringUtil } from "../Utility/StringUtil";
 
 export module GameHandler {
 	/**
@@ -50,8 +51,6 @@ export module GameHandler {
 		const member: GuildMember = msg.member as GuildMember;
 
 		const sections: ISection[] = [GuildUtil.getDefaultSection(guildDb), ...guildDb.sections];
-		const RAID_REQUEST_CHANNEL: TextChannel | undefined = guild.channels.cache
-			.get(guildDb.generalChannels.raidRequestChannel) as TextChannel | undefined;
 
 		const AFK_CHECK_CHANNEL: TextChannel | "ERROR" | null = await RaidHandler.getAfkCheckChannel(msg, guild, guildDb, sections);
 		// still null => get out
@@ -89,42 +88,43 @@ export module GameHandler {
 			return;
 		}
 
+		/*
 		const rlInfo: GuildUtil.RaidLeaderStatus = GuildUtil.getRaidLeaderStatus(member, guildDb, SECTION);
 		if (rlInfo.roleType === null && !rlInfo.isUniversal) {
 			MessageUtil.send({ content: "An AFK check could not be started because you are not authorized to start AFK checks in this section." }, msg.channel as TextChannel);
 			return;
-		}
+		}*/
 
-		const dungeons: IGameData[] = getGamesAllowedInSection(SECTION);
+		const possGames: IGameData[] = getGamesAllowedInSection(SECTION);
 
-		if (dungeons.length === 0) {
+		if (possGames.length === 0) {
 			MessageUtil.send({ content: "An AFK check could not be started because there are no games available for this section." }, msg.channel as TextChannel);
 			return;
 		}
 
-		let isLimited: boolean = dungeons.length !== AFKDungeon.length;
+		let isLimited: boolean = possGames.length !== AFKGame.length;
 
 		const configureAfkEmbed: MessageEmbed = new MessageEmbed()
 			.setTitle("⚙️ Configuring AFK Check: Game Selection")
 			.setAuthor(`${guild.name} ⇒ ${SECTION.nameOfSection}`, guild.iconURL() === null ? undefined : guild.iconURL() as string)
-			.setDescription("You are close to starting an AFK Check! However, you need to select a game from the list of allowed dungeons below. To begin, please type the number corresponding to the game you want to start an AFK Check for.")
+			.setDescription("You are close to starting an AFK Check! However, you need to select a game from the list of allowed games below. To begin, please type the number corresponding to the game you want to start an AFK Check for.")
 			.setColor("RANDOM")
 			.setFooter(`${guild.name} | ${isLimited ? "Limited Selection" : ""}`);
 		// number of fields 
-		let copyOfDungeons: IGameData[] = dungeons;
+		let copyOfGames: IGameData[] = possGames;
 		let i: number = 0;
 		let k: number = 0;
 		let l: number = 0;
-		while (copyOfDungeons.length > 0) {
+		while (copyOfGames.length > 0) {
 			i++;
 			let str: string = "";
-			for (let j = 0; j < copyOfDungeons.slice(0, 10).length; j++) {
+			for (let j = 0; j < copyOfGames.slice(0, 10).length; j++) {
 				k = j + l;
-				str += `\`[${k + 1}]\` ${Zero.RaidClient.emojis.cache.get(copyOfDungeons[j].mainReactionId)} ${copyOfDungeons[j].gameName}\n`;
+				str += `\`[${k + 1}]\` ${Zero.RaidClient.emojis.cache.get(copyOfGames[j].mainReactionId)} ${copyOfGames[j].gameName}\n`;
 			}
 			l += 10;
 			configureAfkEmbed.addField(`Dungeon Selection: Part ${i}`, str, true);
-			copyOfDungeons = copyOfDungeons.slice(10);
+			copyOfGames = copyOfGames.slice(10);
 			str = "";
 		}
 
@@ -143,7 +143,7 @@ export module GameHandler {
 					return;
 				}
 
-				if (typeof dungeons[num - 1] === "undefined") {
+				if (typeof possGames[num - 1] === "undefined") {
 					await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "INVALID_INDEX", null), msg.channel as TextChannel);
 					return;
 				}
@@ -156,7 +156,7 @@ export module GameHandler {
 			return;
 		}
 
-		const SELECTED_GAME: IGameData = dungeons[result - 1];
+		const SELECTED_GAME: IGameData = possGames[result - 1];
 		let newRaidNum: number = -1;
 		const allNums: number[] = SECTION_CATEGORY.children
 			.filter(x => x.type === "voice")
@@ -255,7 +255,7 @@ export module GameHandler {
 
 		const afkCheckEmbed: MessageEmbed = new MessageEmbed()
 			// TODO check if mobile can see the emoji.
-			.setAuthor(`${member.displayName} has initiated a ${SELECTED_GAME.gameName} AFK Check.`, SELECTED_GAME.gameLogoLink)
+			.setAuthor(`${member.displayName} has initiated a(n) ${SELECTED_GAME.gameName} AFK Check.`, SELECTED_GAME.gameLogoLink)
 			.setDescription(`⇒ **Join** the **${NEW_GAME_VC.name}** voice channel to participate.`)
 			.setColor(ArrayUtil.getRandomElement(SELECTED_GAME.colors))
 			.setThumbnail(ArrayUtil.getRandomElement(SELECTED_GAME.gameImageLink))
@@ -326,7 +326,6 @@ export module GameHandler {
 			mst: mst,
 			keyReacts: new Collection<string, GuildMember[]>(),
 			earlyReacts: [],
-			// TODO
 			timeout: timeout
 		});
 	}
@@ -386,10 +385,6 @@ export module GameHandler {
 		await cpMsg.reactions.removeAll().catch(() => { });
 		const raidVc: VoiceChannel = guild.channels.cache.get(gi.vcId) as VoiceChannel;
 
-		// TODO: optimize code (two for loops that iterate through the activeRaidsAndHeadcount prop)
-		// update raid status so we're in raid mode
-		// and remove entry from array with react collector & 
-		// mst info
 		const curRaidDataArrElem: IStoredRaidData | undefined = RaidHandler.CURRENT_RAID_DATA.get(gi.vcId)
 
 		if (typeof curRaidDataArrElem !== "undefined") {
@@ -397,9 +392,31 @@ export module GameHandler {
 			curRaidDataArrElem.mst.disableAutoTick();
 		}
 
-		await GameDbHelper.updateRaidStatus(guild, raidVC.id);
+		await GameDbHelper.updateRaidStatus(guild, raidVc.id);
 		await raidVc.updateOverwrite(guild.roles.everyone, { CONNECT: false }).catch(() => { });
 
+		const allPerms: OverwriteResolvable[] = [];
+		for (const [id, perm] of raidVc.permissionOverwrites) {
+			allPerms.push(perm);
+		}
+
+		for (const [id, member] of raidVc.members) {
+			allPerms.push({
+				id: member.id,
+				allow: ["CONNECT"],
+				deny: []
+			});
+		}
+
+		await raidVc.overwritePermissions(allPerms).catch(e => { });
+		const locEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(guild)
+				.setTitle("Game Session Information")
+				.setDescription(`The game session message is now below: ${StringUtil.applyCodeBlocks(gi.msgToDmPeople)}`)
+				.addField("Game Information", `Guild: ${guild.name}\nGame Section: ${gi.section.nameOfSection}\nGame VC: ${raidVc.name}\nGame: ${gi.gameInfo.gameName}`);
+		for await (const [id, member] of raidVc.members) {
+			await member.send(locEmbed).catch(e => { });
+		}
+		
 		// remove 
 		CURRENT_RAID_DATA.delete(gi.vcId);
 
@@ -452,7 +469,8 @@ export module GameHandler {
 			: raidVC.members;
 
 		// if we're in post afk 
-		if (typeof raidMsg.embeds[0].description !== "undefined" && raidMsg.embeds[0].description.includes("Join any available voice channel and then")) {
+		if (typeof raidMsg.embeds[0].description !== "undefined"
+			&& raidMsg.embeds[0].description.includes("Join any available voice channel and then")) {
 			return;
 		}
 
@@ -490,7 +508,7 @@ export module GameHandler {
 			curRaidDataArrElem.mst.disableAutoTick();
 			clearInterval(curRaidDataArrElem.timeout);
 		}
-		
+
 		await GameDbHelper.removeGameChannelFromDatabase(guild, raidVC.id);
 
 		const abortAfk: MessageEmbed = new MessageEmbed()

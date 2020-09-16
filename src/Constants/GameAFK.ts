@@ -17,5 +17,22 @@ export const AFKGame: IGameData[] = [
             0x880933
         ],
         maxVcLimit: 10
+    },
+    {
+        id: 2,
+        gameName: "OSU MP",
+        mainReactionId: "755575986204180630",
+        specialReactions: [],
+        gameLogoLink: "https://upload.wikimedia.org/wikipedia/commons/4/44/Osu%21Logo_%282019%29.png",
+        gameImageLink: [
+            "https://i.insider.com/5d5f048e2e22af0b34632484?width=1100&format=jpeg"
+        ],
+        colors: [
+            0xEE65A2,
+            0xFEF7FA,
+            0xFFB3D5,
+            0xF8B3D2
+        ],
+        maxVcLimit: 16
     }
 ]

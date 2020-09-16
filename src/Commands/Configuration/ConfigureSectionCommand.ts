@@ -2089,10 +2089,17 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 		guildDb: IRaidGuild
 	): Promise<IRaidGuild> {
 		const guild: Guild = msg.guild as Guild;
+		if (typeof section.properties.games === "undefined") {
+			guildDb = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id }, {
+				$set: {
+					"properties.games": []
+				}
+			}, { returnOriginal: false })).value as IRaidGuild;
+		}
 		return new Promise(async (resolve) => {
 			const d: GameSelectionType[] = [];
 			for (const dData of AFKGame) {
-				d.push({ data: dData, isIncluded: section.properties.dungeons.includes(dData.id) });
+				d.push({ data: dData, isIncluded: section.properties.games.includes(dData.id) });
 			}
 
 			const editorMessage: Message | void = await msg.channel.send(this.getAllowedGameEditorEmbed(msg, d, section))

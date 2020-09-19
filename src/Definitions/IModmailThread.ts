@@ -11,5 +11,15 @@ export interface IModmailThread {
 	channel: string;
 	// original message
 	// if any
-	originalModmailMessage: string; 
+	originalModmailMessageId: string; 
+	// messages
+	messages: IModmailThreadMessage[]; 
+}
+
+export interface IModmailThreadMessage { 
+	authorId: string; 
+	tag: string; 
+	timeSent: number; 
+	content: string; 
+	attachments: string[];
 }

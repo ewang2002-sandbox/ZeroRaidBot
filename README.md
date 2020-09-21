@@ -21,6 +21,11 @@ The main purpose of this bot is to simplify verification and raid management wit
     - A private instance of this API is being used for the private version of the bot. 
 
 ## Current Features
+
+<details>
+<summary>Click Here</summary>
+<br>
+  
 Some of the bot's more prominent features include the following.
 - **Verification:** Using a public API, the bot is able to get informaton about a RotMG player and is able to link a Discord account to a RotMG account. Verification requirements can be customized to suit your server's needs.
 - **Raid Management:** The ability for raid leaders to start AFK checks and headcounts for various dungeons, including Lost Halls, Shatters, Oryx 3, and 30 other dungeons. As opposed to having 5+ different comments, raid leaders will use a control panel to access all commands and information about a raid. 
@@ -31,7 +36,7 @@ Some of the bot's more prominent features include the following.
 - **User/Member Manager**: Every person is given a profile (one person = one Discord account). Within a profile, the person can add alternative accounts, and can make minor changes to their profile. 
 - **Moderation Mail**: A simple-to-use moderation mail system! Members can simply DM this bot their message and the bot will direct it to the appropriate place.
 - **Application System**: Imagine using a Google Forms for your Trial Raid Leader applications. This bot has its own application system, where Head Leaders can put up to 35 questions. The bot will record how long they take to respond to each answer, giving you an idea of how much effort they put.
-
+</details>
 
 ## Project Layout
 - [`master`](https://github.com/DungeoneerExalt/ZeroRaidBot/tree/master) - The developer's branch. Incomplete, unstable, and untested code will live here. 
@@ -43,6 +48,8 @@ Please see this [guide](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/mast
 
 ## Support the Project
 The best way to support this project is to star (⭐) it. You might also consider looking through the code and seeing if something could use optimizing (most of the code is written in the middle of the night). 
+
+You may also consider indirectly supporting me by donating to [Darkmattr's patreon](https://www.patreon.com/Darkmattr).
 
 ## Similar Projects
 - [Ooga-Booga](https://github.com/Jacobvs/Rotmg-Discord-Bot) by [Darkmattr](https://github.com/Jacobvs). 

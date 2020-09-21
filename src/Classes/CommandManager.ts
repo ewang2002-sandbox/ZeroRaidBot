@@ -58,6 +58,7 @@ import { CloseModmailThreadCommand } from "../Commands/Modmail Management/CloseM
 import { ReplyModmailThreadCommand } from "../Commands/Modmail Management/ReplyModmailThreadCommand";
 import { StartModmailThreadCommand } from "../Commands/Modmail Management/StartModmailThreadCommand";
 import { StartGameAfkCheckCommand } from "../Commands/Raid Leader/StartGameAfkCheckCommand";
+import { SpamPingCommand } from "../Commands/Moderator/SpamPingCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -131,7 +132,8 @@ export class CommandManager {
 			new ManualVerifyCommand(),
 			new CheckModmailBlacklistCommand(),
 			new SilenceCommand(),
-			new PurgeCommand()
+			new PurgeCommand(),
+			new SpamPingCommand()
 		]);
 
 		this.commands.set("Moderation", [

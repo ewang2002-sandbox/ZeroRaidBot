@@ -10,7 +10,6 @@ import { onGuildMemberAdd } from "./Events/GuildMemberAddEvent";
 import { onGuildCreate } from "./Events/GuildCreateEvent";
 import { onGuildMemberUpdate } from "./Events/GuildMemberUpdateEvent";
 import { onError } from "./Events/ErrorEvent";
-import { LoggerClient } from "./Classes/LoggerClient";
 import { onChannelDelete } from "./Events/GuildChannelDeleteEvent";
 import { PRODUCTION_BOT, BotConfiguration } from "./Configuration/Config";
 import { IRaidGuild } from "./Templates/IRaidGuild";
@@ -47,8 +46,6 @@ export class Zero {
 	 * The AxiosInstance, which will be used to make requests to RealmEye.
 	 */
 	public static readonly AxiosClient: AxiosInstance = axios.create();
-
-	public static readonly LogClient: LoggerClient;
 
 	/**
 	 * The contructor for this method.

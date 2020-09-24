@@ -4,7 +4,7 @@ import { CommandPermission } from "../../Templates/Command/CommandPermission";
 import { Message, GuildMember, Guild, MessageEmbed } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { GuildUtil } from "../../Utility/GuildUtil";
-import { StringUtil } from "../../Utility/StringUtil";
+import { ArrayUtil } from "../../Utility/ArrayUtil";
 
 export class NoLoggedRunsCommand extends Command {
     public constructor() {

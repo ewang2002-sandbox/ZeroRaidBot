@@ -1,7 +1,6 @@
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { User, Guild, Message, MessageEmbed, TextChannel, GuildMember, MessageEmbedFooter, MessageAttachment, FileOptions, EmbedField, Collection, Emoji, EmojiResolvable, CategoryChannel, DMChannel } from "discord.js";
 import { MongoDbHelper } from "./MongoDbHelper";
-import { StringUtil } from "../Utility/StringUtil";
 import { UserAvailabilityHelper } from "./UserAvailabilityHelper";
 import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollector";
 import { TimeUnit } from "../Definitions/TimeUnit";
@@ -10,6 +9,7 @@ import { DateUtil } from "../Utility/DateUtil";
 import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuManager";
 import { StringBuilder } from "../Classes/String/StringBuilder";
 import { IModmailThread } from "../Definitions/IModmailThread";
+import { ArrayUtil } from "../Utility/ArrayUtil";
 
 export module ModMailHandler {
 	// K = the mod that is responding

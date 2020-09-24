@@ -5,7 +5,6 @@ import { CommandPermission } from "../../Templates/Command/CommandPermission";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { IApplication } from "../../Definitions/IApplication";
-import { StringUtil } from "../../Utility/StringUtil";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
 import { FastReactionMenuManager } from "../../Classes/Reaction/FastReactionMenuManager";
 import { TimeUnit } from "../../Definitions/TimeUnit";
@@ -13,7 +12,7 @@ import { UserAvailabilityHelper } from "../../Helpers/UserAvailabilityHelper";
 import { StringBuilder } from "../../Classes/String/StringBuilder";
 import { DateUtil } from "../../Utility/DateUtil";
 import { GenericMessageCollector } from "../../Classes/Message/GenericMessageCollector";
-import { OtherUtil } from "../../Utility/OtherUtil";
+import { ArrayUtil } from "../../Utility/ArrayUtil";
 
 export class ApplyCommand extends Command {
 	private readonly _emojiToReaction: EmojiResolvable[] = [

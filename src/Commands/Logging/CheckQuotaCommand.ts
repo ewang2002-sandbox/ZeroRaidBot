@@ -9,6 +9,7 @@ import { IQuotaDbInfo } from "../../Definitions/IQuotaDbInfo";
 import { QuotaLoggingHandler } from "../../Helpers/QuotaLoggingHandler";
 import { UserHandler } from "../../Helpers/UserHandler";
 import { StringUtil } from "../../Utility/StringUtil";
+import { ArrayUtil } from "../../Utility/ArrayUtil";
 
 export class CheckQuotaCommand extends Command {
     public constructor() {
@@ -88,8 +89,10 @@ export class CheckQuotaCommand extends Command {
             });
         }
 
-        const leaderBoardQuotas: [number, QuotaLoggingHandler.LeaderLogAndTotal][] = QuotaLoggingHandler
-            .generateLeaderboardArray(quotaDbAndTotal);
+        const leaderBoardQuotas: [number, QuotaLoggingHandler.LeaderLogAndTotal][] = ArrayUtil.generateLeaderboardArray<QuotaLoggingHandler.LeaderLogAndTotal>(
+            quotaDbAndTotal,
+            elem => elem.total
+        ).filter(x => guild.members.cache.has(x[1].memberId));
 
         const fieldArr: string[] = ArrayUtil.arrayToStringFields<[number, QuotaLoggingHandler.LeaderLogAndTotal]>(
             leaderBoardQuotas,

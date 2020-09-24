@@ -19,6 +19,7 @@ import { setTimeout } from "timers";
 import { IApplication } from "../../Definitions/IApplication";
 import { StringUtil } from "../../Utility/StringUtil";
 import { NumberUtil } from "../../Utility/NumberUtil";
+import { ArrayUtil } from "../../Utility/ArrayUtil";
 
 export class ConfigureApplicationCommand extends Command {
 	private static MAX_QUESTIONS: number = 35;
@@ -340,7 +341,7 @@ export class ConfigureApplicationCommand extends Command {
 				.setTitle(`**${app.name}** ⇒ Editing Questions ⇒ Adding Question(s)`)
 				.setDescription(`${qs.length === 0 ? "N/A" : this.generateProperString(qs)}\n\nYou may add up to 8 questions (200 characters each), starting at ${positionStr}. **Split each question with a bar: \`|\`.**\n⇒ React with ⬅️ to go back to the previous menu.\n⇒ React with ✅ to save the questions.\n⇒ React with ❌ to cancel this process.`)
 				.setFooter("Adding Questions.");
-			const fields: string[] = StringUtil.arrayToStringFields<string>(
+			const fields: string[] = ArrayUtil.arrayToStringFields<string>(
 				questions,
 				(i, elem) => `**\`[Q${i + 1}]\`** ${elem}\n`
 			);
@@ -416,7 +417,7 @@ export class ConfigureApplicationCommand extends Command {
 	}
 
 	private generateProperString(questions: string[]): string {
-		return StringUtil.arrayToStringFields<string>(
+		return ArrayUtil.arrayToStringFields<string>(
 			questions,
 			(i, elem) => `\`[${i + 1}]\` ${elem}\n`,
 		)[0];
@@ -432,7 +433,7 @@ export class ConfigureApplicationCommand extends Command {
 				.setTitle(`**${app.name}** ⇒ Editing Questions ⇒ Edit Question`)
 				.setDescription(`${q.length === 0 ? "N/A" : q}\n\nYou are currently editing question **\`${position + 1}\`**. Your edited question can be up to 200 characters long.\n⇒ React with ⬅️ to go back to the previous menu.\n⇒ React with ✅ to save the questions.\n⇒ React with ❌ to cancel this process.`)
 				.setFooter("Adding Questions.");
-			const fields: string[] = StringUtil.arrayToStringFields<string>(
+			const fields: string[] = ArrayUtil.arrayToStringFields<string>(
 				questions,
 				(i, elem) => `**\`[${i + 1}]\`** ${elem}\n`
 			);
@@ -501,7 +502,7 @@ export class ConfigureApplicationCommand extends Command {
 				.setTitle(`**${app.name}** ⇒ Editing Questions ⇒ ${qType === "ADD" ? "Add" : "Edit"} Question`)
 				.setDescription(desc)
 				.setFooter("Select Position.");
-			const fields: string[] = StringUtil.arrayToStringFields<string>(
+			const fields: string[] = ArrayUtil.arrayToStringFields<string>(
 				questions,
 				(i, elem) => `**\`[${i + 1}]\`** ${elem}\n`
 			);
@@ -574,7 +575,7 @@ export class ConfigureApplicationCommand extends Command {
 				.setDescription("Please type the number corresponding to the question you want to delete. Any proposed deleted questions will have a wastebin next to it.\n\n⇒ React with ⬅️ to go back to the previous menu.\n⇒ React with ❌ to cancel this process.")
 				.setFooter("Delete Questions.");
 
-			const fields: string[] = StringUtil.arrayToStringFields<string>(
+			const fields: string[] = ArrayUtil.arrayToStringFields<string>(
 				questions,
 				(i, elem) => `**\`[${i + 1}]\`** ${elem} ${questionsToDelete.includes(i) ? "`🗑️`" : ""}\n`
 			);
@@ -722,7 +723,7 @@ export class ConfigureApplicationCommand extends Command {
 				.setDescription(`\`[Q1]\` ${nums[0] === -1 ? "N/A" : questions[nums[0]]}\n\`[Q2]\` ${nums[1] === -1 ? "N/A" : questions[nums[1]]}\n\nPlease type two numbers corresponding to the questions you want to swap around. For example, valid inputs could be \`1 10\` or \`15 2\`.\n\n⇒ React with ⬅️ to go back to the previous menu.\n⇒ React with ✅ to confirm that you want to switch the above two questions.\n⇒ React with ❌ to cancel this process.`)
 				.setFooter("Delete Questions.");
 
-			const fields: string[] = StringUtil.arrayToStringFields<string>(
+			const fields: string[] = ArrayUtil.arrayToStringFields<string>(
 				questions,
 				(i, elem) => `**\`[${i + 1}]\`** ${elem}\n`
 			);
@@ -813,7 +814,7 @@ export class ConfigureApplicationCommand extends Command {
 			.setTitle(`**${app.name}** ⇒ Editing Questions`)
 			.setDescription(`There are currently \`${app.questions.length}\`/${ConfigureApplicationCommand.MAX_QUESTIONS} questions, which are displayed below.\n\n${desc}`)
 			.setFooter(`${app.name}`);
-		const fields: string[] = StringUtil.arrayToStringFields<string>(
+		const fields: string[] = ArrayUtil.arrayToStringFields<string>(
 			questions,
 			(i, elem) => `**\`[${i + 1}]\`** ${elem}\n`
 		);

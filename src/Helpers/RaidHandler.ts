@@ -521,7 +521,7 @@ export module RaidHandler {
 				.setTitle("Select Voice Channel")
 				.setDescription(desc)
 				.setFooter("Voice Channel Selection");
-			const arr: string[] = StringUtil.arrayToStringFields<VoiceChannel>(
+			const arr: string[] = ArrayUtil.arrayToStringFields<VoiceChannel>(
 				allVoiceChannels as VoiceChannel[],
 				(i, elem) => `[${i + 1}] ${elem.name} (${elem.members.size}) ${elem.members.size <= 2 ? "🟢" : (elem.members.size <= 10 ? "🟡" : "🔴")} ${(member.voice.channelID === elem.id ? "[HERE]" : "")}\n`
 			);

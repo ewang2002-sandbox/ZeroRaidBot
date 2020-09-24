@@ -91,7 +91,7 @@ export class CheckQuotaCommand extends Command {
         const leaderBoardQuotas: [number, QuotaLoggingHandler.LeaderLogAndTotal][] = QuotaLoggingHandler
             .generateLeaderboardArray(quotaDbAndTotal);
 
-        const fieldArr: string[] = StringUtil.arrayToStringFields<[number, QuotaLoggingHandler.LeaderLogAndTotal]>(
+        const fieldArr: string[] = ArrayUtil.arrayToStringFields<[number, QuotaLoggingHandler.LeaderLogAndTotal]>(
             leaderBoardQuotas,
             (i, elem) => {
                 const person: GuildMember | null = guild.member(elem[1].memberId);

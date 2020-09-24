@@ -59,6 +59,7 @@ import { ReplyModmailThreadCommand } from "../Commands/Modmail Management/ReplyM
 import { StartModmailThreadCommand } from "../Commands/Modmail Management/StartModmailThreadCommand";
 import { StartGameAfkCheckCommand } from "../Commands/Raid Leader/StartGameAfkCheckCommand";
 import { SpamPingCommand } from "../Commands/Moderator/SpamPingCommand";
+import { LeaderboardCommand } from "../Commands/Public/LeaderboardCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -95,7 +96,8 @@ export class CommandManager {
 			new PingCommand(),
 			new SuggestionCommand(),
 			new VerifyCommand(),
-			new ApplyCommand()
+			new ApplyCommand(),
+			new LeaderboardCommand()
 		]);
 
 		this.commands.set("Server Information", [

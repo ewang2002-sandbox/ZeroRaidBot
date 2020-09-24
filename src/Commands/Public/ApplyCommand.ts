@@ -188,7 +188,7 @@ export class ApplyCommand extends Command {
 				.setTitle(`Confirm Submission: ${guild.name} ⇒ ${app.name}`)
 				.setDescription("Attached above are your responses to the applicat5ion questions. Please take this time to review your responses. If you believe there is a mistake or you wish to edit one or more of your responses, please type the number corresponding to the question that you want to edit.\n\nWhen you are ready to submit, simply react with 💾. To cancel this process entirely, thus deleting your form, react with 🗑️.")
 				.setFooter("Confirming Submission.");
-			const fields: string[] = StringUtil.arrayToStringFields<string>(
+			const fields: string[] = ArrayUtil.arrayToStringFields<string>(
 				app.questions,
 				(i, elem) => `**\`[${i + 1}]\`** ${elem}\n`
 			);

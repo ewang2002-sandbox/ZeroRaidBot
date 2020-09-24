@@ -67,7 +67,7 @@ export class ConfigureBlockCmdCommand extends Command {
                 return;
             }
             else {
-                const fields: string[] = StringUtil.arrayToStringFields<string>(
+                const fields: string[] = ArrayUtil.arrayToStringFields<string>(
                     guildDb.properties.blockedCommands,
                     (i, e) => `**\`[${i + 1}]\`** ${e}\n`
                 );

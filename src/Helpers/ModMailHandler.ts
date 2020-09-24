@@ -1047,7 +1047,7 @@ export module ModMailHandler {
 				.setDescription("The message sent above will be sent to a designated server of your choice. Please select the server by typing the number corresponding to the server that you want to. To cancel, please type `cancel`.")
 				.setColor("RANDOM")
 				.setFooter(`${guildsToChoose.length} Servers.`);
-			const arrFieldsContent: string[] = StringUtil.arrayToStringFields<Guild>(guildsToChoose, (i, elem) => `\`[${i + 1}]\` ${elem.name}\n`);
+			const arrFieldsContent: string[] = ArrayUtil.arrayToStringFields<Guild>(guildsToChoose, (i, elem) => `\`[${i + 1}]\` ${elem.name}\n`);
 			for (const elem of arrFieldsContent) {
 				embed.addField("Possible Guilds", elem);
 			}

@@ -55,7 +55,7 @@ export class NoLoggedRunsCommand extends Command {
             .setColor(leadersWithNoRuns.length === 0 ? "GREEN" : "RED")
             .setFooter(`Responsible Leaders: ${all - noRuns}/${all} (${percent.toFixed(5)}%)`);
 
-        const fields: string[] = StringUtil.arrayToStringFields<GuildMember>(
+        const fields: string[] = ArrayUtil.arrayToStringFields<GuildMember>(
             leadersWithNoRuns, 
             (i, elem) => `${elem} (\`${elem.displayName}\`)\n`,
             1012

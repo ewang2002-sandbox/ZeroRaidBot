@@ -18,6 +18,7 @@ import { RaidHandler } from "./Helpers/RaidHandler";
 import { onGuildMemberRemove } from "./Events/GuildMemberRemoveEvent";
 import { onChannelCreate } from "./Events/GuildChannelCreateEvent";
 import { onRoleDelete } from "./Events/RoleDeleteEvent";
+import { IRaidUser } from "./Templates/IRaidUser";
 
 export class Zero {
 	/** 
@@ -46,6 +47,11 @@ export class Zero {
 	 * The AxiosInstance, which will be used to make requests to RealmEye.
 	 */
 	public static readonly AxiosClient: AxiosInstance = axios.create();
+
+	/**
+	 * The user database. 
+	 */
+	public static UserDatabase: IRaidUser[] = [];
 
 	/**
 	 * The contructor for this method.
@@ -90,8 +96,6 @@ export class Zero {
 		if (!PRODUCTION_BOT) {
 			process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0'
 		}
-
-		this.startServices();
 	}
 
 	/**
@@ -103,6 +107,7 @@ export class Zero {
 			await mdm.connect();
 			await Zero.RaidClient.login(this._token);
 			(Zero.RaidClient.user as ClientUser).setActivity("my soul dying.", { type: "WATCHING" });
+			this.startServices();
 		}
 		catch (e) {
 			throw new ReferenceError(e);
@@ -121,6 +126,11 @@ export class Zero {
 
 		this._startedServices = true;
 		
+		// check user db every 10 min
+		setInterval(async () => {
+			Zero.UserDatabase = await MongoDbHelper.MongoDbUserManager.MongoUserClient.find({}).toArray();
+		}, 10 * 60 * 1000); 
+
 		// check raid vcs and clean
 		setInterval(async () => {
 			const docs: IRaidGuild[] = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.find({}).toArray();

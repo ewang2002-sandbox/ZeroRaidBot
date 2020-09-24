@@ -12,7 +12,6 @@ import { ICompletedRuns, IKeyPops, ILeaderRuns, IWineCellarOryx } from "../../De
 import { Zero } from "../../Zero";
 
 export class LeaderboardCommand extends Command {
-
     public constructor() {
         super(
             new CommandDetail(
@@ -252,10 +251,10 @@ Keys Popped: ${keysPopped[thisMembersIndex].general.keyPops[thisMembersGuildInde
                 else {
                     thisMembersStats = `Current Rank: {data}
                 
-Helm Runes Popped: ${runesPopped[thisMembersIndex].general.wcOryx[thisMembersGuildIndex].helmRune}
-Sword Runes Popped: ${runesPopped[thisMembersIndex].general.wcOryx[thisMembersGuildIndex].swordRune}
-Shield Runes Popped: ${runesPopped[thisMembersIndex].general.wcOryx[thisMembersGuildIndex].shieldRune}
-WC Incs Popped: ${runesPopped[thisMembersIndex].general.wcOryx[thisMembersGuildIndex].wcIncs}`;
+Helm Runes Popped: ${runesPopped[thisMembersIndex].general.wcOryx[thisMembersGuildIndex].helmRune.popped}
+Sword Runes Popped: ${runesPopped[thisMembersIndex].general.wcOryx[thisMembersGuildIndex].swordRune.popped}
+Shield Runes Popped: ${runesPopped[thisMembersIndex].general.wcOryx[thisMembersGuildIndex].shieldRune.popped}
+WC Incs Popped: ${runesPopped[thisMembersIndex].general.wcOryx[thisMembersGuildIndex].wcIncs.popped}`;
                 }
             }
 
@@ -321,6 +320,7 @@ WC Incs Popped: ${runesPopped[thisMembersIndex].general.wcOryx[thisMembersGuildI
             });
 
             const thisMembersIndex: number = runsCompleted.findIndex(x => x.discordUserId === msg.author.id);
+            console.log(thisMembersIndex);
             if (thisMembersIndex === -1) {
                 thisMembersStats = "You have not completed any runs with us!"
             }

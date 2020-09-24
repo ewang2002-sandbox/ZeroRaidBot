@@ -82,13 +82,13 @@ export async function onReadyEvent() {
 		});
 	}
 
-	// get info
+	// get infoW
 	let app: ClientApplication = await Zero.RaidClient.fetchApplication();
 	let owner: User = await Zero.RaidClient.users.fetch((app.owner as User).id);
 	console.info('\x1b[36m%s\x1b[0m', `${(Zero.RaidClient.user as ClientUser).tag} (Version ${BOT_VERSION}) has started.\nBOT TAG: ${(Zero.RaidClient.user as ClientUser).tag}\nBOT ID: ${(Zero.RaidClient.user as ClientUser).id}\nOWNER TAG: ${owner.tag}\nOWNER ID: ${owner.id}\nTIME: ${DateUtil.getTime()}`);
 
 	ReactionLoggingHandler.preLoadAllKeyEmojis();
-	
+
 	Zero.UserDatabase = await MongoDbHelper.MongoDbUserManager.MongoUserClient.find({}).toArray();
 }
 

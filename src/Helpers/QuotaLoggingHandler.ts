@@ -77,7 +77,7 @@ export module QuotaLoggingHandler {
                 $push: {
                     "general.leaderRuns": {
                         server: guild.id,
-                        generalRuns: {
+                        general: {
                             completed: 0,
                             failed: 0,
                             assists: 0

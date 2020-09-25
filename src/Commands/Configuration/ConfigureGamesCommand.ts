@@ -3,7 +3,6 @@ import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
 import { Message } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
-import { ConfigureSectionCommand } from "./ConfigureSectionCommand";
 
 export class ConfigureGameCommand extends Command {
 

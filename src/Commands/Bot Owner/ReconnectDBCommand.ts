@@ -1,10 +1,9 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, MessageEmbedThumbnail, MessageEmbed } from "discord.js";
+import { Message } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
-import { OtherUtil } from "../../Utility/OtherUtil";
 import { StringUtil } from "../../Utility/StringUtil";
 import { DateUtil } from "../../Utility/DateUtil";
 
@@ -44,7 +43,7 @@ export class ReconnectDBCommand extends Command {
             const mdm: MongoDbHelper.MongoDbBase = new MongoDbHelper.MongoDbBase();
             await mdm.connect();
 
-            await msg.author.send(StringUtil.applyCodeBlocks(`✅ [${DateUtil.getTime()}] Reestablished connection to database successfully.`)).catch(e => { });
+            await msg.author.send(StringUtil.applyCodeBlocks(`✅ [${DateUtil.getTime()}] Reestablished connection to database successfully.`)).catch(() => { });
         }
         catch (e) {
             await msg.author.send(StringUtil.applyCodeBlocks(`❌ [${DateUtil.getTime()}] An error occurred when trying to establish a connection.\n\nError: ${e}`));

@@ -1,10 +1,7 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, Guild, TextChannel, MessageAttachment, MessageEmbed, EmbedFieldData, Emoji } from "discord.js";
-import { Zero } from "../../Zero";
-import { AxiosResponse } from "axios";
-import { FORMERR } from "dns";
+import { Message, Guild, MessageEmbed, EmbedFieldData, Emoji } from "discord.js";
 import { ArrayUtil } from "../../Utility/ArrayUtil";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { GenericMessageCollector } from "../../Classes/Message/GenericMessageCollector";
@@ -90,19 +87,19 @@ export class LeaveServerCommand extends Command {
 
             if (response instanceof Emoji) {
                 if (response.name === "❌") {
-                    await botMsg.delete().catch(e => { });
+                    await botMsg.delete().catch(() => { });
                     return;
                 }
                 else {
                     if (indexToRemove !== -1) {
-                        await botMsg.delete().catch(e => { });
+                        await botMsg.delete().catch(() => { });
                         break;
                     }
                 }
             }
             else {
                 if (response === "CANCEL_CMD" || response === "TIME_CMD") {
-                    await botMsg.delete().catch(e => { });
+                    await botMsg.delete().catch(() => { });
                     return;
                 }
 
@@ -112,7 +109,7 @@ export class LeaveServerCommand extends Command {
             }
         }
 
-        await botMsg.reactions.removeAll().catch(e => { });
+        await botMsg.reactions.removeAll().catch(() => { });
 
         let isGone: boolean = true;
         const selectedGuild: Guild = guilds[indexToRemove];

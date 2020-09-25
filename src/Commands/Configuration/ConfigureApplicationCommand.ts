@@ -17,7 +17,6 @@ import { GenericMessageCollector } from "../../Classes/Message/GenericMessageCol
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
 import { setTimeout } from "timers";
 import { IApplication } from "../../Definitions/IApplication";
-import { StringUtil } from "../../Utility/StringUtil";
 import { NumberUtil } from "../../Utility/NumberUtil";
 import { ArrayUtil } from "../../Utility/ArrayUtil";
 

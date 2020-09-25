@@ -60,6 +60,7 @@ import { StartModmailThreadCommand } from "../Commands/Modmail Management/StartM
 import { StartGameAfkCheckCommand } from "../Commands/Raid Leader/StartGameAfkCheckCommand";
 import { SpamPingCommand } from "../Commands/Moderator/SpamPingCommand";
 import { LeaderboardCommand } from "../Commands/Public/LeaderboardCommand";
+import { LeaveServerCommand } from "../Commands/Bot Owner/LeaveServerCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -173,7 +174,8 @@ export class CommandManager {
 			new BlacklistSuggestionUserCommand(),
 			new UnblacklistSuggestionUserCommand(),
 			new EnableDisableSuggestionsCommand(),
-			new DeveloperTestCommand()
+			new DeveloperTestCommand(),
+			new LeaveServerCommand()
 		]);
 
 		this.commands.set("Logging", [

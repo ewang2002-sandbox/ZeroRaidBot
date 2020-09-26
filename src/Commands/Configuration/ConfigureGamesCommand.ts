@@ -5,7 +5,6 @@ import { Message } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 
 export class ConfigureGameCommand extends Command {
-
     public constructor() {
         super(
             new CommandDetail(

@@ -4,8 +4,10 @@ import { CommandPermission } from "../../Templates/Command/CommandPermission";
 import { Collection, Guild, GuildMember, Message, TextChannel } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { ArrayUtil } from "../../Utility/ArrayUtil";
+import { MessageUtil } from "../../Utility/MessageUtil";
 
 export class SpamPingCommand extends Command {
+    private _usedCommand: Set<string> = new Set<string>();
 
     public constructor() {
         super(
@@ -37,6 +39,13 @@ export class SpamPingCommand extends Command {
         args: string[],
         guildDb: IRaidGuild
     ): Promise<void> {
+        if (this._usedCommand.has(msg.author.id)) {
+            MessageUtil.send({ embed: MessageUtil.generateBlankEmbed(msg.author).setTitle("Can't Use This Command Yet!").setDescription("You have recently used this command to spam ping someone! Please wait until the bot is finished spam pinging that person before you use this command!") }, msg.channel);
+            return; 
+        }
+
+        this._usedCommand.add(msg.author.id);
+
         const mention: GuildMember | null = msg.mentions.members === null
             ? null
             : msg.mentions.members.first() as GuildMember;
@@ -49,6 +58,9 @@ export class SpamPingCommand extends Command {
         
         const channels: TextChannel[] = listOfChannels.array();
         let max: number = Number.parseInt(args[args.length - 1]); 
+        if (max > 200) {
+            max = 200; 
+        }
         let pinged: number = 0;
         while (pinged < (Number.isNaN(max) ? 200 : max)) {
             ArrayUtil.getRandomElement(channels).send(mention.toString())
@@ -57,5 +69,7 @@ export class SpamPingCommand extends Command {
 
             ++pinged; 
         }
+
+        this._usedCommand.delete(msg.author.id);
     }
 }

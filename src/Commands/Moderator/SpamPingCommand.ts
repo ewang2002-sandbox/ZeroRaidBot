@@ -5,6 +5,7 @@ import { Collection, Guild, GuildMember, Message, TextChannel } from "discord.js
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { ArrayUtil } from "../../Utility/ArrayUtil";
 import { MessageUtil } from "../../Utility/MessageUtil";
+import { BotConfiguration } from "../../Configuration/Config";
 
 export class SpamPingCommand extends Command {
     private _usedCommand: Set<string> = new Set<string>();
@@ -41,7 +42,12 @@ export class SpamPingCommand extends Command {
     ): Promise<void> {
         if (this._usedCommand.has(msg.author.id)) {
             MessageUtil.send({ embed: MessageUtil.generateBlankEmbed(msg.author).setTitle("Can't Use This Command Yet!").setDescription("You have recently used this command to spam ping someone! Please wait until the bot is finished spam pinging that person before you use this command!") }, msg.channel);
-            return; 
+            return;
+        }
+
+        if (BotConfiguration.botOwners.includes(msg.author.id)) {
+            MessageUtil.send({ embed: MessageUtil.generateBlankEmbed(msg.author).setTitle("Can't Silence This Person!").setDescription("You can't silence a defined bot owner.") }, msg.channel);
+            return;
         }
 
         this._usedCommand.add(msg.author.id);
@@ -49,17 +55,17 @@ export class SpamPingCommand extends Command {
         const mention: GuildMember | null = msg.mentions.members === null
             ? null
             : msg.mentions.members.first() as GuildMember;
-        if (mention === null) 
+        if (mention === null)
             return;
 
         const listOfChannels: Collection<string, TextChannel> = msg.mentions.channels;
         if (listOfChannels.size === 0)
             return;
-        
+
         const channels: TextChannel[] = listOfChannels.array();
-        let max: number = Number.parseInt(args[args.length - 1]); 
+        let max: number = Number.parseInt(args[args.length - 1]);
         if (max > 200) {
-            max = 200; 
+            max = 200;
         }
         let pinged: number = 0;
         while (pinged < (Number.isNaN(max) ? 200 : max)) {
@@ -67,7 +73,7 @@ export class SpamPingCommand extends Command {
                 .then(x => x.delete())
                 .catch(e => { });
 
-            ++pinged; 
+            ++pinged;
         }
 
         this._usedCommand.delete(msg.author.id);

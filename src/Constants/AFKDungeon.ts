@@ -1,5 +1,5 @@
 import { IDungeonData } from "../Definitions/IDungeonData";
-import { RushingClass, Daze, ArmorBreak, Knight, Warrior, Paladin, Priest, Slow, Paralyze, Samurai, Mystic, MSeal, Trickster, Puri, Bard, BrainPrism, SnakeOilEmoji } from "./EmojiData";
+import { RushingClass, Daze, ArmorBreak, Knight, Warrior, Paladin, Priest, Slow, Paralyze, Samurai, Mystic, MSeal, Trickster, Bard, BrainPrism, SnakeOilEmoji } from "./EmojiData";
 
 export const AFKDungeon: IDungeonData[] = [
 	{
@@ -169,7 +169,6 @@ export const AFKDungeon: IDungeonData[] = [
 			Paladin,
 			Warrior,
 			Priest,
-			Puri,
 			MSeal,
 			Daze,
 			ArmorBreak
@@ -217,7 +216,6 @@ export const AFKDungeon: IDungeonData[] = [
 			Paladin,
 			Warrior,
 			Priest,
-			Puri,
 			MSeal,
 			Daze,
 			ArmorBreak
@@ -397,8 +395,7 @@ export const AFKDungeon: IDungeonData[] = [
 			}
 		],
 		reactions: [
-			RushingClass,
-			Puri
+			RushingClass
 		],
 		portalLink: "https://i.imgur.com/SY0Jtnp.png",
 		bossLink: ["https://i.imgur.com/TIektVi.png"],
@@ -423,7 +420,6 @@ export const AFKDungeon: IDungeonData[] = [
 			Trickster,
 			Priest,
 			Daze,
-			Puri,
 			Slow
 		],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Consolation%20of%20Draconis%20Portal.png",
@@ -608,7 +604,6 @@ export const AFKDungeon: IDungeonData[] = [
 			Samurai,
 			Priest,
 			Bard,
-			Puri,
 			Daze,
 			ArmorBreak
 		],
@@ -635,7 +630,6 @@ export const AFKDungeon: IDungeonData[] = [
 			Samurai,
 			Priest,
 			Bard,
-			Puri,
 			Paralyze,
 			Daze
 		],
@@ -745,8 +739,7 @@ export const AFKDungeon: IDungeonData[] = [
 			Warrior,
 			Paladin,
 			Bard,
-			Priest,
-			Puri
+			Priest
 		],
 		portalLink: "https://i.imgur.com/VTXGPSy.png",
 		bossLink: ["https://i.imgur.com/d7xzYLG.png"],
@@ -935,7 +928,6 @@ export const AFKDungeon: IDungeonData[] = [
 			Bard,
 			Daze,
 			MSeal,
-			Puri,
 			BrainPrism
 		],
 		portalLink: "https://i.imgur.com/on1ykYB.png",
@@ -980,7 +972,6 @@ export const AFKDungeon: IDungeonData[] = [
 			Priest,
 			Bard,
 			MSeal,
-			Puri,
 			BrainPrism
 		],
 		portalLink: "https://i.imgur.com/uhDj0M5.png",
@@ -1076,7 +1067,6 @@ export const AFKDungeon: IDungeonData[] = [
 			Trickster,
 			Bard,
 			BrainPrism,
-			Puri,
 			Slow,
 			ArmorBreak,
 			SnakeOilEmoji

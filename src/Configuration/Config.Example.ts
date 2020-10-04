@@ -4,7 +4,7 @@ import { IConfigurationSettings } from "./IConfigurationSettings";
  * True -- uses production settings.
  * False -- uses testing settings.
  */
-const PRODUCTION_BOT: boolean = true;
+export const PRODUCTION_BOT: boolean = true;
 
 /**
  * True -- use private settings.

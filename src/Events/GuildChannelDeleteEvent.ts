@@ -1,5 +1,4 @@
-import { Channel, PartialDMChannel, DMChannel, GuildChannel, Guild, VoiceChannel, GuildMember } from "discord.js";
-import { GuildUtil } from "../Utility/GuildUtil";
+import { Channel, PartialDMChannel, DMChannel, GuildChannel, Guild, GuildMember } from "discord.js";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { RaidStatus } from "../Definitions/RaidStatus";

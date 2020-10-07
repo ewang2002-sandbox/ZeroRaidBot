@@ -40,7 +40,7 @@ export module GameHandler {
 	/**
 	 * Consists of all currently running AFK checks. This stores only the voice channel ID, the MessageSimpleTick, and the ReactionCollector associated with the pending AFK check, and should be cleared after the AFK check is over. 
 	 */
-	export const CURRENT_RAID_DATA: Collection<string, IStoredRaidData> = new Collection<string, IStoredRaidData>();
+	export const CURRENT_GAME_DATA: Collection<string, IStoredRaidData> = new Collection<string, IStoredRaidData>();
 
 	export async function startGameAfkCheck(
 		msg: Message,
@@ -322,7 +322,7 @@ export module GameHandler {
 
 		guildDb = await GameDbHelper.addGameChannel(guild, gi);
 
-		CURRENT_RAID_DATA.set(NEW_GAME_VC.id, {
+		CURRENT_GAME_DATA.set(NEW_GAME_VC.id, {
 			mst: mst,
 			keyReacts: new Collection<string, GuildMember[]>(),
 			earlyReacts: [],
@@ -410,15 +410,15 @@ export module GameHandler {
 
 		await raidVc.overwritePermissions(allPerms).catch(e => { });
 		const locEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(guild)
-				.setTitle("Game Session Information")
-				.setDescription(`The game session message is now below: ${StringUtil.applyCodeBlocks(gi.msgToDmPeople)}`)
-				.addField("Game Information", `Guild: ${guild.name}\nGame Section: ${gi.section.nameOfSection}\nGame VC: ${raidVc.name}\nGame: ${gi.gameInfo.gameName}`);
+			.setTitle("Game Session Information")
+			.setDescription(`The game session message is now below: ${StringUtil.applyCodeBlocks(gi.msgToDmPeople)}`)
+			.addField("Game Information", `Guild: ${guild.name}\nGame Section: ${gi.section.nameOfSection}\nGame VC: ${raidVc.name}\nGame: ${gi.gameInfo.gameName}`);
 		for await (const [id, member] of raidVc.members) {
 			await member.send(locEmbed).catch(e => { });
 		}
-		
+
 		// remove 
-		CURRENT_RAID_DATA.delete(gi.vcId);
+		CURRENT_GAME_DATA.delete(gi.vcId);
 
 		const raidersPresent: number = raidVC.members.size;
 		// set embed
@@ -493,8 +493,7 @@ export module GameHandler {
 	export async function abortAfk(
 		guild: Guild,
 		gi: IGameInfo,
-		raidVC: VoiceChannel,
-		vcDeleted: boolean = false
+		raidVC: VoiceChannel | string
 	): Promise<void> {
 		const afkCheckChannel: TextChannel = guild.channels.cache.get(gi.section.channels.afkCheckChannel) as TextChannel;
 		let raidMsg: Message = await afkCheckChannel.messages.fetch(gi.msgId);
@@ -509,7 +508,7 @@ export module GameHandler {
 			clearInterval(curRaidDataArrElem.timeout);
 		}
 
-		await GameDbHelper.removeGameChannelFromDatabase(guild, raidVC.id);
+		await GameDbHelper.removeGameChannelFromDatabase(guild, typeof raidVC === "string" ? raidVC : raidVC.id);
 
 		const abortAfk: MessageEmbed = new MessageEmbed()
 			.setAuthor(`The ${gi.gameInfo.gameName} AFK Check has been aborted.`, gi.gameInfo.gameLogoLink)
@@ -519,7 +518,7 @@ export module GameHandler {
 		await raidMsg.edit("Unfortunately, the AFK check has been aborted.", abortAfk);
 		await raidMsg.unpin().catch(() => { });
 		await cpMsg.delete().catch(console.error);
-		if (!vcDeleted) {
+		if (typeof raidVC !== "string") {
 			await RaidHandler.movePeopleOutAndDeleteRaidVc(guild, raidVC);
 		}
 	}

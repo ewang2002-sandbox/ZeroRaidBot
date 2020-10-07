@@ -730,7 +730,7 @@ export async function setNewLocationPrompt(
 		return await RaidDbHelper.editLocation(guild, (memberRequested.voice.channel as VoiceChannel).id, resolvedMsg);
 	}
 	else {
-		const curGameDataArrElem: GameHandler.IStoredRaidData | undefined = GameHandler.CURRENT_RAID_DATA.get(info.vcId);
+		const curGameDataArrElem: GameHandler.IStoredRaidData | undefined = GameHandler.CURRENT_GAME_DATA.get(info.vcId);
 		let vc: VoiceChannel | undefined = guild.channels.cache.get(info.vcId) as VoiceChannel | undefined;
 		if (info.status === RaidStatus.InRun && typeof vc !== "undefined") {
 			for await (const [id, member] of vc.members) {

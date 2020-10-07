@@ -54,7 +54,7 @@ export module RaidHandler {
 	/**
 	 * Information for stored headcounts. 
 	 */
-	interface IStoredHeadcountData {
+	export interface IStoredHeadcountData {
 		mst: MessageSimpleTick;
 		timeout: NodeJS.Timeout;
 	}
@@ -1546,8 +1546,7 @@ export module RaidHandler {
 	export async function abortAfk(
 		guild: Guild,
 		rs: IRaidInfo,
-		raidVC: VoiceChannel,
-		vcDeleted: boolean = false
+		raidVC: VoiceChannel | string
 	): Promise<void> {
 		const afkCheckChannel: TextChannel = guild.channels.cache.get(rs.section.channels.afkCheckChannel) as TextChannel;
 		let raidMsg: Message = await afkCheckChannel.messages.fetch(rs.msgID);
@@ -1562,7 +1561,7 @@ export module RaidHandler {
 			curRaidDataArrElem.mst.disableAutoTick();
 			clearInterval(curRaidDataArrElem.timeout);
 		}
-		await RaidDbHelper.removeRaidChannelFromDatabase(guild, raidVC.id);
+		await RaidDbHelper.removeRaidChannelFromDatabase(guild, typeof raidVC === "string" ? raidVC : raidVC.id);
 
 		const abortAfk: MessageEmbed = new MessageEmbed()
 			.setAuthor(`The ${rs.dungeonInfo.dungeonName} AFK Check has been aborted.`, rs.dungeonInfo.portalLink)
@@ -1572,7 +1571,7 @@ export module RaidHandler {
 		await raidMsg.edit("Unfortunately, the AFK check has been aborted.", abortAfk);
 		await raidMsg.unpin().catch(() => { });
 		await cpMsg.delete().catch(console.error);
-		if (!vcDeleted) {
+		if (typeof raidVC !== "string") {
 			if (rs.vcInfo.isOld) {
 				await raidVC.overwritePermissions(rs.vcInfo.oldPerms).catch(console.error);
 			}

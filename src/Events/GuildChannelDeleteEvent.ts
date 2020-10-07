@@ -27,7 +27,7 @@ export async function onChannelDelete(channel: Channel | PartialDMChannel): Prom
             if (raidInfo.vcID === channel.id) {
                 // found vc that was deleted
                 if (raidInfo.status === RaidStatus.AFKCheck) {
-                    await RaidHandler.abortAfk(guild, raidInfo, channel as VoiceChannel, true);
+                    await RaidHandler.abortAfk(guild, raidInfo, channel.id);
                 }
                 else {
                     let personThatCreatedVc: GuildMember;

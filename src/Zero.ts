@@ -1,4 +1,4 @@
-import { Client, Message, MessageReaction, User, PartialUser, GuildMember, PartialGuildMember, Guild, ClientUser, Channel, PartialDMChannel, VoiceChannel, Role } from "discord.js";
+import { Client, Message, MessageReaction, User, PartialUser, GuildMember, PartialGuildMember, Guild, ClientUser, Channel, PartialDMChannel, VoiceChannel, Role, PartialMessage } from "discord.js";
 import { MongoDbHelper } from "./Helpers/MongoDbHelper";
 import { CommandManager } from "./Classes/CommandManager";
 import axios, { AxiosInstance } from "axios";
@@ -19,6 +19,7 @@ import { onGuildMemberRemove } from "./Events/GuildMemberRemoveEvent";
 import { onChannelCreate } from "./Events/GuildChannelCreateEvent";
 import { onRoleDelete } from "./Events/RoleDeleteEvent";
 import { IRaidUser } from "./Templates/IRaidUser";
+import { onMessageDeleteEvent } from "./Events/MessageDeleteEvent";
 
 export class Zero {
 	/** 
@@ -91,6 +92,8 @@ export class Zero {
 			.on("channelCreate", async (channel: Channel | PartialDMChannel) => await onChannelCreate(channel));
 		Zero.RaidClient
 			.on("roleDelete", async (role: Role) => await onRoleDelete(role));
+		Zero.RaidClient
+			.on("messageDelete", async (msg: Message | PartialMessage) => await onMessageDeleteEvent(msg));
 
 		// testing
 		if (!PRODUCTION_BOT) {

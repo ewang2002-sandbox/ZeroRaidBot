@@ -458,7 +458,7 @@ export async function onMessageReactionAdd(
 
 			if (reaction.message.embeds[0].footer.text.endsWith("Pending")
 				&& reaction.emoji.name === "❌") {
-				RaidHandler.endHeadcount(guild, guildDb, AFKDungeon, member, headCountData);
+				RaidHandler.endHeadcount(guild, guildDb, AFKDungeon.filter(x => headCountData.dungeonsForHc.includes(x.id)), member, headCountData);
 			}
 		}
 

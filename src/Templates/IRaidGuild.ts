@@ -3,7 +3,6 @@ import { IBlacklistedUser, ISubBlacklistedUser } from "../Definitions/IBlacklist
 import { IModmailThread } from "../Definitions/IModmailThread";
 import { ISection } from "./ISection";
 import { IVerification } from "../Definitions/IVerification";
-import { IHeadCountInfo } from "../Definitions/IHeadCountInfo";
 import { IMutedData, ISuspendedData } from "../Definitions/IPunishmentObject";
 import { IManualVerification } from "../Definitions/IManualVerification";
 import { IQuotaDbInfo } from "../Definitions/IQuotaDbInfo";
@@ -325,11 +324,6 @@ export interface IRaidGuild {
 		 * Game AFK checks
 		 */
 		gameChannels: IGameInfo[];
-		
-		/**
-		 * Active headcounts
-		 */
-		headcounts: IHeadCountInfo[];
 	};
 
 	/**

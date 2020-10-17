@@ -7,8 +7,6 @@ import { VerificationHandler } from "../Helpers/VerificationHandler";
 import { IRaidInfo } from "../Definitions/IRaidInfo";
 import { RaidStatus } from "../Definitions/RaidStatus";
 import { RaidHandler } from "../Helpers/RaidHandler";
-import { AFKDungeon } from "../Constants/AFKDungeon";
-import { IHeadCountInfo } from "../Definitions/IHeadCountInfo";
 import { RaidDbHelper } from "../Helpers/RaidDbHelper";
 import { StringUtil } from "../Utility/StringUtil";
 import { IManualVerification } from "../Definitions/IManualVerification";
@@ -437,30 +435,6 @@ export async function onMessageReactionAdd(
 		&& reaction.message.embeds[0].footer.text.startsWith("Control Panel • ")) { // embed footer has control panel
 		leaderRoles.push(...GuildUtil.getSectionRaidLeaderRoles(sectionFromControlPanel));
 		allStaffRoles.push(...GuildUtil.getSectionRaidLeaderRoles(sectionFromControlPanel));
-
-		// let's check headcounts first
-		if (reaction.message.embeds[0].footer.text === "Control Panel • Headcount Ended"
-			&& reaction.emoji.name === "🗑️"
-			&& (member.roles.cache.some(x => leaderRoles.includes(x.id)) || member.hasPermission("ADMINISTRATOR"))) {
-			await reaction.message.delete().catch(() => { });
-			return;
-		}
-
-		if (reaction.message.embeds[0].footer.text.includes("Control Panel • Headcount")
-			&& (member.roles.cache.some(x => leaderRoles.includes(x.id)) || member.hasPermission("ADMINISTRATOR"))) {
-			// remember that there can only be one headcount per section
-			const headCountData: IHeadCountInfo | undefined = guildDb.activeRaidsAndHeadcounts.headcounts
-				.find(x => x.section.channels.controlPanelChannel === reaction.message.channel.id);
-
-			if (typeof headCountData === "undefined") {
-				return;
-			}
-
-			if (reaction.message.embeds[0].footer.text.endsWith("Pending")
-				&& reaction.emoji.name === "❌") {
-				RaidHandler.endHeadcount(guild, guildDb, AFKDungeon.filter(x => headCountData.dungeonsForHc.includes(x.id)), member, headCountData);
-			}
-		}
 
 		// let's check afk checks
 		const raidFromReaction: IRaidInfo | undefined = guildDb.activeRaidsAndHeadcounts.raidChannels

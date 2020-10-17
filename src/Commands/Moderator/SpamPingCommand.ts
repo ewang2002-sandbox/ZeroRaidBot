@@ -8,8 +8,6 @@ import { MessageUtil } from "../../Utility/MessageUtil";
 import { BotConfiguration } from "../../Configuration/Config";
 
 export class SpamPingCommand extends Command {
-    private _usedCommand: Set<string> = new Set<string>();
-
     public constructor() {
         super(
             new CommandDetail(
@@ -40,17 +38,10 @@ export class SpamPingCommand extends Command {
         args: string[],
         guildDb: IRaidGuild
     ): Promise<void> {
-        if (this._usedCommand.has(msg.author.id)) {
-            MessageUtil.send({ embed: MessageUtil.generateBlankEmbed(msg.author).setTitle("Can't Use This Command Yet!").setDescription("You have recently used this command to spam ping someone! Please wait until the bot is finished spam pinging that person before you use this command!") }, msg.channel);
-            return;
-        }
-
         if (BotConfiguration.botOwners.includes(msg.author.id)) {
-            MessageUtil.send({ embed: MessageUtil.generateBlankEmbed(msg.author).setTitle("Can't Silence This Person!").setDescription("You can't silence a defined bot owner.") }, msg.channel);
+            MessageUtil.send({ embed: MessageUtil.generateBlankEmbed(msg.author).setTitle("Can't Spam Ping This Person!").setDescription("You can't spam ping a defined bot owner.") }, msg.channel);
             return;
         }
-
-        this._usedCommand.add(msg.author.id);
 
         const mention: GuildMember | null = msg.mentions.members === null
             ? null
@@ -75,7 +66,5 @@ export class SpamPingCommand extends Command {
 
             ++pinged;
         }
-
-        this._usedCommand.delete(msg.author.id);
     }
 }

@@ -14,7 +14,6 @@ import { ArrayUtil } from "../Utility/ArrayUtil";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { MessageUtil } from "../Utility/MessageUtil";
 import { StringUtil } from "../Utility/StringUtil";
-import { IHeadCountInfo } from "../Definitions/IHeadCountInfo";
 import { TimeUnit } from "../Definitions/TimeUnit";
 import { MessageAutoTick } from "../Classes/Message/MessageAutoTick";
 import { NumberUtil } from "../Utility/NumberUtil";
@@ -49,14 +48,6 @@ export module RaidHandler {
 		timeout: NodeJS.Timeout;
 		keyReacts: Collection<string, GuildMember[]>; // string = key emoji, GuildMember[] = members that have said key
 		earlyReacts: GuildMember[];
-	}
-
-	/**
-	 * Information for stored headcounts. 
-	 */
-	export interface IStoredHeadcountData {
-		mst: MessageSimpleTick;
-		timeout: NodeJS.Timeout;
 	}
 
 	/**
@@ -118,11 +109,6 @@ export module RaidHandler {
 	 * Consists of all currently running AFK checks. This stores only the voice channel ID, the MessageSimpleTick, and the ReactionCollector associated with the pending AFK check, and should be cleared after the AFK check is over. 
 	 */
 	export const CURRENT_RAID_DATA: Collection<string, IStoredRaidData> = new Collection<string, IStoredRaidData>();
-
-	/**
-	 * Consists of all currently running headcounts. This stores only the message (of the headcount) ID, the MessageSimpleTick, and the ReactionCollector associated with the pending headcount, and should be cleared after the headcount is over. 
-	 */
-	export const CURRENT_HEADCOUNT_DATA: Collection<string, IStoredHeadcountData> = new Collection<string, IStoredHeadcountData>();
 
 	//#region a potential WIP :o
 	/*
@@ -1635,12 +1621,6 @@ export module RaidHandler {
 			return;
 		}
 
-		const foundHeadcounts: IHeadCountInfo[] = guildDb.activeRaidsAndHeadcounts.headcounts.filter(x => x.section.channels.afkCheckChannel);
-		if (foundHeadcounts.length > 0 && foundHeadcounts[0].section.channels.afkCheckChannel === HEADCOUNT_CHANNEL.id) {
-			MessageUtil.send({ content: "A headcount could not be started because there is already a pending headcount." }, msg.channel as TextChannel);
-			return;
-		}
-
 		let allDungeons: { data: IDungeonData, isIncluded: boolean }[] = [];
 		for (const dungeon of dungeons) {
 			if (dungeon.keyEmojIDs.length !== 0) {
@@ -1751,153 +1731,10 @@ export module RaidHandler {
 			}
 		}
 
-		const hcMessage: Message = await afkCheckChannel.send(`@here, a headcount is currently in progress. There are 10 minutes and 0 seconds remaining on this headcount.`, { embed: hcEmbed });
-		const mst: MessageSimpleTick = new MessageSimpleTick(hcMessage, "@here, a headcount is currently in progress. There are {m} minutes and {s} seconds remaining on this headcount.", MAX_TIME_LEFT * 2); // 10 min
+		const hcMessage: Message = await afkCheckChannel.send(`@here`, { embed: hcEmbed });
 		await hcMessage.pin().catch(() => { });
 
 		FastReactionMenuManager.reactFaster(hcMessage, emojis);
-
-		const hcInfo: IHeadCountInfo = {
-			section: section,
-			msgID: hcMessage.id,
-			startTime: new Date().getTime(),
-			startedBy: member.id,
-			dungeonsForHc: dungeonsForHc.map(x => x.id),
-			controlPanelMsgId: controlPanelMsgEntry.id
-		};
-
-		await RaidDbHelper.addHeadcount(guild, hcInfo);
-
-		// TODO see if if there is a way to stop the timeout in case the headcount ends early.
-		const timeout: NodeJS.Timeout = setTimeout(async () => {
-			mst.disableAutoTick();
-			guildDb = await (new MongoDbHelper.MongoDbGuildManager(guild.id).findOrCreateGuildDb());
-			endHeadcount(guild, guildDb, dungeonsForHc, "AUTO", hcInfo);
-		}, MAX_TIME_LEFT * 2);
-
-		CURRENT_HEADCOUNT_DATA.set(hcMessage.id, {
-			timeout: timeout,
-			mst: mst
-		});
-	}
-
-	export async function endHeadcount(
-		guild: Guild,
-		guildDb: IRaidGuild,
-		dungeonsForHc: IDungeonData[],
-		endedBy: GuildMember | "AUTO",
-		hcInfo: IHeadCountInfo
-	): Promise<void> {
-		let hcEntryFound: boolean = false;
-		for (const hcEntry of guildDb.activeRaidsAndHeadcounts.headcounts) {
-			if (hcEntry.msgID === hcInfo.msgID) {
-				hcEntryFound = true;
-				break;
-			}
-		}
-
-		if (!hcEntryFound) {
-			return;
-		}
-
-		// see if the headcount exists or not
-		// TODO: check db first in case bot restarts
-		const HEADCOUNT_CHANNEL: TextChannel = guild.channels.cache.get(hcInfo.section.channels.afkCheckChannel) as TextChannel;
-		const hcMsg: Message = await HEADCOUNT_CHANNEL.messages.fetch(hcInfo.msgID);
-
-		const headcountArrElemData: IStoredHeadcountData | undefined = RaidHandler.CURRENT_HEADCOUNT_DATA.get(hcInfo.msgID);
-
-		// get control panel
-		const CONTROL_PANEL_CHANNEL: TextChannel = guild.channels.cache
-			.get(hcInfo.section.channels.controlPanelChannel) as TextChannel;
-		const controlPanelMessage: Message = await CONTROL_PANEL_CHANNEL.messages.fetch(hcInfo.controlPanelMsgId);
-
-		// if the timer ends but we already ended the hc
-		// then return as to not "end" the hc twice
-		let dbIsFound: boolean = false;
-		if (typeof headcountArrElemData === "undefined") {
-			for (let i = 0; i < guildDb.activeRaidsAndHeadcounts.headcounts.length; i++) {
-				if (guildDb.activeRaidsAndHeadcounts.headcounts[i].msgID === hcMsg.id) {
-					dbIsFound = true;
-					break;
-				}
-			}
-
-			if (!dbIsFound) {
-				return;
-			}
-		}
-		else {
-			headcountArrElemData.mst.disableAutoTick();
-			clearInterval(headcountArrElemData.timeout);
-		}
-		// remove from db
-		await RaidDbHelper.removeHeadcount(guild, hcMsg.id);
-		await hcMsg.unpin().catch(() => { });
-
-		// remove from array
-		CURRENT_HEADCOUNT_DATA.delete(hcInfo.msgID);
-
-		// let's now get the data, if any 
-		const reactionsFromHeadcount: Collection<string, MessageReaction> = (await hcMsg.fetch()).reactions.cache;
-		const newEmbed: MessageEmbed = new MessageEmbed()
-			.setTitle(`🔕 The headcount has been ended ${endedBy === "AUTO" ? "automatically" : `by ${endedBy.displayName}`}`)
-			.setColor("RANDOM")
-			.setDescription(`There are currently ${(reactionsFromHeadcount.get(AllEmoji) as MessageReaction).users.cache.size} raiders ready.`)
-			.setTimestamp();
-
-		const newControlPanelEmbed: MessageEmbed = new MessageEmbed()
-			.setAuthor("Control Panel: Headcount Results", "https://i.imgur.com/g2wovmA.png")
-			.setDescription(`Headcount Ended By: ${endedBy === "AUTO" ? "Timer" : `${endedBy} (${endedBy.displayName})`}\nRaiders Ready: ${(reactionsFromHeadcount.get(AllEmoji) as MessageReaction).users.cache.size - 1}`)
-			.addField("Delete Results", "React with 🗑️ to delete this message. This action will automatically be performed in 10 minutes.")
-			.setColor("RANDOM")
-			.setTimestamp()
-			.setFooter("Control Panel • Headcount Ended");
-
-		for (const [, reaction] of reactionsFromHeadcount) {
-			if (reaction.emoji.id !== null && reaction.emoji.id === AllEmoji) {
-				continue;
-			}
-
-			let userStr: string = "";
-			for (const [, user] of reaction.users.cache) {
-				if (user.id === ((Zero.RaidClient.user as ClientUser).id)) {
-					continue;
-				}
-				const member: GuildMember = guild.member(user) as GuildMember;
-				userStr += `${member.displayName}\n`;
-			}
-
-			let keyName: string = "";
-			// find emoji name
-			dungeonInfoLoop: for (const dungeon of dungeonsForHc) {
-				for (const key of dungeon.keyEmojIDs) {
-					if (key.keyEmojID === reaction.emoji.id) {
-						keyName = key.keyEmojiName;
-						break dungeonInfoLoop;
-					}
-				}
-			}
-
-			if (keyName === "" || userStr === "") {
-				continue;
-			}
-			newControlPanelEmbed.addField(keyName, StringUtil.applyCodeBlocks(userStr), true);
-		}
-
-		await hcMsg.edit(newEmbed).catch(() => { });
-		await hcMsg.unpin().catch(() => { });
-		await controlPanelMessage.reactions.removeAll().catch(() => { });
-		await controlPanelMessage.edit(newControlPanelEmbed).catch(() => { });
-		await controlPanelMessage.react("🗑️").catch(() => { });
-		setTimeout(async () => {
-			try {
-				await controlPanelMessage.delete();
-			}
-			catch (e) {
-				// ignore
-			}
-		}, 10 * 60 * 1000); // TODO unknowm msg error from headcount
 	}
 
 	/**

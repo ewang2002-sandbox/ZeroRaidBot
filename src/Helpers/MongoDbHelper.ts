@@ -281,7 +281,6 @@ export module MongoDbHelper {
 					},
 					activeRaidsAndHeadcounts: {
 						raidChannels: [],
-						headcounts: [],
 						gameChannels: []
 					},
 					prefix: ";",

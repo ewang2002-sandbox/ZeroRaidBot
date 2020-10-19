@@ -8,8 +8,7 @@ import { DateUtil } from "../Utility/DateUtil";
 import { StringBuilder } from "../Classes/String/StringBuilder";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { ArrayUtil } from "../Utility/ArrayUtil";
-import { LeaderboardCommand } from "../Commands/Public/LeaderboardCommand";
-
+ 
 export module QuotaLoggingHandler {
     export type LeaderLogAndTotal = IQuotaDbInfo & { total: number };
 

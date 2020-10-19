@@ -1,10 +1,9 @@
 import { IRaidGuild } from "../Templates/IRaidGuild";
-import { Guild, GuildMember, User } from "discord.js";
+import { Guild } from "discord.js";
 import { IGameInfo } from "../Definitions/IGameInfo";
 import { MongoDbHelper } from "./MongoDbHelper";
 import { FindAndModifyWriteOpResultObject } from "mongodb";
 import { RaidStatus } from "../Definitions/RaidStatus";
-import { IHeadCountInfo } from "../Definitions/IHeadCountInfo";
 
 /**
  * This file contains raid-related functions that deal with the database.

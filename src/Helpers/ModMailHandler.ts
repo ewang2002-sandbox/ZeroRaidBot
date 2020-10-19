@@ -1,5 +1,5 @@
 import { IRaidGuild } from "../Templates/IRaidGuild";
-import { User, Guild, Message, MessageEmbed, TextChannel, GuildMember, MessageEmbedFooter, MessageAttachment, FileOptions, EmbedField, Collection, Emoji, EmojiResolvable, CategoryChannel, DMChannel } from "discord.js";
+import { User, Guild, Message, MessageEmbed, TextChannel, GuildMember, MessageEmbedFooter, MessageAttachment, EmbedField, Collection, Emoji, EmojiResolvable, CategoryChannel, DMChannel } from "discord.js";
 import { MongoDbHelper } from "./MongoDbHelper";
 import { UserAvailabilityHelper } from "./UserAvailabilityHelper";
 import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollector";

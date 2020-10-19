@@ -971,6 +971,7 @@ export module VerificationHandler {
 			.insertOne(newEntry);
 
 		if (results.ops.length === 0) {
+			// excellent error handling right here 
 			throw new Error("something went wrong when trying to create a new profile.");
 		}
 		return (results.ops[0]);
@@ -1008,9 +1009,8 @@ export module VerificationHandler {
 	 * @todo TODO make it so the bot checks ALL conditions.
 	 * @param {Guild} guild The guild. 
 	 * @param {string} inGameName The in-game name. 
-	 * @param {StringBuilder} reqs A StringBuilder containing all of the requirements. 
 	 * @param {boolean} isOldProfile Whether the profile was pre-existing or not. 
-	 * @param {GuildMember} member The guild member. 
+	 * @param {string} code The code. 
 	 */
 	function getVerificationEmbed(guild: Guild, inGameName: string, isOldProfile: boolean, code: string) {
 		const verifEmbed: MessageEmbed = new MessageEmbed()

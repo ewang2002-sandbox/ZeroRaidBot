@@ -5,7 +5,7 @@
 	"main": "index.js",
 	"dependencies": {
 		"axios": "^0.19.2",
-		"discord.js": "^12.3.1",
+		"discord.js": "^12.4.0",
 		"mongodb": "^3.6.2"
 	},
 	"devDependencies": {

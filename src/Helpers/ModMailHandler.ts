@@ -414,7 +414,7 @@ export module ModMailHandler {
 		const attachmentsIndex: number = originalModMailMessage.embeds[0].fields
 			.findIndex(x => x.name === "Attachments");
 		let desc: string = ""; 
-		if (typeof originalModMailMessage.embeds[0].description !== "undefined") {
+		if (originalModMailMessage.embeds[0].description !== null) {
 			desc = originalModMailMessage.embeds[0].description;
 			firstMsgEmbed.setDescription(originalModMailMessage.embeds[0].description);
 		}
@@ -729,7 +729,7 @@ export module ModMailHandler {
 		const oldEmbed: MessageEmbed = originalModMailMessage.embeds[0];
 		const authorOfModmailId: string = ((oldEmbed.footer as MessageEmbedFooter).text as string).split("•")[0].trim();
 		const guildDb: IRaidGuild = await new MongoDbHelper.MongoDbGuildManager(memberThatWillRespond.guild.id).findOrCreateGuildDb();
-		const originalModMailContent: string = typeof originalModMailMessage.embeds[0].description === "undefined"
+		const originalModMailContent: string = originalModMailMessage.embeds[0].description === null
 			? ""
 			: originalModMailMessage.embeds[0].description;
 

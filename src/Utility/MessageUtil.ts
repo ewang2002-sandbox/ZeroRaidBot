@@ -1,4 +1,4 @@
-import { Message, MessageEmbed, ColorResolvable, MessageOptions, MessageAttachment, PartialTextBasedChannelFields, User, Guild, PartialUser } from "discord.js";
+import { Message, MessageEmbed, ColorResolvable, MessageOptions, MessageAttachment, PartialTextBasedChannelFields, User, Guild, PartialUser, APIMessageContentResolvable, MessageAdditions } from "discord.js";
 
 export namespace MessageUtil {
 	/**
@@ -302,7 +302,7 @@ export namespace MessageUtil {
 	 * @returns {Promise<Message>} The message that was sent.  
 	 */
 	export async function send(
-		info: MessageOptions | MessageEmbed | MessageAttachment | (MessageEmbed | MessageAttachment)[] | string,
+		info:  APIMessageContentResolvable | (MessageOptions & { split?: false }) | MessageAdditions,
 		channel: PartialTextBasedChannelFields,
 		timeout: number = 5000
 	): Promise<Message> {

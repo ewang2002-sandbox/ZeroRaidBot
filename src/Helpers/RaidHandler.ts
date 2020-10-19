@@ -498,7 +498,8 @@ export module RaidHandler {
 			let isInValidVc: boolean = false;
 			let desc: string = "It appears this server has multiple compatible voice channels. Please select the voice channel that you'd like to use. Please make sure the voice channel isn't already in use.\n\n⇒ React with ➕ if you want the bot to create a new VC for this raid.\n⇒ React with ❌ if you want to cancel this process.";
 			if (typeof member.voice.channelID !== "undefined"
-				&& allVoiceChannels.map(x => x.id).includes(member.voice.channelID)) {
+				&& member.voice.channel !== null
+				&& allVoiceChannels.map(x => x.id).includes(member.voice.channel.id)) {
 				desc += `\n⇒ React with 📍 if you want to use your current voice channel.`;
 				isInValidVc = true;
 			}
@@ -1443,7 +1444,7 @@ export module RaidHandler {
 
 		// if we're in post afk 
 		if (raidMsg !== null &&
-			typeof raidMsg.embeds[0].description !== "undefined"
+			raidMsg.embeds[0].description !== null
 			&& raidMsg.embeds[0].description.includes("Join any available voice channel and then")) {
 			return;
 		}

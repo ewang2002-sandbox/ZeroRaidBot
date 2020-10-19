@@ -96,7 +96,7 @@ export class MessageAutoTick {
 				newEmbed.setAuthor(this._embed.author.name, this._embed.author.iconURL);
 			}
 			newEmbed.setTitle(this._embed.title);
-			if (typeof this._embed.color !== "undefined") {
+			if (this._embed.color !== null) {
 				newEmbed.setColor(this._embed.color);
 			}
 

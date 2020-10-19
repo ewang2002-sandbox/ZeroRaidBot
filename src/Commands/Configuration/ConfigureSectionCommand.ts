@@ -793,7 +793,7 @@ export class ConfigureSectionCommand extends Command {
 			botSentMsg = await botSentMsg.edit(embed);
 		}
 		catch (e) { // probably got deleted.
-			botSentMsg = await msg.channel.send(botSentMsg);
+			botSentMsg = await msg.channel.send(embed);
 		}
 
 		const r: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(botSentMsg, msg.author, reactions, 2, TimeUnit.MINUTE).react();
@@ -1072,7 +1072,7 @@ export class ConfigureSectionCommand extends Command {
 			botSentMsg = await botSentMsg.edit(embed);
 		}
 		catch (e) { // probably got deleted.
-			botSentMsg = await msg.channel.send(botSentMsg);
+			botSentMsg = await msg.channel.send(embed);
 		}
 
 		const r: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(botSentMsg, msg.author, reactions, 2, TimeUnit.MINUTE).react();
@@ -1407,7 +1407,7 @@ export class ConfigureSectionCommand extends Command {
 			botSentMsg = await botSentMsg.edit(embed);
 		}
 		catch (e) { // probably got deleted.
-			botSentMsg = await msg.channel.send(botSentMsg);
+			botSentMsg = await msg.channel.send(embed);
 		}
 
 		const r: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(botSentMsg, msg.author, reactions, 2, TimeUnit.MINUTE).react();

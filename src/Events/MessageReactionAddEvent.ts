@@ -134,7 +134,7 @@ export async function onMessageReactionAdd(
 		}
 		else if (reaction.emoji.name === "🗑️") {
 			const oldEmbed: MessageEmbed = reaction.message.embeds[0];
-			if (typeof oldEmbed.description !== "undefined" && oldEmbed.description.length > 20) {
+			if (oldEmbed.description !== null && oldEmbed.description.length > 20) {
 				await reaction.message.reactions.removeAll().catch(() => { });
 				const askDeleteEmbed: MessageEmbed = new MessageEmbed()
 					.setAuthor(member.user.tag, member.user.displayAvatarURL())

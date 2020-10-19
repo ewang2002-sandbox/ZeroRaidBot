@@ -20,7 +20,7 @@ export async function onGuildMemberUpdate(
 
     // someone took off the muted role
     if (oldMember.roles.cache.has(guildDb.roles.optRoles.mutedRole)
-        && !newMember.roles.cache.has(guildDb.roles.optRoles.mutedRole)) {
+        && !resolvedNewMember.roles.cache.has(guildDb.roles.optRoles.mutedRole)) {
         await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
             $pull: {
                 "moderation.mutedUsers": {
@@ -37,7 +37,7 @@ export async function onGuildMemberUpdate(
     }
 
     if (oldMember.roles.cache.has(guildDb.roles.suspended)
-        && !newMember.roles.cache.has(guildDb.roles.suspended)) {
+        && !resolvedNewMember.roles.cache.has(guildDb.roles.suspended)) {
         const indexOfSuspend: number = guildDb.moderation.suspended.findIndex(x => x.userId === resolvedNewMember.id);
         if (indexOfSuspend !== -1) {
             await resolvedNewMember.roles.set(guildDb.moderation.suspended[indexOfSuspend].roles).catch(e => { });

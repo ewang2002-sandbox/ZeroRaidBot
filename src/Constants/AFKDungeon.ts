@@ -696,6 +696,34 @@ export const AFKDungeon: IDungeonData[] = [
 		]
 	},
 	{
+		id: 42,
+		dungeonName: "High Tech Terror",
+		portalEmojiID: "",
+		keyEmojIDs: [
+			{
+				keyEmojID: "",
+				keyEmojiName: "High Tech Terror Key"
+			}
+		],
+		reactions: [
+			Warrior,
+			Paladin,
+			Bard,
+			Samurai,
+			Priest,
+			Slow,
+			Daze
+		],
+		portalLink: "",
+		bossLink: [
+			"https://static.drips.pw/rotmg/wiki/Enemies/F.E.R.A.L..png"
+		],
+		colors: [
+			0x06bd5f,
+			0x0db4ba
+		]
+	},
+	{
 		id: 26,
 		dungeonName: "Battle for the Nexus",
 		portalEmojiID: "561248700588883979",
@@ -1084,4 +1112,4 @@ export const AFKDungeon: IDungeonData[] = [
 		]
 	}
 ];
-// max ID: 41 -- ancient ruins
+// max ID: 42 -- high tech terror

@@ -1,7 +1,5 @@
 import { Guild, GuildMember, Message, PartialMessage, VoiceChannel } from "discord.js";
-import { AFKDungeon } from "../Constants/AFKDungeon";
 import { RaidStatus } from "../Definitions/RaidStatus";
-import { GameHandler } from "../Helpers/GameHandler";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
 import { RaidHandler } from "../Helpers/RaidHandler";
 import { IRaidGuild } from "../Templates/IRaidGuild";
@@ -33,29 +31,6 @@ export async function onMessageDeleteEvent(msg: Message | PartialMessage): Promi
                 }
                 else {
                     await RaidHandler.endRun(guild.me as GuildMember, guild, afkCheckInfo, vc !== null);
-                }
-            }
-        }
-    }
-
-    for (const gameCheckInfo of guildDb.activeRaidsAndHeadcounts.gameChannels) {
-        if (gameCheckInfo.controlPanelMsgId === msg.id || gameCheckInfo.msgId === msg.id) {
-            if (GameHandler.CURRENT_GAME_DATA.has(gameCheckInfo.msgId)) {
-                (GameHandler.CURRENT_GAME_DATA.get(gameCheckInfo.msgId) as RaidHandler.IStoredRaidData).mst.disableAutoTick();
-                clearTimeout((GameHandler.CURRENT_GAME_DATA.get(gameCheckInfo.msgId) as RaidHandler.IStoredRaidData).timeout);
-                GameHandler.CURRENT_GAME_DATA.delete(gameCheckInfo.msgId);
-            }
-
-            let vc: VoiceChannel | null = null;
-            try {
-                vc = await Zero.RaidClient.channels.fetch(gameCheckInfo.vcId) as VoiceChannel;
-            }
-            finally {
-                if (gameCheckInfo.status === RaidStatus.AFKCheck) {
-                    await GameHandler.abortAfk(guild, gameCheckInfo, gameCheckInfo.vcId);
-                }
-                else {
-                    await GameHandler.endGamingSession(guild.me as GuildMember, guild, gameCheckInfo);
                 }
             }
         }

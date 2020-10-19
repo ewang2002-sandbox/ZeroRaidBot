@@ -6,7 +6,6 @@ import { AFKDungeon } from "../Constants/AFKDungeon";
 import { IRaidBot } from "../Templates/IRaidBot";
 import { Zero } from "../Zero";
 import { ClientUser } from "discord.js";
-import { AFKGame } from "../Constants/GameAFK";
 
 export module MongoDbHelper {
 	export let MongoBotSettingsClient: Collection<IRaidBot>;
@@ -269,7 +268,6 @@ export module MongoDbHelper {
 						application: [],
 						blockedCommands: [],
 						removeEarlyLocKeyReacts: false,
-						games: AFKGame.map(x => x.id)
 					},
 					moderation: {
 						blacklistedUsers: [],
@@ -280,8 +278,7 @@ export module MongoDbHelper {
 						blacklistedApplicants: []
 					},
 					activeRaidsAndHeadcounts: {
-						raidChannels: [],
-						gameChannels: []
+						raidChannels: []
 					},
 					prefix: ";",
 					sections: []

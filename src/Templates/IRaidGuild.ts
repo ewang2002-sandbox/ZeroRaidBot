@@ -7,7 +7,6 @@ import { IMutedData, ISuspendedData } from "../Definitions/IPunishmentObject";
 import { IManualVerification } from "../Definitions/IManualVerification";
 import { IQuotaDbInfo } from "../Definitions/IQuotaDbInfo";
 import { IApplication } from "../Definitions/IApplication";
-import { IGameInfo } from "../Definitions/IGameInfo";
 
 /**
  * Everything here (excluding "sections") represents ESSENTIALS needed for the core bot functions to work properly.
@@ -286,11 +285,6 @@ export interface IRaidGuild {
 		dungeons: number[];
 
 		/**
-		 * The games to allow or exclude.
-		 */
-		games: number[];
-
-		/**
 		 * All ongoing manual verification.
 		 */
 		manualVerificationEntries: IManualVerification[];
@@ -319,11 +313,6 @@ export interface IRaidGuild {
 		 * An array of active raids.
 		 */
 		raidChannels: IRaidInfo[];
-
-		/**
-		 * Game AFK checks
-		 */
-		gameChannels: IGameInfo[];
 	};
 
 	/**

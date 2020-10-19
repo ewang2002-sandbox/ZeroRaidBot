@@ -21,9 +21,6 @@ import { ReactionLoggingHandler } from "../Helpers/ReactionLoggingHandler";
 import { OtherUtil } from "../Utility/OtherUtil";
 import { IModmailThread } from "../Definitions/IModmailThread";
 import { BotConfiguration } from "../Configuration/Config";
-import { IGameInfo } from "../Definitions/IGameInfo";
-import { GameHandler } from "../Helpers/GameHandler";
-import { GameDbHelper } from "../Helpers/GameDbHelper";
 
 export async function onMessageReactionAdd(
 	reaction: MessageReaction,
@@ -440,76 +437,11 @@ export async function onMessageReactionAdd(
 		const raidFromReaction: IRaidInfo | undefined = guildDb.activeRaidsAndHeadcounts.raidChannels
 			.find(x => x.controlPanelMsgId === reaction.message.id);
 
-		const gameFromReaction: IGameInfo | undefined = guildDb.activeRaidsAndHeadcounts.gameChannels
-			.find(x => x.controlPanelMsgId === reaction.message.id);
-
 		if (member.voice.channel === null) {
 			return;
 		}
 
-		if (typeof gameFromReaction !== "undefined") {
-			if (member.voice.channel.id === gameFromReaction.vcId) {
-				if (reaction.message.embeds[0].footer.text.includes("Control Panel • Game AFK Check")
-					&& gameFromReaction.status === RaidStatus.AFKCheck) {
-					if (member.roles.cache.some(x => allStaffRoles.includes(x.id))
-						|| member.hasPermission("ADMINISTRATOR")) {
-						// end afk
-						if (reaction.emoji.name === "⏹️") {
-							GameHandler.endAfkCheck(guildDb, guild, gameFromReaction, member.voice.channel, member);
-						}
-						// abort afk
-						else if (reaction.emoji.name === "🗑️") {
-							GameHandler.abortAfk(guild, gameFromReaction, member.voice.channel);
-						}
-						// set message
-						else if (reaction.emoji.name === "✏️") {
-							await setNewLocationPrompt(guild, guildDb, gameFromReaction, member);
-						}
-					}
-
-					if (member.roles.cache.has(guildDb.roles.teamRole) || member.hasPermission("ADMINISTRATOR")) {
-						// get loc
-						if (reaction.emoji.name === "🗺️") {
-							await earlyLocSend(guild, gameFromReaction, member, user);
-						}
-					}
-				}
-				else if (reaction.message.embeds[0].footer.text.includes("Control Panel • In Game")
-					&& gameFromReaction.status === RaidStatus.InRun) {
-					if (member.roles.cache.some(x => allStaffRoles.includes(x.id))
-						|| member.hasPermission("ADMINISTRATOR")) {
-						// end run
-						if (reaction.emoji.name === "⏹️") {
-							GameHandler.endGamingSession(member, guild, gameFromReaction);
-						}
-						// set loc
-						else if (reaction.emoji.name === "✏️") {
-							await setNewLocationPrompt(guild, guildDb, gameFromReaction, member);
-						}
-						// lock vc
-						else if (reaction.emoji.name === "🔒") {
-							await member.voice.channel.updateOverwrite(guild.roles.everyone, {
-								CONNECT: false
-							});
-						}
-						// unlock vc
-						else if (reaction.emoji.name === "🔓") {
-							await member.voice.channel.updateOverwrite(guild.roles.everyone, {
-								CONNECT: null
-							});
-						}
-					}
-
-					if (member.roles.cache.has(guildDb.roles.teamRole) || member.hasPermission("ADMINISTRATOR")) {
-						// get loc
-						if (reaction.emoji.name === "🗺️") {
-							await earlyLocSend(guild, gameFromReaction, member, user);
-						}
-					}
-				}
-			}
-		}
-		else if (typeof raidFromReaction !== "undefined") {
+		if (typeof raidFromReaction !== "undefined") {
 			// has to be in same vc
 			if (member.voice.channel.id === raidFromReaction.vcID) {
 				// afk check
@@ -581,7 +513,7 @@ export async function onMessageReactionAdd(
 
 async function earlyLocSend(
 	guild: Guild,
-	raidFromReaction: IRaidInfo | IGameInfo,
+	raidFromReaction: IRaidInfo,
 	member: GuildMember,
 	user: User
 ): Promise<void> {
@@ -589,27 +521,19 @@ async function earlyLocSend(
 		return;
 	}
 
-	const locEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(guild);
-	if ("gameInfo" in raidFromReaction) {
-		locEmbed
-			.setTitle("Early Message")
-			.setDescription(`The game session message is now below: ${StringUtil.applyCodeBlocks(raidFromReaction.msgToDmPeople)}`)
-			.addField("Game Information", `Guild: ${guild.name}\nGame Section: ${raidFromReaction.section.nameOfSection}\nGame VC: ${member.voice.channel.name}\nGame: ${raidFromReaction.gameInfo.gameName}`);
-	}
-	else {
-		locEmbed
-			.setTitle("Early Location")
-			.setDescription(`The location of the raid (information below) is: ${StringUtil.applyCodeBlocks(raidFromReaction.location)}`)
-			.addField("Location Rules", "- Do not give this location out to anyone else.\n- Pay attention to any directions your raid leader may have.")
-			.addField("Raid Information", `Guild: ${guild.name}\nRaid Section: ${raidFromReaction.section.nameOfSection}\nRaid VC: ${member.voice.channel.name}\nDungeon: ${raidFromReaction.dungeonInfo.dungeonName}`);
-	}
+	const locEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(guild)
+		.setTitle("Early Location")
+		.setDescription(`The location of the raid (information below) is: ${StringUtil.applyCodeBlocks(raidFromReaction.location)}`)
+		.addField("Location Rules", "- Do not give this location out to anyone else.\n- Pay attention to any directions your raid leader may have.")
+		.addField("Raid Information", `Guild: ${guild.name}\nRaid Section: ${raidFromReaction.section.nameOfSection}\nRaid VC: ${member.voice.channel.name}\nDungeon: ${raidFromReaction.dungeonInfo.dungeonName}`);
+
 	await user.send(locEmbed).catch(() => { });
 }
 
 export async function setNewLocationPrompt(
 	guild: Guild,
 	guildDb: IRaidGuild,
-	info: IRaidInfo | IGameInfo,
+	info: IRaidInfo,
 	memberRequested: GuildMember
 ): Promise<IRaidGuild> {
 	let dmChannel: DMChannel;
@@ -623,14 +547,11 @@ export async function setNewLocationPrompt(
 
 	UserAvailabilityHelper.InMenuCollection.set(memberRequested.id, UserAvailabilityHelper.MenuType.KEY_ASK);
 
-	const isRaid: boolean = "location" in info;
-	const vcNameToDisplay: string = "location" in info
-		? info.vcName
-		: `${info.gameInfo.gameName} ${info.vcNum}`;
+	const vcNameToDisplay: string = info.vcName; 
 
 	const resolvedMsg: string | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<string>(
 		memberRequested,
-		{ content: `**\`[${guild.name} ⇒ ${info.section.nameOfSection} ⇒ ${vcNameToDisplay}\`** Please type the __new__ ${isRaid ? "location" : "message"} for this ${isRaid ? "raid" : "gaming session"}. ${isRaid ? "This location will be sent to people that have reacted with either the key or Nitro Booster emoji." : "This message will be sent to all members in this voice channel."} To cancel this process, type \`cancel\`.` },
+		{ content: `**\`[${guild.name} ⇒ ${info.section.nameOfSection} ⇒ ${vcNameToDisplay}\`** Please type the __new__ location for this raid. This location will be sent to people that have reacted with either the key or Nitro Booster emoji. To cancel this process, type \`cancel\`.` },
 		1,
 		TimeUnit.MINUTE,
 		dmChannel
@@ -645,73 +566,60 @@ export async function setNewLocationPrompt(
 		return guildDb;
 	}
 
-	if ("location" in info) {
-		const curRaidDataArrElem: RaidHandler.IStoredRaidData | undefined = RaidHandler.CURRENT_RAID_DATA.get(info.vcID);
-		if (typeof curRaidDataArrElem === "undefined") {
-			let hasMessaged: string[] = [];
-			for await (const person of info.earlyReacts) {
-				let memberToMsg: GuildMember | null;
-				try {
-					memberToMsg = await guild.members.fetch(person);
-				}
-				catch (e) {
-					memberToMsg = null;
-				}
-
-				if (memberToMsg === null) {
-					continue;
-				}
-				await memberToMsg.send(`**\`[${guild.name} ⇒ ${info.section.nameOfSection}]\`** A __new__ location for this raid has been set by a leader. The location is: ${StringUtil.applyCodeBlocks(resolvedMsg)}Do not tell anyone this location.`).catch(() => { });
-				hasMessaged.push(person);
+	const curRaidDataArrElem: RaidHandler.IStoredRaidData | undefined = RaidHandler.CURRENT_RAID_DATA.get(info.vcID);
+	if (typeof curRaidDataArrElem === "undefined") {
+		let hasMessaged: string[] = [];
+		for await (const person of info.earlyReacts) {
+			let memberToMsg: GuildMember | null;
+			try {
+				memberToMsg = await guild.members.fetch(person);
+			}
+			catch (e) {
+				memberToMsg = null;
 			}
 
-			for await (const entry of info.keyReacts) {
-				if (hasMessaged.includes(entry.userId)) {
-					continue;
-				}
-				let memberToMsg: GuildMember | null;
-				try {
-					memberToMsg = await guild.members.fetch(entry.userId);
-				}
-				catch (e) {
-					memberToMsg = null;
-				}
-				if (memberToMsg === null) {
-					continue;
-				}
-				await memberToMsg.send(`**\`[${guild.name} ⇒ ${info.section.nameOfSection}]\`** A __new__ location for this raid has been set by a leader. The location is: ${StringUtil.applyCodeBlocks(resolvedMsg)}Do not tell anyone this location.`).catch(() => { });
-				hasMessaged.push(entry.userId);
+			if (memberToMsg === null) {
+				continue;
 			}
-		}
-		else {
-			let hasMessaged: string[] = [];
-			for await (const person of curRaidDataArrElem.earlyReacts) {
-				await person.send(`**\`[${guild.name} ⇒ ${info.section.nameOfSection}]\`** A __new__ location for this raid has been set by a leader. The location is: ${StringUtil.applyCodeBlocks(resolvedMsg)}Do not tell anyone this location.`).catch(() => { });
-				hasMessaged.push(person.id);
-			}
-
-			for await (const [, members] of curRaidDataArrElem.keyReacts) {
-				for (const member of members) {
-					if (hasMessaged.includes(member.id)) {
-						continue;
-					}
-					await member.send(`**\`[${guild.name} ⇒ ${info.section.nameOfSection}]\`** A __new__ location for this raid has been set by a leader. The location is: ${StringUtil.applyCodeBlocks(resolvedMsg)}Do not tell anyone this location.`).catch(() => { });
-					hasMessaged.push(member.id);
-				}
-			}
+			await memberToMsg.send(`**\`[${guild.name} ⇒ ${info.section.nameOfSection}]\`** A __new__ location for this raid has been set by a leader. The location is: ${StringUtil.applyCodeBlocks(resolvedMsg)}Do not tell anyone this location.`).catch(() => { });
+			hasMessaged.push(person);
 		}
 
-		return await RaidDbHelper.editLocation(guild, (memberRequested.voice.channel as VoiceChannel).id, resolvedMsg);
+		for await (const entry of info.keyReacts) {
+			if (hasMessaged.includes(entry.userId)) {
+				continue;
+			}
+			let memberToMsg: GuildMember | null;
+			try {
+				memberToMsg = await guild.members.fetch(entry.userId);
+			}
+			catch (e) {
+				memberToMsg = null;
+			}
+			if (memberToMsg === null) {
+				continue;
+			}
+			await memberToMsg.send(`**\`[${guild.name} ⇒ ${info.section.nameOfSection}]\`** A __new__ location for this raid has been set by a leader. The location is: ${StringUtil.applyCodeBlocks(resolvedMsg)}Do not tell anyone this location.`).catch(() => { });
+			hasMessaged.push(entry.userId);
+		}
 	}
 	else {
-		const curGameDataArrElem: GameHandler.IStoredRaidData | undefined = GameHandler.CURRENT_GAME_DATA.get(info.vcId);
-		let vc: VoiceChannel | undefined = guild.channels.cache.get(info.vcId) as VoiceChannel | undefined;
-		if (info.status === RaidStatus.InRun && typeof vc !== "undefined") {
-			for await (const [id, member] of vc.members) {
-				await member.send(`**\`[${guild.name} ⇒ ${info.section.nameOfSection}]\`** A __new__ message for this gaming session has been set by a leader. The message is: ${StringUtil.applyCodeBlocks(resolvedMsg)}`).catch(() => { });
-			}
+		let hasMessaged: string[] = [];
+		for await (const person of curRaidDataArrElem.earlyReacts) {
+			await person.send(`**\`[${guild.name} ⇒ ${info.section.nameOfSection}]\`** A __new__ location for this raid has been set by a leader. The location is: ${StringUtil.applyCodeBlocks(resolvedMsg)}Do not tell anyone this location.`).catch(() => { });
+			hasMessaged.push(person.id);
 		}
 
-		return await GameDbHelper.editMessage(guild, (memberRequested.voice.channel as VoiceChannel).id, resolvedMsg);
+		for await (const [, members] of curRaidDataArrElem.keyReacts) {
+			for (const member of members) {
+				if (hasMessaged.includes(member.id)) {
+					continue;
+				}
+				await member.send(`**\`[${guild.name} ⇒ ${info.section.nameOfSection}]\`** A __new__ location for this raid has been set by a leader. The location is: ${StringUtil.applyCodeBlocks(resolvedMsg)}Do not tell anyone this location.`).catch(() => { });
+				hasMessaged.push(member.id);
+			}
+		}
 	}
+
+	return await RaidDbHelper.editLocation(guild, (memberRequested.voice.channel as VoiceChannel).id, resolvedMsg);
 }

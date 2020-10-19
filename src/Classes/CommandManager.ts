@@ -57,7 +57,6 @@ import { DeveloperTestCommand } from "../Commands/Bot Owner/DeveloperTestCommand
 import { CloseModmailThreadCommand } from "../Commands/Modmail Management/CloseModmailThreadCommand";
 import { ReplyModmailThreadCommand } from "../Commands/Modmail Management/ReplyModmailThreadCommand";
 import { StartModmailThreadCommand } from "../Commands/Modmail Management/StartModmailThreadCommand";
-import { StartGameAfkCheckCommand } from "../Commands/Raid Leader/StartGameAfkCheckCommand";
 import { SpamPingCommand } from "../Commands/Moderator/SpamPingCommand";
 import { LeaderboardCommand } from "../Commands/Public/LeaderboardCommand";
 import { LeaveServerCommand } from "../Commands/Bot Owner/LeaveServerCommand";
@@ -123,8 +122,7 @@ export class CommandManager {
 
 		this.commands.set("Raid Leader", [
 			new StartAfkCheckCommand(), 
-			new StartHeadcountCommand(),
-			new StartGameAfkCheckCommand()
+			new StartHeadcountCommand()
 		]);
 
 		this.commands.set("Staff", [

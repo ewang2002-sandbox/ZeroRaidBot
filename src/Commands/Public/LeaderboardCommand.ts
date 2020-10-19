@@ -320,7 +320,6 @@ WC Incs Popped: ${runesPopped[thisMembersIndex].general.wcOryx[thisMembersGuildI
             });
 
             const thisMembersIndex: number = runsCompleted.findIndex(x => x.discordUserId === msg.author.id);
-            console.log(thisMembersIndex);
             if (thisMembersIndex === -1) {
                 thisMembersStats = "You have not completed any runs with us!"
             }
@@ -392,7 +391,6 @@ Realm Clearing Sessions Completed: ${runsCompleted[thisMembersIndex].general.com
                 .addField("Valid Queries", "`totalLedRuns` = Runs Led (Total)\n`keysPopped` = Keys Popped (Total)\n`runesPopped` = Runes Popped (Total)\n`runs` = Runs Completed")
                 .setColor("RED")
                 .setFooter("No Leaderboard Stats Found!");
-            console.log("Test");
             await msg.channel.send(displayEmbed)
                 .then(x => x.delete({ timeout: 10000 }));
             return;

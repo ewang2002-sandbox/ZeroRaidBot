@@ -698,10 +698,10 @@ export const AFKDungeon: IDungeonData[] = [
 	{
 		id: 42,
 		dungeonName: "High Tech Terror",
-		portalEmojiID: "",
+		portalEmojiID: "767844930017034261",
 		keyEmojIDs: [
 			{
-				keyEmojID: "",
+				keyEmojID: "572596041526804500",
 				keyEmojiName: "High Tech Terror Key"
 			}
 		],
@@ -714,7 +714,7 @@ export const AFKDungeon: IDungeonData[] = [
 			Slow,
 			Daze
 		],
-		portalLink: "",
+		portalLink: "https://static.drips.pw/rotmg/wiki/Enemies/F.E.R.A.L..png",
 		bossLink: [
 			"https://static.drips.pw/rotmg/wiki/Enemies/F.E.R.A.L..png"
 		],

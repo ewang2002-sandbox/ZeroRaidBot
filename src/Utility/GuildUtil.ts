@@ -152,7 +152,6 @@ export namespace GuildUtil {
 				dungeons: guildData.properties.dungeons,
 				manualVerificationEntries: guildData.properties.manualVerificationEntries,
 				showVerificationRequirements: guildData.properties.showVerificationRequirements,
-				games: guildData.properties.games
 			}
 		}
 	}

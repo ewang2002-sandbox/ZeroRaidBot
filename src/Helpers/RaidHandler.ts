@@ -706,7 +706,7 @@ export module RaidHandler {
 		}
 
 		if (SELECTED_DUNGEON.keyEmojIDs.length !== 0) {
-			optionalReactsField += `⇒ If you have ${SELECTED_DUNGEON.keyEmojIDs.length === 1 ? `a ${SELECTED_DUNGEON.keyEmojIDs[0].keyEmojiName}` : "one of the following keys"}, join VC and react accordingly with ${SELECTED_DUNGEON.keyEmojIDs.map(x => msg.client.emojis.cache.get(x.keyEmojID)).join(" ")}.\n`;
+			optionalReactsField += `⇒ If you have ${SELECTED_DUNGEON.keyEmojIDs.length === 1 ? `a ${SELECTED_DUNGEON.keyEmojIDs[0].keyEmojiName}` : "one of the following keys"}, react accordingly with ${SELECTED_DUNGEON.keyEmojIDs.map(x => msg.client.emojis.cache.get(x.keyEmojID)).join(" ")}.\n`;
 		}
 		optionalReactsField += `⇒ React with the emoji(s) corresponding to your class and gear choices.`;
 
@@ -1683,13 +1683,12 @@ export module RaidHandler {
 				return;
 			}
 
-			startHeadCount(msg, guildDb, guild, SECTION, HEADCOUNT_CHANNEL, allDungeons.filter(x => x.isIncluded).map(x => x.data));
+			startHeadCount(msg, guild, SECTION, HEADCOUNT_CHANNEL, allDungeons.filter(x => x.isIncluded).map(x => x.data));
 		});
 	}
 
 	async function startHeadCount(
 		msg: Message,
-		guildDb: IRaidGuild,
 		guild: Guild,
 		section: ISection,
 		afkCheckChannel: TextChannel,
@@ -1703,18 +1702,6 @@ export module RaidHandler {
 			MessageUtil.send({ content: "A headcount could not be started because the control panel channel is not configured." }, msg.channel as TextChannel);
 			return;
 		}
-
-		const hcControlPanelEmbed: MessageEmbed = new MessageEmbed()
-			.setAuthor("Control Panel: Headcount", "https://i.imgur.com/g2wovmA.png")
-			.setDescription(`Initiator: ${member} (${member.displayName})`)
-			.addField("Stop Headcount", "React with ❌ to stop the headcount. You will receive the results of the headcount, if any.")
-			.setColor("RANDOM")
-			.setTimestamp()
-			.setFooter("Control Panel • Headcount Pending");
-		const controlPanelMsgEntry: Message = await CONTROL_PANEL_CHANNEL.send(hcControlPanelEmbed);
-		await controlPanelMsgEntry.pin().catch(() => { });
-
-		await controlPanelMsgEntry.react("❌").catch(() => { });
 
 		const hcEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(`${member.displayName} has initiated a headcount.`, "https://i.imgur.com/g2wovmA.png")

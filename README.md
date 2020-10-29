@@ -43,22 +43,15 @@ Some of the bot's more prominent features include the following.
 - [`preview`](https://github.com/DungeoneerExalt/ZeroRaidBot/tree/preview) - Similar to the `master` branch, but code that is in this branch should be able to compile. This branch contains preview features (testing features) that will probably make it to the `stable` branch. 
 
 ## Setup Guide
-Please see this [guide](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/master/md_img/SETUP.md).
+Please read this [first](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/master/md_img/AGREEMENT.md). Once you do, there will be instructions on how to set this project up.
 
 ## Support the Project
-The best way to support this project is to star (⭐) it. You might also consider looking through the code and seeing if something could use optimizing (most of the code is written in the middle of the night). 
+The best way to support this project is to star (⭐) it. Stars make me happy. 
 
 Additionally, if you host your own instance of this bot and someone asks where they can get their own instance of this bot, tell them about this Github. :)
 
 ## Similar Projects
 - [Ooga-Booga](https://github.com/Jacobvs/Rotmg-Discord-Bot) by [Darkmattr](https://github.com/Jacobvs). 
-
-## Agreement
-Despite being told (numerous times) to keep the project closed-source, I have decided to keep the project open-source. I don't care about the game as a whole -- I'm only doing this because it's a good way for me to pass time and for me to apply what I have learned in the real world. 
-
-Please bear in mind that, as a solo developer, managing upwards of 25,000+ lines of code can be tiring. I try my best to make sure everything works as intended. However, there will always be some bugs that make it through to stable.
-
-If you choose to host your own instance of this project, understand that I am __not liable__ for any issues that may arise, or have occurred, from the use of this project. It is your responsibility to report any possible issues to me through Github issues.
 
 ## License
 Please review the license file in this repository.

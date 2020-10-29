@@ -1,15 +1,14 @@
 # ZeroRaidBot
 An open-source [Realm of the Mad God](https://www.realmofthemadgod.com/) (RotMG) Discord Bot designed for cross-server verification, moderation, and raid management.
 
-**NOTICE:** Please see [this issue](https://github.com/DungeoneerExalt/ZeroRaidBot/issues/43), which talks about the future of this project.
-
 ## Purpose
-The main purpose of this bot is to simplify verification and raid management within the the Dungeoneer Exalt Discord server. This bot, which represents a huge overhaul of the original Dungeoneer bot, is designed to be easier to use for everyone. 
+The main purpose of this bot is to simplify verification and raid management within the the [Dungeoneer Exalt Discord server](https://discord.com/invite/o3). This bot, which represents a huge overhaul of the original Dungeoneer bot, is designed to be easier to use for everyone. 
 
 
 ## Technologies
 - [TypeScript](https://www.typescriptlang.org/)
 - [Node.JS](https://nodejs.org/en/)
+- [MongoDB](https://www.mongodb.com/)
 
 ## Requirements (Latest Version)
 - [discord.js](https://discord.js.org/#/)
@@ -49,10 +48,17 @@ Please see this [guide](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/mast
 ## Support the Project
 The best way to support this project is to star (⭐) it. You might also consider looking through the code and seeing if something could use optimizing (most of the code is written in the middle of the night). 
 
-You may also consider indirectly supporting me by donating to [Darkmattr's patreon](https://www.patreon.com/Darkmattr).
+Additionally, if you host your own instance of this bot and someone asks where they can get their own instance of this bot, tell them about this Github. :)
 
 ## Similar Projects
 - [Ooga-Booga](https://github.com/Jacobvs/Rotmg-Discord-Bot) by [Darkmattr](https://github.com/Jacobvs). 
+
+## Agreement
+Despite being told (numerous times) to keep the project closed-source, I have decided to keep the project open-source. I don't care about the game as a whole -- I'm only doing this because it's a good way for me to pass time and for me to apply what I have learned in the real world. 
+
+Please bear in mind that, as a solo developer, managing upwards of 25,000+ lines of code can be tiring. I try my best to make sure everything works as intended. However, there will always be some bugs that make it through to stable.
+
+If you choose to host your own instance of this project, understand that I am __not liable__ for any issues that may arise, or have occurred, from the use of this project. It is your responsibility to report any possible issues to me through Github issues.
 
 ## License
 Please review the license file in this repository.

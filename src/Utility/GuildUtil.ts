@@ -134,20 +134,7 @@ export namespace GuildUtil {
 					reactionLoggingChannel: guildData.generalChannels.logging.reactionLoggingChannel
 				}
 			},
-			verification: {
-				stars: {
-					required: guildData.verification.stars.required,
-					minimum: guildData.verification.stars.minimum
-				},
-				aliveFame: {
-					required: guildData.verification.aliveFame.required,
-					minimum: guildData.verification.aliveFame.minimum
-				},
-				maxedStats: {
-					required: guildData.verification.maxedStats.required,
-					statsReq: guildData.verification.maxedStats.statsReq
-				}
-			},
+			verification: guildData.verification,
 			properties: {
 				dungeons: guildData.properties.dungeons,
 				manualVerificationEntries: guildData.properties.manualVerificationEntries,

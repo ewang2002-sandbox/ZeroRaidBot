@@ -14,11 +14,10 @@ import { FilterQuery, UpdateQuery } from "mongodb";
 import { StringBuilder } from "../../Classes/String/StringBuilder";
 import { IDungeonData } from "../../Definitions/IDungeonData";
 import { Zero } from "../../Zero";
-import { StringUtil } from "../../Utility/StringUtil";
 import { NumberUtil } from "../../Utility/NumberUtil";
 import { FastReactionMenuManager } from "../../Classes/Reaction/FastReactionMenuManager";
 import { OtherUtil } from "../../Utility/OtherUtil";
-import { getDefaultVerification } from "../../Templates/IVerification";
+import { VerificationHandler } from "../../Helpers/VerificationHandler";
 
 type QType = {
 	q: string;
@@ -542,7 +541,7 @@ export class ConfigureSectionCommand extends Command {
 							reactionLoggingChannel: ""
 						}
 					},
-					verification: getDefaultVerification(),
+					verification: { ...VerificationHandler.DefaultVerification },
 					properties: {
 						dungeons: AFKDungeon.map(x => x.id),
 						manualVerificationEntries: [],
@@ -1200,7 +1199,7 @@ export class ConfigureSectionCommand extends Command {
 				section.isMain
 					? "roles.mainSectionLeaderRole.sectionHeadLeaderRole"
 					: "sections.$.roles.headLeaderRole"
-			);	
+			);
 		}
 		// sec leader role
 		else if (r.name === "🏳️") {

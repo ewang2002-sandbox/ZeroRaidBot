@@ -1,6 +1,5 @@
-import { IVerification } from "../Definitions/IVerification";
 import { IManualVerification } from "../Definitions/IManualVerification";
-import { IBaseVerification } from "./IVerification";
+import { IPrivateVerification } from "./IVerification";
 
 /**
  * The name of the section will be the name of the category that the channels are under.
@@ -95,7 +94,7 @@ export interface ISection {
 	/**
 	 * Verification requirements for this group. 
 	 */
-	verification: IBaseVerification;
+	verification: IPrivateVerification;
 
 	/**
 	 * Specific properties for this group.

@@ -6,7 +6,7 @@ import { IMutedData, ISuspendedData } from "../Definitions/IPunishmentObject";
 import { IManualVerification } from "../Definitions/IManualVerification";
 import { IQuotaDbInfo } from "../Definitions/IQuotaDbInfo";
 import { IApplication } from "../Definitions/IApplication";
-import { IBaseVerification } from "./IVerification";
+import { IPrivateVerification } from "./IVerification";
 
 /**
  * Everything here (excluding "sections") represents ESSENTIALS needed for the core bot functions to work properly.
@@ -20,7 +20,7 @@ export interface IRaidGuild {
 	/**
 	 * Verification management.
 	 */
-	verification: IBaseVerification;
+	verification: IPrivateVerification;
 
 	/**
 	 * The roles Zero will use.

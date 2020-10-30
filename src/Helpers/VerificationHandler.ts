@@ -1582,4 +1582,14 @@ export module VerificationHandler {
 			});
 		});
 	}
+
+	/**
+	 * Verifies the member using the private API. 
+	 * @param member The member to verify.
+	 * @param guild The guild.
+	 * @param guildDb The guild doc.
+	 * @param section The section where the member should be verified.
+	 */
+	export async function verifyUserPrivate(member: GuildMember, guild: Guild, guildDb: IRaidGuild, section: ISection): Promise<void> {
+	}
 }

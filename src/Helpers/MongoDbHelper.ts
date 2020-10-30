@@ -6,6 +6,7 @@ import { AFKDungeon } from "../Constants/AFKDungeon";
 import { IRaidBot } from "../Templates/IRaidBot";
 import { Zero } from "../Zero";
 import { ClientUser } from "discord.js";
+import { getDefaultVerification } from "../Templates/IVerification";
 
 export module MongoDbHelper {
 	export let MongoBotSettingsClient: Collection<IRaidBot>;
@@ -183,20 +184,7 @@ export module MongoDbHelper {
 			return new Promise((resolve) => {
 				MongoDbGuildManager.MongoGuildClient.insertOne({
 					guildID: this._guildID,
-					verification: {
-						stars: {
-							required: false,
-							minimum: 0
-						},
-						aliveFame: {
-							required: false,
-							minimum: 0
-						},
-						maxedStats: {
-							required: false,
-							statsReq: [0, 0, 0, 0, 0, 0, 0, 0, 0]
-						}
-					},
+					verification: getDefaultVerification(),
 					generalChannels: {
 						logging: {
 							moderationLogs: "",

@@ -2,11 +2,11 @@ import { IRaidInfo } from "../Definitions/IRaidInfo";
 import { IBlacklistedUser, ISubBlacklistedUser } from "../Definitions/IBlacklistedUser";
 import { IModmailThread } from "../Definitions/IModmailThread";
 import { ISection } from "./ISection";
-import { IVerification } from "../Definitions/IVerification";
 import { IMutedData, ISuspendedData } from "../Definitions/IPunishmentObject";
 import { IManualVerification } from "../Definitions/IManualVerification";
 import { IQuotaDbInfo } from "../Definitions/IQuotaDbInfo";
 import { IApplication } from "../Definitions/IApplication";
+import { IBaseVerification } from "./IVerification";
 
 /**
  * Everything here (excluding "sections") represents ESSENTIALS needed for the core bot functions to work properly.
@@ -20,7 +20,7 @@ export interface IRaidGuild {
 	/**
 	 * Verification management.
 	 */
-	verification: IVerification;
+	verification: IBaseVerification;
 
 	/**
 	 * The roles Zero will use.

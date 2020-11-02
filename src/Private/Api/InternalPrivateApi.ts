@@ -14,33 +14,20 @@ export module InternalPrivateApi {
         | "name_history"
         | "guild_history";
 
-    let InitChecker: boolean = false;
-    export let PrivateApiAvailable: boolean = false;
-
     /**
-     * Checks to see if the private API can be used for this instance. This will be checked every 10 minutes.
+     * Checks whether the API is online or not.
+     * 
+     * @returns {Promise<boolean>} Whether the API is online or not.
      */
-    export async function initPrivateApiPinger(): Promise<void> {
-        if (InitChecker) {
-            return;
+    export async function checkIfApiIsOnline(): Promise<boolean> {
+        try {
+            const res: AxiosResponse<IPingResult> = await Zero.AxiosClient
+                .get<IPingResult>(`${PConstants.BaseUrl}/ping`);
+            return res.status === 200 && res.data.statusCode === 200;
         }
-        InitChecker = true;
-
-        const check = async (): Promise<void> => {
-            try {
-                const initLookUp: AxiosResponse<IPingResult> = await Zero.AxiosClient.get<IPingResult>(`${PConstants.BaseUrl}/ping`);
-                PrivateApiAvailable = initLookUp.status === 200 && initLookUp.data.statusCode === 200;
-            }
-            catch (e) {
-                PrivateApiAvailable = false;
-            }
-        };
-
-        await check();
-
-        setInterval(async () => {
-            await check();
-        }, 10 * 60 * 1000);
+        catch (e) {
+            return false;
+        }
     }
 
     /**
@@ -58,7 +45,8 @@ export module InternalPrivateApi {
 
         const args: string = optionalArgs.join("/");
         try {
-            const res: AxiosResponse<T> = await Zero.AxiosClient.get<T>(`${PConstants.BaseUrl}/realmeye/${endpoint}/${name}/${args}`);
+            const res: AxiosResponse<T> = await Zero.AxiosClient
+                .get<T>(`${PConstants.BaseUrl}/realmeye/${endpoint}/${name}/${args}`);
             if (res.status === 200) {
                 return res.data;
             }
@@ -81,11 +69,12 @@ export module InternalPrivateApi {
         }
 
         try {
-            const res: AxiosResponse<string[]> = await Zero.AxiosClient.get<string[]>(`${PConstants.BaseUrl}/realm/who/`, {
-                data: {
-                    url: url
-                }
-            });
+            const res: AxiosResponse<string[]> = await Zero.AxiosClient
+                .get<string[]>(`${PConstants.BaseUrl}/realm/who/`, {
+                    data: {
+                        url: url
+                    }
+                });
 
             if (res.status === 200) {
                 return res.data;

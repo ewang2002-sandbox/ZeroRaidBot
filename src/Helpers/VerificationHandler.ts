@@ -1677,6 +1677,7 @@ export module VerificationHandler {
 		const verificationChannel: TextChannel | undefined = guild.channels.cache
 			.get(section.channels.verificationChannel) as TextChannel | undefined;
 
+		
 		if (section.isMain) {
 
 		}

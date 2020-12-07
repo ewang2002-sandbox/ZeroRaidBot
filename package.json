@@ -4,14 +4,14 @@
 	"description": "A simple Discord bot for Realm of the Mad God servers, designed for verification and raid management. ",
 	"main": "index.js",
 	"dependencies": {
-		"axios": "^0.19.2",
-		"discord.js": "^12.4.1",
+		"axios": "^0.21.0",
+		"discord.js": "^12.5.1",
 		"mongodb": "^3.6.3"
 	},
 	"devDependencies": {
 		"@types/axios": "^0.14.0",
-		"@types/mongodb": "^3.5.33",
-		"@types/node": "^12.19.3",
+		"@types/mongodb": "^3.6.1",
+		"@types/node": "^12.19.8",
 		"@types/ws": "^6.0.4",
 		"typescript": "^3.9.7"
 	},

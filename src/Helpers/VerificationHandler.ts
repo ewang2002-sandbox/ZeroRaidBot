@@ -21,7 +21,6 @@ import { IRealmEyeAPI } from "../Definitions/IRealmEyeAPI";
 import { UserAvailabilityHelper } from "./UserAvailabilityHelper";
 import { IBlacklistedUser } from "../Definitions/IBlacklistedUser";
 import { IPrivateVerification } from "../Templates/IVerification";
-import { InternalPrivateApi } from "../Private/Api/InternalPrivateApi";
 
 export module VerificationHandler {
 	// TODO make this a set? 
@@ -168,10 +167,6 @@ export module VerificationHandler {
 
 			await member.send(`**\`[${section.isMain ? guild.name : section.nameOfSection}]\`** Your profile is currently under manual verification. Please try again later.`);
 			return;
-		}
-
-		if (InternalPrivateApi.PrivateApiAvailable) {
-			return await verifyUserPrivate(member, guild, guildDb, section);
 		}
 
 		//#region requirement text

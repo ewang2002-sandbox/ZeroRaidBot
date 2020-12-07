@@ -73,12 +73,12 @@ export const GITHUB_TOKEN: string = "";
 /**
  * The organization or user. 
  */
-export const REPOSITORY_ORG: string = "DungeoneerExalt";
+export const REPOSITORY_ORG: string = "";
 
 /**
  * The repo
  */
-export const REPOSITORY_NAME: string = "ZeroRaidBot";
+export const REPOSITORY_NAME: string = "";
 
 /**
  * The IDs of all devs.

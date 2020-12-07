@@ -14,10 +14,10 @@ import { FilterQuery, UpdateQuery } from "mongodb";
 import { StringBuilder } from "../../Classes/String/StringBuilder";
 import { IDungeonData } from "../../Definitions/IDungeonData";
 import { Zero } from "../../Zero";
-import { StringUtil } from "../../Utility/StringUtil";
 import { NumberUtil } from "../../Utility/NumberUtil";
 import { FastReactionMenuManager } from "../../Classes/Reaction/FastReactionMenuManager";
 import { OtherUtil } from "../../Utility/OtherUtil";
+import { VerificationHandler } from "../../Helpers/VerificationHandler";
 
 type QType = {
 	q: string;
@@ -30,7 +30,6 @@ type QType = {
 type SBGetterType = {
 	channelSB: StringBuilder;
 	roleSB: StringBuilder;
-	verifSB: StringBuilder;
 };
 
 type DungeonSelectionType = {
@@ -542,20 +541,7 @@ export class ConfigureSectionCommand extends Command {
 							reactionLoggingChannel: ""
 						}
 					},
-					verification: {
-						stars: {
-							required: false,
-							minimum: 0
-						},
-						aliveFame: {
-							required: false,
-							minimum: 0
-						},
-						maxedStats: {
-							required: false,
-							statsReq: [0, 0, 0, 0, 0, 0, 0, 0, 0]
-						}
-					},
+					verification: { ...VerificationHandler.DefaultVerification },
 					properties: {
 						dungeons: AFKDungeon.map(x => x.id),
 						manualVerificationEntries: [],
@@ -594,11 +580,10 @@ export class ConfigureSectionCommand extends Command {
 		// build stringbuilders and embed
 		const roleStr: string = sbGetter.roleSB.toString();
 		const channelStr: string = sbGetter.channelSB.toString();
-		const verificationStr: string = sbGetter.verifSB.toString();
 		const emojisToReact: EmojiResolvable[] = [];
 		const embed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", { authorType: "GUILD", includeTimestamp: true })
 			.setTitle(`**Section Modification**: ${section.nameOfSection} ${section.isMain ? "(Main)" : ""}`)
-			.setDescription(`${roleStr}\n\n${channelStr}\n\n${verificationStr}`)
+			.setDescription(`${roleStr}\n\n${channelStr}`)
 			.setTimestamp()
 			.setFooter(guild.name)
 			.setColor("RANDOM")
@@ -612,9 +597,8 @@ export class ConfigureSectionCommand extends Command {
 		}
 
 		embed.addField("Configure Section Channels", "React with #️⃣ if you want to configure the channels for this section.")
-			.addField("Configure Section Roles", "React with 📁 if you want to configure the roles for this section.")
-			.addField("Configure Verification Requirements", "React with ✅ if you want to configure verification requirements.");
-		emojisToReact.push("#️⃣", "📁", "✅");
+			.addField("Configure Section Roles", "React with 📁 if you want to configure the roles for this section.");
+		emojisToReact.push("#️⃣", "📁");
 		// you can't start raids unless you have an afk check channel
 		if (typeof afkCheckChannel !== "undefined"
 			&& typeof controlPanelChannel !== "undefined") {
@@ -669,10 +653,6 @@ export class ConfigureSectionCommand extends Command {
 		// change roles
 		else if (r.name === "📁") {
 			await this.sectionRoleMenuCommand(msg, guildData, section, m, roleStr);
-		}
-		// change verification
-		else if (r.name === "✅") {
-			await this.sectionVerificationMenuCommand(msg, guildData, section, m, verificationStr);
 		}
 		// dungeon config
 		else if (r.name === "🏃") {
@@ -1219,7 +1199,7 @@ export class ConfigureSectionCommand extends Command {
 				section.isMain
 					? "roles.mainSectionLeaderRole.sectionHeadLeaderRole"
 					: "sections.$.roles.headLeaderRole"
-			);	
+			);
 		}
 		// sec leader role
 		else if (r.name === "🏳️") {
@@ -1362,399 +1342,12 @@ export class ConfigureSectionCommand extends Command {
 		}
 	}
 
-	/**
-	 * Menu for section verification configuration.
-	 * @param {Message} msg The message object. 
-	 * @param {IRaidGuild} guildData The guild data. 
-	 * @param {ISection} section The section. 
-	 * @param {Message} botSentMsg The message that the bot sent (if we want to edit the old bot message). 
-	 * @param {string} verifInfo The role information string.
-	 */
-	private async sectionVerificationMenuCommand(
-		msg: Message,
-		guildData: IRaidGuild,
-		section: ISection,
-		botSentMsg: Message,
-		verifInfo: string
-	): Promise<void> {
-		await botSentMsg.reactions.removeAll().catch(() => { });
-		const guild: Guild = msg.guild as Guild;
-		const reactions: EmojiResolvable[] = [];
-		const verificationChannel: GuildChannel | undefined = guild.channels.cache.get(section.channels.verificationChannel);
-
-		const embed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", { authorType: "GUILD", includeTimestamp: true })
-			.setTitle(`**Modifying Section Verification**: ${section.nameOfSection} ${section.isMain ? "(Main)" : ""}`)
-			.setDescription(verifInfo)
-			.setTimestamp()
-			.setFooter(guild.name)
-			.setColor("RANDOM");
-
-		embed
-			.addField("Go Back", "React with ⬅️ to go back to the Main Menu.")
-			.addField("Configure Rank Requirements", "React with ⭐ to configure rank requirements.")
-			.addField("Configure Fame Requirements", "React with 📛 to configure fame requirements.")
-			.addField("Configure Maxed Stats Requirements", "React with ➕ to configure maxed stats requirements.")
-			.addField(`${!section.properties.showVerificationRequirements ? "Show" : "Hide"} Verification Requirements`, `React with 🛡️ to ${!section.properties.showVerificationRequirements ? "show" : "hide"} the verification requirements. This will affect both the verification requirement embed *and* the direct message verification.`);
-
-		reactions.push("⬅️", "⭐", "📛", "➕", "🛡️");
-
-		if (typeof verificationChannel !== "undefined") {
-			embed.addField("Send Verification Embed", "React with 📧 to send the embed containing verification instructions out.");
-			reactions.push("📧");
-		}
-
-		try {
-			botSentMsg = await botSentMsg.edit(embed);
-		}
-		catch (e) { // probably got deleted.
-			botSentMsg = await msg.channel.send(embed);
-		}
-
-		const r: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(botSentMsg, msg.author, reactions, 2, TimeUnit.MINUTE).react();
-
-		if (r === "TIME_CMD") {
-			await botSentMsg.delete().catch(() => { });
-			return;
-		}
-
-		let res: IRaidGuild | "CANCEL_CMD" | "TIME_CMD";
-		// go back
-		if (r.name === "⬅️") {
-			this.modifyMainMenu(msg, guildData, section, botSentMsg);
-			return;
-		}
-		// rank req
-		else if (r.name === "⭐") {
-			res = await this.verifAlterCommand(
-				msg,
-				guildData,
-				section,
-				botSentMsg,
-				"RANK",
-				["verification.stars.required", "verification.stars.minimum"],
-				["sections.$.verification.stars.required", "sections.$.verification.stars.minimum"]
-			);
-		}
-		// fame req
-		else if (r.name === "📛") {
-			res = await this.verifAlterCommand(
-				msg,
-				guildData,
-				section,
-				botSentMsg,
-				"FAME",
-				["verification.aliveFame.required", "verification.aliveFame.minimum"],
-				["sections.$.verification.aliveFame.required", "sections.$.verification.aliveFame.minimum"]
-			);
-		}
-		// maxed stats req
-		else if (r.name === "➕") {
-			res = await this.verifAlterCommand(
-				msg,
-				guildData,
-				section,
-				botSentMsg,
-				"STATS",
-				["verification.maxedStats.required", "verification.maxedStats.statsReq"],
-				["sections.$.verification.maxedStats.required", "sections.$.verification.maxedStats.statsReq"]
-			);
-		}
-		// show/hide reqs
-		else if (r.name === "🛡️") {
-			const filterQuery: FilterQuery<IRaidGuild> = section.isMain
-				? { guildID: guild.id }
-				: { guildID: guild.id, "sections.verifiedRole": section.verifiedRole };
-			const updateQuery: UpdateQuery<IRaidGuild> = section.isMain
-				? { $set: { "properties.showVerificationRequirements": !section.properties.showVerificationRequirements } }
-				: { $set: { "sections.$.properties.showVerificationRequirements": !section.properties.showVerificationRequirements } };
-			res = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(filterQuery, updateQuery, {
-				returnOriginal: false
-			})).value as IRaidGuild;
-		}
-		// send embed
-		else if (r.name === "📧") {
-			let reqs: StringBuilder = new StringBuilder()
-				.append("• Public Profile.")
-				.appendLine()
-				.append("• Private \"Last Seen\" Location.")
-				.appendLine();
-
-			if (section.isMain) {
-				reqs.append("• Public Name History.")
-					.appendLine();
-			}
-
-			if (section.verification.aliveFame.required) {
-				reqs.append(`• ${section.verification.aliveFame.minimum} Alive Fame.`)
-					.appendLine();
-			}
-
-			if (section.verification.stars.required) {
-				reqs.append(`• ${section.verification.stars.minimum} Stars.`)
-					.appendLine();
-			}
-
-			if (section.verification.maxedStats.required) {
-				for (let i = 0; i < section.verification.maxedStats.statsReq.length; i++) {
-					if (section.verification.maxedStats.statsReq[i] !== 0) {
-						reqs.append(`• ${section.verification.maxedStats.statsReq[i]} ${i}/8 Character(s).`)
-							.appendLine();
-					}
-				}
-			}
-
-
-			const veriChan: TextChannel = verificationChannel as TextChannel;
-			let desc: string;
-
-			if (section.isMain) {
-				if (section.properties.showVerificationRequirements) {
-					desc = `Welcome to **\`${guild.name}\`**! In order to get access to the server, you must verify your identity and your RotMG account must meet the requirements, which are listed below. ${StringUtil.applyCodeBlocks(reqs.toString())}\n\nPlease react to the ✅ emoji to get started. Make sure you meet the server requirements and your direct messages are set so anyone can message you.`;
-				}
-				else {
-					desc = `Welcome to **\`${guild.name}\`**! In order to get access to the server, you must verify your identity.\n\nPlease react to the ✅ emoji to get started. Make sure your direct messages are set so anyone can message you.`;
-				}
-			}
-			else {
-				if (section.properties.showVerificationRequirements) {
-					desc = `Welcome to the **\`${section.nameOfSection}\`** section. In order to get access to this specific section, your RotMG account must meet the following requirements, which are listed below. ${StringUtil.applyCodeBlocks(reqs.toString())}\n\n⇒ React to the ✅ emoji if you believe you meet the requirements and want to get verified. Other than ensuring you can receive direct messages, you will not need to do anything else.\n⇒ React to the ❌ emoji if you want to unverify from this section.`;
-				}
-				else {
-					desc = `Welcome to the **\`${section.nameOfSection}\`** section. In order to get access to this specific section, follow the directions below.\n\n⇒ React to the ✅ emoji if you want to get verified. Other than ensuring you can receive direct messages, you will not need to do anything else.\n⇒ React to the ❌ emoji if you want to unverify from this section.`;
-				}
-			}
-
-			const verifEmbed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", { authorType: "GUILD" })
-				.setTitle(`**${section.isMain ? "Server" : section.nameOfSection}** Verification Channel`)
-				.setDescription(desc)
-				.setFooter(section.isMain ? "Server Verification" : "Section Verification")
-				.setColor("RANDOM");
-
-			const allMessagesInVeriChannel: Message[] = (await veriChan.messages.fetch())
-				.filter(x => x.embeds.length === 1)
-				.filter(x => x.author.bot && x.author.id === (msg.client.user as ClientUser).id)
-				.filter(x => x.embeds[0].footer !== null && typeof x.embeds[0].footer.text !== "undefined" && x.embeds[0].footer.text.includes("Verification"))
-				.array();
-			const z: Message = allMessagesInVeriChannel.length === 0
-				? await veriChan.send(verifEmbed)
-				: await allMessagesInVeriChannel[0].edit(verifEmbed);
-			if (allMessagesInVeriChannel.length === 0) {
-				await z.react("✅").catch(() => { });
-				if (!section.isMain) {
-					await z.react("❌").catch(() => { });
-				}
-				await z.pin().catch(() => { });
-			}
-			this.modifyMainMenu(msg, guildData, section, botSentMsg);
-			return;
-		}
-		else {
-			return; // because of strict typing
-		}
-
-		if (res === "TIME_CMD") {
-			// cancel ENTIRE process
-			// stop EVERYTHING
-			await botSentMsg.delete().catch(() => { });
-			return;
-		}
-
-		if (res === "CANCEL_CMD") {
-			this.sectionVerificationMenuCommand(msg, guildData, section, botSentMsg, verifInfo);
-			return;
-		}
-
-		if (section.isMain) {
-			section = GuildUtil.getDefaultSection(res);
-		}
-		else {
-			// this part only handles channel modifications, not role modifications
-			// so we know that the role should be constant 
-			section = res.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
-		}
-
-		this.sectionVerificationMenuCommand(msg, res, section, botSentMsg, this.getStringRepOfGuildDoc(msg, section, res).verifSB.toString());
-	}
-
-
 
 	// ================================================ //
 	//													//
 	// INDIVIDUAL COMMANDS FOR CHANGING DB PROPERTIES	//
 	//													//
 	// ================================================ //
-
-	/**
-	 * Verification commands. 
-	 * @param {Message} msg The message object. 
-	 * @param {IRaidGuild} guildData The guild doc. 
-	 * @param {ISection} section The section. 
-	 * @param {Message} botMsg The bot message.
-	 * @param {"FAME" | "RANK" | "STATS"} verifType The verification type. 
-	 * @param {string[]} mainMongoPath The mongo paths for main. Index 0 => required, index 1 => data 
-	 * @param {string[]} sectMongoPath The mongo paths for section. 
-	 */
-	private async verifAlterCommand(
-		msg: Message,
-		guildData: IRaidGuild,
-		section: ISection,
-		botMsg: Message,
-		verifType: "FAME" | "RANK" | "STATS",
-		mainMongoPath: string[],
-		sectMongoPath: string[]
-	): Promise<IRaidGuild | "CANCEL_CMD" | "TIME_CMD"> {
-		return new Promise(async (resolve) => {
-			const guild: Guild = msg.guild as Guild;
-			await botMsg.reactions.removeAll().catch(() => { });
-			const polishedVerifType: string = verifType === "FAME"
-				? "Fame"
-				: verifType === "RANK"
-					? "Rank"
-					: "Maxed Stats";
-			const currentStatus: boolean = verifType === "FAME"
-				? section.verification.aliveFame.required
-				: verifType === "RANK"
-					? section.verification.stars.required
-					: section.verification.maxedStats.required;
-			const filterQuery: FilterQuery<IRaidGuild> = section.isMain
-				? { guildID: guild.id }
-				: { guildID: guild.id, "sections.verifiedRole": section.verifiedRole };
-			const updateQueryOnOff: UpdateQuery<IRaidGuild> = section.isMain
-				? { $set: { [mainMongoPath[0]]: !currentStatus } }
-				: { $set: { [sectMongoPath[0]]: !currentStatus } };
-
-			const embed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", { authorType: "GUILD", includeTimestamp: true })
-				.setTitle(`**Modifying Section Verification**: ${section.nameOfSection} ⇒ ${polishedVerifType}`)
-				.setDescription(`React with ⬅️ to go back to the previous menu.\nReact with 🔔 to ${currentStatus ? "disable" : "enable"} this verification requirement.\nReact with 🛠 to change the minimum amount for this verification requirement.`)
-				.setFooter(guild.name)
-				.setTimestamp()
-				.setColor("RANDOM");
-
-			botMsg = await botMsg.edit(embed);
-			const reactions: EmojiResolvable[] = ["⬅️", "🔔", "🛠"];
-
-			const r: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(botMsg, msg.author, reactions, 2, TimeUnit.MINUTE).react();
-
-			if (r === "TIME_CMD") {
-				await botMsg.delete().catch(() => { });
-				return;
-			}
-
-			if (r.name === "⬅️") {
-				await this.resetBotEmbed(botMsg).catch(() => { });
-				this.sectionVerificationMenuCommand(msg, guildData, section, botMsg, this.getStringRepOfGuildDoc(msg, section, guildData).verifSB.toString());
-				return;
-			}
-			else if (r.name === "🔔") {
-				await this.resetBotEmbed(botMsg).catch(() => { });
-				guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(filterQuery, updateQueryOnOff, {
-					returnOriginal: false
-				})).value as IRaidGuild;
-
-				if (section.isMain) {
-					section = GuildUtil.getDefaultSection(guildData);
-				}
-				else {
-					// this part only handles channel modifications, not role modifications
-					// so we know that the role should be constant 
-					section = guildData.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
-				}
-
-				this.sectionVerificationMenuCommand(msg, guildData, section, botMsg, this.getStringRepOfGuildDoc(msg, section, guildData).verifSB.toString());
-				return;
-			}
-			else if (r.name === "🛠") {
-				await this.resetBotEmbed(botMsg).catch(() => { });
-				let promptEmbed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null);
-				if (verifType === "FAME") {
-					const gm0: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, {
-						embed: promptEmbed.setTitle("**Edit Minimum Fame**").setDescription("Type the minimum amount of fame a person needs to meet the requirements.")
-					}, 2, TimeUnit.MINUTE);
-
-					const n: number | "TIME_CMD" | "CANCEL_CMD" = await gm0.send(GenericMessageCollector.getNumber(msg.channel, 0));
-					if (n === "TIME_CMD") {
-						return resolve("TIME_CMD");
-					}
-
-					if (n === "CANCEL_CMD") {
-						return resolve("CANCEL_CMD");
-					}
-
-					guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(filterQuery, {
-						$set: {
-							[section.isMain ? mainMongoPath[1] : sectMongoPath[1]]: n
-						}
-					}, { returnOriginal: false })).value as IRaidGuild;
-				}
-				else if (verifType === "RANK") {
-					const gm0: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, {
-						embed: promptEmbed.setTitle("**Edit Minimum Rank**").setDescription("Type the minimum rank a person needs to meet the requirements.")
-					}, 2, TimeUnit.MINUTE);
-
-					const n: number | "TIME_CMD" | "CANCEL_CMD" = await gm0.send(GenericMessageCollector.getNumber(msg.channel, 0, 80));
-					if (n === "TIME_CMD") {
-						return resolve("TIME_CMD");
-					}
-
-					if (n === "CANCEL_CMD") {
-						return resolve("CANCEL_CMD");
-					}
-
-					guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(filterQuery, {
-						$set: {
-							[section.isMain ? mainMongoPath[1] : sectMongoPath[1]]: n
-						}
-					}, { returnOriginal: false })).value as IRaidGuild;
-				}
-				else {
-					const gmc2: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, {
-						embed: promptEmbed.setTitle("**Edit Required Character Stats**").setDescription("Please type the stats type that you want to modify. For example, to modify the amount of `7/8`s needed to verify, type `7`.")
-					}, 2, TimeUnit.MINUTE);
-					const n: number | "TIME_CMD" | "CANCEL_CMD" = await gmc2.send(GenericMessageCollector.getNumber(msg.channel, 0, 8));
-					if (n === "TIME_CMD") {
-						return resolve("TIME_CMD");
-					}
-
-					if (n === "CANCEL_CMD") {
-						return resolve("CANCEL_CMD");
-					}
-
-					promptEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null);
-					const gmc3: GenericMessageCollector<number> = new GenericMessageCollector<number>(msg, {
-						embed: promptEmbed.setTitle("**Edit Required Character Stats**").setDescription(`You are currently modifying the required amount of ${n}/8 needed. Please type the amount of ${n}/8 characters needed.`)
-					}, 2, TimeUnit.MINUTE);
-
-					const m: number | "TIME_CMD" | "CANCEL_CMD" = await gmc3.send(GenericMessageCollector.getNumber(msg.channel, 0, 15));
-					if (m === "TIME_CMD") {
-						return resolve("TIME_CMD");
-					}
-
-					if (m === "CANCEL_CMD") {
-						return resolve("CANCEL_CMD");
-					}
-
-					guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(filterQuery, {
-						$set: {
-							[`${section.isMain ? mainMongoPath[1] : sectMongoPath[1]}.${n}`]: m
-						}
-					}, { returnOriginal: false })).value as IRaidGuild;
-				}
-
-				if (section.isMain) {
-					section = GuildUtil.getDefaultSection(guildData);
-				}
-				else {
-					// this part only handles channel modifications, not role modifications
-					// so we know that the role should be constant 
-					section = guildData.sections.find(x => x.verifiedRole === section.verifiedRole) as ISection;
-				}
-
-				this.sectionVerificationMenuCommand(msg, guildData, section, botMsg, this.getStringRepOfGuildDoc(msg, section, guildData).verifSB.toString());
-				return;
-			}
-		});
-	}
-
 
 	/**
 	 * Change the name of a section.
@@ -2263,10 +1856,6 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 
 		const mutedRole: Role | undefined = guild.roles.cache.get(guildData.roles.optRoles.mutedRole);
 
-		const starReq: string = section.verification.stars.required ? "Enabled" : "Disabled";
-		const fameReq: string = section.verification.aliveFame.required ? "Enabled" : "Disabled";
-		const statsReq: string = section.verification.maxedStats.required ? "Enabled" : "Disabled";
-
 
 		const channelSB: StringBuilder = new StringBuilder("__Channels__")
 			.appendLine()
@@ -2295,34 +1884,6 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 			.append(`Section Almost Leader Role: ${typeof secAlmostRaidLeaderRole === "undefined" ? "N/A" : secAlmostRaidLeaderRole}`)
 			.appendLine()
 			.append(`Section Trial Leader Role: ${typeof secTrialLeaderRole === "undefined" ? "N/A" : secTrialLeaderRole}`);
-
-		const verificationSB: StringBuilder = new StringBuilder("__Verification__")
-			.appendLine()
-			.append(`Show Requirements: ${section.properties.showVerificationRequirements ? "Yes" : "No"}`)
-			.appendLine()
-			.append(`Stars: ${section.verification.stars.minimum} (${starReq})`)
-			.appendLine()
-			.append(`Fame: ${section.verification.aliveFame.minimum} (${fameReq})`)
-			.appendLine()
-			.append(`Maxed Stats: ${statsReq}`)
-			.appendLine()
-			.append(`\t⇒ 0/8 Required: ${section.verification.maxedStats.statsReq[0]}`)
-			.appendLine()
-			.append(`\t⇒ 1/8 Required: ${section.verification.maxedStats.statsReq[1]}`)
-			.appendLine()
-			.append(`\t⇒ 2/8 Required: ${section.verification.maxedStats.statsReq[2]}`)
-			.appendLine()
-			.append(`\t⇒ 3/8 Required: ${section.verification.maxedStats.statsReq[3]}`)
-			.appendLine()
-			.append(`\t⇒ 4/8 Required: ${section.verification.maxedStats.statsReq[4]}`)
-			.appendLine()
-			.append(`\t⇒ 5/8 Required: ${section.verification.maxedStats.statsReq[5]}`)
-			.appendLine()
-			.append(`\t⇒ 6/8 Required: ${section.verification.maxedStats.statsReq[6]}`)
-			.appendLine()
-			.append(`\t⇒ 7/8 Required: ${section.verification.maxedStats.statsReq[7]}`)
-			.appendLine()
-			.append(`\t⇒ 8/8 Required: ${section.verification.maxedStats.statsReq[8]}`);
 
 		if (section.isMain) {
 			channelSB
@@ -2372,8 +1933,7 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 
 		return {
 			channelSB: channelSB,
-			roleSB: roleSB,
-			verifSB: verificationSB
+			roleSB: roleSB
 		};
 	}
 

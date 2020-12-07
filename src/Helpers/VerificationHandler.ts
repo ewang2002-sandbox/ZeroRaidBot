@@ -20,11 +20,80 @@ import { IRealmEyeNoUser } from "../Definitions/IRealmEyeNoUser";
 import { IRealmEyeAPI } from "../Definitions/IRealmEyeAPI";
 import { UserAvailabilityHelper } from "./UserAvailabilityHelper";
 import { IBlacklistedUser } from "../Definitions/IBlacklistedUser";
+import { IPrivateVerification } from "../Templates/IVerification";
+import { InternalPrivateApi } from "../Private/Api/InternalPrivateApi";
 
 export module VerificationHandler {
 	// TODO make this a set? 
 	export const IsInVerification: Collection<string, "GENERAL" | "ALT"> = new Collection<string, "GENERAL" | "ALT">();
 	export const PeopleThatWereMessaged: Set<string> = new Set();
+	export const DefaultVerification: IPrivateVerification = {
+		aliveFame: {
+			checkThis: false,
+			minFame: 0
+		},
+		guild: {
+			checkThis: false,
+			guildName: {
+				checkThis: false,
+				// must be in this guild
+				name: ""
+			},
+			guildRank: {
+				checkThis: false,
+				minRank: "",
+			},
+		},
+		lastSeen: {
+			mustBeHidden: false
+		},
+		rank: {
+			checkThis: false,
+			minRank: 0
+		},
+		characters: {
+			checkThis: false,
+			statsNeeded: [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			// if true
+			// dead characters can fulfil the above reqs
+			// must have priv api
+			checkPastDeaths: false,
+		},
+		exaltationsBase: {
+			checkThis: false,
+			minimum: 0
+		},
+		exaltations: {
+			checkThis: false,
+			minimum: {
+				hp: 0,
+				mp: 0,
+				def: 0,
+				att: 0,
+				dex: 0,
+				spd: 0,
+				vit: 0,
+				wis: 0,
+			},
+			// if true, all "minimum" must be
+			// achieved. otherwise, only 1.
+			requireAll: false
+		},
+		graveyardSummary: {
+			checkThis: false,
+
+			minimum: {
+				minOryxKills: 0,
+				minLostHalls: 0,
+				minVoids: 0,
+				minCults: 0,
+				minNests: 0,
+				minShatters: 0,
+				minFungal: 0,
+				minCrystal: 0,
+			},
+		}
+	};
 
 	interface ICheckResults {
 		characters: {
@@ -101,6 +170,10 @@ export module VerificationHandler {
 			return;
 		}
 
+		if (InternalPrivateApi.PrivateApiAvailable) {
+			return await verifyUserPrivate(member, guild, guildDb, section);
+		}
+
 		//#region requirement text
 		let reqs: StringBuilder = new StringBuilder()
 			.append("• Public Profile.")
@@ -111,20 +184,20 @@ export module VerificationHandler {
 			.appendLine();
 
 		if (section.properties.showVerificationRequirements) {
-			if (section.verification.aliveFame.required) {
-				reqs.append(`• ${section.verification.aliveFame.minimum} Alive Fame.`)
+			if (section.verification.aliveFame.checkThis) {
+				reqs.append(`• ${section.verification.aliveFame.minFame} Alive Fame.`)
 					.appendLine();
 			}
 
-			if (section.verification.stars.required) {
-				reqs.append(`• ${section.verification.stars.minimum} Stars.`)
+			if (section.verification.rank.checkThis) {
+				reqs.append(`• ${section.verification.rank.minRank} Stars.`)
 					.appendLine();
 			}
 
-			if (section.verification.maxedStats.required) {
-				for (let i = 0; i < section.verification.maxedStats.statsReq.length; i++) {
-					if (section.verification.maxedStats.statsReq[i] !== 0) {
-						reqs.append(`• ${section.verification.maxedStats.statsReq[i]} ${i}/8 Character(s).`)
+			if (section.verification.characters.checkThis) {
+				for (let i = 0; i < section.verification.characters.statsNeeded.length; i++) {
+					if (section.verification.characters.statsNeeded[i] !== 0) {
+						reqs.append(`• ${section.verification.characters.statsNeeded[i]} ${i}/8 Character(s).`)
 							.appendLine();
 					}
 				}
@@ -478,7 +551,7 @@ export module VerificationHandler {
 
 				const prelimCheck: ICheckResults = preliminaryCheck(section, requestData.data);
 				if (!prelimCheck.passedAll) {
-					if (section.verification.maxedStats.required && prelimCheck.characters.hidden) {
+					if (section.verification.characters.checkThis && prelimCheck.characters.hidden) {
 						if (typeof verificationAttemptsChannel !== "undefined") {
 							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her characters are hidden and needs to be available to the public.`).catch(() => { });
 						}
@@ -490,20 +563,20 @@ export module VerificationHandler {
 					const reqsFailedToMeet: StringBuilder = new StringBuilder();
 					if (!prelimCheck.aliveFame.passed) {
 						reqsFailedToMeet
-							.append(`Alive Fame: ${prelimCheck.aliveFame.amt}/${section.verification.aliveFame.minimum}`)
+							.append(`Alive Fame: ${prelimCheck.aliveFame.amt}/${section.verification.aliveFame.minFame}`)
 							.appendLine();
 					}
 
 					if (!prelimCheck.rank.passed) {
 						reqsFailedToMeet
-							.append(`Rank: ${prelimCheck.rank.amt}/${section.verification.stars.minimum}`)
+							.append(`Rank: ${prelimCheck.rank.amt}/${section.verification.rank.minRank}`)
 							.appendLine();
 					}
 
 					if (!prelimCheck.characters.passed) {
 						let strChar: string = "";
 						for (let i = 0; i < prelimCheck.characters.amt.length; i++) {
-							strChar += `⇒ ${i}/8 Characters: ${prelimCheck.characters.amt[i]}/${section.verification.maxedStats.statsReq[i]}\n`;
+							strChar += `⇒ ${i}/8 Characters: ${prelimCheck.characters.amt[i]}/${section.verification.characters.statsNeeded[i]}\n`;
 						}
 						reqsFailedToMeet.append("Characters: See List.")
 							.appendLine()
@@ -583,9 +656,9 @@ export module VerificationHandler {
 			if (typeof verificationAttemptsChannel !== "undefined") {
 				verificationAttemptsChannel.send(`▶️ **\`[${section.nameOfSection}]\`** ${member} has started the verification process.`).catch(() => { });
 			}
-			if (!section.verification.aliveFame.required
-				&& !section.verification.maxedStats.required
-				&& !section.verification.stars.required) {
+			if (!section.verification.aliveFame.checkThis
+				&& !section.verification.characters.checkThis
+				&& !section.verification.rank.checkThis) {
 
 				if (typeof verificationSuccessChannel !== "undefined") {
 					verificationSuccessChannel.send(`📥 **\`[${section.nameOfSection}]\`** ${member} has received the section member role.`).catch(() => { });
@@ -608,7 +681,7 @@ export module VerificationHandler {
 			const prelimCheck: ICheckResults = preliminaryCheck(section, requestData.data);
 			// TODO make prelim check handle into a function? 
 			if (!prelimCheck.passedAll) {
-				if (section.verification.maxedStats.required && prelimCheck.characters.hidden) {
+				if (section.verification.characters.checkThis && prelimCheck.characters.hidden) {
 					if (typeof verificationAttemptsChannel !== "undefined") {
 						verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${name}\`, but his/her characters are hidden and needs to be available to the public.`).catch(() => { });
 					}
@@ -626,19 +699,19 @@ export module VerificationHandler {
 
 				const reqsFailedToMeet: StringBuilder = new StringBuilder();
 				if (!prelimCheck.aliveFame.passed) {
-					reqsFailedToMeet.append(`Alive Fame: ${prelimCheck.aliveFame.amt}/${section.verification.aliveFame.minimum}`)
+					reqsFailedToMeet.append(`Alive Fame: ${prelimCheck.aliveFame.amt}/${section.verification.aliveFame.minFame}`)
 						.appendLine();
 				}
 
 				if (!prelimCheck.rank.passed) {
-					reqsFailedToMeet.append(`Rank: ${prelimCheck.rank.amt}/${section.verification.stars.minimum}`)
+					reqsFailedToMeet.append(`Rank: ${prelimCheck.rank.amt}/${section.verification.rank.minRank}`)
 						.appendLine();
 				}
 
 				if (!prelimCheck.characters.passed) {
 					let strChar: string = "";
 					for (let i = 0; i < prelimCheck.characters.amt.length; i++) {
-						strChar += `⇒ ${i}/8 Characters: ${prelimCheck.characters.amt[i]}/${section.verification.maxedStats.statsReq[i]}\n`;
+						strChar += `⇒ ${i}/8 Characters: ${prelimCheck.characters.amt[i]}/${section.verification.characters.statsNeeded[i]}\n`;
 					}
 					reqsFailedToMeet.append("Characters: See List.")
 						.appendLine()
@@ -1062,15 +1135,15 @@ export module VerificationHandler {
 		}
 
 		const currVsReq: [number, number][] = [
-			[zero, sec.verification.maxedStats.statsReq[0]],
-			[one, sec.verification.maxedStats.statsReq[1]],
-			[two, sec.verification.maxedStats.statsReq[2]],
-			[three, sec.verification.maxedStats.statsReq[3]],
-			[four, sec.verification.maxedStats.statsReq[4]],
-			[five, sec.verification.maxedStats.statsReq[5]],
-			[six, sec.verification.maxedStats.statsReq[6]],
-			[seven, sec.verification.maxedStats.statsReq[7]],
-			[eight, sec.verification.maxedStats.statsReq[8]]
+			[zero, sec.verification.characters.statsNeeded[0]],
+			[one, sec.verification.characters.statsNeeded[1]],
+			[two, sec.verification.characters.statsNeeded[2]],
+			[three, sec.verification.characters.statsNeeded[3]],
+			[four, sec.verification.characters.statsNeeded[4]],
+			[five, sec.verification.characters.statsNeeded[5]],
+			[six, sec.verification.characters.statsNeeded[6]],
+			[seven, sec.verification.characters.statsNeeded[7]],
+			[eight, sec.verification.characters.statsNeeded[8]]
 		];
 
 		let failsToMeetReq: boolean = false;
@@ -1090,13 +1163,13 @@ export module VerificationHandler {
 			}
 		}
 
-		const rankPassed: boolean = sec.verification.stars.required
-			? reapi.rank >= sec.verification.stars.minimum
+		const rankPassed: boolean = sec.verification.rank.checkThis
+			? reapi.rank >= sec.verification.rank.minRank
 			: true;
-		const famePassed: boolean = sec.verification.aliveFame.required
-			? reapi.fame >= sec.verification.aliveFame.minimum
+		const famePassed: boolean = sec.verification.aliveFame.checkThis
+			? reapi.fame >= sec.verification.aliveFame.minFame
 			: true;
-		const charPassed: boolean = sec.verification.maxedStats.required
+		const charPassed: boolean = sec.verification.characters.checkThis
 			? !failsToMeetReq
 			: true;
 
@@ -1581,5 +1654,35 @@ export module VerificationHandler {
 				}
 			});
 		});
+	}
+
+	/**
+	 * Verifies the member using the private API. 
+	 * @param member The member to verify.
+	 * @param guild The guild.
+	 * @param guildDb The guild doc.
+	 * @param section The section where the member should be verified.
+	 */
+	export async function verifyUserPrivate(member: GuildMember, guild: Guild, guildDb: IRaidGuild, section: ISection): Promise<void> {
+		const verifiedRole: Role = guild.roles.cache.get(section.verifiedRole) as Role;
+
+		// channel declaration
+		// yes, we know these can be textchannels b/c that's the input in configsections
+		const verificationAttemptsChannel: TextChannel | undefined = guild.channels.cache
+			.get(section.channels.logging.verificationAttemptsChannel) as TextChannel | undefined;
+		const verificationSuccessChannel: TextChannel | undefined = guild.channels.cache
+			.get(section.channels.logging.verificationSuccessChannel) as TextChannel | undefined;
+		const manualVerificationChannel: TextChannel | undefined = guild.channels.cache
+			.get(section.channels.manualVerification) as TextChannel | undefined;
+		const verificationChannel: TextChannel | undefined = guild.channels.cache
+			.get(section.channels.verificationChannel) as TextChannel | undefined;
+
+		
+		if (section.isMain) {
+
+		}
+		else {
+			
+		}
 	}
 }

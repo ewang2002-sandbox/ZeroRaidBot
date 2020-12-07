@@ -302,7 +302,7 @@ export namespace MessageUtil {
 	 * @returns {Promise<Message>} The message that was sent.  
 	 */
 	export async function send(
-		info:  APIMessageContentResolvable | (MessageOptions & { split?: false }) | MessageAdditions,
+		info: APIMessageContentResolvable | (MessageOptions & { split?: false }) | MessageAdditions,
 		channel: PartialTextBasedChannelFields,
 		timeout: number = 5000
 	): Promise<Message> {
@@ -315,7 +315,7 @@ export namespace MessageUtil {
 	 * @param {ColorResolvable} [color = "RANDOM"] The color of the embed.
 	 */
 	export function generateBlankEmbed(obj: User | Guild, color: ColorResolvable = "RANDOM"): MessageEmbed {
-		const embed: MessageEmbed =  new MessageEmbed()
+		const embed: MessageEmbed = new MessageEmbed()
 			.setTimestamp()
 			.setColor(color);
 
@@ -331,7 +331,7 @@ export namespace MessageUtil {
 				embed.setAuthor(obj.name, iconUrl);
 			}
 		}
-		
+
 		return embed;
 	}
 }

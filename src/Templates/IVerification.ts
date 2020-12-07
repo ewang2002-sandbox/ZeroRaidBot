@@ -1,77 +1,25 @@
-export interface IPrivateVerification {
-    aliveFame: {
-        checkThis: boolean;
-        minFame: number;
-    };
-
-    guild: {
-        checkThis: boolean;
-
-        guildName: {
-            checkThis: boolean;
-            // must be in this guild
-            name: string;
-        };
-
-        guildRank: {
-            checkThis: boolean;
-            minRank: string;
-        };
-    };
-
-    lastSeen: {
-        mustBeHidden: boolean;
-    };
-
-    rank: {
-        checkThis: boolean;
-        minRank: number;
-    };
-
-    characters: {
-        checkThis: boolean;
-        statsNeeded: [number, number, number, number, number, number, number, number, number];
-        // if true
-        // dead characters can fulfil the above reqs
-        // must have priv api
-        checkPastDeaths: boolean;
-    };
-
-    exaltationsBase: {
-        checkThis: boolean;
+export interface IVerification {
+    /**
+     * Minimum stars required for membership.
+     */
+    stars: {
+        required: boolean;
         minimum: number;
     };
 
-    exaltations: {
-        checkThis: boolean;
-        minimum: {
-            hp: number;
-            mp: number;
-            def: number;
-            att: number;
-            dex: number;
-            spd: number;
-            vit: number;
-            wis: number;
-        };
-
-        // if true, all "minimum" must be
-        // achieved. otherwise, only 1.
-        requireAll: boolean;
+    /**
+     * Minimum alive fame required for membership.
+     */
+    aliveFame: {
+        required: boolean;
+        minimum: number;
     };
 
-    graveyardSummary: {
-        checkThis: boolean;
-
-        minimum: {
-            minOryxKills: number;
-            minLostHalls: number;
-            minVoids: number;
-            minCults: number;
-            minNests: number;
-            minShatters: number;
-            minFungal: number;
-            minCrystal: number;
-        };
+    /**
+     * Minimum character points required for membership.
+     */
+    maxedStats: {
+        required: boolean;
+        statsReq: [number, number, number, number, number, number, number, number, number]; // [0/8, 1/8, 2/8, 3/8, 4/8, 5/8, 6/8, 7/8, 8/8]
     };
 }

@@ -6,6 +6,7 @@ export class FastReactionMenuManager {
 	private readonly _targetAuthor: User | GuildMember;
 	private readonly _reactionsToUse: EmojiResolvable[];
 	private readonly _duration: number;
+	private _reactToMessage: boolean = true;
 
     /**
      * `FastReactionMenuManager` is a class that allows a bot to react to one of it's messages at a faster speed. Typically, when you use a set of `await <Message>.react(<EmojiResolvable>)`, there is a 1 second delay. Furthermore, with a set of `await`, you have to wait until the bot reacts with all the emojis before the menu is operational, which can be quite tiresome. 
@@ -48,35 +49,48 @@ export class FastReactionMenuManager {
 		}
 	}
 
+	/**
+	 * Enables or disables reacting to the message.
+	 * @param react Whether to react or not react to the message. If false, you will need to find a way to react to the message.
+	 */
+	public enableDisableReact(react: boolean): FastReactionMenuManager {
+		this._reactToMessage = react;
+		return this;
+	}
+
     /**
      * Reacts to the message and starts a ReactionCollector.
-     * @param {number} [delay = 1000] The delay between reactions. Minimum is 500.
+     * @param {number} [delay = 750] The delay between reactions. Minimum is 500.
      * @param {boolean} [clearReactsAfter = true] Whether to clear the reactions after the designated person reacts.
      * @returns Either the resolved emoji that has been reacted to, or "TIME_CMD" if time has been reached.
      */
-	public react(delay: number = 500, clearReactsAfter: boolean = true): Promise<GuildEmoji | ReactionEmoji | "TIME_CMD"> {
+	public react(delay: number = 550, clearReactsAfter: boolean = true): Promise<GuildEmoji | ReactionEmoji | "TIME_CMD"> {
 		if (delay < 500) {
 			delay = 500;
 		}
 
 		return new Promise((resolve, reject) => {
-			let i: number = 0;
-			const interval: NodeJS.Timeout = setInterval(() => {
-				// think of this as a for loop
-				// for (let i = 0; i < reactions.length; i++)
-				if (i < this._reactionsToUse.length) {
-					if (this._botMsg.deleted) {
-						clearInterval(interval);
-						return; 
-					}
+			let stopReacting: () => void = () => null;
+			if (this._reactToMessage) {
+				let i: number = 0;
+				const interval: NodeJS.Timeout = setInterval(() => {
+					// think of this as a for loop
+					// for (let i = 0; i < reactions.length; i++)
+					if (i < this._reactionsToUse.length) {
+						if (this._botMsg.deleted) {
+							clearInterval(interval);
+							return;
+						}
 
-					this._botMsg.react(this._reactionsToUse[i]).catch(e => { });
-				}
-				else {
-					clearInterval(interval);
-				}
-				i++;
-			}, delay);
+						this._botMsg.react(this._reactionsToUse[i]).catch(e => { });
+					}
+					else {
+						clearInterval(interval);
+					}
+					i++;
+				}, delay);
+				stopReacting = () => clearInterval(interval);
+			}
 
 
 			const reactionCollector: ((r: MessageReaction, u: User) => boolean) = (reaction: MessageReaction, user: User): boolean => {
@@ -93,7 +107,8 @@ export class FastReactionMenuManager {
 			});
 
 			reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
-				clearInterval(interval);
+				stopReacting();
+
 				if (clearReactsAfter) {
 					await this._botMsg.reactions.removeAll().catch(e => { });
 				}
@@ -112,10 +127,11 @@ export class FastReactionMenuManager {
 
     /**
 	 * Reacts to a message fast. This static method should be used instead of the class as a whole if all you need is to react to a message at a faster rate than what is allowed. 
-	 * @param msg The message to react to fast.
-	 * @param reactions The set of reactions to use.
+	 * @param {Message} msg The message to react to fast.
+	 * @param {EmojiResolvable[]} reactions The set of reactions to use.
+	 * @param {number} [intervalTime = 500] The interval time, in ms.
 	 */
-	public static reactFaster(msg: Message, reactions: EmojiResolvable[]): void {
+	public static reactFaster(msg: Message, reactions: EmojiResolvable[], intervalTime: number = 550): void {
 		let i: number = 0;
 		const interval: NodeJS.Timeout = setInterval(() => {
 			// think of this as a for loop
@@ -123,16 +139,16 @@ export class FastReactionMenuManager {
 			if (i < reactions.length) {
 				if (msg.deleted) {
 					clearInterval(interval);
-					return; 
+					return;
 				}
 
-				msg.react(reactions[i]);
+				msg.react(reactions[i]).catch(e => { });
 			}
 			else {
 				clearInterval(interval);
 			}
 			i++;
-		}, 500);
+		}, intervalTime);
 	}
 
     /**

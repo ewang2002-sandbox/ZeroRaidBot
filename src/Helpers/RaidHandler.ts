@@ -14,7 +14,6 @@ import { ArrayUtil } from "../Utility/ArrayUtil";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { MessageUtil } from "../Utility/MessageUtil";
 import { StringUtil } from "../Utility/StringUtil";
-import { IHeadCountInfo } from "../Definitions/IHeadCountInfo";
 import { TimeUnit } from "../Definitions/TimeUnit";
 import { MessageAutoTick } from "../Classes/Message/MessageAutoTick";
 import { NumberUtil } from "../Utility/NumberUtil";
@@ -43,7 +42,7 @@ export module RaidHandler {
 	/**
 	 * An interface defining each pending AFK check. Each AFK check has its own ReactionCollector (for )
 	 */
-	interface IStoredRaidData {
+	export interface IStoredRaidData {
 		reactCollector: ReactionCollector;
 		mst: MessageSimpleTick;
 		timeout: NodeJS.Timeout;
@@ -52,11 +51,58 @@ export module RaidHandler {
 	}
 
 	/**
-	 * Information for stored headcounts. 
+	 * Configuration settings for the AFK check.
 	 */
-	interface IStoredHeadcountData {
-		mst: MessageSimpleTick;
-		timeout: NodeJS.Timeout;
+	interface IAfkCheckConfiguration {
+		selectedDungeon: IDungeonData;
+		selectedLocation: string;
+
+		/**
+		 * @default false
+		 */
+		removeEarlyLocAndKeyReacts: boolean;
+
+		/**
+		 * -1 = automatically determine.
+		 * 0 = no post-afk check
+		 * >= 1 = specific post-afk check timeout
+		 * 
+		 * @default -1
+		 */
+		postAfkTimeout: number;
+
+		/**
+		 * -1 = automatically determine.
+		 * >= 0 = specific keys allowed
+		 */
+		maxKeysAllowed: number;
+
+		/**
+		 * -1 = automatically determine
+		 * >= 0 = specific early locations allowed
+		 */
+		maxEarlyLocationsAllowed: number;
+
+		/**
+		 * Whether the person has to be in Raid VC in order
+		 * to get early location.
+		 * 
+		 * @default false 
+		 */
+		inVcToGetEarlyLocKeyReact: boolean;
+
+		/**
+		 * The VC limit.
+		 * 0 || > 99 = no limit
+		 * @default 99 
+		 */
+		vcLimit: number;
+
+		/**
+		 * length of afk check in seconds.
+		 * @default 480
+		 */
+		afkCheckTimeLength: number;
 	}
 
 	/**
@@ -64,15 +110,110 @@ export module RaidHandler {
 	 */
 	export const CURRENT_RAID_DATA: Collection<string, IStoredRaidData> = new Collection<string, IStoredRaidData>();
 
-	/**
-	 * Consists of all currently running headcounts. This stores only the message (of the headcount) ID, the MessageSimpleTick, and the ReactionCollector associated with the pending headcount, and should be cleared after the headcount is over. 
-	 */
-	export const CURRENT_HEADCOUNT_DATA: Collection<string, IStoredHeadcountData> = new Collection<string, IStoredHeadcountData>();
+	//#region a potential WIP :o
+	/*
+	export async function configureAfkCheck(
+		member: GuildMember,
+		channel: TextChannel,
+		dungeon: IDungeonData,
+		location: string
+	): Promise<IAfkCheckConfiguration | "CANCEL"> {
+		const response: IAfkCheckConfiguration = {
+			selectedDungeon: dungeon,
+			selectedLocation: location,
+			removeEarlyLocAndKeyReacts: false,
+			postAfkTimeout: -1,
+			maxKeysAllowed: [38].includes(dungeon.id)
+				? 3
+				: 8,
+			maxEarlyLocationsAllowed: [38].includes(dungeon.id)
+				? 10
+				: 15,
+			inVcToGetEarlyLocKeyReact: false,
+			vcLimit: 99,
+			afkCheckTimeLength: 480
+		};
 
-    /**
-     * Starts an AFK check. This function should be called only from the `StartAfkCheckCommand` file.
-     * Precondition: The command must be run in a server.
-     */
+		function getEmbed(): MessageEmbed {
+			const sb: StringBuilder = new StringBuilder()
+				.append(`⇒ **Selected Dungeon:** ${response.selectedDungeon.dungeonName}`)
+				.appendLine()
+				.append(`⇒ **Selected Location:** ${response.selectedLocation}`)
+				.appendLine()
+				.appendLine()
+				.append(`⇒ **Remove Early Location & Key Reactions:** ${response.removeEarlyLocAndKeyReacts ? "Yes" : "No"}`)
+				.appendLine()
+				.append(`⇒ **Must be in VC to React:** ${response.inVcToGetEarlyLocKeyReact ? "Yes" : "No"}`)
+				.appendLine()
+				.appendLine()
+				.append(`⇒ **AFK Check Time Limit:** ${response.afkCheckTimeLength} Seconds (${(response.afkCheckTimeLength / 60).toFixed(2)} Minutes)`)
+				.appendLine()
+				.append(`⇒ **Post AFK Timeout:** ${response.postAfkTimeout === -1 ? "Automatically Determine" : `${response.postAfkTimeout} Second(s)`}`)
+				.appendLine()
+				.append(`⇒ **Maximum Keys Allowed:** ${response.maxKeysAllowed} Of Each Key`)
+				.appendLine()
+				.append(`⇒ **Maximum Early Locations Allowed:** ${response.maxEarlyLocationsAllowed} People`)
+				.appendLine()
+				.append(`⇒ **VC Limit:** ${response.vcLimit <= 0 || response.vcLimit > 99 ? `${response.vcLimit} People` : "Unlimited"}`)
+				.appendLine()
+
+			return MessageUtil.generateBlankEmbed(member.user)
+				.setDescription(sb.toString())
+				.addField("Cancel AFK Check", "React with ❌ to cancel the AFK check completely.")
+				.addField("Start AFK Check", "React with ✅ to start the AFK check with the configured settings above.")
+				.addField("Set Location", "React with 🗺️ to set the location for this AFK check.")
+				.addField("Remove Reactions", `React with 🗑️ if ${response.removeEarlyLocAndKeyReacts ? "you do not want key & early location reactions to be removed from the AFK check." : "you want key & early location reactions to be removed from the AFK check."}`)
+				.addField("VC & Reactions", `React with 🔈 if ${response.inVcToGetEarlyLocKeyReact ? "you do not require people reacting with key or early location to be in raid VC." : "you require people reacting with key or early location to be in raid VC."}`)
+				.addField("Set AFK Check Time Limit", "React with ⌨️ if you want to set the AFK check time limit.")
+				.addField("Set Post AFK Check Time Limit", "React with ⌛ if you want to set the Post AFK Check time limit.")
+				.addField("Set Maximum Keys Allowed", "React with 🔑 if you want to set a limit on how many of each key will get early location.")
+				.addField("Set Maximum Early Location Reacts", "React with 🏃 if you want to set a limit on how many people can get early location.")
+				.addField("Set VC Limit", "React with 🕐 if you want to set a limit on how many people can be in the raid VC.")
+				.setTimestamp();
+		}
+
+		let botMsg: Message | null = null;
+		let hasReacted: boolean = false;
+		while (true) {
+			const embed: MessageEmbed = getEmbed();
+			if (botMsg === null) {
+				botMsg = await channel.send(embed);
+				FastReactionMenuManager.reactFaster(botMsg, ["❌", "✅", "🗺️", "🗑️", "🔈", "⌨️", "⌛", "🔑", "🏃", "🕐"]);
+			}
+			else {
+				await botMsg.edit(embed);
+			}
+
+			const chosenReaction: Emoji | "TIME_CMD" = await new FastReactionMenuManager(
+				botMsg,
+				member.user,
+				["❌", "✅", "🗺️", "🗑️", "🔈", "⌨️", "⌛", "🔑", "🏃", "🕐"],
+				5,
+				TimeUnit.MINUTE
+			).enableDisableReact(false).react();
+
+			if (chosenReaction === "TIME_CMD" || chosenReaction.name === "❌") {
+				await botMsg.delete().catch(() => { });
+				return "CANCEL";
+			}
+
+			if (chosenReaction.name === "✅") {
+				break;
+			}
+			else if (chosenReaction.name === "🗺️") {
+				const newEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(member.user);
+			}
+		}
+
+		return response;
+	}*/
+
+	//#endregion
+
+	/**
+	 * Starts an AFK check. This function should be called only from the `StartAfkCheckCommand` file.
+	 * Precondition: The command must be run in a server.
+	 */
 	export async function startAfkCheck(
 		msg: Message,
 		guildDb: IRaidGuild,
@@ -110,6 +251,11 @@ export module RaidHandler {
 
 		if (typeof SECTION === "undefined") {
 			MessageUtil.send({ content: "An AFK check could not be started because the selected channel has no category associated with it." }, msg.channel as TextChannel);
+			return;
+		}
+
+		if (!guild.roles.cache.has(SECTION.verifiedRole)) {
+			MessageUtil.send({ content: "The verified role does not exist. Please try again." }, msg.channel as TextChannel);
 			return;
 		}
 
@@ -352,7 +498,8 @@ export module RaidHandler {
 			let isInValidVc: boolean = false;
 			let desc: string = "It appears this server has multiple compatible voice channels. Please select the voice channel that you'd like to use. Please make sure the voice channel isn't already in use.\n\n⇒ React with ➕ if you want the bot to create a new VC for this raid.\n⇒ React with ❌ if you want to cancel this process.";
 			if (typeof member.voice.channelID !== "undefined"
-				&& allVoiceChannels.map(x => x.id).includes(member.voice.channelID)) {
+				&& member.voice.channel !== null
+				&& allVoiceChannels.map(x => x.id).includes(member.voice.channel.id)) {
 				desc += `\n⇒ React with 📍 if you want to use your current voice channel.`;
 				isInValidVc = true;
 			}
@@ -361,7 +508,7 @@ export module RaidHandler {
 				.setTitle("Select Voice Channel")
 				.setDescription(desc)
 				.setFooter("Voice Channel Selection");
-			const arr: string[] = StringUtil.arrayToStringFields<VoiceChannel>(
+			const arr: string[] = ArrayUtil.arrayToStringFields<VoiceChannel>(
 				allVoiceChannels as VoiceChannel[],
 				(i, elem) => `[${i + 1}] ${elem.name} (${elem.members.size}) ${elem.members.size <= 2 ? "🟢" : (elem.members.size <= 10 ? "🟡" : "🔴")} ${(member.voice.channelID === elem.id ? "[HERE]" : "")}\n`
 			);
@@ -453,7 +600,9 @@ export module RaidHandler {
 			},
 			{
 				id: guildDb.roles.support,
-				allow: ["VIEW_CHANNEL", "CONNECT", "MOVE_MEMBERS"]
+				allow: guildDb.roles.talkingRoles.indexOf(guildDb.roles.support) === -1
+					? ["VIEW_CHANNEL", "CONNECT", "MOVE_MEMBERS"]
+					: ["VIEW_CHANNEL", "CONNECT", "MOVE_MEMBERS", "SPEAK"]
 			},
 			{
 				id: sectionRLRoles[0],
@@ -500,6 +649,12 @@ export module RaidHandler {
 
 		for (const role of guildDb.roles.talkingRoles) {
 			if (guild.roles.cache.has(role)) {
+				const index: number = realPermissions.findIndex(x => x.id === role);
+
+				if (index !== -1) {
+					continue;
+				}
+
 				realPermissions.push({
 					id: role,
 					allow: ["VIEW_CHANNEL", "SPEAK"]
@@ -543,16 +698,16 @@ export module RaidHandler {
 		let reactWithNitroBoosterEmoji: boolean = false;
 		if (existingEarlyLocRoles.length !== 0) {
 			if (existingEarlyLocRoles.length === 1) {
-				optionalReactsField += `⇒ If you have the ${existingEarlyLocRoles[0]} role, react with ${earlyLocationEmoji} to get the raid location early.\n`;
+				optionalReactsField += `⇒ If you have the ${existingEarlyLocRoles[0]} role, react with ${earlyLocationEmoji} to get the raid location early. If you are in queue, you will be dragged in.\n`;
 			}
 			else {
-				optionalReactsField += `⇒ If you have one of the following roles, ${existingEarlyLocRoles.join(" ")}, react with ${earlyLocationEmoji} to get the raid location early.\n`;
+				optionalReactsField += `⇒ If you have one of the following early location roles, ${existingEarlyLocRoles.join(" ")}, react with ${earlyLocationEmoji} to get the raid location early. If you are in queue, you will be dragged in.\n`;
 			}
 			reactWithNitroBoosterEmoji = true;
 		}
 
 		if (SELECTED_DUNGEON.keyEmojIDs.length !== 0) {
-			optionalReactsField += `⇒ If you have ${SELECTED_DUNGEON.keyEmojIDs.length === 1 ? `a ${SELECTED_DUNGEON.keyEmojIDs[0].keyEmojiName}` : "one of the following keys"}, react accordingly with ${SELECTED_DUNGEON.keyEmojIDs.map(x => msg.client.emojis.cache.get(x.keyEmojID)).join(" ")}\n`;
+			optionalReactsField += `⇒ If you have ${SELECTED_DUNGEON.keyEmojIDs.length === 1 ? `a ${SELECTED_DUNGEON.keyEmojIDs[0].keyEmojiName}` : "one of the following keys"}, react accordingly with ${SELECTED_DUNGEON.keyEmojIDs.map(x => msg.client.emojis.cache.get(x.keyEmojID)).join(" ")}.\n`;
 		}
 		optionalReactsField += `⇒ React with the emoji(s) corresponding to your class and gear choices.`;
 
@@ -560,7 +715,7 @@ export module RaidHandler {
 			// TODO check if mobile can see the emoji.
 			.setAuthor(`${member.displayName} has initiated a ${SELECTED_DUNGEON.dungeonName} AFK Check.`, SELECTED_DUNGEON.portalLink)
 			.setDescription(`⇒ **Join** the **${NEW_RAID_VC.name}** voice channel to participate in this raid.\n⇒ **React** to the ${msg.client.emojis.cache.get(SELECTED_DUNGEON.portalEmojiID)} emoji to show that you are joining in on this raid.`)
-			.addField("Optional Reactions", optionalReactsField)
+			.addField("Optional Reactions __(Join Raid VC First)__", optionalReactsField)
 			.setColor(ArrayUtil.getRandomElement(SELECTED_DUNGEON.colors))
 			.setThumbnail(ArrayUtil.getRandomElement(SELECTED_DUNGEON.bossLink))
 			.setFooter(`${guild.name}: Raid AFK Check`);
@@ -664,6 +819,10 @@ export module RaidHandler {
 		let keysThatReacted: Collection<string, GuildMember[]> = new Collection<string, GuildMember[]>();
 		let earlyReactions: GuildMember[] = [];
 		reactCollector.on("collect", async (reaction: MessageReaction, user: User) => {
+			if (guildDb.properties.removeEarlyLocKeyReacts) {
+				reaction.remove().catch(e => { });
+			}
+
 			if (reaction.emoji.id === null) {
 				return; // this should never hit.
 			}
@@ -677,21 +836,27 @@ export module RaidHandler {
 			}
 			// member not found OR member not in vc OR member not in raid vc 
 			// dont let them in
-			if (member.voice.channel === null || member.voice.channel.id !== NEW_RAID_VC.id) {
+			if (member.voice.channel === null) {
 				return;
 			}
 			// TODO somehow key entry (in end afk control panel) have data from the early react (merged data)
 			// check on this
 			if (rs.dungeonInfo.keyEmojIDs.some(x => x.keyEmojID === reaction.emoji.id)
 				&& !hasUserReactedWithSpecificKey(keysThatReacted, reaction.emoji.id, user.id)) {
-				// only want 8 keys
+				// only want some keys
 				if (getAmountOfKeys(keysThatReacted, reaction.emoji.id) + 1 > maximumKeysAllowed) {
 					await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** Thank you for your interest in contributing a key to the raid. However, we have enough people for now! A leader will give instructions if keys are needed; please ensure you are paying attention to the leader.`).catch(() => { });
 					return;
 				}
+
 				// key react 
 				let hasAccepted: boolean = await keyReact(user, guild, NEW_RAID_VC, rs, reaction);
 				if (hasAccepted) {
+					// make sure we dont go above the limit
+					if (getAmountOfKeys(keysThatReacted, reaction.emoji.id) + 1 > maximumKeysAllowed) {
+						await user.send(`**\`[${guild.name} ⇒ ${rs.section.nameOfSection}]\`** Thank you for your interest in contributing a key to the raid. However, you were too slow in reacting to the needed keys. Please try again later.`).catch(() => { });
+						return;
+					}
 					const currData: IStoredRaidData | undefined = CURRENT_RAID_DATA.get(rs.vcID);
 					if (typeof currData === "undefined") {
 						reactCollector.stop();
@@ -713,6 +878,10 @@ export module RaidHandler {
 					}
 					controlPanelEmbed.setDescription(cpDescWithKey);
 					controlPanelMsg.edit(controlPanelEmbed).catch(() => { });
+
+					if (member.voice.channel !== NEW_RAID_VC) {
+						await member.voice.setChannel(NEW_RAID_VC).catch(e => { });
+					}
 				}
 			}
 
@@ -754,6 +923,10 @@ export module RaidHandler {
 				}
 				controlPanelEmbed.setDescription(cpDescWithEarly);
 				controlPanelMsg.edit(controlPanelEmbed).catch(() => { });
+
+				if (member.voice.channel !== NEW_RAID_VC) {
+					await member.voice.setChannel(NEW_RAID_VC).catch(e => { });
+				}
 			}
 		});
 
@@ -824,10 +997,6 @@ export module RaidHandler {
 	/**
 	 * Whether a person has reacted with the key or not.
 	 * @param col The key collection
-	 * @param keyId The key ID. 
- 	 * @param keyId The key ID. 
-	 * @param keyId The key ID. 
-     * @param keyId The key ID. 
 	 * @param keyId The key ID. 
 	 * @param userId The person that reacted.
 	 */
@@ -1249,21 +1418,38 @@ export module RaidHandler {
 	export async function endRun(
 		memberThatEnded: GuildMember,
 		guild: Guild,
-		rs: IRaidInfo
+		rs: IRaidInfo,
+		vcDeleted: boolean = false
 	): Promise<void> {
 		const afkCheckChannel: TextChannel = guild.channels.cache.get(rs.section.channels.afkCheckChannel) as TextChannel;
-		let raidMsg: Message = await afkCheckChannel.messages.fetch(rs.msgID);
 		const controlPanelChannel: TextChannel = guild.channels.cache.get(rs.section.channels.controlPanelChannel) as TextChannel;
-		let cpMsg: Message = await controlPanelChannel.messages.fetch(rs.controlPanelMsgId);
-		const raidVC: VoiceChannel = guild.channels.cache.get(rs.vcID) as VoiceChannel;
-		const membersLeft: Collection<string, GuildMember> = raidVC.members;
+		let raidMsg: Message | null = null;
+		try {
+			raidMsg = await afkCheckChannel.messages.fetch(rs.msgID);
+		}
+		catch (e) { }
+
+		let cpMsg: Message | null = null;
+		try {
+			cpMsg = await controlPanelChannel.messages.fetch(rs.controlPanelMsgId);
+		}
+		catch (e) { }
+
+		const raidVC: VoiceChannel | null = vcDeleted
+			? null
+			: guild.channels.cache.get(rs.vcID) as VoiceChannel;
+		const membersLeft: Collection<string, GuildMember> = raidVC === null
+			? new Collection<string, GuildMember>()
+			: raidVC.members;
 
 		// if we're in post afk 
-		if (typeof raidMsg.embeds[0].description !== "undefined" && raidMsg.embeds[0].description.includes("Join any available voice channel and then")) {
+		if (raidMsg !== null &&
+			raidMsg.embeds[0].description !== null
+			&& raidMsg.embeds[0].description.includes("Join any available voice channel and then")) {
 			return;
 		}
 
-		await RaidDbHelper.removeRaidChannel(guild, raidVC.id);
+		await RaidDbHelper.removeRaidChannelFromDatabase(guild, rs.vcID);
 
 		const endedRun: MessageEmbed = new MessageEmbed()
 			.setAuthor(`${memberThatEnded.displayName} has ended the ${rs.dungeonInfo.dungeonName} raid.`, rs.dungeonInfo.portalLink)
@@ -1271,22 +1457,33 @@ export module RaidHandler {
 			.setThumbnail("https://static.drips.pw/rotmg/wiki/Enemies/Event%20Chest.png")
 			.setColor(ArrayUtil.getRandomElement<ColorResolvable>(rs.dungeonInfo.colors))
 			.setFooter(guild.name);
-		await raidMsg.edit("The raid is now over. Thanks to everyone for attending!", endedRun);
-		await raidMsg.unpin().catch(() => { });
-		await cpMsg.delete().catch(() => { });
-		await logCompletedRunsForRaiders(guild, membersLeft, rs, 1);
-		if (rs.vcInfo.isOld) {
-			await raidVC.overwritePermissions(rs.vcInfo.oldPerms).catch(e => { });
+		if (raidMsg !== null) {
+			await raidMsg.edit("The raid is now over. Thanks to everyone for attending!", endedRun);
+			await raidMsg.unpin().catch(() => { });
 		}
-		else {
-			await movePeopleOutAndDeleteRaidVc(guild, raidVC);
+		
+		if (cpMsg != null) {
+			await cpMsg.delete().catch(() => { });
+		}
+		
+		if (!vcDeleted && membersLeft.size > 0) {
+			await logCompletedRunsForRaiders(guild, membersLeft, rs, 1);
+		}
+
+		if (raidVC !== null) {
+			if (rs.vcInfo.isOld) {
+				await raidVC.overwritePermissions(rs.vcInfo.oldPerms).catch(e => { });
+			}
+			else {
+				await movePeopleOutAndDeleteRaidVc(guild, raidVC);
+			}
 		}
 	}
 
 	/**
 	 * Move people out of the raid VC (if possible) and deletes the raiding voice channel. 
 	 */
-	async function movePeopleOutAndDeleteRaidVc(guild: Guild, raidVC: VoiceChannel) {
+	export async function movePeopleOutAndDeleteRaidVc(guild: Guild, raidVC: VoiceChannel) {
 		const loungeVC: VoiceChannel | undefined = guild.channels.cache
 			.filter(x => x.type === "voice")
 			.filter(x => x.parentID === raidVC.parentID)
@@ -1336,7 +1533,7 @@ export module RaidHandler {
 	export async function abortAfk(
 		guild: Guild,
 		rs: IRaidInfo,
-		raidVC: VoiceChannel
+		raidVC: VoiceChannel | string
 	): Promise<void> {
 		const afkCheckChannel: TextChannel = guild.channels.cache.get(rs.section.channels.afkCheckChannel) as TextChannel;
 		let raidMsg: Message = await afkCheckChannel.messages.fetch(rs.msgID);
@@ -1351,7 +1548,7 @@ export module RaidHandler {
 			curRaidDataArrElem.mst.disableAutoTick();
 			clearInterval(curRaidDataArrElem.timeout);
 		}
-		await RaidDbHelper.removeRaidChannel(guild, raidVC.id);
+		await RaidDbHelper.removeRaidChannelFromDatabase(guild, typeof raidVC === "string" ? raidVC : raidVC.id);
 
 		const abortAfk: MessageEmbed = new MessageEmbed()
 			.setAuthor(`The ${rs.dungeonInfo.dungeonName} AFK Check has been aborted.`, rs.dungeonInfo.portalLink)
@@ -1361,11 +1558,13 @@ export module RaidHandler {
 		await raidMsg.edit("Unfortunately, the AFK check has been aborted.", abortAfk);
 		await raidMsg.unpin().catch(() => { });
 		await cpMsg.delete().catch(console.error);
-		if (rs.vcInfo.isOld) {
-			await raidVC.overwritePermissions(rs.vcInfo.oldPerms).catch(console.error);
-		}
-		else {
-			await movePeopleOutAndDeleteRaidVc(guild, raidVC);
+		if (typeof raidVC !== "string") {
+			if (rs.vcInfo.isOld) {
+				await raidVC.overwritePermissions(rs.vcInfo.oldPerms).catch(console.error);
+			}
+			else {
+				await movePeopleOutAndDeleteRaidVc(guild, raidVC);
+			}
 		}
 	}
 
@@ -1420,12 +1619,6 @@ export module RaidHandler {
 		const dungeons: IDungeonData[] = getDungeonsAllowedInSection(SECTION);
 		if (dungeons.length === 0) {
 			MessageUtil.send({ content: "A headcount could not be started because there are no dungeons available for this section." }, msg.channel as TextChannel);
-			return;
-		}
-
-		const foundHeadcounts: IHeadCountInfo[] = guildDb.activeRaidsAndHeadcounts.headcounts.filter(x => x.section.channels.afkCheckChannel);
-		if (foundHeadcounts.length > 0 && foundHeadcounts[0].section.channels.afkCheckChannel === HEADCOUNT_CHANNEL.id) {
-			MessageUtil.send({ content: "A headcount could not be started because there is already a pending headcount." }, msg.channel as TextChannel);
 			return;
 		}
 
@@ -1491,13 +1684,12 @@ export module RaidHandler {
 				return;
 			}
 
-			startHeadCount(msg, guildDb, guild, SECTION, HEADCOUNT_CHANNEL, allDungeons.filter(x => x.isIncluded).map(x => x.data));
+			startHeadCount(msg, guild, SECTION, HEADCOUNT_CHANNEL, allDungeons.filter(x => x.isIncluded).map(x => x.data));
 		});
 	}
 
 	async function startHeadCount(
 		msg: Message,
-		guildDb: IRaidGuild,
 		guild: Guild,
 		section: ISection,
 		afkCheckChannel: TextChannel,
@@ -1511,18 +1703,6 @@ export module RaidHandler {
 			MessageUtil.send({ content: "A headcount could not be started because the control panel channel is not configured." }, msg.channel as TextChannel);
 			return;
 		}
-
-		const hcControlPanelEmbed: MessageEmbed = new MessageEmbed()
-			.setAuthor("Control Panel: Headcount", "https://i.imgur.com/g2wovmA.png")
-			.setDescription(`Initiator: ${member} (${member.displayName})`)
-			.addField("Stop Headcount", "React with ❌ to stop the headcount. You will receive the results of the headcount, if any.")
-			.setColor("RANDOM")
-			.setTimestamp()
-			.setFooter("Control Panel • Headcount Pending");
-		const controlPanelMsgEntry: Message = await CONTROL_PANEL_CHANNEL.send(hcControlPanelEmbed);
-		await controlPanelMsgEntry.pin().catch(() => { });
-
-		await controlPanelMsgEntry.react("❌").catch(() => { });
 
 		const hcEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(`${member.displayName} has initiated a headcount.`, "https://i.imgur.com/g2wovmA.png")
@@ -1539,153 +1719,10 @@ export module RaidHandler {
 			}
 		}
 
-		const hcMessage: Message = await afkCheckChannel.send(`@here, a headcount is currently in progress. There are 10 minutes and 0 seconds remaining on this headcount.`, { embed: hcEmbed });
-		const mst: MessageSimpleTick = new MessageSimpleTick(hcMessage, "@here, a headcount is currently in progress. There are {m} minutes and {s} seconds remaining on this headcount.", MAX_TIME_LEFT * 2); // 10 min
+		const hcMessage: Message = await afkCheckChannel.send(`@here`, { embed: hcEmbed });
 		await hcMessage.pin().catch(() => { });
 
 		FastReactionMenuManager.reactFaster(hcMessage, emojis);
-
-		const hcInfo: IHeadCountInfo = {
-			section: section,
-			msgID: hcMessage.id,
-			startTime: new Date().getTime(),
-			startedBy: member.id,
-			dungeonsForHc: dungeonsForHc.map(x => x.id),
-			controlPanelMsgId: controlPanelMsgEntry.id
-		};
-
-		await RaidDbHelper.addHeadcount(guild, hcInfo);
-
-		// TODO see if if there is a way to stop the timeout in case the headcount ends early.
-		const timeout: NodeJS.Timeout = setTimeout(async () => {
-			mst.disableAutoTick();
-			guildDb = await (new MongoDbHelper.MongoDbGuildManager(guild.id).findOrCreateGuildDb());
-			endHeadcount(guild, guildDb, dungeonsForHc, "AUTO", hcInfo);
-		}, MAX_TIME_LEFT * 2);
-
-		CURRENT_HEADCOUNT_DATA.set(hcMessage.id, {
-			timeout: timeout,
-			mst: mst
-		});
-	}
-
-	export async function endHeadcount(
-		guild: Guild,
-		guildDb: IRaidGuild,
-		dungeonsForHc: IDungeonData[],
-		endedBy: GuildMember | "AUTO",
-		hcInfo: IHeadCountInfo
-	): Promise<void> {
-		let hcEntryFound: boolean = false;
-		for (const hcEntry of guildDb.activeRaidsAndHeadcounts.headcounts) {
-			if (hcEntry.msgID === hcInfo.msgID) {
-				hcEntryFound = true;
-				break;
-			}
-		}
-
-		if (!hcEntryFound) {
-			return;
-		}
-
-		// see if the headcount exists or not
-		// TODO: check db first in case bot restarts
-		const HEADCOUNT_CHANNEL: TextChannel = guild.channels.cache.get(hcInfo.section.channels.afkCheckChannel) as TextChannel;
-		const hcMsg: Message = await HEADCOUNT_CHANNEL.messages.fetch(hcInfo.msgID);
-
-		const headcountArrElemData: IStoredHeadcountData | undefined = RaidHandler.CURRENT_HEADCOUNT_DATA.get(hcInfo.msgID);
-
-		// get control panel
-		const CONTROL_PANEL_CHANNEL: TextChannel = guild.channels.cache
-			.get(hcInfo.section.channels.controlPanelChannel) as TextChannel;
-		const controlPanelMessage: Message = await CONTROL_PANEL_CHANNEL.messages.fetch(hcInfo.controlPanelMsgId);
-
-		// if the timer ends but we already ended the hc
-		// then return as to not "end" the hc twice
-		let dbIsFound: boolean = false;
-		if (typeof headcountArrElemData === "undefined") {
-			for (let i = 0; i < guildDb.activeRaidsAndHeadcounts.headcounts.length; i++) {
-				if (guildDb.activeRaidsAndHeadcounts.headcounts[i].msgID === hcMsg.id) {
-					dbIsFound = true;
-					break;
-				}
-			}
-
-			if (!dbIsFound) {
-				return;
-			}
-		}
-		else {
-			headcountArrElemData.mst.disableAutoTick();
-			clearInterval(headcountArrElemData.timeout);
-		}
-		// remove from db
-		await RaidDbHelper.removeHeadcount(guild, hcMsg.id);
-		await hcMsg.unpin().catch(() => { });
-
-		// remove from array
-		CURRENT_HEADCOUNT_DATA.delete(hcInfo.msgID);
-
-		// let's now get the data, if any 
-		const reactionsFromHeadcount: Collection<string, MessageReaction> = (await hcMsg.fetch()).reactions.cache;
-		const newEmbed: MessageEmbed = new MessageEmbed()
-			.setTitle(`🔕 The headcount has been ended ${endedBy === "AUTO" ? "automatically" : `by ${endedBy.displayName}`}`)
-			.setColor("RANDOM")
-			.setDescription(`There are currently ${(reactionsFromHeadcount.get(AllEmoji) as MessageReaction).users.cache.size} raiders ready.`)
-			.setTimestamp();
-
-		const newControlPanelEmbed: MessageEmbed = new MessageEmbed()
-			.setAuthor("Control Panel: Headcount Results", "https://i.imgur.com/g2wovmA.png")
-			.setDescription(`Headcount Ended By: ${endedBy === "AUTO" ? "Timer" : `${endedBy} (${endedBy.displayName})`}\nRaiders Ready: ${(reactionsFromHeadcount.get(AllEmoji) as MessageReaction).users.cache.size - 1}`)
-			.addField("Delete Results", "React with 🗑️ to delete this message. This action will automatically be performed in 10 minutes.")
-			.setColor("RANDOM")
-			.setTimestamp()
-			.setFooter("Control Panel • Headcount Ended");
-
-		for (const [, reaction] of reactionsFromHeadcount) {
-			if (reaction.emoji.id !== null && reaction.emoji.id === AllEmoji) {
-				continue;
-			}
-
-			let userStr: string = "";
-			for (const [, user] of reaction.users.cache) {
-				if (user.id === ((Zero.RaidClient.user as ClientUser).id)) {
-					continue;
-				}
-				const member: GuildMember = guild.member(user) as GuildMember;
-				userStr += `${member.displayName}\n`;
-			}
-
-			let keyName: string = "";
-			// find emoji name
-			dungeonInfoLoop: for (const dungeon of dungeonsForHc) {
-				for (const key of dungeon.keyEmojIDs) {
-					if (key.keyEmojID === reaction.emoji.id) {
-						keyName = key.keyEmojiName;
-						break dungeonInfoLoop;
-					}
-				}
-			}
-
-			if (keyName === "" || userStr === "") {
-				continue;
-			}
-			newControlPanelEmbed.addField(keyName, StringUtil.applyCodeBlocks(userStr), true);
-		}
-
-		await hcMsg.edit(newEmbed).catch(() => { });
-		await hcMsg.unpin().catch(() => { });
-		await controlPanelMessage.reactions.removeAll().catch(() => { });
-		await controlPanelMessage.edit(newControlPanelEmbed).catch(() => { });
-		await controlPanelMessage.react("🗑️").catch(() => { });
-		setTimeout(async () => {
-			try {
-				await controlPanelMessage.delete();
-			}
-			catch (e) {
-				// ignore
-			}
-		}, 10 * 60 * 1000); // TODO unknowm msg error from headcount
 	}
 
 	/**
@@ -1738,7 +1775,7 @@ export module RaidHandler {
 	/**
 	 * Returns the AFK check (and the section). 
 	 */
-	async function getAfkCheckChannel(
+	export async function getAfkCheckChannel(
 		msg: Message,
 		guild: Guild,
 		guildDb: IRaidGuild,
@@ -1855,7 +1892,7 @@ export module RaidHandler {
 	 * @param {GuildChannel} vc The voice channel.  
 	 * @returns {boolean} Whether the VC ends with a number or not. 
 	 */
-	function vcEndsWithNumber(vc: GuildChannel): boolean {
+	export function vcEndsWithNumber(vc: GuildChannel): boolean {
 		return !Number.isNaN(Number.parseInt(vc.name.split(" ")[vc.name.split(" ").length - 1]));
 	}
 

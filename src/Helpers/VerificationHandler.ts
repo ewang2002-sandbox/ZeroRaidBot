@@ -19,9 +19,35 @@ import { IManualVerification } from "../Definitions/IManualVerification";
 import { IRealmEyeNoUser } from "../Definitions/IRealmEyeNoUser";
 import { IRealmEyeAPI } from "../Definitions/IRealmEyeAPI";
 import { UserAvailabilityHelper } from "./UserAvailabilityHelper";
+import { IBlacklistedUser } from "../Definitions/IBlacklistedUser";
+import { IVerification } from "../Templates/IVerification";
 
 export module VerificationHandler {
+	// TODO make this a set? 
 	export const IsInVerification: Collection<string, "GENERAL" | "ALT"> = new Collection<string, "GENERAL" | "ALT">();
+	export const PeopleThatWereMessaged: Set<string> = new Set();
+	export const DefaultVerification: IVerification = {
+		stars: {
+			required: false,
+			minimum: 0
+		},
+
+		/**
+		 * Minimum alive fame required for membership.
+		 */
+		aliveFame: {
+			required: false,
+			minimum: 0
+		},
+
+		/**
+		 * Minimum character points required for membership.
+		 */
+		maxedStats: {
+			required: false,
+			statsReq: [0, 0, 0, 0, 0, 0, 0, 0, 0] // [0/8, 1/8, 2/8, 3/8, 4/8, 5/8, 6/8, 7/8, 8/8]
+		}
+	};
 
 	interface ICheckResults {
 		characters: {
@@ -58,507 +84,442 @@ export module VerificationHandler {
 		section: ISection,
 		calledFrom: "REACT" | "COMMAND"
 	): Promise<void> {
+		// already verified or no role
+		if (!guild.roles.cache.has(section.verifiedRole)
+			|| member.roles.cache.has(section.verifiedRole)
+			|| IsInVerification.has(member.id)) {
+			return;
+		}
+
+		const verifiedRole: Role = guild.roles.cache.get(section.verifiedRole) as Role;
+
+		// channel declaration
+		// yes, we know these can be textchannels b/c that's the input in configsections
+		const verificationAttemptsChannel: TextChannel | undefined = guild.channels.cache
+			.get(section.channels.logging.verificationAttemptsChannel) as TextChannel | undefined;
+		const verificationSuccessChannel: TextChannel | undefined = guild.channels.cache
+			.get(section.channels.logging.verificationSuccessChannel) as TextChannel | undefined;
+		const manualVerificationChannel: TextChannel | undefined = guild.channels.cache
+			.get(section.channels.manualVerification) as TextChannel | undefined;
+
+		const verificationChannel: GuildChannel | undefined = guild.channels.cache
+			.get(section.channels.verificationChannel);
+
+		if (typeof verificationChannel === "undefined") {
+			return;
+		}
+
+		const allSections: ISection[] = [GuildUtil.getDefaultSection(guildDb), ...guildDb.sections];
+		for (const section of allSections) {
+			if (section.channels.verificationChannel !== verificationChannel.id) {
+				continue;
+			}
+			const manualVerifEntry: IManualVerification | undefined = section.properties.manualVerificationEntries
+				.find(x => x.userId === member.id);
+			if (typeof manualVerifEntry === "undefined") {
+				continue;
+			}
+
+			await member.send(`**\`[${section.isMain ? guild.name : section.nameOfSection}]\`** Your profile is currently under manual verification. Please try again later.`);
+			return;
+		}
+
+		//#region requirement text
+		let reqs: StringBuilder = new StringBuilder()
+			.append("• Public Profile.")
+			.appendLine()
+			.append("• Private \"Last Seen\" Location.")
+			.appendLine()
+			.append("• Public Name History.")
+			.appendLine();
+
+		if (section.properties.showVerificationRequirements) {
+			if (section.verification.aliveFame.required) {
+				reqs.append(`• ${section.verification.aliveFame.minimum} Alive Fame.`)
+					.appendLine();
+			}
+
+			if (section.verification.stars.required) {
+				reqs.append(`• ${section.verification.stars.minimum} Stars.`)
+					.appendLine();
+			}
+
+			if (section.verification.maxedStats.required) {
+				for (let i = 0; i < section.verification.maxedStats.statsReq.length; i++) {
+					if (section.verification.maxedStats.statsReq[i] !== 0) {
+						reqs.append(`• ${section.verification.maxedStats.statsReq[i]} ${i}/8 Character(s).`)
+							.appendLine();
+					}
+				}
+			}
+		}
+
+		//#endregion
+		let dmChannel: DMChannel;
+
 		try {
-			// already verified or no role
-			if (!guild.roles.cache.has(section.verifiedRole) || member.roles.cache.has(section.verifiedRole) || IsInVerification.has(member.id)) {
+			dmChannel = await member.user.createDM();
+			await dmChannel.send("This is a check to make sure I can DM you. Please ignore it; the real verification message will come soon.")
+				.then(x => x.delete());
+		}
+		catch (e) {
+			if (typeof verificationAttemptsChannel !== "undefined") {
+				verificationAttemptsChannel.send(`🔇 **\`[${section.nameOfSection}]\`** ${member} tried to verify, but his or her DMs were set so no one can message him or her.`).catch(() => { });
+			}
+
+			if (PeopleThatWereMessaged.has(member.id)) {
 				return;
 			}
+			else {
+				MessageUtil.send({ content: `${member}, I am unable to message you. Please make sure your privacy settings are set so anyone can DM you.` }, verificationChannel as TextChannel);
+			}
+			PeopleThatWereMessaged.add(member.id);
+			setTimeout(() => {
+				PeopleThatWereMessaged.delete(member.id);
+			}, 5000);
+			return;
+		}
 
-			const verifiedRole: Role = guild.roles.cache.get(section.verifiedRole) as Role;
-			const dmChannel: DMChannel = await member.user.createDM();
+		// within the server we will be checking for other major reqs.
+		if (section.isMain) {
+			IsInVerification.set(member.id, "GENERAL");
+			UserAvailabilityHelper.InMenuCollection.set(member.id, UserAvailabilityHelper.MenuType.VERIFICATION);
 
-			// channel declaration
-			// yes, we know these can be textchannels b/c that's the input in configsections
-			const verificationAttemptsChannel: TextChannel | undefined = guild.channels.cache
-				.get(section.channels.logging.verificationAttemptsChannel) as TextChannel | undefined;
-			const verificationSuccessChannel: TextChannel | undefined = guild.channels.cache
-				.get(section.channels.logging.verificationSuccessChannel) as TextChannel | undefined;
-			const manualVerificationChannel: TextChannel | undefined = guild.channels.cache
-				.get(section.channels.manualVerification) as TextChannel | undefined;
+			const userDb: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.getUserDbByDiscordId(member.id);
+			let inGameName: string = "";
 
-			const verificationChannel: GuildChannel | undefined = guild.channels.cache.get(section.channels.verificationChannel);
+			let isOldProfile: boolean = false;
 
-			if (typeof verificationChannel === "undefined") {
-				return;
+			if (typeof verificationAttemptsChannel !== "undefined") {
+				verificationAttemptsChannel.send(`▶️ **\`[${section.nameOfSection}]\`** ${member} has started the verification process through the ${calledFrom === "COMMAND" ? "verify command" : "verification embed reaction"}.`).catch(() => { });
 			}
 
-			const allSections: ISection[] = [GuildUtil.getDefaultSection(guildDb), ...guildDb.sections];
-			for (const section of allSections) {
-				if (section.channels.verificationChannel !== verificationChannel.id) {
-					continue;
-				}
-				const manualVerifEntry: IManualVerification | undefined = section.properties.manualVerificationEntries
-					.find(x => x.userId === member.id);
-				if (typeof manualVerifEntry === "undefined") {
-					continue;
-				}
-				
-				await member.send(`**\`[${section.isMain ? guild.name : section.nameOfSection}]\`** Your profile is currently under manual verification. Please try again later.`);
-				return;
-			}
+			if (userDb !== null) {
+				const hasNameEmbed: MessageEmbed = new MessageEmbed()
+					.setAuthor(member.user.tag, member.user.displayAvatarURL())
+					.setTitle(`Verification For: **${guild.name}**`)
+					.setDescription(`It appears that the name, **\`${userDb.rotmgDisplayName}\`**, is linked to this Discord account. Do you want to verify using this in-game name? Type \`yes\` or \`no\`.`)
+					.setFooter("⏳ Time Remaining: 2 Minutes and 0 Seconds.")
+					.setColor("RANDOM");
 
-			//#region requirement text
-			let reqs: StringBuilder = new StringBuilder()
-				.append("• Public Profile.")
-				.appendLine()
-				.append("• Private \"Last Seen\" Location.")
-				.appendLine()
-				.append("• Public Name History.")
-				.appendLine();
-
-			if (section.properties.showVerificationRequirements) {
-				if (section.verification.aliveFame.required) {
-					reqs.append(`• ${section.verification.aliveFame.minimum} Alive Fame.`)
-						.appendLine();
-				}
-
-				if (section.verification.stars.required) {
-					reqs.append(`• ${section.verification.stars.minimum} Stars.`)
-						.appendLine();
-				}
-
-				if (section.verification.maxedStats.required) {
-					for (let i = 0; i < section.verification.maxedStats.statsReq.length; i++) {
-						if (section.verification.maxedStats.statsReq[i] !== 0) {
-							reqs.append(`• ${section.verification.maxedStats.statsReq[i]} ${i}/8 Character(s).`)
-								.appendLine();
-						}
-					}
-				}
-			}
-
-			//#endregion
-
-			// within the server we will be checking for other major reqs.
-			if (section.isMain) {
-				IsInVerification.set(member.id, "GENERAL");
-				UserAvailabilityHelper.InMenuCollection.set(member.id, UserAvailabilityHelper.MenuType.VERIFICATION);
-
-				const userDb: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.getUserDbByDiscordId(member.id);
-				let inGameName: string = "";
-
-				let isOldProfile: boolean = false;
-
-				if (typeof verificationAttemptsChannel !== "undefined") {
-					verificationAttemptsChannel.send(`▶️ **\`[${section.nameOfSection}]\`** ${member} has started the verification process through the ${calledFrom === "COMMAND" ? "verify command" : "verification embed reaction"}.`).catch(() => { });
-				}
-
-				if (userDb !== null) {
-					const hasNameEmbed: MessageEmbed = new MessageEmbed()
-						.setAuthor(member.user.tag, member.user.displayAvatarURL())
-						.setTitle(`Verification For: **${guild.name}**`)
-						.setDescription(`It appears that the name, **\`${userDb.rotmgDisplayName}\`**, is linked to this Discord account. Do you want to verify using this in-game name? Type \`yes\` or \`no\`.`)
-						.setFooter("⏳ Time Remaining: 2 Minutes and 0 Seconds.")
-						.setColor("RANDOM");
-
-					const choice: boolean | "CANCEL_CMD" | "TIME_CMD" = await new Promise(async (resolve) => {
-						let botMsg = await dmChannel.send(hasNameEmbed);
-						const mc1: MessageAutoTick = new MessageAutoTick(
-							botMsg,
-							hasNameEmbed,
-							2 * 60 * 1000,
-							null,
-							"⏳ Time Remaining: {m} Minutes and {s} Seconds."
-						);
-
-						const msgCollector: MessageCollector = new MessageCollector(dmChannel, m => m.author.id === member.id, {
-							time: 2 * 60 * 1000
-						});
-
-						msgCollector.on("end", (collected: Collection<string, Message>, reason: string) => {
-							mc1.disableAutoTick();
-							botMsg.delete().catch(e => { });
-							if (reason === "time") {
-								return resolve("TIME_CMD");
-							}
-						});
-
-						msgCollector.on("collect", async (respMsg: Message) => {
-							if (respMsg.content.toLowerCase() === "cancel") {
-								msgCollector.stop();
-								return resolve("CANCEL_CMD");
-							}
-
-							if (["yes", "ye", "y"].includes(respMsg.content.toLowerCase())) {
-								msgCollector.stop();
-								return resolve(true);
-							}
-
-							if (["no", "n"].includes(respMsg.content.toLowerCase())) {
-								msgCollector.stop();
-								return resolve(false);
-							}
-						});
-					});
-
-					if (choice === "TIME_CMD" || choice === "CANCEL_CMD") {
-						UserAvailabilityHelper.InMenuCollection.delete(member.id);
-						return;
-					}
-
-					if (choice) {
-						inGameName = userDb.rotmgDisplayName;
-						isOldProfile = true;
-					}
-				}
-
-				if (inGameName === "") { // TODO implement
-					const nameToUse: string | "CANCEL_" | "TIME_" = await getInGameNameByPrompt(
-						member.user,
-						dmChannel,
-						guild,
-						null
+				const choice: boolean | "CANCEL_CMD" | "TIME_CMD" = await new Promise(async (resolve) => {
+					let botMsg = await dmChannel.send(hasNameEmbed);
+					const mc1: MessageAutoTick = new MessageAutoTick(
+						botMsg,
+						hasNameEmbed,
+						2 * 60 * 1000,
+						null,
+						"⏳ Time Remaining: {m} Minutes and {s} Seconds."
 					);
 
-					if (nameToUse === "CANCEL_" || nameToUse === "TIME_") {
-						if (typeof verificationAttemptsChannel !== "undefined") {
-							verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member}'s verification process has been canceled.\n\t⇒ Reason: ${nameToUse.substring(0, nameToUse.length - 1)}`).catch(() => { });
+					const msgCollector: MessageCollector = new MessageCollector(dmChannel, m => m.author.id === member.id, {
+						time: 2 * 60 * 1000
+					});
+
+					msgCollector.on("end", (collected: Collection<string, Message>, reason: string) => {
+						mc1.disableAutoTick();
+						botMsg.delete().catch(e => { });
+						if (reason === "time") {
+							return resolve("TIME_CMD");
 						}
-						IsInVerification.delete(member.id);
-						UserAvailabilityHelper.InMenuCollection.delete(member.id);
-						return;
-					}
+					});
 
-					inGameName = nameToUse;
-				}
+					msgCollector.on("collect", async (respMsg: Message) => {
+						if (respMsg.content.toLowerCase() === "cancel") {
+							msgCollector.stop();
+							return resolve("CANCEL_CMD");
+						}
 
-				const code: string = getRandomizedString(8);
-				if (typeof verificationAttemptsChannel !== "undefined") {
-					verificationAttemptsChannel.send(`⌛ **\`[${section.nameOfSection}]\`** ${member} will be trying to verify under the in-game name \`${inGameName}\`.`)
-						.catch(() => { });
-				}
+						if (["yes", "ye", "y"].includes(respMsg.content.toLowerCase())) {
+							msgCollector.stop();
+							return resolve(true);
+						}
 
-				// verification embed
-				const verifEmbed: MessageEmbed = getVerificationEmbed(guild, inGameName, isOldProfile, code);
-				const verifMessage: Message = await dmChannel.send(verifEmbed);
-				await verifMessage.react("✅").catch(() => { });
-				await verifMessage.react("❌").catch(() => { });
-
-				const mcd: MessageAutoTick = new MessageAutoTick(verifMessage, verifEmbed, 15 * 60 * 1000, null, "⏳ Time Remaining: {m} Minutes and {s} Seconds.");
-				// collector function 
-				const collFilter: (r: MessageReaction, u: User) => boolean = (reaction: MessageReaction, user: User) => {
-					return ["✅", "❌"].includes(reaction.emoji.name) && user.id === member.id;
-				}
-
-				// prepare collector
-				const reactCollector: ReactionCollector = verifMessage.createReactionCollector(collFilter, {
-					time: 15 * 60 * 1000
+						if (["no", "n"].includes(respMsg.content.toLowerCase())) {
+							msgCollector.stop();
+							return resolve(false);
+						}
+					});
 				});
 
-				// end collector
-				reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
-					mcd.disableAutoTick();
-					await verifMessage.delete().catch(e => { });
-					setTimeout(() => {
-						IsInVerification.delete(member.id);
-						UserAvailabilityHelper.InMenuCollection.delete(member.id);
-					}, 15 * 1000);
-					if (reason === "time") {
-						if (typeof verificationAttemptsChannel !== "undefined") {
-							verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member}'s verification process has been canceled.\n\t⇒ Reason: TIME`).catch(() => { });
-						}
-						const embed: MessageEmbed = new MessageEmbed()
-							.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
-							.setTitle(`Verification For: **${guild.name}**`)
-							.setColor("RED")
-							.setDescription("Your verification process has been stopped because the time limit has been reached.")
-							.setFooter(guild.name)
-							.setTimestamp();
-						await dmChannel.send(embed).catch(e => { });
-					}
-				});
-
-				let canReact: boolean = true;
-
-				reactCollector.on("collect", async (r: MessageReaction) => {
-					if (!canReact) {
-						return;
-					}
-
-					if (r.emoji.name === "❌") {
-						reactCollector.stop();
-						if (typeof verificationAttemptsChannel !== "undefined") {
-							verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member} has canceled the verification process.`).catch(() => { });
-						}
-						const embed: MessageEmbed = new MessageEmbed()
-							.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
-							.setTitle(`Verification For: **${guild.name}**`)
-							.setColor("RED")
-							.setDescription("You have stopped the verification process manually.")
-							.setFooter(guild.name)
-							.setTimestamp();
-						await dmChannel.send(embed).catch(e => { });
-						return;
-					}
-
-					canReact = false;
-					// begin verification time
-
-					let requestData: AxiosResponse<IRealmEyeNoUser | IRealmEyeAPI>;
-					try {
-						requestData = await Zero.AxiosClient
-							.get<IRealmEyeNoUser | IRealmEyeAPI>(RealmEyeAPILink + inGameName);
-					}
-					catch (e) {
-						reactCollector.stop();
-						if (typeof verificationAttemptsChannel !== "undefined") {
-							verificationAttemptsChannel.send(`⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but an error has occurred when trying to access the player's profile. The process has been stopped automatically.\n\t⇒ Error: ${e}`);
-						}
-						const failedEmbed: MessageEmbed = new MessageEmbed()
-							.setTitle(`Verification For: **${guild.name}**`)
-							.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
-							.setDescription("An error has occurred when trying to verify you. This is most likely because RealmEye is down or slow. Please review the error message below.")
-							.addField("Error Message", StringUtil.applyCodeBlocks(e))
-							.setColor("RED")
-							.setFooter("Verification Process: Stopped.");
-							await dmChannel.send(failedEmbed).catch(e => { });
-							return;
-					}
-
-					if ("error" in requestData.data) {
-						if (typeof verificationAttemptsChannel !== "undefined") {
-							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the name could not be found on RealmEye.`).catch(() => { });
-						}
-						await member.send("I could not find your RealmEye profile; you probably made your profile private. Ensure your profile's visibility is set to public and try again.");
-						canReact = true;
-						return;
-					}
-
-					// get name history
-					let nameHistory: INameHistory[] | IAPIError;
-					try {
-						nameHistory = await getRealmEyeNameHistory(requestData.data.player);
-					} catch (e) {
-						reactCollector.stop();
-						if (typeof verificationAttemptsChannel !== "undefined") {
-							verificationAttemptsChannel.send(`⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but an error has occurred when trying to access the player's Name History. The process has been stopped automatically.\n\t⇒ Error: ${e}`);
-						}
-						const failedEmbed: MessageEmbed = new MessageEmbed()
-							.setTitle(`Verification For: **${guild.name}**`)
-							.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
-							.setDescription("An error has occurred when trying to check your Name History. This is most likely because RealmEye is down or slow. Please review the error message below.")
-							.addField("Error Message", StringUtil.applyCodeBlocks(e))
-							.setColor("RED")
-							.setFooter("Verification Process: Stopped.");
-							await dmChannel.send(failedEmbed).catch(e => { });
-							return;
-					}
-
-					if ("errorMessage" in nameHistory) {
-						if (typeof verificationAttemptsChannel !== "undefined") {
-							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his or her name history is not available to the public.`).catch(() => { });
-						}
-						await member.send("Your Name History is not public! Set your name history to public first and then try again.");
-						canReact = true;
-						return;
-					}
-
-					const nameFromProfile: string = requestData.data.player;
-					if (!isOldProfile) {
-						let codeFound: boolean = false;
-						let description: string[] = [
-							requestData.data.desc1,
-							requestData.data.desc2,
-							requestData.data.desc3
-						]
-						for (let i = 0; i < description.length; i++) {
-							if (description[i].includes(code)) {
-								codeFound = true;
-							}
-						}
-
-						if (!codeFound) {
-							if (typeof verificationAttemptsChannel !== "undefined") {
-								verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the verification code, \`${code}\`, could not be found in his/her RealmEye profile.`).catch(() => { });
-							}
-							await member.send(`Your verification code, \`${code}\`, wasn't found in your RealmEye description! Make sure the code is on your description and then **try again in one minute!**`);
-							canReact = true;
-							return;
-						}
-					}
-
-					// we know this is the right person.
-					// BLACKLIST CHECK
-					for (const blacklistEntry of guildDb.moderation.blacklistedUsers) {
-						for (const nameEntry of nameHistory.map(x => x.name)) {
-							if (blacklistEntry.inGameName.toLowerCase() === nameEntry.toLowerCase()) {
-								reactCollector.stop();
-								if (typeof verificationAttemptsChannel !== "undefined") {
-									verificationAttemptsChannel.send(`⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the in-game name, \`${nameEntry}\`${nameEntry.toLowerCase() === inGameName.toLowerCase() ? "" : " (found in Name History)"}, has been blacklisted due to the following reason: ${blacklistEntry.reason}`).catch(() => { });
-								}
-								const failedEmbed: MessageEmbed = new MessageEmbed()
-									.setTitle(`Verification For: **${guild.name}**`)
-									.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
-									.setDescription("You have been blacklisted from the server.")
-									.setColor("RANDOM")
-									.addField("Reason", blacklistEntry.reason)
-									.setFooter("Verification Process: Stopped.");
-									await dmChannel.send(failedEmbed).catch(e => { });
-									return;
-							}
-						}
-					}
-
-					// now back to regular checking
-					if (requestData.data.player_last_seen !== "hidden") {
-						if (typeof verificationAttemptsChannel !== "undefined") {
-							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her last-seen location is not hidden.`).catch(() => { });
-						}
-						await member.send("Your last-seen location is not hidden. Please make sure __no one__ can see your last-seen location.");
-						canReact = true;
-						return;
-					}
-
-					const prelimCheck: ICheckResults = preliminaryCheck(section, requestData.data);
-					if (!prelimCheck.passedAll) {
-						if (section.verification.maxedStats.required && prelimCheck.characters.hidden) {
-							if (typeof verificationAttemptsChannel !== "undefined") {
-								verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her characters are hidden and needs to be available to the public.`).catch(() => { });
-							}
-							await member.send("Your characters are currently hidden. Please make sure everyone can see your characters.");
-							canReact = true;
-							return;
-						}
-
-						const reqsFailedToMeet: StringBuilder = new StringBuilder();
-						if (!prelimCheck.aliveFame.passed) {
-							reqsFailedToMeet
-								.append(`Alive Fame: ${prelimCheck.aliveFame.amt}/${section.verification.aliveFame.minimum}`)
-								.appendLine();
-						}
-
-						if (!prelimCheck.rank.passed) {
-							reqsFailedToMeet
-								.append(`Rank: ${prelimCheck.rank.amt}/${section.verification.stars.minimum}`)
-								.appendLine();
-						}
-
-						if (!prelimCheck.characters.passed) {
-							let strChar: string = "";
-							for (let i = 0; i < prelimCheck.characters.amt.length; i++) {
-								strChar += `⇒ ${i}/8 Characters: ${prelimCheck.characters.amt[i]}/${section.verification.maxedStats.statsReq[i]}\n`;
-							}
-							reqsFailedToMeet.append("Characters: See List.")
-								.appendLine()
-								.append(strChar);
-						}
-
-						// MANUAL VERIF
-						reactCollector.stop();
-						let outputLogs: string = `⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her RotMG profile has failed to meet one or more requirement(s). The requirements that were not met are listed below.${StringUtil.applyCodeBlocks(reqsFailedToMeet.toString())}`;
-
-
-						const failedEmbed: MessageEmbed = new MessageEmbed()
-							.setTitle(`Verification For: **${guild.name}**`)
-							.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
-							.setColor("RED");
-
-						if (typeof manualVerificationChannel === "undefined") {
-							failedEmbed
-								.setFooter("Verification Process: Stopped.");
-							if (section.properties.showVerificationRequirements) {
-								failedEmbed
-									.setDescription("You have failed to meet the requirements for the server. Please review the below requirements you have failed to meet and make note of them.")
-									.addField("Requirements Missed", reqsFailedToMeet.toString());
-							}
-							else {
-								failedEmbed
-									.setDescription("You have failed to meet the requirements for the server. If you feel this is in error, please contact a staff member or go to #help-desk");
-							}
-						}
-						else {
-							failedEmbed
-								.setDescription("Your account is now under manual review by staff. Please do not attempt to verify again. If your account is not reviewed within the next 48 hours, please contact the staff through #help-desk or message an online helper or moderator. Otherwise, please refrain from messaging staff about your application review status. ")
-								.setFooter("Verification Process: Stopped.");
-							manualVerification(guild, member, requestData.data, manualVerificationChannel, section, reqsFailedToMeet, nameHistory);
-							outputLogs += `\nThis profile has been sent to the manual verification channel for further review.`;
-						}
-						await dmChannel.send(failedEmbed).catch(e => { });
-
-						if (typeof verificationAttemptsChannel !== "undefined") {
-							verificationAttemptsChannel.send(outputLogs).catch(() => { });
-						}
-						return;
-					}
-
-					// success!
-					await member.roles.add(verifiedRole);
-					await member.setNickname(member.user.username === requestData.data.player ? `${requestData.data.player}.` : requestData.data.player).catch(() => { });
-
-					reactCollector.stop();
-					const successEmbed: MessageEmbed = new MessageEmbed()
-						.setTitle(`Successful Verification: **${guild.name}**`)
-						.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
-						.setDescription(guildDb.properties.successfulVerificationMessage.length === 0 ? "You have been successfully verified. Please make sure you read the rules posted in the server, if any, and any other regulations/guidelines. Good luck and have fun!" : guildDb.properties.successfulVerificationMessage)
-						.setColor("GREEN")
-						.setFooter("Verification Process: Stopped.");
-						await dmChannel.send(successEmbed).catch(e => { });
-					if (typeof verificationSuccessChannel !== "undefined") {
-						verificationSuccessChannel.send(`📥 **\`[${section.nameOfSection}]\`** ${member} has successfully been verified as \`${inGameName}\`.`).catch(console.error);
-					}
-
-					await accountInDatabase(member, nameFromProfile, nameHistory);
-					await findOtherUserAndRemoveVerifiedRole(member, guild, guildDb);
-				});
-			}
-			// SECTION
-			// VERIFICATION
-			// THIS PART
-			// WILL NOT
-			// BE TOUCHING
-			// THE DB
-			// AT ALL
-			else {
-				const name: string = member.displayName
-					.split("|")
-					.map(x => x.trim())[0]
-					.replace(/[^A-Za-z]/g, "");
-				if (typeof verificationAttemptsChannel !== "undefined") {
-					verificationAttemptsChannel.send(`▶️ **\`[${section.nameOfSection}]\`** ${member} has started the verification process.`).catch(() => { });
-				}
-				if (!section.verification.aliveFame.required
-					&& !section.verification.maxedStats.required
-					&& !section.verification.stars.required) {
-
-					if (typeof verificationSuccessChannel !== "undefined") {
-						verificationSuccessChannel.send(`📥 **\`[${section.nameOfSection}]\`** ${member} has received the section member role.`).catch(() => { });
-					}
-					await member.roles.add(verifiedRole);
-					await member.send(`**\`[${guild.name}]\`**: You have successfully been verified in the **\`${section.nameOfSection}\`** section!`).catch(() => { });
+				if (choice === "TIME_CMD" || choice === "CANCEL_CMD") {
+					UserAvailabilityHelper.InMenuCollection.delete(member.id);
 					return;
 				}
 
-				const requestData: AxiosResponse<IRealmEyeNoUser | IRealmEyeAPI> = await Zero.AxiosClient
-					.get<IRealmEyeNoUser | IRealmEyeAPI>(RealmEyeAPILink + name);
+				if (choice) {
+					inGameName = userDb.rotmgDisplayName;
+					isOldProfile = true;
+				}
+			}
+
+			if (inGameName === "") { // TODO implement
+				const nameToUse: string | "CANCEL_" | "TIME_" = await getInGameNameByPrompt(
+					member.user,
+					dmChannel,
+					guild,
+					null
+				);
+
+				if (nameToUse === "CANCEL_" || nameToUse === "TIME_") {
+					if (typeof verificationAttemptsChannel !== "undefined") {
+						verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member}'s verification process has been canceled.\n\t⇒ Reason: ${nameToUse.substring(0, nameToUse.length - 1)}`).catch(() => { });
+					}
+					IsInVerification.delete(member.id);
+					UserAvailabilityHelper.InMenuCollection.delete(member.id);
+					return;
+				}
+
+				inGameName = nameToUse;
+			}
+
+			const code: string = getRandomizedString(8);
+			if (typeof verificationAttemptsChannel !== "undefined") {
+				verificationAttemptsChannel.send(`⌛ **\`[${section.nameOfSection}]\`** ${member} will be trying to verify under the in-game name \`${inGameName}\`.`)
+					.catch(() => { });
+			}
+
+			// verification embed
+			const verifEmbed: MessageEmbed = getVerificationEmbed(guild, inGameName, isOldProfile, code);
+			const verifMessage: Message = await dmChannel.send(verifEmbed);
+			await verifMessage.react("✅").catch(() => { });
+			await verifMessage.react("❌").catch(() => { });
+
+			const mcd: MessageAutoTick = new MessageAutoTick(verifMessage, verifEmbed, 15 * 60 * 1000, null, "⏳ Time Remaining: {m} Minutes and {s} Seconds.");
+			// collector function 
+			const collFilter: (r: MessageReaction, u: User) => boolean = (reaction: MessageReaction, user: User) => {
+				return ["✅", "❌"].includes(reaction.emoji.name) && user.id === member.id;
+			}
+
+			// prepare collector
+			const reactCollector: ReactionCollector = verifMessage.createReactionCollector(collFilter, {
+				time: 15 * 60 * 1000
+			});
+
+			// end collector
+			reactCollector.on("end", async (collected: Collection<string, MessageReaction>, reason: string) => {
+				mcd.disableAutoTick();
+				await verifMessage.delete().catch(e => { });
+				setTimeout(() => {
+					IsInVerification.delete(member.id);
+					UserAvailabilityHelper.InMenuCollection.delete(member.id);
+				}, 15 * 1000);
+				if (reason === "time") {
+					if (typeof verificationAttemptsChannel !== "undefined") {
+						verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member}'s verification process has been canceled.\n\t⇒ Reason: TIME`).catch(() => { });
+					}
+					const embed: MessageEmbed = new MessageEmbed()
+						.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+						.setTitle(`Verification For: **${guild.name}**`)
+						.setColor("RED")
+						.setDescription("Your verification process has been stopped because the time limit has been reached.")
+						.setFooter(guild.name)
+						.setTimestamp();
+					await dmChannel.send(embed).catch(e => { });
+				}
+			});
+
+			let canReact: boolean = true;
+
+			reactCollector.on("collect", async (r: MessageReaction) => {
+				if (!canReact) {
+					return;
+				}
+
+				if (r.emoji.name === "❌") {
+					reactCollector.stop();
+					if (typeof verificationAttemptsChannel !== "undefined") {
+						verificationAttemptsChannel.send(`❌ **\`[${section.nameOfSection}]\`** ${member} has canceled the verification process.`).catch(() => { });
+					}
+					const embed: MessageEmbed = new MessageEmbed()
+						.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+						.setTitle(`Verification For: **${guild.name}**`)
+						.setColor("RED")
+						.setDescription("You have stopped the verification process manually.")
+						.setFooter(guild.name)
+						.setTimestamp();
+					await dmChannel.send(embed).catch(e => { });
+					return;
+				}
+
+				canReact = false;
+				// begin verification time
+
+				let requestData: AxiosResponse<IRealmEyeNoUser | IRealmEyeAPI>;
+				try {
+					requestData = await Zero.AxiosClient
+						.get<IRealmEyeNoUser | IRealmEyeAPI>(RealmEyeAPILink + inGameName);
+				}
+				catch (e) {
+					reactCollector.stop();
+					if (typeof verificationAttemptsChannel !== "undefined") {
+						verificationAttemptsChannel.send(`⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but an error has occurred when trying to access the player's profile. The process has been stopped automatically.\n\t⇒ Error: ${e}`);
+					}
+					const failedEmbed: MessageEmbed = new MessageEmbed()
+						.setTitle(`Verification For: **${guild.name}**`)
+						.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+						.setDescription("An error has occurred when trying to verify you. This is most likely because RealmEye is down or slow. Please review the error message below.")
+						.addField("Error Message", StringUtil.applyCodeBlocks(e))
+						.setColor("RED")
+						.setFooter("Verification Process: Stopped.");
+					await dmChannel.send(failedEmbed).catch(e => { });
+					return;
+				}
+
 				if ("error" in requestData.data) {
 					if (typeof verificationAttemptsChannel !== "undefined") {
-						verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${name}\`, but the name could not be found on RealmEye.`).catch(() => { });
+						verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the name could not be found on RealmEye.`).catch(() => { });
 					}
-					await member.send(`I could not find your profile for **\`${name}\`** on RealmEye. Make sure your profile is public first!`);
+					await member.send("I could not find your RealmEye profile; you probably made your profile private. Ensure your profile's visibility is set to public and try again.");
+					canReact = true;
+					return;
+				}
+
+				// get name history
+				let nameHistory: INameHistory[] | IAPIError;
+				try {
+					nameHistory = await getRealmEyeNameHistory(requestData.data.player);
+				} catch (e) {
+					reactCollector.stop();
+					if (typeof verificationAttemptsChannel !== "undefined") {
+						verificationAttemptsChannel.send(`⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but an error has occurred when trying to access the player's Name History. The process has been stopped automatically.\n\t⇒ Error: ${e}`);
+					}
+					const failedEmbed: MessageEmbed = new MessageEmbed()
+						.setTitle(`Verification For: **${guild.name}**`)
+						.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+						.setDescription("An error has occurred when trying to check your Name History. This is most likely because RealmEye is down or slow. Please review the error message below.")
+						.addField("Error Message", StringUtil.applyCodeBlocks(e))
+						.setColor("RED")
+						.setFooter("Verification Process: Stopped.");
+					await dmChannel.send(failedEmbed).catch(e => { });
+					return;
+				}
+
+				if ("errorMessage" in nameHistory) {
+					if (typeof verificationAttemptsChannel !== "undefined") {
+						verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his or her name history is not available to the public.`).catch(() => { });
+					}
+					await member.send("Your Name History is not public! Set your name history to public first and then try again.");
+					canReact = true;
+					return;
+				}
+
+				const nameFromProfile: string = requestData.data.player;
+				if (!isOldProfile) {
+					let codeFound: boolean = false;
+					let description: string[] = [
+						requestData.data.desc1,
+						requestData.data.desc2,
+						requestData.data.desc3
+					]
+					for (let i = 0; i < description.length; i++) {
+						if (description[i].includes(code)) {
+							codeFound = true;
+						}
+					}
+
+					if (!codeFound) {
+						if (typeof verificationAttemptsChannel !== "undefined") {
+							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the verification code, \`${code}\`, could not be found in his/her RealmEye profile.`).catch(() => { });
+						}
+						await member.send(`Your verification code, \`${code}\`, wasn't found in your RealmEye description! Make sure the code is on your description and then **try again in one minute!**`);
+						canReact = true;
+						return;
+					}
+				}
+
+				// we know this is the right person.
+				// BLACKLIST CHECK
+				for (const blacklistEntry of guildDb.moderation.blacklistedUsers) {
+					for (const nameEntry of [nameFromProfile, ...nameHistory.map(x => x.name)]) {
+						if (blacklistEntry.inGameName.toLowerCase() === nameEntry.toLowerCase()) {
+							reactCollector.stop();
+							if (typeof verificationAttemptsChannel !== "undefined") {
+								verificationAttemptsChannel.send(`⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the in-game name, \`${nameEntry}\`${nameEntry.toLowerCase() === nameFromProfile.toLowerCase() ? "" : " (found in Name History)"}, has been blacklisted due to the following reason: ${blacklistEntry.reason}`).catch(() => { });
+							}
+							const failedEmbed: MessageEmbed = new MessageEmbed()
+								.setTitle(`Verification For: **${guild.name}**`)
+								.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+								.setDescription("You have been blacklisted from the server; as a result, you are not able to verify.")
+								.setColor("RANDOM")
+								.addField("Blacklist Reason", blacklistEntry.reason)
+								.setFooter("Verification Process: Stopped.");
+							await dmChannel.send(failedEmbed).catch(e => { });
+							return;
+						}
+					}
+				}
+
+				// if they passed, let's see if they have a guild doc
+				// with the bot
+				// we want to make sure they didn't just get a new
+				// realm account and decided to use their old discord account
+				// that was previous associated with a blacklisted name
+				if (userDb !== null) {
+					const namesAssociatedWithDb: string[] = [
+						userDb.rotmgLowercaseName,
+						...userDb.otherAccountNames.map(x => x.lowercase)
+					];
+
+					let prevBlacklistedUser: IBlacklistedUser | undefined;
+					for (const nameBlProfile of guildDb.moderation.blacklistedUsers) {
+						for (const associatedNames of namesAssociatedWithDb) {
+							if (nameBlProfile.inGameName.toLowerCase() === associatedNames.toLowerCase()) {
+								prevBlacklistedUser = nameBlProfile;
+								break;
+							}
+						}
+					}
+
+
+					if (typeof prevBlacklistedUser !== "undefined") {
+						reactCollector.stop();
+						if (typeof verificationAttemptsChannel !== "undefined") {
+							verificationAttemptsChannel.send(`⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`; however, this Discord account has one or more IGNs linked to it that is blacklisted from the server.\n- Blacklisted Name: ${prevBlacklistedUser.inGameName}\n- Reason: ${prevBlacklistedUser.reason}.`).catch(() => { });
+						}
+						const failedEmbed: MessageEmbed = new MessageEmbed()
+							.setTitle(`Verification For: **${guild.name}**`)
+							.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+							.setDescription("Your Discord account has one or more IGNs linked to it that is blacklisted from the server. As a result, you are not able to verify with this server at this time.")
+							.setColor("RANDOM")
+							.addField("Blacklist Reason", prevBlacklistedUser.reason)
+							.setFooter("Verification Process: Stopped.");
+						await dmChannel.send(failedEmbed).catch(e => { });
+						return;
+					}
+				}
+
+				// now back to regular checking
+				if (requestData.data.player_last_seen !== "hidden") {
+					if (typeof verificationAttemptsChannel !== "undefined") {
+						verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her last-seen location is not hidden.`).catch(() => { });
+					}
+					await member.send("Your last-seen location is not hidden. Please make sure __no one__ can see your last-seen location.");
+					canReact = true;
 					return;
 				}
 
 				const prelimCheck: ICheckResults = preliminaryCheck(section, requestData.data);
-				// TODO make prelim check handle into a function? 
 				if (!prelimCheck.passedAll) {
 					if (section.verification.maxedStats.required && prelimCheck.characters.hidden) {
 						if (typeof verificationAttemptsChannel !== "undefined") {
-							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${name}\`, but his/her characters are hidden and needs to be available to the public.`).catch(() => { });
+							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her characters are hidden and needs to be available to the public.`).catch(() => { });
 						}
 						await member.send("Your characters are currently hidden. Please make sure everyone can see your characters.");
+						canReact = true;
 						return;
 					}
 
-					const botMsg: Message = await dmChannel.send(new MessageEmbed());
-
 					const reqsFailedToMeet: StringBuilder = new StringBuilder();
 					if (!prelimCheck.aliveFame.passed) {
-						reqsFailedToMeet.append(`Alive Fame: ${prelimCheck.aliveFame.amt}/${section.verification.aliveFame.minimum}`)
+						reqsFailedToMeet
+							.append(`Alive Fame: ${prelimCheck.aliveFame.amt}/${section.verification.aliveFame.minimum}`)
 							.appendLine();
 					}
 
 					if (!prelimCheck.rank.passed) {
-						reqsFailedToMeet.append(`Rank: ${prelimCheck.rank.amt}/${section.verification.stars.minimum}`)
+						reqsFailedToMeet
+							.append(`Rank: ${prelimCheck.rank.amt}/${section.verification.stars.minimum}`)
 							.appendLine();
 					}
 
@@ -573,11 +534,12 @@ export module VerificationHandler {
 					}
 
 					// MANUAL VERIF
-					let outputLogs: string = `⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${name}\`, but his/her RotMG profile has failed to meet one or more requirement(s). The requirements that were not met are listed below.${StringUtil.applyCodeBlocks(reqsFailedToMeet.toString())}`;
+					reactCollector.stop();
+					let outputLogs: string = `⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her RotMG profile has failed to meet one or more requirement(s). The requirements that were not met are listed below.${StringUtil.applyCodeBlocks(reqsFailedToMeet.toString())}`;
 
 
 					const failedEmbed: MessageEmbed = new MessageEmbed()
-						.setTitle(`Verification For: **${guild.name}** ⇒ **${section.nameOfSection}**`)
+						.setTitle(`Verification For: **${guild.name}**`)
 						.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
 						.setColor("RED");
 
@@ -586,39 +548,171 @@ export module VerificationHandler {
 							.setFooter("Verification Process: Stopped.");
 						if (section.properties.showVerificationRequirements) {
 							failedEmbed
-								.setDescription("You have failed to meet the requirements for the section. Please review the below requirements you have failed to meet and make note of them.")
+								.setDescription("You have failed to meet the requirements for the server. Please review the below requirements you have failed to meet and make note of them.")
 								.addField("Requirements Missed", reqsFailedToMeet.toString());
 						}
 						else {
 							failedEmbed
-								.setDescription("You have failed one or more requirements for the section. Requirements are generally hidden for multiple reasons; one of the most prominent reasons is to combat alternative accounts. If you feel this is in error, please contact a staff member or go to #help-desk");
+								.setDescription("You have failed to meet the requirements for the server. If you feel this is in error, please contact a staff member or go to #help-desk");
 						}
 					}
 					else {
 						failedEmbed
-							.setDescription("Your account is now under manual review by staff. Please do not attempt to verify again through this specific section. If your account is not reviewed within the next 48 hours, please contact the staff through #help-desk or message an online helper or moderator. Otherwise, please refrain from messaging staff about your application review status. ")
+							.setDescription("Your account is now under manual review by staff. Please do not attempt to verify again. If your account is not reviewed within the next 48 hours, please contact the staff through #help-desk or message an online helper or moderator. Otherwise, please refrain from messaging staff about your application review status. ")
 							.setFooter("Verification Process: Stopped.");
-						manualVerification(guild, member, requestData.data, manualVerificationChannel, section, reqsFailedToMeet);
+						manualVerification(guild, member, requestData.data, manualVerificationChannel, section, reqsFailedToMeet, nameHistory);
 						outputLogs += `\nThis profile has been sent to the manual verification channel for further review.`;
 					}
+					await dmChannel.send(failedEmbed).catch(e => { });
 
-					await botMsg.edit(failedEmbed).catch(() => { });
 					if (typeof verificationAttemptsChannel !== "undefined") {
 						verificationAttemptsChannel.send(outputLogs).catch(() => { });
 					}
 					return;
 				}
 
+				// success!
+				await member.roles.add(verifiedRole);
+				await member.setNickname(member.user.username === requestData.data.player ? `${requestData.data.player}.` : requestData.data.player).catch(() => { });
+
+				reactCollector.stop();
+				const successEmbed: MessageEmbed = new MessageEmbed()
+					.setTitle(`Successful Verification: **${guild.name}**`)
+					.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+					.setDescription(guildDb.properties.successfulVerificationMessage.length === 0 ? "You have been successfully verified. Please make sure you read the rules posted in the server, if any, and any other regulations/guidelines. Good luck and have fun!" : guildDb.properties.successfulVerificationMessage)
+					.setColor("GREEN")
+					.setFooter("Verification Process: Stopped.");
+				await dmChannel.send(successEmbed).catch(e => { });
+				if (typeof verificationSuccessChannel !== "undefined") {
+					verificationSuccessChannel.send(`📥 **\`[${section.nameOfSection}]\`** ${member} has successfully been verified as \`${inGameName}\`.`).catch(console.error);
+				}
+
+				await accountInDatabase(member, nameFromProfile, nameHistory);
+				await findOtherUserAndRemoveVerifiedRole(member, guild, guildDb);
+			});
+		}
+		// SECTION
+		// VERIFICATION
+		// THIS PART
+		// WILL NOT
+		// BE TOUCHING
+		// THE DB
+		// AT ALL
+		else {
+			const name: string = member.displayName
+				.split("|")
+				.map(x => x.trim())[0]
+				.replace(/[^A-Za-z]/g, "");
+			if (typeof verificationAttemptsChannel !== "undefined") {
+				verificationAttemptsChannel.send(`▶️ **\`[${section.nameOfSection}]\`** ${member} has started the verification process.`).catch(() => { });
+			}
+			if (!section.verification.aliveFame.required
+				&& !section.verification.maxedStats.required
+				&& !section.verification.stars.required) {
+
 				if (typeof verificationSuccessChannel !== "undefined") {
 					verificationSuccessChannel.send(`📥 **\`[${section.nameOfSection}]\`** ${member} has received the section member role.`).catch(() => { });
 				}
-				await member.roles.add(verifiedRole).catch(() => { });
+				await member.roles.add(verifiedRole);
 				await member.send(`**\`[${guild.name}]\`**: You have successfully been verified in the **\`${section.nameOfSection}\`** section!`).catch(() => { });
 				return;
 			}
-		}
-		catch (e) {
-			// TODO: find better way to make this apparant 
+
+			const requestData: AxiosResponse<IRealmEyeNoUser | IRealmEyeAPI> = await Zero.AxiosClient
+				.get<IRealmEyeNoUser | IRealmEyeAPI>(RealmEyeAPILink + name);
+			if ("error" in requestData.data) {
+				if (typeof verificationAttemptsChannel !== "undefined") {
+					verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${name}\`, but the name could not be found on RealmEye.`).catch(() => { });
+				}
+				await member.send(`I could not find your profile for **\`${name}\`** on RealmEye. Make sure your profile is public first!`);
+				return;
+			}
+
+			const prelimCheck: ICheckResults = preliminaryCheck(section, requestData.data);
+			// TODO make prelim check handle into a function? 
+			if (!prelimCheck.passedAll) {
+				if (section.verification.maxedStats.required && prelimCheck.characters.hidden) {
+					if (typeof verificationAttemptsChannel !== "undefined") {
+						verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${name}\`, but his/her characters are hidden and needs to be available to the public.`).catch(() => { });
+					}
+					await member.send("Your characters are currently hidden. Please make sure everyone can see your characters.");
+					return;
+				}
+
+				let botMsg: Message | null;
+				try {
+					botMsg = await member.send(new MessageEmbed());
+				}
+				catch (e) {
+					botMsg = null;
+				}
+
+				const reqsFailedToMeet: StringBuilder = new StringBuilder();
+				if (!prelimCheck.aliveFame.passed) {
+					reqsFailedToMeet.append(`Alive Fame: ${prelimCheck.aliveFame.amt}/${section.verification.aliveFame.minimum}`)
+						.appendLine();
+				}
+
+				if (!prelimCheck.rank.passed) {
+					reqsFailedToMeet.append(`Rank: ${prelimCheck.rank.amt}/${section.verification.stars.minimum}`)
+						.appendLine();
+				}
+
+				if (!prelimCheck.characters.passed) {
+					let strChar: string = "";
+					for (let i = 0; i < prelimCheck.characters.amt.length; i++) {
+						strChar += `⇒ ${i}/8 Characters: ${prelimCheck.characters.amt[i]}/${section.verification.maxedStats.statsReq[i]}\n`;
+					}
+					reqsFailedToMeet.append("Characters: See List.")
+						.appendLine()
+						.append(strChar);
+				}
+
+				// MANUAL VERIF
+				let outputLogs: string = `⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${name}\`, but his/her RotMG profile has failed to meet one or more requirement(s). The requirements that were not met are listed below.${StringUtil.applyCodeBlocks(reqsFailedToMeet.toString())}`;
+
+
+				const failedEmbed: MessageEmbed = new MessageEmbed()
+					.setTitle(`Verification For: **${guild.name}** ⇒ **${section.nameOfSection}**`)
+					.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+					.setColor("RED");
+
+				if (typeof manualVerificationChannel === "undefined") {
+					failedEmbed
+						.setFooter("Verification Process: Stopped.");
+					if (section.properties.showVerificationRequirements) {
+						failedEmbed
+							.setDescription("You have failed to meet the requirements for the section. Please review the below requirements you have failed to meet and make note of them.")
+							.addField("Requirements Missed", reqsFailedToMeet.toString());
+					}
+					else {
+						failedEmbed
+							.setDescription("You have failed one or more requirements for the section. Requirements are generally hidden for multiple reasons; one of the most prominent reasons is to combat alternative accounts. If you feel this is in error, please contact a staff member or go to #help-desk");
+					}
+				}
+				else {
+					failedEmbed
+						.setDescription("Your account is now under manual review by staff. Please do not attempt to verify again through this specific section. If your account is not reviewed within the next 48 hours, please contact the staff through #help-desk or message an online helper or moderator. Otherwise, please refrain from messaging staff about your application review status. ")
+						.setFooter("Verification Process: Stopped.");
+					manualVerification(guild, member, requestData.data, manualVerificationChannel, section, reqsFailedToMeet);
+					outputLogs += `\nThis profile has been sent to the manual verification channel for further review.`;
+				}
+
+				if (botMsg !== null) {
+					await botMsg.edit(failedEmbed).catch(() => { });
+				}
+
+				if (typeof verificationAttemptsChannel !== "undefined") {
+					verificationAttemptsChannel.send(outputLogs).catch(() => { });
+				}
+				return;
+			}
+
+			if (typeof verificationSuccessChannel !== "undefined") {
+				verificationSuccessChannel.send(`📥 **\`[${section.nameOfSection}]\`** ${member} has received the section member role.`).catch(() => { });
+			}
+			await member.roles.add(verifiedRole).catch(() => { });
+			await member.send(`**\`[${guild.name}]\`**: You have successfully been verified in the **\`${section.nameOfSection}\`** section!`).catch(() => { });
 			return;
 		}
 	}
@@ -900,6 +994,7 @@ export module VerificationHandler {
 			.insertOne(newEntry);
 
 		if (results.ops.length === 0) {
+			// excellent error handling right here 
 			throw new Error("something went wrong when trying to create a new profile.");
 		}
 		return (results.ops[0]);
@@ -937,9 +1032,8 @@ export module VerificationHandler {
 	 * @todo TODO make it so the bot checks ALL conditions.
 	 * @param {Guild} guild The guild. 
 	 * @param {string} inGameName The in-game name. 
-	 * @param {StringBuilder} reqs A StringBuilder containing all of the requirements. 
 	 * @param {boolean} isOldProfile Whether the profile was pre-existing or not. 
-	 * @param {GuildMember} member The guild member. 
+	 * @param {string} code The code. 
 	 */
 	function getVerificationEmbed(guild: Guild, inGameName: string, isOldProfile: boolean, code: string) {
 		const verifEmbed: MessageEmbed = new MessageEmbed()
@@ -1164,13 +1258,16 @@ export module VerificationHandler {
 			.setAuthor(member.user.tag, member.user.displayAvatarURL())
 			.setTitle(`**${section.isMain ? "Server" : section.nameOfSection}** ⇒ Manual Verification Request: **${verificationInfo.player}**`)
 			.setDescription(desc.toString())
-			.addField("Unmet Requirements", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()), true)
+			.addField("Unmet Requirements", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()))
+			.addField("Current Status", StringUtil.applyCodeBlocks("🔓 Status: Unlocked"))
 			.setColor("YELLOW")
 			.setFooter(member.id)
 			.setTimestamp();
 		const m: Message = await manualVerificationChannel.send(manualVerifEmbed);
 		await m.react("☑️").catch(() => { });
 		await m.react("❌").catch(() => { });
+		await m.react("🚩").catch(() => { });
+		await m.react("📧").catch(() => { });
 
 		const filterQuery: FilterQuery<IRaidGuild> = section.isMain
 			? { guildID: guild.id }
@@ -1192,10 +1289,63 @@ export module VerificationHandler {
 					aFame: verificationInfo.fame,
 					nameHistory: nameHistoryInfo,
 					msgId: m.id,
-					manualVerificationChannel: manualVerificationChannel.id
+					manualVerificationChannel: manualVerificationChannel.id,
+					currentHandler: ""
 				}
 			}
 		});
+	}
+
+	/**
+	 * Locks or unlocks the manual verification request. 
+	 * @param {IManualVerification} manualVerificationProfile The manual verification profile.
+	 * @param {ISection} sectionForManualVerif The section.
+	 * @param {GuildMember} manualVerifMember The member to be manually verified.
+	 * @param {Message} message The msg with the manual verification request.
+	 * @param {(GuildMember | null)} [handler = null] Who is currently handling the request. Do not specify this parameter if no one is handling the case.
+	 */
+	export async function lockOrUnlockManualRequest(
+		manualVerificationProfile: IManualVerification,
+		sectionForManualVerif: ISection,
+		manualVerifMember: GuildMember,
+		message: Message,
+		handler: GuildMember | null = null
+	): Promise<void> {
+		const filterQuery: FilterQuery<IRaidGuild> = sectionForManualVerif.isMain
+			? { guildID: manualVerifMember.guild.id }
+			: {
+				guildID: manualVerifMember.guild.id,
+				"sections.channels.manualVerification": sectionForManualVerif.channels.manualVerification
+			};
+		const updateKey: string = sectionForManualVerif.isMain
+			? "properties.manualVerificationEntries"
+			: "sections.$.properties.manualVerificationEntries";
+
+
+		manualVerificationProfile.currentHandler = handler === null
+			? ""
+			: handler.id;
+
+		await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne(filterQuery, {
+			$pull: {
+				[updateKey]: {
+					userId: manualVerifMember.id
+				}
+			}
+		});
+
+		await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne(filterQuery, {
+			$push: {
+				[updateKey]: manualVerificationProfile
+			}
+		});
+
+		// update message
+		const oldEmbed: MessageEmbed = message.embeds[0];
+		oldEmbed.spliceFields(oldEmbed.fields.findIndex(x => x.name === "Current Status"), 1);
+		oldEmbed.addField("Current Status", StringUtil.applyCodeBlocks(handler === null ? "🔓 Status: Unlocked." : `🔒 Status: Locked by ${handler.displayName}`));
+		oldEmbed.setColor(handler === null ? "YELLOW" : "RED");
+		await message.edit(oldEmbed).catch(e => { });
 	}
 
 	/**
@@ -1282,7 +1432,7 @@ export module VerificationHandler {
 			await manualVerifMember.send(`**\`[${guild.name}]\`**: You have successfully been verified in the **\`${sectionForManualVerif.nameOfSection}\`** section!`).catch(() => { });
 		}
 
-		sendLogAndUpdateDb(loggingMsg, sectionForManualVerif, manualVerifMember);
+		sendLogAndUpdateDb(loggingMsg, sectionForManualVerif, manualVerifMember.guild, manualVerifMember);
 	}
 
 	/**
@@ -1298,6 +1448,7 @@ export module VerificationHandler {
 		sectionForManualVerif: ISection,
 		manualVerificationProfile: IManualVerification
 	): Promise<void> {
+		// TODO add reason
 		const guild: Guild = manualVerifMember.guild;
 		let loggingMsg: string = `❌ **\`[${sectionForManualVerif.nameOfSection}]\`** ${manualVerifMember} (${manualVerificationProfile.inGameName})'s manual verification review has been rejected by ${responsibleMember} (${responsibleMember.displayName})`;
 
@@ -1308,22 +1459,22 @@ export module VerificationHandler {
 			await manualVerifMember.send(`**\`[${guild.name}]\`**: After reviewing your profile, we have determined that your profile does not meet the minimum requirements for the **\`${sectionForManualVerif.nameOfSection}\`** section.`).catch(() => { });
 		}
 
-		sendLogAndUpdateDb(loggingMsg, sectionForManualVerif, manualVerifMember);
+		sendLogAndUpdateDb(loggingMsg, sectionForManualVerif, manualVerifMember.guild, manualVerifMember);
 	}
 
 	/**
 	 * Updates the db and logs the manual verification event.
 	 * @param {string} logging The message to send to the logging channel. 
 	 * @param {ISection} sectionForManualVerif The section where the person tried to get manually verified. 
-	 * @param {GuildMember} manualVerifMember The member that tried to get a manual verification. 
+	 * @param {Guild} guild The guild.
+	 * @param {(GuildMember | string)} manualVerifMember The member that tried to get a manual verification. 
 	 */
-	async function sendLogAndUpdateDb(
+	export async function sendLogAndUpdateDb(
 		logging: string,
 		sectionForManualVerif: ISection,
-		manualVerifMember: GuildMember
+		guild: Guild,
+		manualVerifMember: GuildMember | string
 	): Promise<void> {
-		const guild: Guild = manualVerifMember.guild as Guild;
-
 		const verificationLoggingChannel: TextChannel | undefined = guild.channels.cache
 			.get(sectionForManualVerif.channels.logging.verificationSuccessChannel) as TextChannel | undefined;
 		if (typeof verificationLoggingChannel !== "undefined") {
@@ -1343,7 +1494,7 @@ export module VerificationHandler {
 		await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne(filterQuery, {
 			$pull: {
 				[updateKey]: {
-					userId: manualVerifMember.id
+					userId: typeof manualVerifMember === "string" ? manualVerifMember : manualVerifMember.id
 				}
 			}
 		});
@@ -1418,8 +1569,8 @@ export module VerificationHandler {
 					return;
 				}
 
-				if (msg.content.length > 10) {
-					await MessageUtil.send({ content: "Your in-game name should not exceed 10 characters. Please try again." }, msg.author);
+				if (msg.content.length > 14) {
+					await MessageUtil.send({ content: "Your in-game name should not exceed 14 characters. Please try again." }, msg.author);
 					return;
 				}
 
@@ -1453,5 +1604,35 @@ export module VerificationHandler {
 				}
 			});
 		});
+	}
+
+	/**
+	 * Verifies the member using the private API. 
+	 * @param member The member to verify.
+	 * @param guild The guild.
+	 * @param guildDb The guild doc.
+	 * @param section The section where the member should be verified.
+	 */
+	export async function verifyUserPrivate(member: GuildMember, guild: Guild, guildDb: IRaidGuild, section: ISection): Promise<void> {
+		const verifiedRole: Role = guild.roles.cache.get(section.verifiedRole) as Role;
+
+		// channel declaration
+		// yes, we know these can be textchannels b/c that's the input in configsections
+		const verificationAttemptsChannel: TextChannel | undefined = guild.channels.cache
+			.get(section.channels.logging.verificationAttemptsChannel) as TextChannel | undefined;
+		const verificationSuccessChannel: TextChannel | undefined = guild.channels.cache
+			.get(section.channels.logging.verificationSuccessChannel) as TextChannel | undefined;
+		const manualVerificationChannel: TextChannel | undefined = guild.channels.cache
+			.get(section.channels.manualVerification) as TextChannel | undefined;
+		const verificationChannel: TextChannel | undefined = guild.channels.cache
+			.get(section.channels.verificationChannel) as TextChannel | undefined;
+
+
+		if (section.isMain) {
+
+		}
+		else {
+
+		}
 	}
 }

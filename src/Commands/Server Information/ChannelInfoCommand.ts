@@ -28,7 +28,8 @@ export class ChannelInfoCommand extends Command {
             ),
             true, // guild-only command. 
             false,
-            false
+            false,
+            0
         );
     }
 

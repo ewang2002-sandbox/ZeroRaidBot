@@ -52,6 +52,14 @@ import { SilenceCommand } from "../Commands/Moderator/SilenceCommand";
 import { VerifyCommand } from "../Commands/Public/VerifyCommand";
 import { ApplyCommand } from "../Commands/Public/ApplyCommand";
 import { PurgeCommand } from "../Commands/Staff/PurgeCommand";
+import { ConfigureBlockCmdCommand } from "../Commands/Configuration/ConfigureBlockCmdCommand";
+import { DeveloperTestCommand } from "../Commands/Bot Owner/DeveloperTestCommand";
+import { CloseModmailThreadCommand } from "../Commands/Modmail Management/CloseModmailThreadCommand";
+import { ReplyModmailThreadCommand } from "../Commands/Modmail Management/ReplyModmailThreadCommand";
+import { StartModmailThreadCommand } from "../Commands/Modmail Management/StartModmailThreadCommand";
+import { SpamPingCommand } from "../Commands/Moderator/SpamPingCommand";
+import { LeaderboardCommand } from "../Commands/Public/LeaderboardCommand";
+import { LeaveServerCommand } from "../Commands/Bot Owner/LeaveServerCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -88,7 +96,8 @@ export class CommandManager {
 			new PingCommand(),
 			new SuggestionCommand(),
 			new VerifyCommand(),
-			new ApplyCommand()
+			new ApplyCommand(),
+			new LeaderboardCommand()
 		]);
 
 		this.commands.set("Server Information", [
@@ -105,6 +114,12 @@ export class CommandManager {
 			new ConfigureApplicationCommand()
 		]);
 
+		this.commands.set("Modmail Management", [
+			new CloseModmailThreadCommand(),
+			new ReplyModmailThreadCommand(),
+			new StartModmailThreadCommand()
+		]);
+
 		this.commands.set("Raid Leader", [
 			new StartAfkCheckCommand(), 
 			new StartHeadcountCommand()
@@ -118,7 +133,8 @@ export class CommandManager {
 			new ManualVerifyCommand(),
 			new CheckModmailBlacklistCommand(),
 			new SilenceCommand(),
-			new PurgeCommand()
+			new PurgeCommand(),
+			new SpamPingCommand()
 		]);
 
 		this.commands.set("Moderation", [
@@ -131,7 +147,8 @@ export class CommandManager {
 			new ResetQuotaCommand(),
 			new NoLoggedRunsCommand(),
 			new ModmailBlacklistCommand(),
-			new ModmailUnblacklistCommand()
+			new ModmailUnblacklistCommand(),
+			new ConfigureBlockCmdCommand()
 		]);
 		
 		this.commands.set("User Profile", [
@@ -154,7 +171,9 @@ export class CommandManager {
 			new AdminProfileUpdaterCommand(),
 			new BlacklistSuggestionUserCommand(),
 			new UnblacklistSuggestionUserCommand(),
-			new EnableDisableSuggestionsCommand()
+			new EnableDisableSuggestionsCommand(),
+			new DeveloperTestCommand(),
+			new LeaveServerCommand()
 		]);
 
 		this.commands.set("Logging", [

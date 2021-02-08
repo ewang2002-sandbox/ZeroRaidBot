@@ -6,6 +6,7 @@
 
 # Configuration.
 /src/Configuration/Config.ts
+/src/Private/PConstants/PConstants.ts
 
 # Notes
 /notes/*

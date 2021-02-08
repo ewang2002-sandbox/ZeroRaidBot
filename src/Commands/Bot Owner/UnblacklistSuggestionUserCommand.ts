@@ -29,7 +29,8 @@ export class UnblacklistSuggestionUserCommand extends Command {
 			),
 			false,
 			false,
-			true
+			true,
+			5
 		);
 	}
 

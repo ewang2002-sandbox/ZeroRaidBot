@@ -18,6 +18,7 @@ import { StringUtil } from "../../Utility/StringUtil";
 import { NumberUtil } from "../../Utility/NumberUtil";
 import { FastReactionMenuManager } from "../../Classes/Reaction/FastReactionMenuManager";
 import { OtherUtil } from "../../Utility/OtherUtil";
+import { VerificationHandler } from "../../Helpers/VerificationHandler";
 
 type QType = {
 	q: string;
@@ -65,98 +66,98 @@ export class ConfigureSectionCommand extends Command {
 	private readonly _channelQs: QType[] = [
 		{
 			q: "Configure AFK Check Channel",
-			d: "Mention, or type the ID of, the channel that you want the bot to use as the AFK check channel.",
+			d: "Mention, or type the ID of, the channel that you want the bot to use as the AFK check channel.\n\nRecommended Channel Permissions: Anyone with the member role can view channel, only staff members can send messages.",
 			m: false,
 			mainMongo: "generalChannels.generalRaidAfkCheckChannel",
 			sectMongo: "sections.$.channels.afkCheckChannel"
 		},
 		{
 			q: "Configure Control Panel Channel",
-			d: "Mention, or type the ID of, the channel that you want the bot to use as the control panel channel. This channel is where raid leaders will be able to execute various raid commands during a raid.",
+			d: "Mention, or type the ID of, the channel that you want the bot to use as the control panel channel. This channel is where raid leaders will be able to execute various raid commands during a raid.\n\nRecommended Channel Permissions: Only staff members can view channel and send messages",
 			m: false,
 			mainMongo: "generalChannels.controlPanelChannel",
 			sectMongo: "sections.$.channels.controlPanelChannel"
 		},
 		{
 			q: "Configure Verification Channel",
-			d: "Mention, or type the ID of, the channel that you want the bot to use as the verification channel. This channel is where new members can verify to either get entry into the section or the server as a whole.",
+			d: "Mention, or type the ID of, the channel that you want the bot to use as the verification channel. This channel is where new members can verify to either get entry into the section or the server as a whole.\n\nRecommended Channel Permissions: Anyone that is unverified and staff members can view channel. Verified members cannot see channel.",
 			m: false,
 			mainMongo: "generalChannels.verificationChan",
 			sectMongo: "sections.$.channels.verificationChannel"
 		},
 		{
 			q: "Configure Verification Attempts Channel",
-			d: "Mention, or type the ID of, the channel that you want the bot to use as the logging channel for verification attempts. Any attempts made in verification -- like when someone starts the process, fails a verification requirement, etc. -- will be logged.",
+			d: "Mention, or type the ID of, the channel that you want the bot to use as the logging channel for verification attempts. Any attempts made in verification -- like when someone starts the process, fails a verification requirement, etc. -- will be logged.\n\nRecommended Channel Permissions: Only Verifiers, Securities, Officers, Moderators can view channel.",
 			m: false,
 			mainMongo: "generalChannels.logging.verificationAttemptsChannel",
 			sectMongo: "sections.$.channels.logging.verificationAttemptsChannel"
 		},
 		{
 			q: "Configure Verification Success Channel",
-			d: "Mention, or type the ID of, the channel that you want the bot to use as the logging channel for verification successes.",
+			d: "Mention, or type the ID of, the channel that you want the bot to use as the logging channel for verification successes.\n\nRecommended Channel Permissions: Only Verifiers, Securities, Officers, Moderators can view channel.",
 			m: false,
 			mainMongo: "generalChannels.logging.verificationSuccessChannel",
 			sectMongo: "sections.$.channels.logging.verificationSuccessChannel"
 		},
 		{
 			q: "Configure Manual Verification Channel",
-			d: "Mention, or type the ID of, the channel that you want the bot to use for manual verifications. If someone's profile is suspicious or missing something, then the bot will forward a summary of the profile to this channel to be reviewed.",
+			d: "Mention, or type the ID of, the channel that you want the bot to use for manual verifications. If someone's profile is suspicious or missing something, then the bot will forward a summary of the profile to this channel to be reviewed.\n\nRecommended Channel Permissions: Only Verifiers, Securities, Officers, Moderators can view channel.",
 			m: false,
 			mainMongo: "generalChannels.manualVerification",
 			sectMongo: "sections.$.channels.manualVerification"
 		},
 		{
 			q: "Configure Reaction Logging Channel",
-			d: "Mention, or type the ID of, the channel that you want the bot to use as the logging channel for reactions. When someone reacts (to a key, class emoji, etc.), it will be logged in this channel.",
+			d: "Mention, or type the ID of, the channel that you want the bot to use as the logging channel for reactions. When someone reacts (to a key, class emoji, etc.), it will be logged in this channel.\n\nRecommended Channel Permissions: Staff members can view channel.",
 			m: false,
 			mainMongo: "generalChannels.logging.reactionLoggingChannel",
 			sectMongo: "sections.$.channels.logging.reactionLoggingChannel"
 		},
 		{
 			q: "Configure Moderation Logging Channel",
-			d: "Mention, or type the ID of, the channel that you want the bot to use as the logging channel for moderation. Any major moderation actions carried out through the bot -- mute & blacklist -- will be logged in this channel.",
+			d: "Mention, or type the ID of, the channel that you want the bot to use as the logging channel for moderation. Any major moderation actions carried out through the bot -- mute & blacklist -- will be logged in this channel.\n\nRecommended Channel Permissions: Only Verifiers, Securities, Officers, Moderators can see channel.",
 			m: true,
 			mainMongo: "generalChannels.logging.moderationLogs",
 			sectMongo: ""
 		},
 		{
 			q: "Configure Suspension Logging Command",
-			d: "Mention, or type the ID of, the channel that you want the bot to use as the logging channel for suspensions. Any suspensions or unsuspensions will be logged in this channel.",
+			d: "Mention, or type the ID of, the channel that you want the bot to use as the logging channel for suspensions. Any suspensions or unsuspensions will be logged in this channel.\n\nRecommended Channel Permissions: Anyone can view this channel, staff members can send messages.",
 			m: true,
 			mainMongo: "generalChannels.logging.suspensionLogs",
 			sectMongo: ""
 		},
 		{
 			q: "Configure Join & Leave Logging Channel",
-			d: "Mention, or type the ID of, the channel that you want the bot to use as the logging channel for member join & leave actions.",
+			d: "Mention, or type the ID of, the channel that you want the bot to use as the logging channel for member join & leave actions.\n\nRecommended Channel Permissions: Only Securities, Officers, Moderators can see channel.",
 			m: true,
 			mainMongo: "generalChannels.logging.joinLeaveChannel",
 			sectMongo: ""
 		},
 		{
 			q: "Configure Moderation Mail Channel",
-			d: "Mention, or type the ID of, the channel that you want to make the moderation mail channel.",
+			d: "Mention, or type the ID of, the channel that you want to make the moderation mail channel.\n\nRecommended Channel Permissions: Only Securities, Officers, Moderators can see channel.",
 			m: true,
 			mainMongo: "generalChannels.modMailChannel",
 			sectMongo: ""
 		},
 		{
 			q: "Configure Modmail Storage Channel",
-			d: "Mention, or type the ID of, the channel that you want to make the modmail storage channel. This channel will be the channel where modmail responses will be stored. If this channel isn't defined, you won't be able to look at past responses.",
+			d: "Mention, or type the ID of, the channel that you want to make the modmail storage channel. This channel will be the channel where modmail responses will be stored. If this channel isn't defined, you won't be able to look at past responses.\n\nRecommended Channel Permissions: Only Moderators can see this channel.",
 			m: true,
 			mainMongo: "generalChannels.modMailStorageChannel",
 			sectMongo: ""
 		},
 		{
 			q: "Configure Raid Requests Channel",
-			d: "Mention, or type the ID of, the channel that you want to make the raid requests channel. When a Trial Leader want to start their own raid, a message will be sent to this channel with the following information: location, section, dungeon, time/date. The request will expire in 5 minutes.",
+			d: "Mention, or type the ID of, the channel that you want to make the raid requests channel. When a Trial Leader want to start their own raid, a message will be sent to this channel with the following information: location, section, dungeon, time/date. The request will expire in 5 minutes.\n\nRecommended Channel Permissions: Any raid leaders or head raid leaders can see this channel.",
 			m: true,
 			mainMongo: "generalChannels.raidRequestChannel",
 			sectMongo: ""
 		},
 		{
 			q: "Configure Quota Leaderboard Channel",
-			d: "Mention, or type the ID of, the channel that you want to make the quota leaderboard channel. This channel is where fellow raid leaders can see the top leaders.",
+			d: "Mention, or type the ID of, the channel that you want to make the quota leaderboard channel. This channel is where fellow raid leaders can see the top leaders.\n\nRecommended Channel Permissions: Any staff member can see this channel.",
 			m: true,
 			mainMongo: "generalChannels.quotaChannel",
 			sectMongo: ""
@@ -194,11 +195,18 @@ export class ConfigureSectionCommand extends Command {
 			sectMongo: ""
 		},
 		{
-			q: "Configure Head Leader Role",
+			q: "Configure Universal Head Leader Role",
 			d: "Mention, or type the ID of, the role that you want to make the Head Leader role. Head Leaders will have the ability to promote and demote members and are generally in charge of raiding affairs.",
 			m: true,
 			mainMongo: "roles.headRaidLeader",
 			sectMongo: ""
+		},
+		{
+			q: "Configure Section Head Leader Role",
+			d: "Mention, or type the ID of, the role that you want to make the Section Head Leader role. Section Head Leaders will have all the permissions that a universal Head Leader has.",
+			m: false,
+			mainMongo: "roles.mainSectionLeaderRole.sectionHeadLeaderRole",
+			sectMongo: "sections.$.roles.headLeaderRole"
 		},
 		{
 			q: "Configure Officer Role",
@@ -232,7 +240,7 @@ export class ConfigureSectionCommand extends Command {
 			q: "Configure Section Almost Leader Role",
 			d: "Mention, or type the ID of, the role that you want to make the Section Almost Leader role. Section Almost Leaders are leaders that have more experience than a Section Trial Leader but are not quite ready for the full responsibilities associated with being a full-on Section Leader. **NOTE:** Unlike universal almost leaders, section almost leaders can only start AFK checks and headcounts in their designated sections.", // this sounds awkward to say out loud, doesn't it? 
 			m: false,
-			mainMongo: "roles.sectionAlmostLeader",
+			mainMongo: "roles.mainSectionLeaderRole.sectionAlmostLeaderRole",
 			sectMongo: "sections.$.roles.almostLeaderRole"
 		},
 		{
@@ -295,7 +303,8 @@ export class ConfigureSectionCommand extends Command {
 			),
 			true,
 			false,
-			false
+			false,
+			0
 		);
 	}
 
@@ -517,6 +526,7 @@ export class ConfigureSectionCommand extends Command {
 					nameOfSection: nameOfSection,
 					verifiedRole: verifiedRole.id,
 					roles: {
+						headLeaderRole: "",
 						trialLeaderRole: "",
 						raidLeaderRole: "",
 						almostLeaderRole: ""
@@ -534,23 +544,12 @@ export class ConfigureSectionCommand extends Command {
 						}
 					},
 					verification: {
-						stars: {
-							required: false,
-							minimum: 0
-						},
-						aliveFame: {
-							required: false,
-							minimum: 0
-						},
-						maxedStats: {
-							required: false,
-							statsReq: [0, 0, 0, 0, 0, 0, 0, 0, 0]
-						}
+						...VerificationHandler.DefaultVerification
 					},
 					properties: {
 						dungeons: AFKDungeon.map(x => x.id),
 						manualVerificationEntries: [],
-						showVerificationRequirements: true
+						showVerificationRequirements: true,
 					}
 				}
 			}
@@ -784,7 +783,7 @@ export class ConfigureSectionCommand extends Command {
 			botSentMsg = await botSentMsg.edit(embed);
 		}
 		catch (e) { // probably got deleted.
-			botSentMsg = await msg.channel.send(botSentMsg);
+			botSentMsg = await msg.channel.send(embed);
 		}
 
 		const r: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(botSentMsg, msg.author, reactions, 2, TimeUnit.MINUTE).react();
@@ -1025,17 +1024,18 @@ export class ConfigureSectionCommand extends Command {
 		embed
 			.addField("Go Back", "React with ⬅️ to go back to the Main Menu.")
 			.addField("Configure Member Role", "React with 💳 to configure the Member/Verified role.")
+			.addField("Configure __Section__ Head Leader Role", "React with 🏁 to configure the section head leader role. Section head leaders will have head leader permissions in their respective section only.")
 			.addField("Configure __Section__ Leader Role", "React with 🏳️ to configure the section leader role. Section leaders will be able to start AFK checks and headcounts in their respective section only.")
 			.addField("Configure __Section__ Almost Leader Role", "React with 🏴 to configure the section almost leader role. Section almost leaders will be able to start AFK checks and headcounts in their respective sections only.")
 			.addField("Configure __Section__ Trial Leader Role", "React with 🚩 to configure the section trial leader role. Section trial leaders will be able to start AFK checks (after getting approval from a leader) in their respective section only.");
 
-		reactions.push("⬅️", "💳", "🏳️", "🏴", "🚩");
+		reactions.push("⬅️", "💳", "🏁", "🏳️", "🏴", "🚩");
 
 		if (section.isMain) {
 			embed
 				.addField("Configure Team Role", "React with 👪 to configure the Team role.")
 				.addField("Configure Moderator Role", "React with ⚒️ to configure the Moderator role.")
-				.addField("Configure Head Leader Role", "React with 🥇 to configure the Head Leader role.")
+				.addField("Configure Universal Head Leader Role", "React with 🥇 to configure the Universal Head Leader role.")
 				.addField("Configure Officer Role", "React with 👮 to configure the Officer role.")
 				.addField("Configure Universal Leader Role", "React with 🥈 to configure the Universal Leader role.")
 				.addField("Configure Universal Almost Leader Role", "React with 🥉 to configure the Universal Almost Leader role.")
@@ -1062,7 +1062,7 @@ export class ConfigureSectionCommand extends Command {
 			botSentMsg = await botSentMsg.edit(embed);
 		}
 		catch (e) { // probably got deleted.
-			botSentMsg = await msg.channel.send(botSentMsg);
+			botSentMsg = await msg.channel.send(embed);
 		}
 
 		const r: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(botSentMsg, msg.author, reactions, 2, TimeUnit.MINUTE).react();
@@ -1117,7 +1117,7 @@ export class ConfigureSectionCommand extends Command {
 			await this.resetBotEmbed(botSentMsg).catch(() => { });
 			res = await this.updateRoleCommand(
 				msg,
-				"Head Leader Role",
+				"Universal Head Leader Role",
 				section,
 				guild.roles.cache.get(guildData.roles.headRaidLeader),
 				"roles.headRaidLeader"
@@ -1197,6 +1197,19 @@ export class ConfigureSectionCommand extends Command {
 				"roles.earlyLocationRoles",
 				guildData.roles.earlyLocationRoles
 			);
+		}
+		// sec head leader role
+		else if (r.name === "🏁") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateRoleCommand(
+				msg,
+				"Section Head Leader Roles",
+				section,
+				guild.roles.cache.get(section.roles.headLeaderRole),
+				section.isMain
+					? "roles.mainSectionLeaderRole.sectionHeadLeaderRole"
+					: "sections.$.roles.headLeaderRole"
+			);	
 		}
 		// sec leader role
 		else if (r.name === "🏳️") {
@@ -1384,7 +1397,7 @@ export class ConfigureSectionCommand extends Command {
 			botSentMsg = await botSentMsg.edit(embed);
 		}
 		catch (e) { // probably got deleted.
-			botSentMsg = await msg.channel.send(botSentMsg);
+			botSentMsg = await msg.channel.send(embed);
 		}
 
 		const r: GuildEmoji | ReactionEmoji | "TIME_CMD" = await new FastReactionMenuManager(botSentMsg, msg.author, reactions, 2, TimeUnit.MINUTE).react();
@@ -2057,7 +2070,8 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 				d.push({ data: dData, isIncluded: section.properties.dungeons.includes(dData.id) });
 			}
 
-			const editorMessage: Message | void = await msg.channel.send(this.getAllowedDungeonEditorEmbed(msg, d, section)).catch(() => { });
+			const editorMessage: Message | void = await msg.channel.send(this.getAllowedDungeonEditorEmbed(msg, d, section))
+				.catch(() => { });
 			if (typeof editorMessage === "undefined") {
 				return guildDb;
 			}
@@ -2167,7 +2181,6 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 	}
 
 
-
 	// ================================================ //
 	//													//
 	// OTHER MINOR INTERNAL METHODS					 	//
@@ -2208,6 +2221,7 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 		const secRaidLeaderRole: Role | undefined = guild.roles.cache.get(section.roles.raidLeaderRole);
 		const secAlmostRaidLeaderRole: Role | undefined = guild.roles.cache.get(section.roles.almostLeaderRole);
 		const secTrialLeaderRole: Role | undefined = guild.roles.cache.get(section.roles.trialLeaderRole);
+		const secHeadLeaderRole: Role | undefined = guild.roles.cache.get(section.roles.headLeaderRole);
 
 		// roles for the guild
 		const teamRole: Role | undefined = guild.roles.cache.get(guildData.roles.teamRole);
@@ -2263,6 +2277,8 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 		const roleSB: StringBuilder = new StringBuilder("__Role__")
 			.appendLine()
 			.append(`Verified Role: ${typeof verifiedRole === "undefined" ? "N/A" : verifiedRole}`)
+			.appendLine()
+			.append(`Section Head Leader Role: ${typeof secHeadLeaderRole === "undefined" ? "N/A" : secHeadLeaderRole}`)
 			.appendLine()
 			.append(`Section Leader Role: ${typeof secRaidLeaderRole === "undefined" ? "N/A" : secRaidLeaderRole}`)
 			.appendLine()
@@ -2321,7 +2337,7 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 				.appendLine()
 				.append(`Moderator Role: ${typeof moderatorRole === "undefined" ? "N/A" : moderatorRole}`)
 				.appendLine()
-				.append(`Head Leader Role: ${typeof headLeaderRole === "undefined" ? "N/A" : headLeaderRole}`)
+				.append(`Universal Head Leader Role: ${typeof headLeaderRole === "undefined" ? "N/A" : headLeaderRole}`)
 				.appendLine()
 				.append(`Officer Role: ${typeof officerRole === "undefined" ? "N/A" : officerRole}`)
 				.appendLine()
@@ -2429,40 +2445,5 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 			}
 			return resolvedRole;
 		};
-	}
-
-	/**
-	 * Removes any dead roles. Dead roles are roles that exist in the db but not in the server.
-	 * @param {string[]} roleArray The array of roles to check. 
-	 * @param {string} field The Mongo path to the array specified above. 
-	 * @param {Guild} guild The guild. 
-	 */
-	private async removeDeadElements(
-		roleArray: string[],
-		field: string,
-		guild: Guild
-	): Promise<IRaidGuild> {
-		const promises: Promise<unknown>[] = roleArray.map(role => {
-			return new Promise((resolve, reject) => {
-				if (!guild.roles.cache.has(role)) {
-					MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
-						$pull: {
-							[field]: role
-						}
-					}, (err) => {
-						if (err) {
-							reject(err);
-						}
-						resolve();
-					});
-				} else {
-					resolve();
-				}
-			});
-		});
-
-		await Promise.all(promises);
-
-		return new MongoDbHelper.MongoDbGuildManager(guild.id).findOrCreateGuildDb();
 	}
 }

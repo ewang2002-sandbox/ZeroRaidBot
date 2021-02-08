@@ -1,13 +1,12 @@
 import { IRaidInfo } from "../Definitions/IRaidInfo";
-import { IBlacklistedUser, IModmailBlacklistedUser } from "../Definitions/IBlacklistedUser";
-import { IModMail } from "../Definitions/IModMail";
+import { IBlacklistedUser, ISubBlacklistedUser } from "../Definitions/IBlacklistedUser";
+import { IModmailThread } from "../Definitions/IModmailThread";
 import { ISection } from "./ISection";
-import { IVerification } from "../Definitions/IVerification";
-import { IHeadCountInfo } from "../Definitions/IHeadCountInfo";
 import { IMutedData, ISuspendedData } from "../Definitions/IPunishmentObject";
 import { IManualVerification } from "../Definitions/IManualVerification";
 import { IQuotaDbInfo } from "../Definitions/IQuotaDbInfo";
 import { IApplication } from "../Definitions/IApplication";
+import { IVerification } from "./IVerification";
 
 /**
  * Everything here (excluding "sections") represents ESSENTIALS needed for the core bot functions to work properly.
@@ -153,6 +152,7 @@ export interface IRaidGuild {
 			sectionLeaderRole: string;
 			sectionAlmostLeaderRole: string; 
 			sectionTrialLeaderRole: string;
+			sectionHeadLeaderRole: string; 
 		}
 	};
 
@@ -262,7 +262,7 @@ export interface IRaidGuild {
 			quotaDetails: IQuotaDbInfo[];
 			quotaMessage: string;
 			lastReset: number;
-		} 
+		};
 		
 		/**
 		 * The message that users will receive after they are verified.
@@ -275,9 +275,9 @@ export interface IRaidGuild {
 		showVerificationRequirements: boolean;
 
 		/**
-		 * An array of current modmail users. 
+		 * An array of current modmail threads. 
 		 */
-		modMail: IModMail[];
+		modMail: IModmailThread[];
 
 		/**
 		 * The dungeons to allow. 
@@ -293,6 +293,16 @@ export interface IRaidGuild {
 		 * Application for section.
 		 */
 		application: IApplication[];
+
+		/**
+		 * Blocked commands
+		 */
+		blockedCommands: string[];
+
+		/**
+		 * Remove early location + key reactions from AFK checks.
+		 */
+		removeEarlyLocKeyReacts: boolean; 
 	};
 
 	/**
@@ -303,11 +313,6 @@ export interface IRaidGuild {
 		 * An array of active raids.
 		 */
 		raidChannels: IRaidInfo[];
-
-		/**
-		 * Active headcounts
-		 */
-		headcounts: IHeadCountInfo[];
 	};
 
 	/**
@@ -324,6 +329,7 @@ export interface IRaidGuild {
 	 * The moderation stuff.
 	 */
 	moderation: {
+		blacklistedApplicants: ISubBlacklistedUser[]; 
 		/**
 		 * Amount of suspensions that has occurred in the server.
 		 */
@@ -337,7 +343,7 @@ export interface IRaidGuild {
 		/**
 		 * IDs of accounts that will not be able to use modmail.
 		 */
-		blacklistedModMailUsers: IModmailBlacklistedUser[];
+		blacklistedModMailUsers: ISubBlacklistedUser[];
 
 		/**
 		 * People that are muted.

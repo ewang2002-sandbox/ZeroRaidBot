@@ -4,7 +4,7 @@ import { IConfigurationSettings } from "./IConfigurationSettings";
  * True -- uses production settings.
  * False -- uses testing settings.
  */
-const PRODUCTION_BOT: boolean = true;
+export const PRODUCTION_BOT: boolean = true;
 
 /**
  * True -- use private settings.
@@ -35,7 +35,9 @@ export const BotConfiguration: IConfigurationSettings = PRODUCTION_BOT
 		// a good one is just "botsettings."
         botCollectionName: "",
         botOwners: [],
-        botColors: []
+		botColors: [],
+		// guilds that dont need a db entry
+		exemptGuild: []
     } : {
         token: "",
         dbURL: "",
@@ -44,7 +46,8 @@ export const BotConfiguration: IConfigurationSettings = PRODUCTION_BOT
         guildCollectionName: "",
         botCollectionName: "",
         botOwners: [],
-        botColors: []
+		botColors: [],
+		exemptGuild: []
     };
 
 /**
@@ -70,12 +73,12 @@ export const GITHUB_TOKEN: string = "";
 /**
  * The organization or user. 
  */
-export const REPOSITORY_ORG: string = "DungeoneerExalt";
+export const REPOSITORY_ORG: string = "";
 
 /**
  * The repo
  */
-export const REPOSITORY_NAME: string = "ZeroRaidBot";
+export const REPOSITORY_NAME: string = "";
 
 /**
  * The IDs of all devs.

@@ -24,13 +24,14 @@ export class PingCommand extends Command {
             new CommandPermission(
                 [],
                 [],
-                ["suspended"],
+                [],
                 [],
                 true
             ),
             false, // guild-only command. 
             false,
-            false
+            false,
+            0
         );
     }
 

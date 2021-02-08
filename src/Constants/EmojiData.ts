@@ -17,7 +17,6 @@ export const Slow: string = "678792068965072906";
 export const Daze: string = "678792068948295686";
 export const ArmorBreak: string = "561334399635816448";
 export const MSeal: string = "678792284682190884";
-export const Puri: string = "678792412067266562";
 export const ScholarSeal: string = "678792068935450634";
 export const BrainPrism: string = "708927848076935218";
 
@@ -85,10 +84,6 @@ export function getEmojiData(): string[][] {
 		[
 			MSeal,
 			`**React** with ${Zero.RaidClient.emojis.cache.get(MSeal)} if you are bringing a paladin that has a Marble Seal.`
-		],
-		[
-			Puri,
-			`**React** with ${Zero.RaidClient.emojis.cache.get(Puri)} if you are bringing a priest with a Tome of Purification.`
 		],
 		[
 			ScholarSeal,

@@ -28,7 +28,8 @@ export class SilenceCommand extends Command {
 			),
 			true,
 			false,
-			false
+			false,
+			0
 		);
 	}
 
@@ -50,7 +51,7 @@ export class SilenceCommand extends Command {
 		args.shift();
 
 		// get other arguments
-		const reason: string = args.join(" ");
+		const reason: string = args.join(" ").trim() || "No reason provided.";
 
 		const moderationChannel: TextChannel | undefined = guild.channels.cache.get(guildData.generalChannels.logging.moderationLogs) as TextChannel | undefined;
 		const embed: MessageEmbed = new MessageEmbed()
@@ -61,14 +62,16 @@ export class SilenceCommand extends Command {
 		if (SilencedUsers.has(guild.id) && (SilencedUsers.get(guild.id) as string[]).includes(target.id)) {
 			await MessageUtil.send({ content: `${target} has been un-silenced successfully.` }, msg.channel).catch(() => { });
 			embed.setTitle("😄 User Un-Silenced")
-				.setDescription(`⇒ Un-Silenced Member: ${target} (${target.displayName})\n⇒ Moderator: ${msg.member as GuildMember} (${(msg.member as GuildMember).displayName})\n⇒ Reason: ${reason}`)
+				.setDescription(`⇒ Un-Silenced Member: ${target} (${target.displayName})\n⇒ Moderator: ${msg.member as GuildMember} (${(msg.member as GuildMember).displayName})`)
+				.addField("⇒ Unsilence Reason", reason)
 				.setColor("GREEN");
 			(SilencedUsers.get(guild.id) as string[]).splice((SilencedUsers.get(guild.id) as string[]).indexOf(target.id), 1);
 		}
 		else {
 			await MessageUtil.send({ content: `${target} has been silenced successfully.` }, msg.channel).catch(() => { });
 			embed.setTitle("🤐 User Silenced")
-				.setDescription(`⇒ Silenced Member: ${target} (${target.displayName})\n⇒ Moderator: ${msg.member as GuildMember} (${(msg.member as GuildMember).displayName})\n⇒ Reason: ${reason}`)
+				.setDescription(`⇒ Silenced Member: ${target} (${target.displayName})\n⇒ Moderator: ${msg.member as GuildMember} (${(msg.member as GuildMember).displayName})`)
+				.addField("⇒ Silence Reason", reason)
 				.setColor("RED");
 			if (SilencedUsers.has(guild.id)) {
 				(SilencedUsers.get(guild.id) as string[]).push(target.id);

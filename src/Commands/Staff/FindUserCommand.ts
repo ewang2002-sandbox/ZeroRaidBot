@@ -26,12 +26,13 @@ export class FindUserCommand extends Command {
 				[],
 				["EMBED_LINKS"],
 				["verifier"],
-				["ALL_RL_TYPE"],
+				["ALL_RLS"],
 				true
 			),
 			true, // guild-only command. 
 			false,
-			false
+			false,
+			5
 		);
 	}
 

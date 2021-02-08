@@ -30,7 +30,8 @@ export class MuteCommand extends Command {
 			),
 			true,
 			false,
-			false
+			false,
+			5
 		);
 	}
 
@@ -135,7 +136,8 @@ export class MuteCommand extends Command {
 		const embed: MessageEmbed = new MessageEmbed()
 			.setAuthor(memberToMute.user.tag, memberToMute.user.displayAvatarURL())
 			.setTitle("🔇 User Muted")
-			.setDescription(`⇒ Muted Member: ${memberToMute} (${memberToMute.displayName})\n⇒ Moderator: ${moderator} (${moderator.displayName})\n⇒ Reason: ${reason}\n⇒ Duration: ${muteTime[1]}`)
+			.setDescription(`⇒ Muted Member: ${memberToMute} (${memberToMute.displayName})\n⇒ Moderator: ${moderator} (${moderator.displayName})\n⇒ Duration: ${muteTime[1]}`)
+			.addField("⇒ Mute Reason", reason)
 			.setColor("RED")
 			.setTimestamp()
 			.setFooter("Mute Command Executed At");
@@ -144,7 +146,7 @@ export class MuteCommand extends Command {
 		}
 
 		// send to member 
-		await memberToMute.send(`**\`[${guild.name}]\`** You have been muted from \`${guild.name}\`.\n\t⇒ Reason: ${reason}\n\tDuration: ${muteTime[1]}`).catch(() => { });
+		await memberToMute.send(`**\`[${guild.name}]\`** You have been muted from \`${guild.name}\`.\n\t⇒ Reason: ${reason}\n\t⇒ Duration: ${muteTime[1]}`).catch(() => { });
 
 		for await (const [, channel] of guild.channels.cache) {
 			if (channel.permissionOverwrites.has(resolvedMutedRole.id)) {
@@ -170,7 +172,7 @@ export class MuteCommand extends Command {
 				}
 			}
 		});
-
+		
 		if (muteTime[0] !== -1) {
 			MuteCommand.timeMute(guild, memberToMute, muteTime[0], moderationChannel);
 		}
@@ -198,14 +200,15 @@ export class MuteCommand extends Command {
 		const to: NodeJS.Timeout = setTimeout(async () => {
 			if (memberToMute.roles.cache.has(mutedRole.id)) {
 				await memberToMute.roles.remove(mutedRole).catch(() => { });
-				const embed: MessageEmbed = new MessageEmbed()
-					.setAuthor(memberToMute.user.tag, memberToMute.user.displayAvatarURL())
-					.setTitle("🔈 Member Unmuted")
-					.setDescription(`⇒ ${memberToMute} (${memberToMute.displayName}) has been unmuted.\n⇒ Moderator: Automatic\n⇒ Reason: The member has served his or her time fully.`)
-					.setColor("GREEN")
-					.setTimestamp()
-					.setFooter("Unmuted At");
 				if (typeof moderationChannel !== "undefined") {
+					const embed: MessageEmbed = new MessageEmbed()
+						.setAuthor(memberToMute.user.tag, memberToMute.user.displayAvatarURL())
+						.setTitle("🔈 Member Unmuted")
+						.setDescription(`⇒ ${memberToMute} (${memberToMute.displayName}) has been unmuted.\n⇒ Moderator: Automatic`)
+						.setColor("GREEN")
+						.addField("⇒ Unmute Reason", "The member has served his or her time fully.")
+						.setTimestamp()
+						.setFooter("Unmuted At");
 					await moderationChannel.send(embed).catch(() => { });
 				}
 			}
@@ -217,6 +220,11 @@ export class MuteCommand extends Command {
 					}
 				}
 			});
+
+			const muteIndex: number = MuteCommand.currentTimeout.findIndex(x => x.id === memberToMute.id);
+			if (muteIndex !== -1) {
+				MuteCommand.currentTimeout.splice(muteIndex, 1);
+			}
 		}, timeToMute);
 		MuteCommand.currentTimeout.push({ timeout: to, id: memberToMute.id });
 	}

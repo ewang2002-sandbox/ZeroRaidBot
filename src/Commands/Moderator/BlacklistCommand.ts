@@ -32,7 +32,8 @@ export class BlacklistCommand extends Command {
 			),
 			true,
 			false,
-			false
+			false,
+			5
 		);
 	}
 
@@ -175,9 +176,6 @@ export class BlacklistCommand extends Command {
 				.appendLine();
 		}
 
-		desc.append(`⇒ Reason: ${reason}`)
-			.appendLine();
-
 		MessageUtil.send({ content: `${isIgn || isId ? `\`${nameToBlacklist}\`` : `${nameToBlacklist}`} has been blacklisted successfully.` }, msg.channel);
 
 		const moderationChannel: TextChannel | undefined = guild.channels.cache.get(guildDb.generalChannels.logging.moderationLogs) as TextChannel | undefined;
@@ -191,6 +189,7 @@ export class BlacklistCommand extends Command {
 			.setDescription(desc.toString())
 			.setColor("RED")
 			.setFooter("Blacklisted on")
+			.addField("⇒ Blacklist Reason", reason)
 			.setTimestamp();
 		if (memberToBlacklist === null) {
 			embed.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string);

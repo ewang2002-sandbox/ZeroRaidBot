@@ -45,7 +45,8 @@ export class ManualVerifyCommand extends Command {
             ),
             true, // guild-only command. 
             false,
-            false
+            false,
+			5
         );
     }
 
@@ -361,8 +362,8 @@ export class ManualVerifyCommand extends Command {
                         return;
                     }
 
-                    if (collectedMessage.content.length > 10) {
-                        await MessageUtil.send({ content: "Your in-game name should not exceed 10 characters. Please try again." }, msg.channel);
+                    if (collectedMessage.content.length > 14) {
+                        await MessageUtil.send({ content: "Your in-game name should not exceed 14 characters. Please try again." }, msg.channel);
                         return;
                     }
 
@@ -399,6 +400,7 @@ export class ManualVerifyCommand extends Command {
                 return;
             }
 
+            
             let nameHistory: INameHistory[] | IAPIError;
             try {
                 nameHistory = await VerificationHandler.getRealmEyeNameHistory(name);

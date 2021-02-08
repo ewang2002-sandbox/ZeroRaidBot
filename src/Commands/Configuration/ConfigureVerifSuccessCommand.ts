@@ -29,7 +29,8 @@ export class ConfigureVerifSuccessCommand extends Command {
             ),
             true, // guild-only command. 
             false,
-            false
+            false,
+            0
         );
     }
 
@@ -39,7 +40,7 @@ export class ConfigureVerifSuccessCommand extends Command {
         guildDb: IRaidGuild
     ): Promise<void> {
         const guild: Guild = msg.guild as Guild;
-        if (args[0].toLowerCase() === "view") {
+        if (args.length !== 0 && args[0].toLowerCase() === "view") {
             const descEmbed: MessageEmbed = new MessageEmbed()
                 .setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
                 .setDescription(guildDb.properties.successfulVerificationMessage.length === 0 ? "N/A" : guildDb.properties.successfulVerificationMessage)

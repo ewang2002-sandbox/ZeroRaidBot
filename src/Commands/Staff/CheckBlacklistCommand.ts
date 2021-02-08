@@ -31,7 +31,8 @@ export class CheckBlacklistCommand extends Command {
 			),
 			true, // guild-only command. 
 			false,
-			false
+			false,
+			5
 		);
 	}
 
@@ -174,7 +175,7 @@ export class CheckBlacklistCommand extends Command {
 			}
 
 			const tempSb: StringBuilder = new StringBuilder()
-				.append(`Server: ${guild.name}`)
+				.append(`Server: ${cGuild.name}`)
 				.appendLine()
 				.append(`⇒ **Name:** ${blacklistEntry.inGameName}`)
 				.appendLine()

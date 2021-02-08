@@ -28,7 +28,8 @@ export class BlacklistSuggestionUserCommand extends Command {
 			),
 			false,
 			false,
-			true
+			true,
+			5
 		);
 	}
 

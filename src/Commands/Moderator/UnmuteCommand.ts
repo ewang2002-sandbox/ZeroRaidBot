@@ -28,7 +28,8 @@ export class UnmuteCommand extends Command {
 			),
 			true,
 			false,
-			false
+            false,
+            5
 		);
     }
     
@@ -85,8 +86,9 @@ export class UnmuteCommand extends Command {
         const embed: MessageEmbed = new MessageEmbed()
             .setAuthor(memberToUnmute.user.tag, memberToUnmute.user.displayAvatarURL())
             .setTitle("🔈 Member Unmuted")
-            .setDescription(`⇒ ${memberToUnmute} (${memberToUnmute.displayName}) has been unmuted.\n⇒ Moderator: ${msg.author} (${mod.displayName})\n⇒ Reason: ${reason}`)
+            .setDescription(`⇒ ${memberToUnmute} (${memberToUnmute.displayName}) has been unmuted.\n⇒ Moderator: ${msg.author} (${mod.displayName})`)
             .setColor("GREEN")
+            .addField("⇒ Unmute Reason", reason)
             .setTimestamp()
             .setFooter("Unmute Command Executed At");
         if (typeof moderationChannel !== "undefined") {

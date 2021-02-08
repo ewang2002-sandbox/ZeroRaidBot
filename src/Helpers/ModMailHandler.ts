@@ -1,15 +1,15 @@
 import { IRaidGuild } from "../Templates/IRaidGuild";
-import { User, Guild, Message, MessageEmbed, TextChannel, GuildMember, MessageEmbedFooter, MessageAttachment, FileOptions, EmbedField, Collection, Emoji, EmojiResolvable, SystemChannelFlags } from "discord.js";
+import { User, Guild, Message, MessageEmbed, TextChannel, GuildMember, MessageEmbedFooter, MessageAttachment, EmbedField, Collection, Emoji, EmojiResolvable, CategoryChannel, DMChannel } from "discord.js";
 import { MongoDbHelper } from "./MongoDbHelper";
-import { StringUtil } from "../Utility/StringUtil";
 import { UserAvailabilityHelper } from "./UserAvailabilityHelper";
 import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollector";
 import { TimeUnit } from "../Definitions/TimeUnit";
 import { MessageUtil } from "../Utility/MessageUtil";
 import { DateUtil } from "../Utility/DateUtil";
 import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuManager";
-import { createWriteStream, WriteStream } from "fs";
 import { StringBuilder } from "../Classes/String/StringBuilder";
+import { IModmailThread } from "../Definitions/IModmailThread";
+import { ArrayUtil } from "../Utility/ArrayUtil";
 
 export module ModMailHandler {
 	// K = the mod that is responding
@@ -22,7 +22,7 @@ export module ModMailHandler {
 	 * @param guildDb The guild document.
 	 */
 	function isInThreadConversation(discordId: string, guildDb: IRaidGuild): boolean {
-		return guildDb.properties.modMail.some(x => x.sender === discordId);
+		return guildDb.properties.modMail.some(x => x.originalModmailAuthor === discordId);
 	}
 
 	/**
@@ -35,12 +35,22 @@ export module ModMailHandler {
 	}
 
 	/**
-	 * Initiates modmail. I know, best description ever. :) 
+	 * This function is called when someone DMs the bot. This basically initiates modmail by forwarding a modmail message to the server.
 	 * @param initiator The person responsible for this mod mail.
 	 * @param message The message content.
 	 */
 	export async function initiateModMailContact(initiator: User, message: Message): Promise<void> {
-		const selectedGuild: Guild | null = await chooseGuild(initiator);
+		UserAvailabilityHelper.InMenuCollection.set(initiator.id, UserAvailabilityHelper.MenuType.PRE_MODMAIL);
+		const selectedGuild: Guild | "cancel" | null = await chooseGuild(initiator);
+		// delay it so dm from bot doesnt trigger it
+		setTimeout(() => {
+			UserAvailabilityHelper.InMenuCollection.delete(initiator.id);
+		}, 1000);
+
+		if (selectedGuild === "cancel") {
+			return;
+		}
+
 		if (selectedGuild === null) {
 			const errorEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(initiator, "RED")
 				.setTitle("No Valid Servers")
@@ -49,49 +59,401 @@ export module ModMailHandler {
 			await MessageUtil.send({ embed: errorEmbed }, initiator).catch(() => { });
 			return;
 		}
-		const guildDb: IRaidGuild = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOne({ guildID: selectedGuild.id })) as IRaidGuild;
+
+		const guildDb: IRaidGuild = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient
+			.findOne({ guildID: selectedGuild.id })) as IRaidGuild;
+
+		if (!canUseModMail(selectedGuild, guildDb)) {
+			return;
+		}
 
 		if (guildDb.moderation.blacklistedModMailUsers.some(x => x.id === initiator.id)) {
 			await message.react("⛔").catch(e => { });
 			return;
 		}
 
-		await message.react("📧").catch(e => { });
+		await message.react("📧").catch(() => { });
 		const modmailChannel: TextChannel = selectedGuild.channels.cache.get(guildDb.generalChannels.modMailChannel) as TextChannel;
 
 		let attachments: string = "";
-		let index: number = 0;
+		let indexAttachment: number = 0;
 		for (let [id, attachment] of message.attachments) {
-			if (index > 6) {
+			if (indexAttachment > 6) {
 				break;
 			}
 			// [attachment](url) (type of attachment)
-			attachments += `[Attachment ${index + 1}](${attachment.url}) (\`${attachment.url.split(".")[attachment.url.split(".").length - 1]}\`)\n`;
-			++index;
+			attachments += `[Attachment ${indexAttachment + 1}](${attachment.url}) (\`${attachment.url.split(".")[attachment.url.split(".").length - 1]}\`)\n`;
+			++indexAttachment;
 		}
+
+		// determine the channel that this modmail message will
+		// go to
+		const indexOfModmail: number = guildDb.properties.modMail
+			.findIndex(x => x.originalModmailAuthor === initiator.id);
 
 		const modMailEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(initiator, "RED")
-			.setTimestamp()
-			// so we can find the id 
-			.setFooter(`${initiator.id} • Modmail Message`)
 			// the content of the modmail msg
-			.setDescription(message.content)
-			// title -- ❌ means no responses
-			.setTitle("❌ Modmail Entry");
-		if (attachments.length !== 0) {
-			modMailEmbed.addField("Attachments", attachments);
+			.setDescription(message.content);
+
+		// if there was a thread
+		// but it was deleted
+		// then update db
+		if (indexOfModmail !== -1
+			&& !selectedGuild.channels.cache.has(guildDb.properties.modMail[indexOfModmail].channel)) {
+			// assume channel deleted
+			await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: selectedGuild.id }, {
+				$pull: {
+					"properties.modMail": {
+						channel: guildDb.properties.modMail[indexOfModmail].channel
+					}
+				}
+			});
 		}
 
-		modMailEmbed.addField("Sender Information", `⇒ Mention: ${initiator}\n⇒ Tag: ${initiator.tag}\n⇒ ID: ${initiator.id}`)
-			// responses -- any mods that have responded
-			.addField("Last Response By", "None.")
-		const modMailMessage: Message = await modmailChannel.send(modMailEmbed);
-		// respond reaction
-		await modMailMessage.react("📝").catch(() => { });
-		// garbage reaction
-		await modMailMessage.react("🗑️").catch(() => { });
-		// blacklist
-		await modMailMessage.react("🚫").catch(() => { });
+		if (indexOfModmail !== -1
+			&& selectedGuild.channels.cache.has(guildDb.properties.modMail[indexOfModmail].channel)) {
+			// send TO modmail thread			
+			modMailEmbed.setTitle(`${initiator.tag} ⇒ Modmail Thread`)
+				.setFooter(`${initiator.id} • Modmail Thread`);
+
+			if (attachments.length !== 0) {
+				modMailEmbed.addField("Attachments", attachments);
+			}
+
+			// threaded modmail
+			const channel: TextChannel = selectedGuild.channels.cache.get(guildDb.properties.modMail[indexOfModmail].channel) as TextChannel;
+			const modMailMessage: Message = await channel.send(modMailEmbed);
+			// respond reaction
+			await modMailMessage.react("📝").catch(() => { });
+
+			await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({
+				guildID: selectedGuild.id,
+				"properties.modMail.channel": guildDb.properties.modMail[indexOfModmail].channel
+			}, {
+				$push: {
+					"properties.modMail.$.messages": {
+						authorId: initiator.id,
+						tag: initiator.tag,
+						timeSent: new Date().getTime(),
+						content: message.content,
+						attachments: message.attachments.size === 0 ? [] : message.attachments.array().map(x => x.url)
+					}
+				}
+			});
+		}
+		else {
+			// default modmail 
+			modMailEmbed
+				.setTimestamp()
+				// so we can find the id 
+				.setFooter(`${initiator.id} • Modmail Message`)
+				// title -- ❌ means no responses
+				.setTitle("❌ Modmail Entry");
+			if (attachments.length !== 0) {
+				modMailEmbed.addField("Attachments", attachments);
+			}
+
+			modMailEmbed.addField("Sender Information", `⇒ Mention: ${initiator}\n⇒ Tag: ${initiator.tag}\n⇒ ID: ${initiator.id}`)
+				// responses -- any mods that have responded
+				.addField("Last Response By", "None.");
+
+			const modMailMessage: Message = await modmailChannel.send(modMailEmbed);
+			// respond reaction
+			await modMailMessage.react("📝").catch(() => { });
+			// garbage reaction
+			await modMailMessage.react("🗑️").catch(() => { });
+			// blacklist
+			await modMailMessage.react("🚫").catch(() => { });
+			// redirect
+			await modMailMessage.react("🔀").catch(() => { });
+		}
+	}
+
+	/**
+	 * This creates a new channel where all modmail messages from `targetMember` will be redirected to said channel.
+	 * @param targetMember The member to initiate the modmail conversation with.
+	 * @param initiatedBy The member that initiated the modmail conversation.
+	 * @param guildDb The guild doc.
+	 * @param {string} [initialContent]
+	 */
+	export async function startThreadedModmailWithMember(
+		targetMember: GuildMember,
+		initiatedBy: GuildMember,
+		guildDb: IRaidGuild,
+		initialContent?: string
+	): Promise<void> {
+		// make sure the person isnt blacklisted from modmail
+		const indexOfBlacklist: number = guildDb.moderation.blacklistedModMailUsers
+			.findIndex(x => x.id === targetMember.id);
+
+		if (indexOfBlacklist !== -1) {
+			const noUserFoundEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(targetMember.user, "RED")
+				.setTitle("User Blacklisted From Modmail")
+				.setDescription(`${targetMember} is currently blacklisted from using modmail. You are unable to create a thread for this person.`)
+				.addField("Reason", guildDb.moderation.blacklistedModMailUsers[indexOfBlacklist].reason)
+				.setFooter("Modmail");
+			await initiatedBy.send(noUserFoundEmbed)
+				.then(x => x.delete({ timeout: 30 * 1000 }))
+				.catch(() => { });
+			return;
+		}
+
+		const guild: Guild = initiatedBy.guild;
+		const index: number = guildDb.properties.modMail.findIndex(x => x.originalModmailAuthor === targetMember.id);
+		if (index !== -1) {
+			if (guild.channels.cache.has(guildDb.properties.modMail[index].channel)) {
+				const channel: TextChannel = guild.channels.cache
+					.get(guildDb.properties.modMail[index].channel) as TextChannel;
+				await channel.send(`${initiatedBy}`).catch(e => { });
+				return;
+			}
+
+			// assume channel deleted
+			guildDb = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id }, {
+				$pull: {
+					"properties.modMail": {
+						channel: guildDb.properties.modMail[index].channel
+					}
+				}
+			}, { returnOriginal: false })).value as IRaidGuild;
+		}
+
+		// create new channel
+		const modmailChannel: TextChannel = guild.channels.cache
+			.get(guildDb.generalChannels.modMailChannel) as TextChannel;
+		const modmailCategory: CategoryChannel | null = modmailChannel.parent;
+
+		if (modmailCategory === null) {
+			return;
+		}
+
+		// max size of category = 50
+		if (modmailCategory.children.size + 1 > 50) {
+			return;
+		}
+
+		// create channel
+		const createdTime: number = new Date().getTime();
+
+		let threadChannel: TextChannel = await guild.channels.create(`${targetMember.user.username}-${targetMember.user.discriminator}`, {
+			type: "text",
+			parent: modmailCategory,
+			topic: `Modmail Thread For: ${targetMember}\nCreated By: ${initiatedBy}\nCreated Time: ${DateUtil.getTime(createdTime)}`
+		});
+		await threadChannel.lockPermissions().catch(e => { });
+
+		// create base message
+		const baseMsgEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(targetMember.user)
+			.setTitle(`Modmail Thread ⇒ ${targetMember.user.tag}`)
+			.setDescription(`⇒ **Initiated By:** ${initiatedBy}\n⇒ **Recipient:** ${targetMember}\n⇒ **Thread Creation Time:** ${DateUtil.getTime(createdTime)}`)
+			.addField("Reactions", "⇒ React with 📝 to send a message. You may also use the `;respond` command.\n⇒ React with 🛑 to close this thread.\n⇒ React with 🚫 to modmail blacklist the author of this modmail.")
+			.setTimestamp()
+			.setFooter("Modmail Thread • Created");
+
+		const baseMessage: Message = await threadChannel.send(baseMsgEmbed);
+		FastReactionMenuManager.reactFaster(baseMessage, ["📝", "🛑", "🚫"]);
+		await baseMessage.pin().catch(e => { });
+
+		const threadInfo: IModmailThread = {
+			originalModmailAuthor: targetMember.id,
+			baseMsg: baseMessage.id,
+			startedOn: createdTime,
+			channel: threadChannel.id,
+			originalModmailMessageId: typeof initialContent === "undefined" ? "" : initialContent,
+			messages: typeof initialContent === "undefined" ? [] : [
+				{
+					authorId: targetMember.id,
+					attachments: [],
+					tag: targetMember.user.tag,
+					content: initialContent,
+					timeSent: new Date().getTime()
+				}
+			]
+		};
+
+		await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
+			$push: {
+				"properties.modMail": threadInfo
+			}
+		});
+
+		MessageUtil.send({ content: initiatedBy.toString() }, threadChannel, 2000);
+
+		if (typeof initialContent !== "undefined") {
+			const replyEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(initiatedBy.guild)
+				.setTitle(`${initiatedBy.guild.name} ⇒ You`)
+				.setDescription(initialContent)
+				.setFooter("Modmail");
+
+			let sent: boolean = true;
+			try {
+				await targetMember.send(replyEmbed);
+			}
+			catch (e) {
+				sent = false;
+			}
+
+			const replyRecordsEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(initiatedBy.user, sent ? "GREEN" : "YELLOW")
+				.setTitle(`${initiatedBy.displayName} ⇒ ${targetMember.user.tag}`)
+				.setDescription(initialContent)
+				.setFooter("Sent Anonymously")
+				.setTimestamp();
+
+			if (!sent) {
+				replyRecordsEmbed.addField("⚠️ Error", "Something went wrong when trying to send this modmail message. The recipient has either blocked the bot or prevented server members from DMing him/her.");
+			}
+			await threadChannel.send(replyRecordsEmbed).catch(console.error);
+		}
+	}
+
+	/**
+	 * Converts a modmail message to a thread. Should be called when reacting to 🔀.
+	 * @param modmailMessage The original modmail message.
+	 * @param convertedToThreadBy The person that converted the modmail message to a thread.
+	 */
+	export async function convertToThread(
+		originalModMailMessage: Message,
+		convertedToThreadBy: GuildMember
+	): Promise<void> {
+		if (convertedToThreadBy.guild.me === null || !convertedToThreadBy.guild.me.hasPermission("MANAGE_CHANNELS")) {
+			return;
+		}
+
+		// get old embed + prepare
+		const oldEmbed: MessageEmbed = originalModMailMessage.embeds[0];
+		const authorOfModmailId: string = ((oldEmbed.footer as MessageEmbedFooter).text as string).split("•")[0].trim();
+		let guildDb: IRaidGuild = await new MongoDbHelper.MongoDbGuildManager(convertedToThreadBy.guild.id).findOrCreateGuildDb();
+
+		let authorOfModmail: GuildMember;
+		try {
+			authorOfModmail = await convertedToThreadBy.guild.members.fetch(authorOfModmailId);
+		}
+		catch (e) {
+			const noUserFoundEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(convertedToThreadBy.user)
+				.setTitle("User Not Found")
+				.setDescription("The person you were trying to find wasn't found. The person may have left the server. This modmail entry will be deleted in 5 seconds.")
+				.setFooter("Modmail");
+			await originalModMailMessage.edit(noUserFoundEmbed)
+				.then(x => x.delete({ timeout: 5 * 1000 }))
+				.catch(() => { });
+			return;
+		}
+
+		// make sure the person isnt blacklisted from modmail
+		const indexOfBlacklist: number = guildDb.moderation.blacklistedModMailUsers
+			.findIndex(x => x.id === authorOfModmail.id);
+
+		if (indexOfBlacklist !== -1) {
+			const noUserFoundEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(convertedToThreadBy.user, "RED")
+				.setTitle("User Blacklisted From Modmail")
+				.setDescription(`${authorOfModmail} is currently blacklisted from using modmail. You are unable to create a thread for this person.`)
+				.addField("Reason", guildDb.moderation.blacklistedModMailUsers[indexOfBlacklist].reason)
+				.setFooter("Modmail");
+			await originalModMailMessage.edit(noUserFoundEmbed)
+				.then(x => x.delete({ timeout: 5 * 1000 }))
+				.catch(() => { });
+			return;
+		}
+
+		const index: number = guildDb.properties.modMail.findIndex(x => x.originalModmailAuthor === authorOfModmail.id);
+		if (index !== -1) {
+			if (convertedToThreadBy.guild.channels.cache.has(guildDb.properties.modMail[index].channel)) {
+				await (convertedToThreadBy.guild.channels.cache.get(guildDb.properties.modMail[index].channel) as TextChannel).send(`${convertedToThreadBy}`).catch(e => { });
+				return;
+			}
+
+			// some idiot deleted the channel
+			guildDb = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: convertedToThreadBy.guild.id }, {
+				$pull: {
+					"properties.modMail": {
+						channel: guildDb.properties.modMail[index].channel
+					}
+				}
+			}, { returnOriginal: false })).value as IRaidGuild;
+		}
+
+		// create new channel
+		const modmailChannel: TextChannel = convertedToThreadBy.guild.channels.cache.get(guildDb.generalChannels.modMailChannel) as TextChannel;
+		const modmailCategory: CategoryChannel | null = modmailChannel.parent;
+
+		if (modmailCategory === null) {
+			return;
+		}
+
+		// max size of category = 50
+		if (modmailCategory.children.size + 1 > 50) {
+			return;
+		}
+
+		const createdTime: number = new Date().getTime();
+
+		let threadChannel: TextChannel = await convertedToThreadBy.guild.channels.create(`${authorOfModmail.user.username}-${authorOfModmail.user.discriminator}`, {
+			type: "text",
+			parent: modmailCategory,
+			topic: `Modmail Thread For: ${authorOfModmail}\nCreated By: ${convertedToThreadBy}\nCreated Time: ${DateUtil.getTime(createdTime)}`
+		});
+		await threadChannel.lockPermissions().catch(e => { });
+
+		// create base message
+		const baseMsgEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(authorOfModmail.user)
+			.setTitle(`Modmail Thread ⇒ ${authorOfModmail.user.tag}`)
+			.setDescription(`⇒ **Converted By:** ${convertedToThreadBy}\n⇒ **Author of Modmail:** ${authorOfModmail}\n⇒ **Thread Creation Time:** ${DateUtil.getTime(createdTime)}`)
+			.addField("Reactions", "⇒ React with 📝 to send a message. You may also use the `;respond` command.\n⇒ React with 🛑 to close this thread.\n⇒ React with 🚫 to modmail blacklist the author of this modmail.")
+			.setTimestamp()
+			.setFooter("Modmail Thread • Converted");
+
+		const baseMessage: Message = await threadChannel.send(baseMsgEmbed);
+		FastReactionMenuManager.reactFaster(baseMessage, ["📝", "🛑", "🚫"]);
+		await baseMessage.pin().catch(e => { });
+
+		// send first message
+		const firstMsgEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(authorOfModmail.user, "RED")
+			.setTitle(`${authorOfModmail.user.tag} ⇒ Modmail Thread`)
+			.setFooter(`${authorOfModmail.id} • Modmail Thread`)
+			.setTimestamp();
+		const attachmentsIndex: number = originalModMailMessage.embeds[0].fields
+			.findIndex(x => x.name === "Attachments");
+		let desc: string = ""; 
+		if (originalModMailMessage.embeds[0].description !== null) {
+			desc = originalModMailMessage.embeds[0].description;
+			firstMsgEmbed.setDescription(originalModMailMessage.embeds[0].description);
+		}
+
+		if (attachmentsIndex !== -1) {
+			firstMsgEmbed.addField("Attachments", originalModMailMessage.embeds[0].fields[attachmentsIndex].value);
+		}
+
+		const firstMsg: Message = await threadChannel.send(firstMsgEmbed);
+		firstMsg.react("📝").catch(e => { });
+
+		const threadInfo: IModmailThread = {
+			originalModmailAuthor: authorOfModmail.id,
+			baseMsg: baseMessage.id,
+			startedOn: createdTime,
+			channel: threadChannel.id,
+			originalModmailMessageId: originalModMailMessage.id,
+			messages: [
+				{
+					authorId: authorOfModmail.id,
+					tag: authorOfModmail.user.tag,
+					timeSent: new Date().getTime(),
+					content: desc,
+					attachments: []
+				}
+			]
+		};
+
+		// save to db
+		await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: convertedToThreadBy.guild.id }, {
+			$push: {
+				"properties.modMail": threadInfo
+			}
+		});
+
+		oldEmbed.setFooter("Converted to Modmail Thread.");
+		oldEmbed.addField("Modmail Thread Information", `This modmail message was converted to a modmail thread.\n⇒ Time: ${DateUtil.getTime(createdTime)}\n⇒ Converted By: ${convertedToThreadBy}`);
+		await originalModMailMessage.edit(oldEmbed).catch(e => { });
+		await originalModMailMessage.reactions.removeAll().catch(e => { });
 	}
 
 	/**
@@ -99,10 +461,18 @@ export module ModMailHandler {
 	 * @param originalModMailMessage The message from the modmail channel.
 	 * @param mod The moderator. 
 	 * @param guildDb The guild doc.
+	 * @param threadInfo The thread info, if any.
 	 */
-	export async function blacklistFromModmail(originalModMailMessage: Message, mod: GuildMember, guildDb: IRaidGuild): Promise<void> {
+	export async function blacklistFromModmail(
+		originalModMailMessage: Message,
+		mod: GuildMember,
+		guildDb: IRaidGuild,
+		threadInfo?: IModmailThread
+	): Promise<void> {
 		const oldEmbed: MessageEmbed = originalModMailMessage.embeds[0];
-		const authorOfModmailId: string = ((oldEmbed.footer as MessageEmbedFooter).text as string).split("•")[0].trim();
+		const authorOfModmailId: string = typeof threadInfo === "undefined"
+			? ((oldEmbed.footer as MessageEmbedFooter).text as string).split("•")[0].trim()
+			: threadInfo.originalModmailAuthor;
 
 		await originalModMailMessage.reactions.removeAll().catch(e => { });
 		const confirmBlacklist: MessageEmbed = MessageUtil.generateBlankEmbed(mod.user)
@@ -120,12 +490,19 @@ export module ModMailHandler {
 		).react();
 		if (resultantReaction === "TIME_CMD" || resultantReaction.name === "❌") {
 			await originalModMailMessage.edit(oldEmbed).catch(e => { });
-			// respond reaction
-			await originalModMailMessage.react("📝").catch(() => { });
-			// garbage reaction
-			await originalModMailMessage.react("🗑️").catch(() => { });
-			// blacklist
-			await originalModMailMessage.react("🚫").catch(() => { });
+			if (typeof threadInfo !== "undefined") {
+				FastReactionMenuManager.reactFaster(originalModMailMessage, ["📝", "🛑", "🚫"]);
+			}
+			else {
+				// respond reaction
+				await originalModMailMessage.react("📝").catch(() => { });
+				// garbage reaction
+				await originalModMailMessage.react("🗑️").catch(() => { });
+				// blacklist
+				await originalModMailMessage.react("🚫").catch(() => { });
+				// redirect
+				await originalModMailMessage.react("🔀").catch(() => { });
+			}
 			return;
 		}
 
@@ -147,6 +524,18 @@ export module ModMailHandler {
 			wasAlreadyBlacklisted = true;
 		}
 
+		if (typeof threadInfo !== "undefined") {
+			// end thread
+			await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: mod.guild.id }, {
+				$pull: {
+					"properties.modMail": {
+						channel: originalModMailMessage.channel.id
+					}
+				}
+			});
+			await originalModMailMessage.channel.delete().catch(e => { });
+		}
+
 		if (wasAlreadyBlacklisted) {
 			await originalModMailMessage.delete().catch(e => { });
 			return;
@@ -154,10 +543,10 @@ export module ModMailHandler {
 
 		const embedToReplaceOld: MessageEmbed = MessageUtil.generateBlankEmbed(mod.user)
 			.setTitle("Blacklisted From Modmail")
-			.setDescription(`The user with ID \`${authorOfModmailId}\` has been blacklisted from using modmail. This message will delete in 10 seconds.`)
+			.setDescription(`The user with ID \`${authorOfModmailId}\` has been blacklisted from using modmail. This message will delete in 5 seconds.`)
 			.setFooter("Blacklisted from Modmail.");
 		await originalModMailMessage.edit(embedToReplaceOld)
-			.then(x => x.delete({ timeout: 10000 }))
+			.then(x => x.delete({ timeout: 5000 }))
 			.catch(e => { });
 
 		const moderationChannel: TextChannel | undefined = mod.guild.channels.cache.get(guildDb.generalChannels.logging.moderationLogs) as TextChannel | undefined;
@@ -175,11 +564,162 @@ export module ModMailHandler {
 	}
 
 	/**
+	 * Responds to a message sent in a modmail thread. Should be called after someone reacts to the 📝 emoji in a threaded channel. 
+	 * @param modmailThread The modmail thread from the doc.
+	 * @param memberThatWillRespond The member that will respond.
+	 * @param guildDb The guild document.
+	 * @param channel The thread channel. 
+	 */
+	export async function respondToThreadModmail(
+		modmailThread: IModmailThread,
+		memberThatWillRespond: GuildMember,
+		guildDb: IRaidGuild,
+		channel: TextChannel
+	): Promise<void> {
+		// make sure member exists
+		let memberToRespondTo: GuildMember;
+		try {
+			memberToRespondTo = await memberThatWillRespond.guild.members
+				.fetch(modmailThread.originalModmailAuthor);
+		}
+		catch (e) {
+			await closeModmailThread(channel, modmailThread, guildDb, memberThatWillRespond);
+			const noUserFoundEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(memberThatWillRespond.user)
+				.setTitle("User Not Found")
+				.setDescription("The person you were trying to contact couldn't be found; maybe he or she left the server? The modmail thread has been deleted as a result.")
+				.setFooter("Modmail");
+			await memberThatWillRespond.send(noUserFoundEmbed).catch(e => { });
+			return;
+		}
+
+		// wait for msg to be sent
+		CurrentlyRespondingToModMail.set(memberThatWillRespond.id, modmailThread.originalModmailAuthor);
+		// function declaration that returns embed that
+		// contains response
+		function getRespEmbed(resp: string, anony: boolean): MessageEmbed {
+			const e: MessageEmbed = MessageUtil.generateBlankEmbed(memberThatWillRespond.user)
+				.setTitle("Your Response")
+				.setDescription(resp === "" ? "N/A" : resp)
+				.setFooter("Modmail Response System")
+				.addField("Instructions", `Please respond to the above message by typing a message here. When you are finished, simply send it here. You will have 10 minutes. You are not able to send images or attachments directly.\n⇒ React with ✅ once you are satisfied with your response above. This will send the message.\n⇒ React with ❌ to cancel this process.\n⇒ React with 👀 to either show or hide your identity to the person that sent the modmail message. **Identity:** ${anony ? "Private" : "Public"}`);
+
+			return e;
+		}
+
+		let responseToMail: string = "";
+		let anonymous: boolean = true;
+
+		let botMsg: Message | null = null;
+		let hasReactedToMessage: boolean = false;
+		while (true) {
+			const responseEmbed: MessageEmbed = getRespEmbed(responseToMail, anonymous);
+
+			if (botMsg === null) {
+				botMsg = await channel.send(responseEmbed);
+			}
+			else {
+				// this should be awaitable, right? 
+				botMsg = await botMsg.edit(responseEmbed);
+			}
+
+			const response: Message | Emoji | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<Message>(
+				memberThatWillRespond,
+				{ embed: responseEmbed },
+				10,
+				TimeUnit.MINUTE,
+				channel
+			).sendWithReactCollector(GenericMessageCollector.getPureMessage(channel), {
+				reactions: ["✅", "❌", "👀"],
+				cancelFlag: "--cancel",
+				reactToMsg: !hasReactedToMessage,
+				deleteMsg: false,
+				removeAllReactionAfterReact: false,
+				oldMsg: botMsg
+			});
+
+			if (hasReactedToMessage) {
+				hasReactedToMessage = !hasReactedToMessage;
+			}
+
+			if (response instanceof Emoji) {
+				if (response.name === "❌") {
+					await botMsg.delete().catch(e => { });
+					CurrentlyRespondingToModMail.delete(memberThatWillRespond.id);
+					return;
+				}
+				else if (response.name === "👀") {
+					anonymous = !anonymous;
+
+				}
+				else {
+					if (responseToMail.length !== 0) {
+						break;
+					}
+				}
+			}
+			else {
+				if (response === "CANCEL_CMD" || response === "TIME_CMD") {
+					await botMsg.delete().catch(() => { });
+					return;
+				}
+
+				if (response.content.length !== 0) {
+					responseToMail = response.content;
+				}
+			}
+		} // end while
+
+		await botMsg.delete().catch(console.error);
+		const replyEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(anonymous ? memberThatWillRespond.guild : memberThatWillRespond.user)
+			.setTitle(`${memberThatWillRespond.guild} ⇒ You`)
+			.setDescription(responseToMail)
+			.setFooter("Modmail Response");
+
+		let sent: boolean = true;
+		try {
+			await memberToRespondTo.send(replyEmbed);
+		}
+		catch (e) {
+			sent = false;
+		}
+
+		const replyRecordsEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(memberThatWillRespond.user, sent ? "GREEN" : "YELLOW")
+			.setTitle(`${memberThatWillRespond.displayName} ⇒ ${memberToRespondTo.user.tag}`)
+			.setDescription(responseToMail)
+			.setFooter(`Sent ${anonymous ? "Anonymously" : "Publicly"}`)
+			.setTimestamp();
+
+		if (!sent) {
+			replyRecordsEmbed.addField("⚠️ Error", "Something went wrong when trying to send this modmail message. The recipient has either blocked the bot or prevented server members from DMing him/her.");
+		}
+
+		if (sent) {
+			await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({
+				guildID: memberThatWillRespond.guild.id,
+				"properties.modMail.originalModmailAuthor": modmailThread.originalModmailAuthor
+			}, {
+				$push: {
+					"properties.modMail.$.messages": {
+						authorId: memberThatWillRespond.id,
+						tag: memberThatWillRespond.user.tag,
+						timeSent: new Date().getTime(),
+						content: responseToMail,
+						attachments: []
+					}
+				}
+			});
+		}
+
+		await channel.send(replyRecordsEmbed).catch(e => { });
+		CurrentlyRespondingToModMail.delete(memberThatWillRespond.id);
+	}
+
+	/**
 	 * Allows a person to respond to a modmail message. 
 	 * @param originalModMailMessage The message from the mod mail channel that the person is going to respond to.
 	 * @param memberThatWillRespond The person that will be responding to the modmail sender/initator. 
 	 */
-	export async function respondToModmail(originalModMailMessage: Message, memberThatWillRespond: GuildMember): Promise<void> {
+	export async function respondToGeneralModmail(originalModMailMessage: Message, memberThatWillRespond: GuildMember): Promise<void> {
 		// no permission
 		if (memberThatWillRespond.guild.me !== null && !memberThatWillRespond.guild.me.hasPermission("MANAGE_CHANNELS")) {
 			return;
@@ -189,7 +729,7 @@ export module ModMailHandler {
 		const oldEmbed: MessageEmbed = originalModMailMessage.embeds[0];
 		const authorOfModmailId: string = ((oldEmbed.footer as MessageEmbedFooter).text as string).split("•")[0].trim();
 		const guildDb: IRaidGuild = await new MongoDbHelper.MongoDbGuildManager(memberThatWillRespond.guild.id).findOrCreateGuildDb();
-		const originalModMailContent: string = typeof originalModMailMessage.embeds[0].description === "undefined"
+		const originalModMailContent: string = originalModMailMessage.embeds[0].description === null
 			? ""
 			: originalModMailMessage.embeds[0].description;
 
@@ -201,10 +741,10 @@ export module ModMailHandler {
 		catch (e) {
 			const noUserFoundEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(memberThatWillRespond.user)
 				.setTitle("User Not Found")
-				.setDescription("The person you were trying to find wasn't found. The person may have left the server. This modmail entry will be deleted in 10 seconds.")
+				.setDescription("The person you were trying to find wasn't found. The person may have left the server. This modmail entry will be deleted in 5 seconds.")
 				.setFooter("Modmail");
 			await originalModMailMessage.edit(noUserFoundEmbed)
-				.then(x => x.delete({ timeout: 10 * 1000 }))
+				.then(x => x.delete({ timeout: 5 * 1000 }))
 				.catch(() => { });
 			return;
 		}
@@ -238,6 +778,8 @@ export module ModMailHandler {
 				await originalModMailMessage.react("🗑️").catch(() => { });
 				// blacklist
 				await originalModMailMessage.react("🚫").catch(() => { });
+				// redir
+				await originalModMailMessage.react("🔀").catch(() => { });
 				return;
 			}
 		}
@@ -347,6 +889,7 @@ export module ModMailHandler {
 					await originalModMailMessage.react("📝").catch(() => { });
 					await originalModMailMessage.react("🗑️").catch(() => { });
 					await originalModMailMessage.react("🚫").catch(() => { });
+					await originalModMailMessage.react("🔀").catch(() => { });
 					await responseChannel.delete().catch(() => { });
 					CurrentlyRespondingToModMail.delete(memberThatWillRespond.id);
 					return;
@@ -363,7 +906,13 @@ export module ModMailHandler {
 			}
 			else {
 				if (response === "CANCEL_CMD" || response === "TIME_CMD") {
-					await botMsg.delete().catch(() => { });
+					await originalModMailMessage.edit(oldEmbed).catch(() => { });
+					await originalModMailMessage.react("📝").catch(() => { });
+					await originalModMailMessage.react("🗑️").catch(() => { });
+					await originalModMailMessage.react("🚫").catch(() => { });
+					await originalModMailMessage.react("🔀").catch(() => { });
+					await responseChannel.delete().catch(() => { });
+					CurrentlyRespondingToModMail.delete(memberThatWillRespond.id);
 					return;
 				}
 
@@ -379,7 +928,14 @@ export module ModMailHandler {
 			.addField("Original Message", originalModMailContent.length === 0 ? "N/A" : (originalModMailContent.length > 1012 ? originalModMailContent.substring(0, 1000) + "..." : originalModMailContent))
 			.setFooter("Modmail Response");
 
-		await authorOfModmail.send(replyEmbed).catch(e => { });
+		let sent: boolean = true;
+		try {
+			await authorOfModmail.send(replyEmbed);
+		}
+		catch (e) {
+			sent = false;
+		}
+
 		await responseChannel.delete().catch(() => { });
 		CurrentlyRespondingToModMail.delete(memberThatWillRespond.id);
 
@@ -407,7 +963,9 @@ export module ModMailHandler {
 			.appendLine()
 			.append(`Responder Tag: ${memberThatWillRespond.user.tag}`)
 			.appendLine()
-			.append(`Time: ${DateUtil.getTime()} (UTC)`);
+			.append(`Time: ${DateUtil.getTime()} (UTC)`)
+			.appendLine()
+			.append(`Sent Status: ${sent ? "Message Sent Successfully" : "Message Failed To Send"}`);
 
 		// see if we should store 
 		const modMailStorage: TextChannel | undefined = memberThatWillRespond.guild.channels.cache
@@ -424,8 +982,8 @@ export module ModMailHandler {
 		// get old responses
 		const oldRespArr: EmbedField[] = oldEmbed.fields.splice(oldEmbed.fields.findIndex(x => x.name === "Last Response By"), 1);
 		const lastResponse: EmbedField = oldRespArr[0];
-		
-		let tempLastResp: string = `${memberThatWillRespond} (${DateUtil.getTime()}) ${addLogStr}`;
+
+		let tempLastResp: string = `${memberThatWillRespond} (${DateUtil.getTime()}) ${addLogStr} ${!sent ? "`⚠️`" : ""}`;
 		let lastRespByStr: string = "";
 		if (lastResponse.value === "None.") {
 			lastRespByStr = tempLastResp;
@@ -450,13 +1008,14 @@ export module ModMailHandler {
 		await originalModMailMessage.react("📝").catch(() => { });
 		await originalModMailMessage.react("🗑️").catch(() => { });
 		await originalModMailMessage.react("🚫").catch(() => { });
+		await originalModMailMessage.react("🔀").catch(() => { });
 	}
 
 	/**
 	 * Selects a guild for modmail. 
 	 * @param user The user that initated this.
 	 */
-	async function chooseGuild(user: User): Promise<Guild | null> {
+	async function chooseGuild(user: User): Promise<Guild | "cancel" | null> {
 		const guildsToChoose: Guild[] = [];
 
 		const allGuilds: IRaidGuild[] = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.find({}).toArray();
@@ -481,7 +1040,6 @@ export module ModMailHandler {
 			return guildsToChoose[0];
 		}
 
-		UserAvailabilityHelper.InMenuCollection.set(user.id, UserAvailabilityHelper.MenuType.PRE_MODMAIL);
 		const selectedGuild: Guild | "CANCEL" = await new Promise(async (resolve) => {
 			const embed: MessageEmbed = new MessageEmbed()
 				.setAuthor(user.tag, user.displayAvatarURL())
@@ -489,18 +1047,19 @@ export module ModMailHandler {
 				.setDescription("The message sent above will be sent to a designated server of your choice. Please select the server by typing the number corresponding to the server that you want to. To cancel, please type `cancel`.")
 				.setColor("RANDOM")
 				.setFooter(`${guildsToChoose.length} Servers.`);
-			const arrFieldsContent: string[] = StringUtil.arrayToStringFields<Guild>(guildsToChoose, (i, elem) => `\`[${i + 1}]\` ${elem.name}\n`);
+			const arrFieldsContent: string[] = ArrayUtil.arrayToStringFields<Guild>(guildsToChoose, (i, elem) => `\`[${i + 1}]\` ${elem.name}\n`);
 			for (const elem of arrFieldsContent) {
 				embed.addField("Possible Guilds", elem);
 			}
 
+			const dmChannel: DMChannel = await user.createDM();
 			const numSelected: number | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<number>(
 				user,
 				{ embed: embed },
 				5,
 				TimeUnit.MINUTE,
-				user
-			).send(GenericMessageCollector.getNumber(user, 1, arrFieldsContent.length));
+				dmChannel
+			).send(GenericMessageCollector.getNumber(dmChannel, 1, guildsToChoose.length));
 
 			if (numSelected === "CANCEL_CMD" || numSelected === "TIME_CMD") {
 				resolve("CANCEL");
@@ -509,8 +1068,121 @@ export module ModMailHandler {
 				resolve(guildsToChoose[numSelected - 1]);
 			}
 		});
-		UserAvailabilityHelper.InMenuCollection.delete(user.id)
 
-		return selectedGuild === "CANCEL" ? null : selectedGuild;
+		return selectedGuild === "CANCEL"
+			? "cancel"
+			: selectedGuild;
+	}
+
+	/**
+	 * Closes the modmail thread.
+	 * @param threadChannel The thread channel to remove.
+	 * @param threadInfo The modmail thread info.
+	 * @param guildDb The guild doc.
+	 * @param closedBy The person that closed this modmail thread.
+	 */
+	export async function closeModmailThread(
+		threadChannel: TextChannel,
+		threadInfo: IModmailThread,
+		guildDb: IRaidGuild,
+		closedBy: GuildMember
+	): Promise<void> {
+		if (threadInfo.originalModmailMessageId !== ""
+			&& threadChannel.guild.channels.cache.has(guildDb.generalChannels.modMailChannel)) {
+			const modmailChannel: TextChannel = threadChannel.guild.channels.resolve(guildDb.generalChannels.modMailChannel) as TextChannel;
+			let oldModMailMessage: Message | null = null;
+			try {
+				oldModMailMessage = await modmailChannel.messages.fetch(threadInfo.originalModmailMessageId);
+			}
+			finally {
+				if (oldModMailMessage !== null) {
+					// we have message
+					const modmailEmbed: MessageEmbed = oldModMailMessage.embeds[0];
+					const modmailThreadInfoIndex: number = modmailEmbed
+						.fields.findIndex(x => x.name === "Modmail Thread Information");
+					if (modmailThreadInfoIndex !== -1) {
+						modmailEmbed.spliceFields(modmailThreadInfoIndex, 1);
+					}
+					const allPossibleFields: EmbedField[] = modmailEmbed.fields
+						.filter(x => x.name === "Last Response By");
+					const lastResponseByIndex: number = modmailEmbed.fields
+						.findIndex(x => x.value === allPossibleFields[allPossibleFields.length - 1].value);
+
+					if (lastResponseByIndex !== -1) {
+						const modMailStorage: TextChannel | undefined = closedBy.guild.channels.cache
+							.get(guildDb.generalChannels.modMailStorage) as TextChannel | undefined;
+
+						let addRespInfo: string;
+						if (typeof modMailStorage === "undefined") {
+							addRespInfo = `${closedBy} (${DateUtil.getTime()}) \`[Thread Closed]\`\n`;
+						}
+						else {
+							const sb: StringBuilder = new StringBuilder()
+								.append("MODMAIL THREAD INFORMATION")
+								.appendLine()
+								.append(`Author ID of Modmail: ${threadInfo.originalModmailAuthor}`)
+								.appendLine()
+								.append(`Thread Creation Time: ${DateUtil.getTime(threadInfo.startedOn)}`)
+								.appendLine()
+								.appendLine()
+								.append("==============================")
+								.appendLine();
+
+							for (const mmMessage of threadInfo.messages) {
+								sb.append(`[${DateUtil.getTime(mmMessage.timeSent)}] ${mmMessage.tag} (${mmMessage.authorId})`)
+									.appendLine()
+									.appendLine()
+									.append(`Message: ${mmMessage.content}`)
+									.appendLine()
+									.appendLine()
+									.append(`Attachment(s): [${mmMessage.attachments.join(", ")}]`)
+									.appendLine()
+									.append("==============================")
+									.appendLine();
+							}
+
+							const m: Message | void = await modMailStorage.send(DateUtil.getTime(), new MessageAttachment(Buffer.from(sb.toString(), "utf8"), `${closedBy.id}_${threadInfo.originalModmailAuthor}_modmail.txt`)).catch(console.error);
+							if (typeof m !== "undefined" && m.attachments.size > 0) {
+								addRespInfo = `${closedBy} (${DateUtil.getTime()}) [[Thread Messages](${(m.attachments.first() as MessageAttachment).url})]\n`;
+							}
+							else {
+								addRespInfo = `${closedBy} (${DateUtil.getTime()}) \`[Thread Closed]\`\n`;
+							}
+						}
+
+						if (modmailEmbed.fields[lastResponseByIndex].value === "None.") {
+							modmailEmbed.fields[lastResponseByIndex].value = addRespInfo;
+						}
+						else {
+							if (modmailEmbed.fields[lastResponseByIndex].value.length + addRespInfo.length > 1000) {
+								modmailEmbed.addField("Last Response By", addRespInfo);
+							}
+							else {
+								modmailEmbed.fields[lastResponseByIndex].value += `\n${addRespInfo}`;
+							}
+						}
+					}
+
+					modmailEmbed.setTitle("✅ Modmail Entry");
+					modmailEmbed.setColor("GREEN");
+					modmailEmbed.setFooter(`${threadInfo.originalModmailAuthor} • Modmail Message`);
+
+					await oldModMailMessage.edit(modmailEmbed).catch(e => { });
+					await oldModMailMessage.react("📝").catch(() => { });
+					await oldModMailMessage.react("🗑️").catch(() => { });
+					await oldModMailMessage.react("🚫").catch(() => { });
+					await oldModMailMessage.react("🔀").catch(() => { });
+				}
+			}
+		}
+
+		await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: threadChannel.guild.id }, {
+			$pull: {
+				"properties.modMail": {
+					channel: threadChannel.id
+				}
+			}
+		});
+		await threadChannel.delete().catch(e => { });
 	}
 }

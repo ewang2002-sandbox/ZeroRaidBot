@@ -31,7 +31,8 @@ export class UnblacklistCommand extends Command {
             ),
             true,
             false,
-            false
+            false,
+            5
         );
     }
 
@@ -109,15 +110,13 @@ export class UnblacklistCommand extends Command {
             }
         }
 
-        desc.append(`⇒ Reason: ${reason}`)
-            .appendLine();
-
         const moderationChannel: TextChannel | undefined = guild.channels.cache.get(guildDb.generalChannels.logging.moderationLogs) as TextChannel | undefined;
 
         const embed: MessageEmbed = new MessageEmbed()
             .setTitle("🚩 Unblacklisted")
             .setDescription(desc.toString())
             .setColor("GREEN")
+            .addField("⇒ Unblacklist Reason", reason)
             .setFooter("Unblacklisted on")
             .setTimestamp();
 

@@ -24,12 +24,13 @@ export class UnsuspendCommand extends Command {
                 ["KICK_MEMBERS"],
                 ["MANAGE_ROLES", "EMBED_LINKS"],
                 ["universalRaidLeader", "headRaidLeader", "officer", "moderator"],
-                ["SECTION_RL"],
+                ["SECTION_RL", "SECTION_HRL"],
 				false
 			),
 			true,
 			false,
-			false
+            false,
+            5
 		);
     }
     
@@ -78,11 +79,9 @@ export class UnsuspendCommand extends Command {
         }
 
         if (!memberToUnsuspend.roles.cache.has(resolvedSuspendedRole.id) || typeof suspensionData === "undefined") {
-            await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null).setTitle("Member Not Suspended").setDescription("The member is already unsuspended. Try again."), msg.channel);
+            await MessageUtil.send(MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", null).setTitle("Member Not Suspended").setDescription("The member is already unsuspended. If the person still has the suspended role, then the person was improperly suspended -- you will have to manually remove the suspended role."), msg.channel);
             return;
         }
-
-        
 
         args.shift();
         let reason: string = args.join(" ").trim().length === 0 ? "No reason provided" : args.join(" ").trim();
@@ -106,7 +105,8 @@ export class UnsuspendCommand extends Command {
         const embed: MessageEmbed = new MessageEmbed()
             .setAuthor(memberToUnsuspend.user.tag, memberToUnsuspend.user.displayAvatarURL())
             .setTitle("🏁 Member Unsuspended")
-            .setDescription(`⇒ Unsuspended Member: ${memberToUnsuspend} (${memberToUnsuspend.displayName})\n⇒ Moderator: ${msg.author} (${mod.displayName})\n⇒ Reason: ${reason}`)
+            .setDescription(`⇒ Unsuspended Member: ${memberToUnsuspend} (${memberToUnsuspend.displayName})\n⇒ Moderator: ${msg.author} (${mod.displayName})`)
+            .addField("⇒ Unsuspension Reason", reason)
             .setColor("GREEN")
             .setTimestamp()
             .setFooter("Unsuspended Command Executed At");

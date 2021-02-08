@@ -36,7 +36,8 @@ export class SuggestionCommand extends Command {
 			),
 			false, // guild-only command. 
 			false,
-			false
+			false,
+			0
 		);
 	}
 

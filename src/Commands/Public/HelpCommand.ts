@@ -1,13 +1,13 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, MessageEmbed, ClientApplication, User, MessageCollector, TextChannel } from "discord.js";
+import { Message, MessageEmbed, ClientApplication, User, MessageCollector, TextChannel, GuildMember } from "discord.js";
 import { StringUtil } from "../../Utility/StringUtil";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { Zero } from "../../Zero";
 import { RoleNames } from "../../Definitions/Types";
 import { OtherUtil } from "../../Utility/OtherUtil";
-import { BotConfiguration } from "../../Configuration/Config";
+import { BotConfiguration, DefaultPrefix } from "../../Configuration/Config";
 
 export class HelpCommand extends Command {
 	public constructor() {
@@ -30,7 +30,8 @@ export class HelpCommand extends Command {
 			),
 			false, // guild-only command. 
 			false,
-			false
+			false,
+			0
 		);
 	}
 
@@ -49,7 +50,7 @@ export class HelpCommand extends Command {
 		if (resolvedCommand === null) {
 			cmdEmbed
 				.setTitle("Current Bot Modules")
-				.setDescription(`${commandToLookFor === "" ? "Below are a list of bot commands" : `The command, \`${commandToLookFor}\`, could not be found. Try one of the below commands`}. To learn how to use a command, type \`;help <Command Name>\` (do not include the < >).`);
+				.setDescription(`${commandToLookFor === "" ? "Below are a list of bot commands" : `The command, \`${commandToLookFor}\`, could not be found. Try one of the below commands`}. To learn how to use a command, type \`${DefaultPrefix}help <Command Name>\` (do not include the < >).`);
 
 			let cmdCount: number = 0;
 			let app: ClientApplication = await msg.client.fetchApplication();
@@ -58,7 +59,6 @@ export class HelpCommand extends Command {
 			for (const [name, cmds] of Zero.CmdManager.getCommands()) {
 				let commands: string = "";
 				for (const command of cmds) {
-					cmdCount += cmds.length;
 					// guild only command but not in guild
 					// so we skip
 					if (command.isGuildOnly()) {
@@ -69,10 +69,19 @@ export class HelpCommand extends Command {
 					else {
 						if (command.isBotOwnerOnly()) {
 							if (owners.some(x => x === msg.author.id)) {
+								cmdCount++;
 								commands += command.getMainCommandName() + "\n";
 							}
 						}
 						else {
+							if (guildDb !== null
+								&& typeof guildDb.properties.blockedCommands !== "undefined"
+								&& guildDb.properties.blockedCommands.includes(command.getMainCommandName())
+								&& !((msg.member as GuildMember).hasPermission("ADMINISTRATOR"))) {
+								continue;
+							}
+
+							cmdCount++;
 							commands += command.getMainCommandName() + "\n";
 						}
 						continue;
@@ -82,22 +91,28 @@ export class HelpCommand extends Command {
 						continue;
 					}
 
-					const cmdUserPerm: [boolean, boolean, boolean] = OtherUtil.checkCommandPerms(msg, command, guildDb);
-					let canRunCommand: boolean;
-					if (cmdUserPerm[2]) {
-						canRunCommand = cmdUserPerm[0] || cmdUserPerm[1];
-					}
-					else {
-						canRunCommand = cmdUserPerm[1];
+					if (typeof guildDb.properties.blockedCommands !== "undefined"
+						&& guildDb.properties.blockedCommands.includes(command.getMainCommandName())
+						&& !((msg.member as GuildMember).hasPermission("ADMINISTRATOR"))) {
+						continue;
 					}
 
+					let canRunCommand: boolean = OtherUtil.checkCommandPerms(msg, command, guildDb);
+
 					if (canRunCommand) {
+						cmdCount++;
 						commands += command.getMainCommandName() + "\n";
 					}
 				}
 
 				if (commands.length !== 0) {
-					cmdEmbed.addField(name, StringUtil.applyCodeBlocks(commands));
+					cmdEmbed.addField(name, StringUtil.applyCodeBlocks(
+						commands
+							.split("\n")
+							.map(x => x.trim())
+							.filter(x => x.length !== 0)
+							.join(", "))
+						);
 					commands = "";
 				}
 			}

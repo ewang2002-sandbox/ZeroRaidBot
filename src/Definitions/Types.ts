@@ -16,4 +16,6 @@ export type RoleNames = "suspended"
 export type LeaderPermType = "SECTION_RL"
     | "SECTION_ARL"
     | "SECTION_TRL"
-    | "ALL_RL_TYPE";
+    | "SECTION_RL"
+    | "SECTION_HRL"
+    | "ALL_RLS";

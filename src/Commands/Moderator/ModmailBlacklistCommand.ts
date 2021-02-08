@@ -28,7 +28,8 @@ export class ModmailBlacklistCommand extends Command {
 			),
 			true,
 			false,
-			false
+			false,
+			5
 		);
 	}
 
@@ -77,7 +78,7 @@ export class ModmailBlacklistCommand extends Command {
 			}
 		});
 
-		MessageUtil.send({ content: `${memberToModmailBl} has been blacklisted from modmail successfully.` }, msg.channel);
+		MessageUtil.send({ content: `${memberToModmailBl} has been blacklisted from modmail successfully.` }, msg.channel);		
 
 		const moderationChannel: TextChannel | undefined = guild.channels.cache.get(guildDb.generalChannels.logging.moderationLogs) as TextChannel | undefined;
 
@@ -88,7 +89,7 @@ export class ModmailBlacklistCommand extends Command {
 		const embed: MessageEmbed = new MessageEmbed()
 			.setTitle("Modmail Blacklisted")
 			.setDescription(`⇒ **Blacklisted:** ${memberToModmailBl} (${memberToModmailBl.id})\n⇒ **Moderator:** ${msg.author} (${msg.author.id})`)
-			.addField("⇒ Reason", reason)
+			.addField("⇒ Modmail Blacklist Reason", reason)
 			.setColor("RED")
 			.setFooter("Blacklisted on")
 			.setTimestamp();

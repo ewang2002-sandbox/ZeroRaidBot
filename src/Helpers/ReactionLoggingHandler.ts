@@ -8,7 +8,7 @@ import { Zero } from "../Zero";
 export module ReactionLoggingHandler {
 	let HasExecuted: boolean = false;
 	const AllKeyEmojis: [string, string][] = [];
-	const MessageSendQueue: [TextChannel, MessageEmbed][] = [];
+	const MessageSendQueue: [TextChannel, MessageEmbed, GuildMember][] = [];
 
 	export async function reacted(guild: Guild, reaction: MessageReaction, user: GuildMember, allSections: ISection[], type: "REACT" | "UNREACT"): Promise<void> {
 		const sectionWithAfkCheck: ISection | undefined = allSections
@@ -46,14 +46,14 @@ export module ReactionLoggingHandler {
 				.setFooter("Reaction Removed.");
 		}
 
-		MessageSendQueue.push([reactLogChan, embed]);
+		MessageSendQueue.push([reactLogChan, embed, user]);
 	}
 
 	async function queueSend(): Promise<void> {
 		setInterval(async () => {
-			const data: [TextChannel, MessageEmbed][] = MessageSendQueue.splice(0, 1);
+			const data: [TextChannel, MessageEmbed, GuildMember][] = MessageSendQueue.splice(0, 1);
 			if (data.length !== 0) {
-				data[0][0].send(data[0][1]).catch(e => { });
+				data[0][0].send(data[0][2], data[0][1]).catch(e => { });
 			}
 		}, 2 * 1000);
 	}
@@ -66,6 +66,9 @@ export module ReactionLoggingHandler {
 		HasExecuted = true;
 		for (const afk of AFKDungeon) {
 			for (const key of afk.keyEmojIDs) {
+				if (key.keyEmojiName === "Wine Cellar Incantation") {
+					continue;
+				}
 				AllKeyEmojis.push([key.keyEmojiName, key.keyEmojID]);
 			}
 		}

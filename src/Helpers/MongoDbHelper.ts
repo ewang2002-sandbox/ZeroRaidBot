@@ -6,6 +6,7 @@ import { AFKDungeon } from "../Constants/AFKDungeon";
 import { IRaidBot } from "../Templates/IRaidBot";
 import { Zero } from "../Zero";
 import { ClientUser } from "discord.js";
+import { VerificationHandler } from "./VerificationHandler";
 
 export module MongoDbHelper {
 	export let MongoBotSettingsClient: Collection<IRaidBot>;
@@ -30,9 +31,7 @@ export module MongoDbHelper {
 		public async connect(): Promise<void> {
 			const mongoDbClient: MongoClient = new MongoClient(BotConfiguration.dbURL, {
 				useNewUrlParser: true,
-				autoReconnect: true,
-				reconnectInterval: 2500,
-				reconnectTries: 90
+				useUnifiedTopology: true
 			});
 
 			MongoDbHelper.MongoDbBase.MongoClient = await mongoDbClient.connect();
@@ -61,8 +60,8 @@ export module MongoDbHelper {
 		 * @param {string} inGameName The display in-game name. The resulting name will not have any symbols.
 		 */
 		public constructor(inGameName: string) {
-			if (inGameName.length > 10) {
-				throw new TypeError("Name cannot be greater than 10 characters.");
+			if (inGameName.length > 14) {
+				throw new TypeError("Name cannot be greater than 14 characters.");
 			}
 			this._inGameName = inGameName.replace(/[^A-Za-z]/g, "");
 		}
@@ -185,20 +184,7 @@ export module MongoDbHelper {
 			return new Promise((resolve) => {
 				MongoDbGuildManager.MongoGuildClient.insertOne({
 					guildID: this._guildID,
-					verification: {
-						stars: {
-							required: false,
-							minimum: 0
-						},
-						aliveFame: {
-							required: false,
-							minimum: 0
-						},
-						maxedStats: {
-							required: false,
-							statsReq: [0, 0, 0, 0, 0, 0, 0, 0, 0]
-						}
-					},
+					verification: { ...VerificationHandler.DefaultVerification },
 					generalChannels: {
 						logging: {
 							moderationLogs: "",
@@ -251,7 +237,8 @@ export module MongoDbHelper {
 						mainSectionLeaderRole: {
 							sectionAlmostLeaderRole: "",
 							sectionLeaderRole: "",
-							sectionTrialLeaderRole: ""
+							sectionTrialLeaderRole: "",
+							sectionHeadLeaderRole: ""
 						}
 					},
 					properties: {
@@ -266,18 +253,20 @@ export module MongoDbHelper {
 						manualVerificationEntries: [],
 						dungeons: AFKDungeon.map(x => x.id),
 						showVerificationRequirements: true,
-						application: []
+						application: [],
+						blockedCommands: [],
+						removeEarlyLocKeyReacts: false,
 					},
 					moderation: {
 						blacklistedUsers: [],
 						amtSuspensions: 0,
 						blacklistedModMailUsers: [],
 						mutedUsers: [],
-						suspended: []
+						suspended: [],
+						blacklistedApplicants: []
 					},
 					activeRaidsAndHeadcounts: {
-						raidChannels: [],
-						headcounts: []
+						raidChannels: []
 					},
 					prefix: ";",
 					sections: []
@@ -288,9 +277,9 @@ export module MongoDbHelper {
 		}
 
 		/**
- 		* Deletes any data linked to the guild ID from the DB.
- 		* @returns {Promise<number>} The amount of guild data deleted.
- 		*/
+			* Deletes any data linked to the guild ID from the DB.
+			* @returns {Promise<number>} The amount of guild data deleted.
+			*/
 		public async deleteGuildDB(): Promise<number> {
 			return new Promise((resolve) => {
 				MongoDbGuildManager.MongoGuildClient.deleteMany({ guildID: this._guildID }).then(x => {

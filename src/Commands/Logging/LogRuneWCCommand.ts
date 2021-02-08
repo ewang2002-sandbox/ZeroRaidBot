@@ -56,12 +56,13 @@ export class LogRuneWCCommand extends Command {
                 [],
                 [],
                 ["headRaidLeader", "universalRaidLeader", "universalAlmostRaidLeader"],
-                ["ALL_RL_TYPE"],
+                ["ALL_RLS"],
                 false
             ),
             true,
             false,
-            false
+            false,
+            5
         );
     }
 

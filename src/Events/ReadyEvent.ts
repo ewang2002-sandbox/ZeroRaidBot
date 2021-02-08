@@ -8,11 +8,16 @@ import { IRaidBot } from "../Templates/IRaidBot";
 import { DateUtil } from "../Utility/DateUtil";
 import { BOT_VERSION } from "../Constants/ConstantVars";
 import { ReactionLoggingHandler } from "../Helpers/ReactionLoggingHandler";
+import { BotConfiguration } from "../Configuration/Config";
 
 export async function onReadyEvent() {
 	await mongoPreloader();
 	const guildBots: string[] = [];
 	for await (let [id, guild] of Zero.RaidClient.guilds.cache) {
+		if (BotConfiguration.exemptGuild.includes(guild.id)) {
+			continue;
+		}
+		
 		guildBots.push(id);
 		const g = new MongoDbHelper.MongoDbGuildManager(id);
 		const doc: IRaidGuild = await g.findOrCreateGuildDb();
@@ -80,9 +85,11 @@ export async function onReadyEvent() {
 	// get info
 	let app: ClientApplication = await Zero.RaidClient.fetchApplication();
 	let owner: User = await Zero.RaidClient.users.fetch((app.owner as User).id);
-	console.info('\x1b[36m%s\x1b[0m', `${(Zero.RaidClient.user as ClientUser).tag} (Version ${BOT_VERSION}) has started.\nBOT TAG: ${(Zero.RaidClient.user as ClientUser).tag}\nBOT ID: ${(Zero.RaidClient.user as ClientUser).id}\nOWNER TAG: ${owner.tag}\nOWNER ID: ${owner.id}\nTIME: ${DateUtil.getTime()}`);
+	console.info('\x1b[36m%s\x1b[0m', `${(Zero.RaidClient.user as ClientUser).tag} (Version ${BOT_VERSION}) has started.\nBOT TAG: ${(Zero.RaidClient.user as ClientUser).tag}\nBOT ID: ${(Zero.RaidClient.user as ClientUser).id}\nOWNER TAG: ${owner.tag}\nOWNER ID: ${owner.id}\nTIME: ${DateUtil.getTime()}\n\n\n`);
 
 	ReactionLoggingHandler.preLoadAllKeyEmojis();
+
+	Zero.UserDatabase = await MongoDbHelper.MongoDbUserManager.MongoUserClient.find({}).toArray();
 }
 
 /**

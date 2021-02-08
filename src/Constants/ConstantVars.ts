@@ -1,11 +1,4 @@
-import { PRIVATE_BOT, APIUrl } from "../Configuration/Config";
-
-/**
- * RealmEye API to use. 
- */
-export const RealmEyeAPILink: string = PRIVATE_BOT 
-    ? APIUrl
-    : "https://nightfirec.at/realmeye-api/?player=";  
+import { BotConfiguration, PRIVATE_BOT } from "../Configuration/Config";
 
 /**
  * How long notification embeds should last before they are deleted. This should be in milliseconds.

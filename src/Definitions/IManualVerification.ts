@@ -1,4 +1,4 @@
-import { INameHistory } from "./ICustomREVerification";
+import { PrivateApiDefinitions } from "../Definitions/PrivateApiDefinitions";
 
 export interface IManualVerification {
     /**
@@ -24,7 +24,7 @@ export interface IManualVerification {
     /**
      * Name History.
      */
-    nameHistory: INameHistory[];
+    nameHistory: PrivateApiDefinitions.INameHistory;
 
     /**
      * The ID of the message corresponding to the message in the manual verification channel.

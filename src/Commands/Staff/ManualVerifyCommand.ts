@@ -11,14 +11,10 @@ import { IManualVerification } from "../../Definitions/IManualVerification";
 import { VerificationHandler } from "../../Helpers/VerificationHandler";
 import { GenericMessageCollector } from "../../Classes/Message/GenericMessageCollector";
 import { TimeUnit } from "../../Definitions/TimeUnit";
-import { AxiosResponse } from "axios";
-import { Zero } from "../../Zero";
-import { RealmEyeAPILink } from "../../Constants/ConstantVars";
-import { INameHistory, IAPIError } from "../../Definitions/ICustomREVerification";
 import { FilterQuery } from "mongodb";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
-import { IRealmEyeNoUser } from "../../Definitions/IRealmEyeNoUser";
-import { IRealmEyeAPI } from "../../Definitions/IRealmEyeAPI";
+import { PrivateApiDefinitions } from "../../Definitions/PrivateApiDefinitions";
+import { RealmSharperWrapper } from "../../Helpers/RealmSharperWrapper";
 
 export class ManualVerifyCommand extends Command {
     private readonly _emojis: EmojiResolvable[] = [
@@ -372,21 +368,20 @@ export class ManualVerifyCommand extends Command {
                         return;
                     }
 
-                    let requestData: AxiosResponse<IRealmEyeNoUser | IRealmEyeAPI>;
+                    let requestData: PrivateApiDefinitions.IPlayerData | null;
                     try {
-                        requestData = await Zero.AxiosClient
-                            .get<IRealmEyeNoUser | IRealmEyeAPI>(RealmEyeAPILink + collectedMessage.content);
+                        requestData = await RealmSharperWrapper.getPlayerInfo(collectedMessage.content);
                     }
                     catch (e) {
                         return "ERROR_";
                     }
 
-                    if ("error" in requestData.data) {
+                    if (requestData === null) {
                         await MessageUtil.send({ content: `The profile, \`${collectedMessage.content}\`, could not be found.` }, msg.channel);
                         return;
                     }
                     else {
-                        return requestData.data.player;
+                        return requestData.name;
                     }
                 }, "-cancel"
             );
@@ -401,27 +396,21 @@ export class ManualVerifyCommand extends Command {
             }
 
             
-            let nameHistory: INameHistory[] | IAPIError;
+            let nameHistory: PrivateApiDefinitions.INameHistory | null;
             try {
-                nameHistory = await VerificationHandler.getRealmEyeNameHistory(name);
+                nameHistory = await RealmSharperWrapper.getNameHistory(name);
             } catch (e) {
                 MessageUtil.send({ content: "An error has occurred when trying to check this person's Name History. This is most likely because RealmEye is down or slow. Process canceled." }, msg.channel);
                 return;
             }
 
-            if ("errorMessage" in nameHistory) {
-                MessageUtil.send({ content: "This person's Name History is not public! Ensure the person's name history is public and then try again." }, msg.channel);
-                return;
-            }
-
-            // BLACKLIST CHECK
-            for (const blacklistEntry of guildData.moderation.blacklistedUsers) {
-                for (const nameEntry of nameHistory.map(x => x.name)) {
-                    if (blacklistEntry.inGameName.toLowerCase() === nameEntry.toLowerCase()) {
-                        MessageUtil.send({ content: `The in-game name, \`${nameEntry}${nameEntry.toLowerCase() === name.toLowerCase() ? "" : " (found in Name History)"}, has been blacklisted due to the following reason: ${blacklistEntry.reason}` }, msg.channel, 10 * 1000);
-                        return;
-                    }
-                }
+            if (nameHistory === null) {
+                nameHistory = {
+                    profileIsPrivate: false,
+                    sectionIsPrivate: false,
+                    name: name,
+                    nameHistory: []
+                };
             }
 
             if (typeof verificationSuccessChannel !== "undefined") {

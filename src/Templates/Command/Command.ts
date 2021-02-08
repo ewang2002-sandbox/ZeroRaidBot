@@ -194,5 +194,5 @@ export abstract class Command {
 	 * @param {string[]} args The arguments. 
 	 * @param {IRaidGuild | null} guildData The guild data.
 	 */
-	public async abstract executeCommand(message: Message, args: string[], guildData: IRaidGuild | null): Promise<void>;
+	public abstract executeCommand(message: Message, args: string[], guildData: IRaidGuild | null): Promise<void>;
 }

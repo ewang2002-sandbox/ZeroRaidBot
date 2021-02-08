@@ -6,12 +6,12 @@
 	"dependencies": {
 		"axios": "^0.21.1",
 		"discord.js": "^12.5.1",
-		"mongodb": "^3.6.3"
+		"mongodb": "^3.6.4"
 	},
 	"devDependencies": {
 		"@types/axios": "^0.14.0",
-		"@types/mongodb": "^3.6.3",
-		"@types/node": "^12.19.15",
+		"@types/mongodb": "^3.6.6",
+		"@types/node": "^12.19.16",
 		"@types/ws": "^6.0.4",
 		"typescript": "^3.9.7"
 	},

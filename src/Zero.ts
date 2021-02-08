@@ -12,9 +12,6 @@ import { onGuildMemberUpdate } from "./Events/GuildMemberUpdateEvent";
 import { onError } from "./Events/ErrorEvent";
 import { onChannelDelete } from "./Events/GuildChannelDeleteEvent";
 import { PRODUCTION_BOT, BotConfiguration } from "./Configuration/Config";
-import { IRaidGuild } from "./Templates/IRaidGuild";
-import { RaidStatus } from "./Definitions/RaidStatus";
-import { RaidHandler } from "./Helpers/RaidHandler";
 import { onGuildMemberRemove } from "./Events/GuildMemberRemoveEvent";
 import { onChannelCreate } from "./Events/GuildChannelCreateEvent";
 import { onRoleDelete } from "./Events/RoleDeleteEvent";
@@ -133,58 +130,5 @@ export class Zero {
 		setInterval(async () => {
 			Zero.UserDatabase = await MongoDbHelper.MongoDbUserManager.MongoUserClient.find({}).toArray();
 		}, 10 * 60 * 1000); 
-
-		// check raid vcs and clean
-		setInterval(async () => {
-			const docs: IRaidGuild[] = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.find({}).toArray();
-			for await (const doc of docs) {
-				if (BotConfiguration.exemptGuild.includes(doc.guildID)) {
-					continue;
-				}
-
-				let guild: Guild;
-				try {
-					guild = await Zero.RaidClient.guilds.fetch(doc.guildID);
-				}
-				catch (e) {
-					continue;
-				}
-
-				for (const raidInfo of doc.activeRaidsAndHeadcounts.raidChannels) {
-					let vc: VoiceChannel | null = null;
-					try {
-						vc = await Zero.RaidClient.channels.fetch(raidInfo.vcID) as VoiceChannel;
-					}
-					finally {
-						if (vc !== null 
-							&& raidInfo.status === RaidStatus.InRun 
-							&& vc.members.size === 0
-							&& (guild.me as GuildMember).permissions.has("MANAGE_CHANNELS")) {
-							let personThatCreatedVc: GuildMember;
-							try {
-								personThatCreatedVc = await guild.members.fetch(raidInfo.startedBy);
-							}
-							catch (e) {
-								personThatCreatedVc = guild.me as GuildMember;
-							}
-		
-							await RaidHandler.endRun(personThatCreatedVc, guild, raidInfo);
-							continue;
-						}
-
-						if (vc === null) {
-							let personThatCreatedVc: GuildMember;
-							try {
-								personThatCreatedVc = await guild.members.fetch(raidInfo.startedBy);
-							}
-							catch (e) {
-								personThatCreatedVc = guild.me as GuildMember;
-							}
-							await RaidHandler.endRun(personThatCreatedVc, guild, raidInfo, true);
-						}
-					}
-				}
-			}
-		}, 2 * 60 * 1000);
 	}
 }

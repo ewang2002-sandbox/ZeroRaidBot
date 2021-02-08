@@ -4,7 +4,6 @@ An open-source [Realm of the Mad God](https://www.realmofthemadgod.com/) (RotMG)
 ## Purpose
 The main purpose of this bot is to simplify verification and raid management within the the [Dungeoneer Exalt Discord server](https://discord.com/invite/o3). This bot, which represents a huge overhaul of the original Dungeoneer bot, is designed to be easier to use for everyone. 
 
-
 ## Technologies
 - [TypeScript](https://www.typescriptlang.org/)
 - [Node.JS](https://nodejs.org/en/)
@@ -41,6 +40,8 @@ Some of the bot's more prominent features include the following.
 - [`master`](https://github.com/DungeoneerExalt/ZeroRaidBot/tree/master) - The developer's branch. Incomplete, unstable, and untested code will live here. 
 - [`stable`](https://github.com/DungeoneerExalt/ZeroRaidBot/tree/stable) - Safe for production code. Code that is *generally* tested will live here. 
 - [`preview`](https://github.com/DungeoneerExalt/ZeroRaidBot/tree/preview) - Similar to the `master` branch, but code that is in this branch should be able to compile. This branch contains preview features (testing features) that will probably make it to the `stable` branch. 
+
+**NOTE:** If you intend on self-hosting, please read the link in `Setup Guide`. There is some important information.
 
 ## Setup Guide
 Please read this [first](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/master/md_img/AGREEMENT.md). Once you do, there will be instructions on how to set this project up.

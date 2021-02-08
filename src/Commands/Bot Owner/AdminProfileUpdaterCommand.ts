@@ -12,6 +12,7 @@ import { StringBuilder } from "../../Classes/String/StringBuilder";
 import { UserHandler } from "../../Helpers/UserHandler";
 import { OtherUtil } from "../../Utility/OtherUtil";
 import { StringUtil } from "../../Utility/StringUtil";
+import { ArrayUtil } from "../../Utility/ArrayUtil";
 
 export class AdminProfileUpdaterCommand extends Command {
 	public constructor() {
@@ -161,7 +162,7 @@ export class AdminProfileUpdaterCommand extends Command {
 				.setTitle("Members With No Profile")
 				.setDescription("The members below are verified in this server but do not have a profile logged with the bot. The mention is shown first, along with any corresponding IGNs. The first IGN is the main IGN, and any other IGNs will be the alternative IGN.\n\n**DIRECTIONS:** The members shown below will have a profile created for them. Type the number corresponding to the member(s) that you do NOT want to have a profile created for.\n\n**FINISHED?** React with the ✅ to begin the syncing process. React with the ❌ to cancel this process completely.");
 
-			const fieldsForEmbed: string[] = StringUtil.arrayToStringFields<[GuildMember, string[]]>(
+			const fieldsForEmbed: string[] = ArrayUtil.arrayToStringFields<[GuildMember, string[]]>(
 				membersWithNoDbEntry,
 				(i, element) => `**\`[${i + 1}]\`** ${element[0]}\n⇒ IGN(s): ${element[1].join(", ")}\n\n`,
 				1020
@@ -659,7 +660,7 @@ export class AdminProfileUpdaterCommand extends Command {
 					.setTitle("Select Alternative Account")
 					.setDescription(`Selected Alternative IGN: ${indexToRemove === -1 ? "`N/A`" : `\`${memberData.otherAccountNames[indexToRemove].displayName}\``}\n\n**DIRECTIONS:** Please select an alternative account that you want to remove. Simply type the number corresponding to the name that you want to remove.\n\n**REACTIONS**\n⇒ React with ⬅️ to go back to the previous menu.\n⇒ React with the ✅ to confirm the removal of the selected alternative account above.\n⇒ React with the ❌ to cancel this process completely.`);
 
-				const arrFieldsContent: string[] = StringUtil.arrayToStringFields<{
+				const arrFieldsContent: string[] = ArrayUtil.arrayToStringFields<{
 					displayName: string;
 					lowercase: string;
 				}>(memberData.otherAccountNames, (i, elem) => `[${i + 1}] ${elem.displayName}\n`);

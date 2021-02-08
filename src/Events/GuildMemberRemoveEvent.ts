@@ -8,6 +8,8 @@ import { ISection } from "../Templates/ISection";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { IManualVerification } from "../Definitions/IManualVerification";
 import { BotConfiguration } from "../Configuration/Config";
+import { SuspendCommand } from "../Commands/Moderator/SuspendCommand";
+import { MuteCommand } from "../Commands/Moderator/MuteCommand";
 
 export async function onGuildMemberRemove(
     member: GuildMember | PartialGuildMember
@@ -34,7 +36,6 @@ export async function onGuildMemberRemove(
         await joinLeaveChannel.send(joinEmbed).catch(e => { });
     }
 
-    // TODO figure out why this isnt working
     // check and see if they were under manual verif
     const allSections: ISection[] = [GuildUtil.getDefaultSection(db), ...db.sections];
     for (const section of allSections) {
@@ -76,5 +77,24 @@ export async function onGuildMemberRemove(
                 await m.delete().catch(e => { });
             }
         }
+    }
+
+    // if muted or suspended stop the timer
+    const suspendIndex: number = SuspendCommand.currentTimeout.findIndex(x => x.id === member.id);
+    if (suspendIndex !== -1) {
+        clearTimeout(SuspendCommand.currentTimeout[suspendIndex].timeout);
+        SuspendCommand.currentTimeout.splice(
+            suspendIndex,
+            1
+        );
+    }
+
+    const muteIndex: number = MuteCommand.currentTimeout.findIndex(x => x.id === member.id);
+    if (muteIndex !== -1) {
+        clearTimeout(MuteCommand.currentTimeout[suspendIndex].timeout);
+        MuteCommand.currentTimeout.splice(
+            muteIndex,
+            1
+        );
     }
 }

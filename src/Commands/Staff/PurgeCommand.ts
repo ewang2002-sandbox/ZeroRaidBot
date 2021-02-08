@@ -1,15 +1,12 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, Collection, Guild, TextChannel, ChannelLogsQueryOptions, User, GuildMember, MessageEmbed, MessageAttachment } from "discord.js";
+import { Message, Collection, TextChannel, ChannelLogsQueryOptions, MessageEmbed, MessageAttachment } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MessageUtil } from "../../Utility/MessageUtil";
-import { UserHandler } from "../../Helpers/UserHandler";
 import { OtherUtil } from "../../Utility/OtherUtil";
-import { StringUtil } from "../../Utility/StringUtil";
 import { StringBuilder } from "../../Classes/String/StringBuilder";
 import { DateUtil } from "../../Utility/DateUtil";
-import { clear } from "console";
 
 export class PurgeCommand extends Command {
 	public constructor() {
@@ -92,13 +89,13 @@ export class PurgeCommand extends Command {
 			}
 
 			const deletedMsg: Collection<string, Message> | void = await (msg.channel as TextChannel)
-				.bulkDelete(msgs, true).catch(e => { });
+				.bulkDelete(msgs, true).catch(() => { });
 			if (typeof deletedMsg !== "undefined") {
 				if (deletedMsg.size === 0) {
 					break;
 				}
-				for (const [id, m] of deletedMsg) {
-					sb.append(`[${DateUtil.getTime(m.createdAt)}] ${(m.member as GuildMember).displayName} • ${m.author.tag} • ${m.author.id}`)
+				for (const [, m] of deletedMsg) {
+					sb.append(`[${DateUtil.getTime(m.createdAt)}] ${m.author.tag} • ${m.author.id}`)
 						.appendLine()
 						.append(`Message ID: ${m.id}`)
 						.appendLine()

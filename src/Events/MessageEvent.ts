@@ -204,6 +204,7 @@ async function commandHandler(msg: Message, guildHandler: IRaidGuild | null): Pr
 			msg.delete({ timeout: command.getDurationUntilDeleteCmd() * 1000 }).catch(() => { });
 		}
 	}
+
 	command.executeCommand(msg, args, guildHandler);
 }
 

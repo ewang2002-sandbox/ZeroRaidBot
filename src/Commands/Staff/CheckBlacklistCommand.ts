@@ -175,7 +175,7 @@ export class CheckBlacklistCommand extends Command {
 			}
 
 			const tempSb: StringBuilder = new StringBuilder()
-				.append(`Server: ${guild.name}`)
+				.append(`Server: ${cGuild.name}`)
 				.appendLine()
 				.append(`⇒ **Name:** ${blacklistEntry.inGameName}`)
 				.appendLine()

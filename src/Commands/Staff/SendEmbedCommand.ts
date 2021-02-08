@@ -165,7 +165,7 @@ export class SendEmbedCommand extends Command {
 						return;
 					}
 					let title: string = "";
-					if (typeof embed.title !== "undefined") {
+					if (embed.title !== null) {
 						title = embed.title;
 					}
 					if (this.exceedsLimit(embed, title, resp)) {

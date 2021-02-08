@@ -1,15 +1,14 @@
 # ZeroRaidBot
 An open-source [Realm of the Mad God](https://www.realmofthemadgod.com/) (RotMG) Discord Bot designed for cross-server verification, moderation, and raid management.
 
-**NOTICE:** Please see [this issue](https://github.com/DungeoneerExalt/ZeroRaidBot/issues/43), which talks about the future of this project.
-
 ## Purpose
-The main purpose of this bot is to simplify verification and raid management within the the Dungeoneer Exalt Discord server. This bot, which represents a huge overhaul of the original Dungeoneer bot, is designed to be easier to use for everyone. 
+The main purpose of this bot is to simplify verification and raid management within the the [Dungeoneer Exalt Discord server](https://discord.com/invite/o3). This bot, which represents a huge overhaul of the original Dungeoneer bot, is designed to be easier to use for everyone. 
 
 
 ## Technologies
 - [TypeScript](https://www.typescriptlang.org/)
 - [Node.JS](https://nodejs.org/en/)
+- [MongoDB](https://www.mongodb.com/)
 
 ## Requirements (Latest Version)
 - [discord.js](https://discord.js.org/#/)
@@ -21,6 +20,11 @@ The main purpose of this bot is to simplify verification and raid management wit
     - A private instance of this API is being used for the private version of the bot. 
 
 ## Current Features
+
+<details>
+<summary>Click Here</summary>
+<br>
+  
 Some of the bot's more prominent features include the following.
 - **Verification:** Using a public API, the bot is able to get informaton about a RotMG player and is able to link a Discord account to a RotMG account. Verification requirements can be customized to suit your server's needs.
 - **Raid Management:** The ability for raid leaders to start AFK checks and headcounts for various dungeons, including Lost Halls, Shatters, Oryx 3, and 30 other dungeons. As opposed to having 5+ different comments, raid leaders will use a control panel to access all commands and information about a raid. 
@@ -31,7 +35,7 @@ Some of the bot's more prominent features include the following.
 - **User/Member Manager**: Every person is given a profile (one person = one Discord account). Within a profile, the person can add alternative accounts, and can make minor changes to their profile. 
 - **Moderation Mail**: A simple-to-use moderation mail system! Members can simply DM this bot their message and the bot will direct it to the appropriate place.
 - **Application System**: Imagine using a Google Forms for your Trial Raid Leader applications. This bot has its own application system, where Head Leaders can put up to 35 questions. The bot will record how long they take to respond to each answer, giving you an idea of how much effort they put.
-
+</details>
 
 ## Project Layout
 - [`master`](https://github.com/DungeoneerExalt/ZeroRaidBot/tree/master) - The developer's branch. Incomplete, unstable, and untested code will live here. 
@@ -39,10 +43,12 @@ Some of the bot's more prominent features include the following.
 - [`preview`](https://github.com/DungeoneerExalt/ZeroRaidBot/tree/preview) - Similar to the `master` branch, but code that is in this branch should be able to compile. This branch contains preview features (testing features) that will probably make it to the `stable` branch. 
 
 ## Setup Guide
-Please see this [guide](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/master/md_img/SETUP.md).
+Please read this [first](https://github.com/DungeoneerExalt/ZeroRaidBot/blob/master/md_img/AGREEMENT.md). Once you do, there will be instructions on how to set this project up.
 
 ## Support the Project
-The best way to support this project is to star (⭐) it. You might also consider looking through the code and seeing if something could use optimizing (most of the code is written in the middle of the night). 
+The best way to support this project is to star (⭐) it. Stars make me happy. 
+
+Additionally, if you host your own instance of this bot and someone asks where they can get their own instance of this bot, tell them about this Github. :)
 
 ## Similar Projects
 - [Ooga-Booga](https://github.com/Jacobvs/Rotmg-Discord-Bot) by [Darkmattr](https://github.com/Jacobvs). 

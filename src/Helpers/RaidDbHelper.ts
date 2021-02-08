@@ -4,7 +4,6 @@ import { IRaidInfo } from "../Definitions/IRaidInfo";
 import { MongoDbHelper } from "./MongoDbHelper";
 import { FindAndModifyWriteOpResultObject } from "mongodb";
 import { RaidStatus } from "../Definitions/RaidStatus";
-import { IHeadCountInfo } from "../Definitions/IHeadCountInfo";
 
 /**
  * This file contains raid-related functions that deal with the database.
@@ -81,44 +80,6 @@ export module RaidDbHelper {
 			}
 		}, { returnOriginal: false });
 		return data.value as IRaidGuild;
-	}
-
-	/**
-	 * Adds a new `IHeadCountInfo` to the array of current headcounts. 
-	 * @param {Guild} guild The target guild. 
-	 * @param {IHeadCountInfo} ri The data to add to the list of current headcounts. 
-	 * @returns {Promise<IRaidGuild>} The new document.  
-	 */
-	export async function addHeadcount(
-		guild: Guild,
-		hcInfo: IHeadCountInfo
-	): Promise<IRaidGuild> {
-		const x: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id }, {
-			$push: {
-				"activeRaidsAndHeadcounts.headcounts": hcInfo
-			}
-		}, { returnOriginal: false });
-		return x.value as IRaidGuild;
-	}
-
-	/**
-	 * Removes the headcount information from the array of current headcounts.
-	 * @param {Guild} guild The target guild. 
-	 * @param {string} msgId The ID of the message associated with the headcount that has (or should have) ended.
-	 * @returns {Promise<IRaidGuild>} The new document.
-	 */
-	export async function removeHeadcount(
-		guild: Guild,
-		msgId: string
-	): Promise<IRaidGuild> {
-		const x: FindAndModifyWriteOpResultObject<IRaidGuild> = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id }, {
-			$pull: {
-				"activeRaidsAndHeadcounts.headcounts": {
-					msgID: msgId
-				}
-			}
-		}, { returnOriginal: false });
-		return x.value as IRaidGuild;
 	}
 
 	/**

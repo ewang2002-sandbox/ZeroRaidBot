@@ -1,5 +1,4 @@
-import { Channel, PartialDMChannel, DMChannel, GuildChannel, Guild, VoiceChannel, GuildMember } from "discord.js";
-import { GuildUtil } from "../Utility/GuildUtil";
+import { Channel, PartialDMChannel, DMChannel, GuildChannel, Guild, GuildMember } from "discord.js";
 import { MongoDbHelper } from "../Helpers/MongoDbHelper";
 import { IRaidGuild } from "../Templates/IRaidGuild";
 import { RaidStatus } from "../Definitions/RaidStatus";
@@ -27,7 +26,7 @@ export async function onChannelDelete(channel: Channel | PartialDMChannel): Prom
             if (raidInfo.vcID === channel.id) {
                 // found vc that was deleted
                 if (raidInfo.status === RaidStatus.AFKCheck) {
-                    await RaidHandler.abortAfk(guild, raidInfo, channel as VoiceChannel, true);
+                    await RaidHandler.abortAfk(guild, raidInfo, channel.id);
                 }
                 else {
                     let personThatCreatedVc: GuildMember;

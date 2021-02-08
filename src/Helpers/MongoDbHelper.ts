@@ -6,6 +6,7 @@ import { AFKDungeon } from "../Constants/AFKDungeon";
 import { IRaidBot } from "../Templates/IRaidBot";
 import { Zero } from "../Zero";
 import { ClientUser } from "discord.js";
+import { VerificationHandler } from "./VerificationHandler";
 
 export module MongoDbHelper {
 	export let MongoBotSettingsClient: Collection<IRaidBot>;
@@ -183,20 +184,7 @@ export module MongoDbHelper {
 			return new Promise((resolve) => {
 				MongoDbGuildManager.MongoGuildClient.insertOne({
 					guildID: this._guildID,
-					verification: {
-						stars: {
-							required: false,
-							minimum: 0
-						},
-						aliveFame: {
-							required: false,
-							minimum: 0
-						},
-						maxedStats: {
-							required: false,
-							statsReq: [0, 0, 0, 0, 0, 0, 0, 0, 0]
-						}
-					},
+					verification: { ...VerificationHandler.DefaultVerification },
 					generalChannels: {
 						logging: {
 							moderationLogs: "",
@@ -267,7 +255,7 @@ export module MongoDbHelper {
 						showVerificationRequirements: true,
 						application: [],
 						blockedCommands: [],
-						removeEarlyLocKeyReacts: false
+						removeEarlyLocKeyReacts: false,
 					},
 					moderation: {
 						blacklistedUsers: [],
@@ -278,8 +266,7 @@ export module MongoDbHelper {
 						blacklistedApplicants: []
 					},
 					activeRaidsAndHeadcounts: {
-						raidChannels: [],
-						headcounts: []
+						raidChannels: []
 					},
 					prefix: ";",
 					sections: []
@@ -290,9 +277,9 @@ export module MongoDbHelper {
 		}
 
 		/**
- 		* Deletes any data linked to the guild ID from the DB.
- 		* @returns {Promise<number>} The amount of guild data deleted.
- 		*/
+			* Deletes any data linked to the guild ID from the DB.
+			* @returns {Promise<number>} The amount of guild data deleted.
+			*/
 		public async deleteGuildDB(): Promise<number> {
 			return new Promise((resolve) => {
 				MongoDbGuildManager.MongoGuildClient.deleteMany({ guildID: this._guildID }).then(x => {

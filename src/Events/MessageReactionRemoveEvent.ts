@@ -5,6 +5,7 @@ import { ISection } from "../Templates/ISection";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { ReactionLoggingHandler } from "../Helpers/ReactionLoggingHandler";
 import { BotConfiguration } from "../Configuration/Config";
+import { DateUtil } from "../Utility/DateUtil";
 
 export async function onMessageReactionRemove(
 	reaction: MessageReaction,
@@ -60,7 +61,9 @@ export async function onMessageReactionRemove(
 		member = await guild.members.fetch(user.id);
 	}
 	catch (e) {
+		console.error(`[MSG REACT REMOVE] ERROR OCCURRED AT: ${DateUtil.getTime(new Date(), "America/Los_Angeles")}`);
 		console.error(e);
+		console.error("================");
 		return;
 	}
 

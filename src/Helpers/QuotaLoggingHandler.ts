@@ -8,7 +8,7 @@ import { DateUtil } from "../Utility/DateUtil";
 import { StringBuilder } from "../Classes/String/StringBuilder";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { ArrayUtil } from "../Utility/ArrayUtil";
-
+ 
 export module QuotaLoggingHandler {
     export type LeaderLogAndTotal = IQuotaDbInfo & { total: number };
 
@@ -76,7 +76,7 @@ export module QuotaLoggingHandler {
                 $push: {
                     "general.leaderRuns": {
                         server: guild.id,
-                        generalRuns: {
+                        general: {
                             completed: 0,
                             failed: 0,
                             assists: 0
@@ -263,8 +263,10 @@ export module QuotaLoggingHandler {
             return;
         }
 
-        const leaderboardData: [number, LeaderLogAndTotal][] = generateLeaderboardArray(quotaDbAndTotal)
-            .filter(x => guild.members.cache.has(x[1].memberId));
+        const leaderboardData: [number, LeaderLogAndTotal][] = ArrayUtil.generateLeaderboardArray<LeaderLogAndTotal>(
+            quotaDbAndTotal,
+            elem => elem.total
+        ).filter(x => guild.members.cache.has(x[1].memberId));
         const sb: StringBuilder = new StringBuilder()
             .append(`⇒ **Quota Last Updated:** ${DateUtil.getTime()}`)
             .appendLine()
@@ -373,10 +375,12 @@ export module QuotaLoggingHandler {
         return true;
     }
 
+
     /**
      * Generates a leaderboard array (a 2D array with the first element being the place and the second being the value).
      * @param data The quota data.
      */
+/*
     export function generateLeaderboardArray(data: LeaderLogAndTotal[]): [number, LeaderLogAndTotal][] {
         data.sort((x, y) => y.total - x.total);
         let place: number = 1;
@@ -403,5 +407,5 @@ export module QuotaLoggingHandler {
         }
 
         return returnData;
-    }
+    }*/
 }

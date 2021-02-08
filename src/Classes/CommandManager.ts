@@ -57,6 +57,9 @@ import { DeveloperTestCommand } from "../Commands/Bot Owner/DeveloperTestCommand
 import { CloseModmailThreadCommand } from "../Commands/Modmail Management/CloseModmailThreadCommand";
 import { ReplyModmailThreadCommand } from "../Commands/Modmail Management/ReplyModmailThreadCommand";
 import { StartModmailThreadCommand } from "../Commands/Modmail Management/StartModmailThreadCommand";
+import { SpamPingCommand } from "../Commands/Moderator/SpamPingCommand";
+import { LeaderboardCommand } from "../Commands/Public/LeaderboardCommand";
+import { LeaveServerCommand } from "../Commands/Bot Owner/LeaveServerCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -93,7 +96,8 @@ export class CommandManager {
 			new PingCommand(),
 			new SuggestionCommand(),
 			new VerifyCommand(),
-			new ApplyCommand()
+			new ApplyCommand(),
+			new LeaderboardCommand()
 		]);
 
 		this.commands.set("Server Information", [
@@ -129,7 +133,8 @@ export class CommandManager {
 			new ManualVerifyCommand(),
 			new CheckModmailBlacklistCommand(),
 			new SilenceCommand(),
-			new PurgeCommand()
+			new PurgeCommand(),
+			new SpamPingCommand()
 		]);
 
 		this.commands.set("Moderation", [
@@ -167,7 +172,8 @@ export class CommandManager {
 			new BlacklistSuggestionUserCommand(),
 			new UnblacklistSuggestionUserCommand(),
 			new EnableDisableSuggestionsCommand(),
-			new DeveloperTestCommand()
+			new DeveloperTestCommand(),
+			new LeaveServerCommand()
 		]);
 
 		this.commands.set("Logging", [

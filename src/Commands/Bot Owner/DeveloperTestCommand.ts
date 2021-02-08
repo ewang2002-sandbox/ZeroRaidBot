@@ -1,10 +1,7 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, Guild, TextChannel, MessageAttachment } from "discord.js";
-import { Zero } from "../../Zero";
-import { AxiosResponse } from "axios";
-import { FORMERR } from "dns";
+import { Message } from "discord.js";
 
 export class DeveloperTestCommand extends Command {
 	public constructor() {

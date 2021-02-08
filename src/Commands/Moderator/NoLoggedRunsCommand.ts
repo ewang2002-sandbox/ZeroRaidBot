@@ -4,7 +4,7 @@ import { CommandPermission } from "../../Templates/Command/CommandPermission";
 import { Message, GuildMember, Guild, MessageEmbed } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { GuildUtil } from "../../Utility/GuildUtil";
-import { StringUtil } from "../../Utility/StringUtil";
+import { ArrayUtil } from "../../Utility/ArrayUtil";
 
 export class NoLoggedRunsCommand extends Command {
     public constructor() {
@@ -21,7 +21,7 @@ export class NoLoggedRunsCommand extends Command {
             new CommandPermission(
                 [],
                 [],
-                ["headRaidLeader"],
+                ["officer"],
                 [],
                 true
             ),
@@ -55,7 +55,7 @@ export class NoLoggedRunsCommand extends Command {
             .setColor(leadersWithNoRuns.length === 0 ? "GREEN" : "RED")
             .setFooter(`Responsible Leaders: ${all - noRuns}/${all} (${percent.toFixed(5)}%)`);
 
-        const fields: string[] = StringUtil.arrayToStringFields<GuildMember>(
+        const fields: string[] = ArrayUtil.arrayToStringFields<GuildMember>(
             leadersWithNoRuns, 
             (i, elem) => `${elem} (\`${elem.displayName}\`)\n`,
             1012

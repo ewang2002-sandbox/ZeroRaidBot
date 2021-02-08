@@ -1,4 +1,4 @@
-import { Client, Message, MessageReaction, User, PartialUser, GuildMember, PartialGuildMember, Guild, ClientUser, Channel, PartialDMChannel, VoiceChannel } from "discord.js";
+import { Client, Message, MessageReaction, User, PartialUser, GuildMember, PartialGuildMember, Guild, ClientUser, Channel, PartialDMChannel, VoiceChannel, Role, PartialMessage } from "discord.js";
 import { MongoDbHelper } from "./Helpers/MongoDbHelper";
 import { CommandManager } from "./Classes/CommandManager";
 import axios, { AxiosInstance } from "axios";
@@ -8,15 +8,18 @@ import { onMessageReactionAdd } from "./Events/MessageReactionAddEvent";
 import { onMessageReactionRemove } from "./Events/MessageReactionRemoveEvent";
 import { onGuildMemberAdd } from "./Events/GuildMemberAddEvent";
 import { onGuildCreate } from "./Events/GuildCreateEvent";
-import { onGuildMemberUpdate } from "./Events/GuildMemberUpdate";
+import { onGuildMemberUpdate } from "./Events/GuildMemberUpdateEvent";
 import { onError } from "./Events/ErrorEvent";
-import { LoggerClient } from "./Classes/LoggerClient";
-import { onChannelDelete } from "./Events/GuildChannelDelete";
+import { onChannelDelete } from "./Events/GuildChannelDeleteEvent";
 import { PRODUCTION_BOT, BotConfiguration } from "./Configuration/Config";
 import { IRaidGuild } from "./Templates/IRaidGuild";
 import { RaidStatus } from "./Definitions/RaidStatus";
 import { RaidHandler } from "./Helpers/RaidHandler";
-import { onGuildMemberRemove } from "./Events/GuildMemberRemove";
+import { onGuildMemberRemove } from "./Events/GuildMemberRemoveEvent";
+import { onChannelCreate } from "./Events/GuildChannelCreateEvent";
+import { onRoleDelete } from "./Events/RoleDeleteEvent";
+import { IRaidUser } from "./Templates/IRaidUser";
+import { onMessageDeleteEvent } from "./Events/MessageDeleteEvent";
 
 export class Zero {
 	/** 
@@ -46,7 +49,10 @@ export class Zero {
 	 */
 	public static readonly AxiosClient: AxiosInstance = axios.create();
 
-	public static readonly LogClient: LoggerClient;
+	/**
+	 * The user database. 
+	 */
+	public static UserDatabase: IRaidUser[] = [];
 
 	/**
 	 * The contructor for this method.
@@ -82,13 +88,17 @@ export class Zero {
 			.on("error", async (error: Error) => onError(error));
 		Zero.RaidClient
 			.on("channelDelete", async (channel: Channel | PartialDMChannel) => await onChannelDelete(channel));
+		Zero.RaidClient
+			.on("channelCreate", async (channel: Channel | PartialDMChannel) => await onChannelCreate(channel));
+		Zero.RaidClient
+			.on("roleDelete", async (role: Role) => await onRoleDelete(role));
+		Zero.RaidClient
+			.on("messageDelete", async (msg: Message | PartialMessage) => await onMessageDeleteEvent(msg));
 
 		// testing
 		if (!PRODUCTION_BOT) {
 			process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0'
 		}
-
-		this.startServices();
 	}
 
 	/**
@@ -100,6 +110,7 @@ export class Zero {
 			await mdm.connect();
 			await Zero.RaidClient.login(this._token);
 			(Zero.RaidClient.user as ClientUser).setActivity("my soul dying.", { type: "WATCHING" });
+			this.startServices();
 		}
 		catch (e) {
 			throw new ReferenceError(e);
@@ -118,6 +129,11 @@ export class Zero {
 
 		this._startedServices = true;
 		
+		// check user db every 10 min
+		setInterval(async () => {
+			Zero.UserDatabase = await MongoDbHelper.MongoDbUserManager.MongoUserClient.find({}).toArray();
+		}, 10 * 60 * 1000); 
+
 		// check raid vcs and clean
 		setInterval(async () => {
 			const docs: IRaidGuild[] = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.find({}).toArray();

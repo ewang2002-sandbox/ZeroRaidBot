@@ -1,7 +1,6 @@
 import { IRaidGuild } from "../Templates/IRaidGuild";
-import { User, Guild, Message, MessageEmbed, TextChannel, GuildMember, MessageEmbedFooter, MessageAttachment, FileOptions, EmbedField, Collection, Emoji, EmojiResolvable, SystemChannelFlags, CategoryChannel } from "discord.js";
+import { User, Guild, Message, MessageEmbed, TextChannel, GuildMember, MessageEmbedFooter, MessageAttachment, EmbedField, Collection, Emoji, EmojiResolvable, CategoryChannel, DMChannel } from "discord.js";
 import { MongoDbHelper } from "./MongoDbHelper";
-import { StringUtil } from "../Utility/StringUtil";
 import { UserAvailabilityHelper } from "./UserAvailabilityHelper";
 import { GenericMessageCollector } from "../Classes/Message/GenericMessageCollector";
 import { TimeUnit } from "../Definitions/TimeUnit";
@@ -9,8 +8,7 @@ import { MessageUtil } from "../Utility/MessageUtil";
 import { DateUtil } from "../Utility/DateUtil";
 import { FastReactionMenuManager } from "../Classes/Reaction/FastReactionMenuManager";
 import { StringBuilder } from "../Classes/String/StringBuilder";
-import { OtherUtil } from "../Utility/OtherUtil";
-import { IModmailThread } from "../Definitions/IModMail";
+import { IModmailThread } from "../Definitions/IModmailThread";
 import { ArrayUtil } from "../Utility/ArrayUtil";
 
 export module ModMailHandler {
@@ -42,7 +40,17 @@ export module ModMailHandler {
 	 * @param message The message content.
 	 */
 	export async function initiateModMailContact(initiator: User, message: Message): Promise<void> {
-		const selectedGuild: Guild | null = await chooseGuild(initiator);
+		UserAvailabilityHelper.InMenuCollection.set(initiator.id, UserAvailabilityHelper.MenuType.PRE_MODMAIL);
+		const selectedGuild: Guild | "cancel" | null = await chooseGuild(initiator);
+		// delay it so dm from bot doesnt trigger it
+		setTimeout(() => {
+			UserAvailabilityHelper.InMenuCollection.delete(initiator.id);
+		}, 1000);
+
+		if (selectedGuild === "cancel") {
+			return;
+		}
+
 		if (selectedGuild === null) {
 			const errorEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(initiator, "RED")
 				.setTitle("No Valid Servers")
@@ -51,6 +59,7 @@ export module ModMailHandler {
 			await MessageUtil.send({ embed: errorEmbed }, initiator).catch(() => { });
 			return;
 		}
+
 		const guildDb: IRaidGuild = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient
 			.findOne({ guildID: selectedGuild.id })) as IRaidGuild;
 
@@ -116,6 +125,21 @@ export module ModMailHandler {
 			const modMailMessage: Message = await channel.send(modMailEmbed);
 			// respond reaction
 			await modMailMessage.react("📝").catch(() => { });
+
+			await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({
+				guildID: selectedGuild.id,
+				"properties.modMail.channel": guildDb.properties.modMail[indexOfModmail].channel
+			}, {
+				$push: {
+					"properties.modMail.$.messages": {
+						authorId: initiator.id,
+						tag: initiator.tag,
+						timeSent: new Date().getTime(),
+						content: message.content,
+						attachments: message.attachments.size === 0 ? [] : message.attachments.array().map(x => x.url)
+					}
+				}
+			});
 		}
 		else {
 			// default modmail 
@@ -230,15 +254,26 @@ export module ModMailHandler {
 		FastReactionMenuManager.reactFaster(baseMessage, ["📝", "🛑", "🚫"]);
 		await baseMessage.pin().catch(e => { });
 
+		const threadInfo: IModmailThread = {
+			originalModmailAuthor: targetMember.id,
+			baseMsg: baseMessage.id,
+			startedOn: createdTime,
+			channel: threadChannel.id,
+			originalModmailMessageId: typeof initialContent === "undefined" ? "" : initialContent,
+			messages: typeof initialContent === "undefined" ? [] : [
+				{
+					authorId: targetMember.id,
+					attachments: [],
+					tag: targetMember.user.tag,
+					content: initialContent,
+					timeSent: new Date().getTime()
+				}
+			]
+		};
+
 		await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: guild.id }, {
 			$push: {
-				"properties.modMail": {
-					originalModmailAuthor: targetMember.id,
-					baseMsg: baseMessage.id,
-					startedOn: createdTime,
-					channel: threadChannel.id,
-					originalModmailMessage: ""
-				}
+				"properties.modMail": threadInfo
 			}
 		});
 
@@ -378,7 +413,9 @@ export module ModMailHandler {
 			.setTimestamp();
 		const attachmentsIndex: number = originalModMailMessage.embeds[0].fields
 			.findIndex(x => x.name === "Attachments");
-		if (typeof originalModMailMessage.embeds[0].description !== "undefined") {
+		let desc: string = ""; 
+		if (originalModMailMessage.embeds[0].description !== null) {
+			desc = originalModMailMessage.embeds[0].description;
 			firstMsgEmbed.setDescription(originalModMailMessage.embeds[0].description);
 		}
 
@@ -389,16 +426,27 @@ export module ModMailHandler {
 		const firstMsg: Message = await threadChannel.send(firstMsgEmbed);
 		firstMsg.react("📝").catch(e => { });
 
+		const threadInfo: IModmailThread = {
+			originalModmailAuthor: authorOfModmail.id,
+			baseMsg: baseMessage.id,
+			startedOn: createdTime,
+			channel: threadChannel.id,
+			originalModmailMessageId: originalModMailMessage.id,
+			messages: [
+				{
+					authorId: authorOfModmail.id,
+					tag: authorOfModmail.user.tag,
+					timeSent: new Date().getTime(),
+					content: desc,
+					attachments: []
+				}
+			]
+		};
+
 		// save to db
 		await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({ guildID: convertedToThreadBy.guild.id }, {
 			$push: {
-				"properties.modMail": {
-					originalModmailAuthor: authorOfModmail.id,
-					baseMsg: baseMessage.id,
-					startedOn: createdTime,
-					channel: threadChannel.id,
-					originalModmailMessage: originalModMailMessage.id
-				}
+				"properties.modMail": threadInfo
 			}
 		});
 
@@ -645,6 +693,23 @@ export module ModMailHandler {
 			replyRecordsEmbed.addField("⚠️ Error", "Something went wrong when trying to send this modmail message. The recipient has either blocked the bot or prevented server members from DMing him/her.");
 		}
 
+		if (sent) {
+			await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.updateOne({
+				guildID: memberThatWillRespond.guild.id,
+				"properties.modMail.originalModmailAuthor": modmailThread.originalModmailAuthor
+			}, {
+				$push: {
+					"properties.modMail.$.messages": {
+						authorId: memberThatWillRespond.id,
+						tag: memberThatWillRespond.user.tag,
+						timeSent: new Date().getTime(),
+						content: responseToMail,
+						attachments: []
+					}
+				}
+			});
+		}
+
 		await channel.send(replyRecordsEmbed).catch(e => { });
 		CurrentlyRespondingToModMail.delete(memberThatWillRespond.id);
 	}
@@ -664,7 +729,7 @@ export module ModMailHandler {
 		const oldEmbed: MessageEmbed = originalModMailMessage.embeds[0];
 		const authorOfModmailId: string = ((oldEmbed.footer as MessageEmbedFooter).text as string).split("•")[0].trim();
 		const guildDb: IRaidGuild = await new MongoDbHelper.MongoDbGuildManager(memberThatWillRespond.guild.id).findOrCreateGuildDb();
-		const originalModMailContent: string = typeof originalModMailMessage.embeds[0].description === "undefined"
+		const originalModMailContent: string = originalModMailMessage.embeds[0].description === null
 			? ""
 			: originalModMailMessage.embeds[0].description;
 
@@ -950,7 +1015,7 @@ export module ModMailHandler {
 	 * Selects a guild for modmail. 
 	 * @param user The user that initated this.
 	 */
-	async function chooseGuild(user: User): Promise<Guild | null> {
+	async function chooseGuild(user: User): Promise<Guild | "cancel" | null> {
 		const guildsToChoose: Guild[] = [];
 
 		const allGuilds: IRaidGuild[] = await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.find({}).toArray();
@@ -975,7 +1040,6 @@ export module ModMailHandler {
 			return guildsToChoose[0];
 		}
 
-		UserAvailabilityHelper.InMenuCollection.set(user.id, UserAvailabilityHelper.MenuType.PRE_MODMAIL);
 		const selectedGuild: Guild | "CANCEL" = await new Promise(async (resolve) => {
 			const embed: MessageEmbed = new MessageEmbed()
 				.setAuthor(user.tag, user.displayAvatarURL())
@@ -983,18 +1047,19 @@ export module ModMailHandler {
 				.setDescription("The message sent above will be sent to a designated server of your choice. Please select the server by typing the number corresponding to the server that you want to. To cancel, please type `cancel`.")
 				.setColor("RANDOM")
 				.setFooter(`${guildsToChoose.length} Servers.`);
-			const arrFieldsContent: string[] = StringUtil.arrayToStringFields<Guild>(guildsToChoose, (i, elem) => `\`[${i + 1}]\` ${elem.name}\n`);
+			const arrFieldsContent: string[] = ArrayUtil.arrayToStringFields<Guild>(guildsToChoose, (i, elem) => `\`[${i + 1}]\` ${elem.name}\n`);
 			for (const elem of arrFieldsContent) {
 				embed.addField("Possible Guilds", elem);
 			}
 
+			const dmChannel: DMChannel = await user.createDM();
 			const numSelected: number | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<number>(
 				user,
 				{ embed: embed },
 				5,
 				TimeUnit.MINUTE,
-				user
-			).send(GenericMessageCollector.getNumber(user, 1, arrFieldsContent.length));
+				dmChannel
+			).send(GenericMessageCollector.getNumber(dmChannel, 1, guildsToChoose.length));
 
 			if (numSelected === "CANCEL_CMD" || numSelected === "TIME_CMD") {
 				resolve("CANCEL");
@@ -1003,9 +1068,10 @@ export module ModMailHandler {
 				resolve(guildsToChoose[numSelected - 1]);
 			}
 		});
-		UserAvailabilityHelper.InMenuCollection.delete(user.id)
 
-		return selectedGuild === "CANCEL" ? null : selectedGuild;
+		return selectedGuild === "CANCEL"
+			? "cancel"
+			: selectedGuild;
 	}
 
 	/**
@@ -1021,12 +1087,12 @@ export module ModMailHandler {
 		guildDb: IRaidGuild,
 		closedBy: GuildMember
 	): Promise<void> {
-		if (threadInfo.originalModmailMessage !== "" 
+		if (threadInfo.originalModmailMessageId !== ""
 			&& threadChannel.guild.channels.cache.has(guildDb.generalChannels.modMailChannel)) {
 			const modmailChannel: TextChannel = threadChannel.guild.channels.resolve(guildDb.generalChannels.modMailChannel) as TextChannel;
 			let oldModMailMessage: Message | null = null;
 			try {
-				oldModMailMessage = await modmailChannel.messages.fetch(threadInfo.originalModmailMessage);
+				oldModMailMessage = await modmailChannel.messages.fetch(threadInfo.originalModmailMessageId);
 			}
 			finally {
 				if (oldModMailMessage !== null) {
@@ -1037,11 +1103,53 @@ export module ModMailHandler {
 					if (modmailThreadInfoIndex !== -1) {
 						modmailEmbed.spliceFields(modmailThreadInfoIndex, 1);
 					}
-					const allPossibleFields: EmbedField[] = modmailEmbed.fields.filter(x => x.name === "Last Response By");
-					const lastResponseByIndex: number = modmailEmbed.fields.findIndex(x => x.value === allPossibleFields[allPossibleFields.length - 1].value);
+					const allPossibleFields: EmbedField[] = modmailEmbed.fields
+						.filter(x => x.name === "Last Response By");
+					const lastResponseByIndex: number = modmailEmbed.fields
+						.findIndex(x => x.value === allPossibleFields[allPossibleFields.length - 1].value);
 
 					if (lastResponseByIndex !== -1) {
-						let addRespInfo: string = `${closedBy} (${DateUtil.getTime()}) \`[Thread Closed]\`\n`;
+						const modMailStorage: TextChannel | undefined = closedBy.guild.channels.cache
+							.get(guildDb.generalChannels.modMailStorage) as TextChannel | undefined;
+
+						let addRespInfo: string;
+						if (typeof modMailStorage === "undefined") {
+							addRespInfo = `${closedBy} (${DateUtil.getTime()}) \`[Thread Closed]\`\n`;
+						}
+						else {
+							const sb: StringBuilder = new StringBuilder()
+								.append("MODMAIL THREAD INFORMATION")
+								.appendLine()
+								.append(`Author ID of Modmail: ${threadInfo.originalModmailAuthor}`)
+								.appendLine()
+								.append(`Thread Creation Time: ${DateUtil.getTime(threadInfo.startedOn)}`)
+								.appendLine()
+								.appendLine()
+								.append("==============================")
+								.appendLine();
+
+							for (const mmMessage of threadInfo.messages) {
+								sb.append(`[${DateUtil.getTime(mmMessage.timeSent)}] ${mmMessage.tag} (${mmMessage.authorId})`)
+									.appendLine()
+									.appendLine()
+									.append(`Message: ${mmMessage.content}`)
+									.appendLine()
+									.appendLine()
+									.append(`Attachment(s): [${mmMessage.attachments.join(", ")}]`)
+									.appendLine()
+									.append("==============================")
+									.appendLine();
+							}
+
+							const m: Message | void = await modMailStorage.send(DateUtil.getTime(), new MessageAttachment(Buffer.from(sb.toString(), "utf8"), `${closedBy.id}_${threadInfo.originalModmailAuthor}_modmail.txt`)).catch(console.error);
+							if (typeof m !== "undefined" && m.attachments.size > 0) {
+								addRespInfo = `${closedBy} (${DateUtil.getTime()}) [[Thread Messages](${(m.attachments.first() as MessageAttachment).url})]\n`;
+							}
+							else {
+								addRespInfo = `${closedBy} (${DateUtil.getTime()}) \`[Thread Closed]\`\n`;
+							}
+						}
+
 						if (modmailEmbed.fields[lastResponseByIndex].value === "None.") {
 							modmailEmbed.fields[lastResponseByIndex].value = addRespInfo;
 						}

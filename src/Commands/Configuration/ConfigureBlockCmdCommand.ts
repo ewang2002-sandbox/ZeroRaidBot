@@ -6,8 +6,8 @@ import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { ConfigureSectionCommand } from "./ConfigureSectionCommand";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
 import { MessageUtil } from "../../Utility/MessageUtil";
-import { StringUtil } from "../../Utility/StringUtil";
 import { Zero } from "../../Zero";
+import { ArrayUtil } from "../../Utility/ArrayUtil";
 
 export class ConfigureBlockCmdCommand extends Command {
     public static UnblockableCommands: (typeof Command)[] = [
@@ -67,7 +67,7 @@ export class ConfigureBlockCmdCommand extends Command {
                 return;
             }
             else {
-                const fields: string[] = StringUtil.arrayToStringFields<string>(
+                const fields: string[] = ArrayUtil.arrayToStringFields<string>(
                     guildDb.properties.blockedCommands,
                     (i, e) => `**\`[${i + 1}]\`** ${e}\n`
                 );

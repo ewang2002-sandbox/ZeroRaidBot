@@ -90,7 +90,7 @@ export module GithubHandler {
 			// user submission 
 			.appendLine()
 			.appendLine()
-			.append("### Submitter Information")
+			.append("### Submitter (\"User\") Information")
 			.appendLine()
 			.append(`Discord Tag: ${details.authorTag}`)
 			.appendLine()

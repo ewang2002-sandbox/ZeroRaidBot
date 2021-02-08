@@ -89,7 +89,7 @@ export class ModmailBlacklistCommand extends Command {
 		const embed: MessageEmbed = new MessageEmbed()
 			.setTitle("Modmail Blacklisted")
 			.setDescription(`⇒ **Blacklisted:** ${memberToModmailBl} (${memberToModmailBl.id})\n⇒ **Moderator:** ${msg.author} (${msg.author.id})`)
-			.addField("⇒ Reason", reason)
+			.addField("⇒ Modmail Blacklist Reason", reason)
 			.setColor("RED")
 			.setFooter("Blacklisted on")
 			.setTimestamp();

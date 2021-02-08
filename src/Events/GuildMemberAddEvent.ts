@@ -6,6 +6,8 @@ import { MuteCommand } from "../Commands/Moderator/MuteCommand";
 import { StringUtil } from "../Utility/StringUtil";
 import { DateUtil } from "../Utility/DateUtil";
 import { BotConfiguration } from "../Configuration/Config";
+import { SuspendCommand } from "../Commands/Moderator/SuspendCommand";
+import { IRaidUser } from "../Templates/IRaidUser";
 
 export async function onGuildMemberAdd(
     member: GuildMember | PartialGuildMember
@@ -36,7 +38,6 @@ export async function onGuildMemberAdd(
 
     // check if muted
     const mutedRole: Role | undefined = guildMember.guild.roles.cache.get(db.roles.optRoles.mutedRole) as Role | undefined;
-
     let muteData: IMutedData | undefined;
 
     for (const muteEntry of db.moderation.mutedUsers) {
@@ -67,7 +68,6 @@ export async function onGuildMemberAdd(
 
     // check if suspended
     const suspendedRole: Role | undefined = guildMember.guild.roles.cache.get(db.roles.suspended) as Role | undefined;
-
     let suspendedData: ISuspendedData | undefined;
 
     for (const suspendedEntry of db.moderation.suspended) {
@@ -78,7 +78,15 @@ export async function onGuildMemberAdd(
     }
 
     if (typeof suspendedData !== "undefined" && typeof suspendedRole !== "undefined") {
-        // they left while muted
+        // they left while suspended
+        const userDb: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient
+            .findOne({ discordUserId: suspendedData.userId });
+        
+        if (userDb !== null) {
+            await guildMember.setNickname(userDb.rotmgDisplayName === guildMember.user.username
+                ? `${userDb.rotmgDisplayName}.`
+                : userDb.rotmgDisplayName).catch(e => { });
+        }
         await guildMember.roles.add(suspendedRole).catch(e => { });
         // because they left the server to avoid their suspension
         // they will be suspended for another full duration
@@ -91,7 +99,7 @@ export async function onGuildMemberAdd(
                     "moderation.suspended.$.endsAt": (new Date().getTime() + suspendedData.duration)
                 }
             });
-            MuteCommand.timeMute(guildMember.guild, guildMember, suspendedData.duration);
+            SuspendCommand.timeSuspend(guildMember.guild, guildMember, suspendedData.duration, suspendedData.roles);
         }
     }
 }

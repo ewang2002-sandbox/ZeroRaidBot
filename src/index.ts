@@ -8,13 +8,13 @@ const bot: Zero = new Zero(BotConfiguration.token);
 bot.login();
 
 process.on("uncaughtException", (error) => {
-    console.error(`ERROR OCCURRED AT: ${DateUtil.getTime()}`);
+    console.error(`ERROR OCCURRED AT: ${DateUtil.getTime(new Date(), "America/Los_Angeles")}`);
     console.error(error);
-    console.info("=====================");
+    console.error("=====================");
 });
 
 process.on("unhandledRejection", (error) => {
-    console.error(`ERROR OCCURRED AT: ${DateUtil.getTime()}`);
+    console.error(`ERROR OCCURRED AT: ${DateUtil.getTime(new Date(), "America/Los_Angeles")}`);
     console.error(error);
-    console.info("=====================");
+    console.error("=====================");
 });

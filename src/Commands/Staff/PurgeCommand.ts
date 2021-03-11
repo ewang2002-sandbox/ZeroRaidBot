@@ -63,7 +63,6 @@ export class PurgeCommand extends Command {
 			.append("============================")
 			.appendLine();
 
-		let msgsCleared: number = 0;
 		let numToClear: number = 0;
 		while (num > 0) {
 			if (num > 100) {
@@ -88,41 +87,7 @@ export class PurgeCommand extends Command {
 				msgs = msgs.filter(x => !x.pinned);
 			}
 
-			const deletedMsg: Collection<string, Message> | void = await (msg.channel as TextChannel)
-				.bulkDelete(msgs, true).catch(() => { });
-			if (typeof deletedMsg !== "undefined") {
-				if (deletedMsg.size === 0) {
-					break;
-				}
-				for (const [, m] of deletedMsg) {
-					sb.append(`[${DateUtil.getTime(m.createdAt)}] ${m.author.tag} • ${m.author.id}`)
-						.appendLine()
-						.append(`Message ID: ${m.id}`)
-						.appendLine()
-						.appendLine()
-						.append(m.content)
-						.appendLine()
-						.appendLine()
-						.append(`Attachments: [${Array.from(m.attachments).map(x => x[1].url).join(", ")}]`)
-						.appendLine()
-						.append("============================")
-						.appendLine();
-				}
-				msgsCleared += deletedMsg.size;
-			}
 			await OtherUtil.waitFor(3000);
 		}
-
-		const embed: MessageEmbed = MessageUtil.generateBlankEmbed(msg.author)
-			.setTitle(`🗑️ ${msgsCleared} Messages Cleared.`)
-			.setDescription(`⇒ Moderator: ${msg.author} (${msg.author.id})\n⇒ Clear Pins? ${clearPins ? "Yes" : "No"}`)
-			.addField("Note", "Please see the above text file for all purged messages.")
-			.setColor("RED")
-			.setTimestamp()
-			.setFooter("Purge Command Executed At");
-		await msg.author.send("=========================", {
-			embed: embed,
-			files: [new MessageAttachment(Buffer.from(sb.toString(), "utf8"), `${msg.author.id}_purge.txt`)]
-		}).catch(() => { });
 	}
 }

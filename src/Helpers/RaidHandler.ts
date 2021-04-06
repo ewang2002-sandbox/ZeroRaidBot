@@ -664,6 +664,27 @@ export module RaidHandler {
 
 		let vcName: string = vcToUse !== null ? vcToUse.name : `Raiding ${newRaidNum}`;
 
+		// TEMPORARY WORKAROUND UNTIL NEW BOT IS READY.
+		let vcLimit: number = 80;
+		// One of the LH servers
+		if (guild.id === "739573333242150975") {
+			if ([30, 34, 35, 32].includes(SELECTED_DUNGEON.id)) vcLimit = 30;
+			else if ([38].includes(SELECTED_DUNGEON.id)) vcLimit = 45;
+		}
+		// Fungal
+		else if (guild.id === "635413437647683596") {
+			if ([36].includes(SELECTED_DUNGEON.id)) vcLimit = 45;
+		}
+		// Dgn
+		else if (guild.id === "660344559074541579") {
+			if ([38].includes(SELECTED_DUNGEON.id)) vcLimit = 65;
+		}
+		// Crown
+		else if (guild.id === "765588832825114645") {
+			vcLimit = 40;
+		}
+
+
 		const NEW_RAID_VC: VoiceChannel = vcToUse || await guild.channels.create(`🚦 Raiding ${newRaidNum}`, {
 			type: "voice",
 			permissionOverwrites: realPermissions,

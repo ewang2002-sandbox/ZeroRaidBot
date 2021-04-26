@@ -34,39 +34,39 @@ export class NoLoggedRunsCommand extends Command {
 
     public async executeCommand(msg: Message, args: string[], guildData: IRaidGuild): Promise<void> {
         const guild: Guild = msg.guild as Guild;
-        const leadersWithNoRuns: GuildMember[] = [];
-        const allLeaders: GuildMember[] = GuildUtil.getAllStaffMembers(guild, guildData);
-        for (const leader of allLeaders) {
+        const staffWithNoRuns: GuildMember[] = [];
+        const allStaff: GuildMember[] = GuildUtil.getAllStaffMembers(guild, guildData);
+        for (const staff of allStaff) {
             const index: number = guildData.properties.quotas.quotaDetails
-                .findIndex(x => x.memberId === leader.id);
+                .findIndex(x => x.memberId === staff.id);
             if (index === -1) {
-                leadersWithNoRuns.push(leader);
+                staffWithNoRuns.push(staff);
             }
         }
 
-        const all: number = allLeaders.length;
-        const noRuns: number = leadersWithNoRuns.length;
+        const all: number = allStaff.length;
+        const noRuns: number = staffWithNoRuns.length;
         const percent: number = (((all - noRuns) / all) * 100);
 
         const embed: MessageEmbed = new MessageEmbed()
             .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
-            .setTitle("Leaders With No Runs Logged")
-            .setDescription(`⇒ Total Leaders: ${allLeaders.length}\n⇒ Leaders With No Runs: ${leadersWithNoRuns.length}`)
-            .setColor(leadersWithNoRuns.length === 0 ? "GREEN" : "RED")
-            .setFooter(`Responsible Leaders: ${all - noRuns}/${all} (${percent.toFixed(5)}%)`);
+            .setTitle("Staff Members With No Runs Logged")
+            .setDescription(`⇒ Total Staff Members: ${allStaff.length}\n⇒ Staff Members With No Runs: ${staffWithNoRuns.length}`)
+            .setColor(staffWithNoRuns.length === 0 ? "GREEN" : "RED")
+            .setFooter(`Responsible Staff Members: ${all - noRuns}/${all} (${percent.toFixed(5)}%)`);
 
         const fields: string[] = ArrayUtil.arrayToStringFields<GuildMember>(
-            leadersWithNoRuns, 
+            staffWithNoRuns, 
             (i, elem) => `${elem} (\`${elem.displayName}\`)\n`,
             1012
         );
 
         for (const field of fields) {
-            embed.addField("Leaders With No Logged Runs", field);
+            embed.addField("Staff Members With No Logged Runs", field);
         }
 
         const m: Message = await msg.channel.send(embed);
-        if (leadersWithNoRuns.length === 0) {
+        if (staffWithNoRuns.length === 0) {
             await m.delete({ timeout: 5000 }).catch(e => { });
         }
     }

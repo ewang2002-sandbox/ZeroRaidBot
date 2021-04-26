@@ -55,9 +55,9 @@ export class LogRuneWCCommand extends Command {
             new CommandPermission(
                 [],
                 [],
-                ["headRaidLeader", "universalRaidLeader", "universalAlmostRaidLeader"],
+                ["universalAlmostRaidLeader"],
                 ["ALL_RLS"],
-                false
+				true
             ),
             true,
             false,

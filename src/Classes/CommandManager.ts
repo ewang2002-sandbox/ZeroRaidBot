@@ -62,6 +62,7 @@ import { LeaderboardCommand } from "../Commands/Public/LeaderboardCommand";
 import { LeaveServerCommand } from "../Commands/Bot Owner/LeaveServerCommand";
 import { QuickLogAssistCommand } from "../Commands/Logging/QuickLogAssistCommand";
 import { QuickLogMainRlCommand } from "../Commands/Logging/QuickLogMainRlCommand";
+import { QuickLogFailCommand } from "../Commands/Logging/QuickLogFailCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -185,7 +186,8 @@ export class CommandManager {
 			new LogRuneWCCommand(),
 			new LogVialCommand(),
 			new QuickLogAssistCommand(),
-			new QuickLogMainRlCommand()
+			new QuickLogMainRlCommand(),
+			new QuickLogFailCommand()
 		])
 
 		this.hasBeenLoaded = true;

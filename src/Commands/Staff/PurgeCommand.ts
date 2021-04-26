@@ -1,7 +1,7 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, Collection, TextChannel, ChannelLogsQueryOptions, MessageEmbed, MessageAttachment } from "discord.js";
+import { Message, Collection, TextChannel, ChannelLogsQueryOptions, MessageEmbed, MessageAttachment, GuildChannel } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { OtherUtil } from "../../Utility/OtherUtil";
@@ -48,21 +48,17 @@ export class PurgeCommand extends Command {
 			return;
 		}
 
+		// because we also deleted our own msg
+		num++; 
+
+		const channel: GuildChannel = msg.channel as GuildChannel;
+		if (!channel.isText())
+			return; 
+
+		if (!(channel instanceof TextChannel))
+			return; 
+			
 		const clearPins: boolean = args.includes("pins");
-
-		const sb: StringBuilder = new StringBuilder()
-			.append(`[PURGE] Purge Command Executed`)
-			.appendLine()
-			.append(`Time: ${DateUtil.getTime()}`)
-			.appendLine()
-			.append(`Moderator: ${msg.author.tag} (${msg.author.id})`)
-			.appendLine()
-			.append(`Keep Pinned? ${clearPins ? "Yes" : "No"}`)
-			.appendLine()
-			.appendLine()
-			.append("============================")
-			.appendLine();
-
 		let numToClear: number = 0;
 		while (num > 0) {
 			if (num > 100) {
@@ -78,13 +74,23 @@ export class PurgeCommand extends Command {
 				limit: numToClear
 			};
 
-			let msgs: Collection<string, Message> = await msg.channel.messages.fetch(q);
+			let msgs: Collection<string, Message> = await channel.messages.fetch(q);
+
+
+			if (!clearPins) {
+				msgs = msgs.filter(x => !x.pinned);
+			}
+
 			if (msgs.size === 0) {
 				break;
 			}
 
-			if (!clearPins) {
-				msgs = msgs.filter(x => !x.pinned);
+			try {
+				await channel.bulkDelete(msgs);
+			}
+			catch (e) {
+				console.error(e); 
+				break;
 			}
 
 			await OtherUtil.waitFor(3000);

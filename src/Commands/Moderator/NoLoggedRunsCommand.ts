@@ -34,14 +34,30 @@ export class NoLoggedRunsCommand extends Command {
 
     public async executeCommand(msg: Message, args: string[], guildData: IRaidGuild): Promise<void> {
         const guild: Guild = msg.guild as Guild;
-        const staffWithNoRuns: GuildMember[] = [];
+        const staffWithNoRuns: [GuildMember, number][] = [];
         const allStaff: GuildMember[] = GuildUtil.getAllStaffMembers(guild, guildData);
         for (const staff of allStaff) {
             const index: number = guildData.properties.quotas.quotaDetails
                 .findIndex(x => x.memberId === staff.id);
             if (index === -1) {
-                staffWithNoRuns.push(staff);
+                staffWithNoRuns.push([staff, 0]);
+                continue;
             }
+
+            let assistSum = guildData.properties.quotas.quotaDetails[index].endgame.assists
+                + guildData.properties.quotas.quotaDetails[index].general.assists
+                + guildData.properties.quotas.quotaDetails[index].realmClearing.assists;
+
+            if (guildData.properties.quotas.quotaDetails[index].endgame.completed === 0
+                && guildData.properties.quotas.quotaDetails[index].endgame.failed === 0
+                && guildData.properties.quotas.quotaDetails[index].general.completed === 0
+                && guildData.properties.quotas.quotaDetails[index].general.failed === 0 
+                && guildData.properties.quotas.quotaDetails[index].realmClearing.completed === 0
+                && guildData.properties.quotas.quotaDetails[index].realmClearing.failed === 0
+                && guildData.properties.quotas.quotaDetails[index].endgame.assists
+                && assistSum > 0) {
+                    staffWithNoRuns.push([staff, assistSum]);
+                }
         }
 
         const all: number = allStaff.length;
@@ -55,9 +71,9 @@ export class NoLoggedRunsCommand extends Command {
             .setColor(staffWithNoRuns.length === 0 ? "GREEN" : "RED")
             .setFooter(`Responsible Staff Members: ${all - noRuns}/${all} (${percent.toFixed(5)}%)`);
 
-        const fields: string[] = ArrayUtil.arrayToStringFields<GuildMember>(
+        const fields: string[] = ArrayUtil.arrayToStringFields<[GuildMember, number]>(
             staffWithNoRuns, 
-            (i, elem) => `${elem} (\`${elem.displayName}\`)\n`,
+            (i, elem) => `${elem[0]} \`${elem[0].displayName}\` (${elem[1]})\n`,
             1012
         );
 

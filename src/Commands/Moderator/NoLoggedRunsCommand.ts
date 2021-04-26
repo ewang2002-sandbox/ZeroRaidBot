@@ -35,7 +35,7 @@ export class NoLoggedRunsCommand extends Command {
     public async executeCommand(msg: Message, args: string[], guildData: IRaidGuild): Promise<void> {
         const guild: Guild = msg.guild as Guild;
         const leadersWithNoRuns: GuildMember[] = [];
-        const allLeaders: GuildMember[] = GuildUtil.getAllLeaders(guild, guildData);
+        const allLeaders: GuildMember[] = GuildUtil.getAllStaffMembers(guild, guildData);
         for (const leader of allLeaders) {
             const index: number = guildData.properties.quotas.quotaDetails
                 .findIndex(x => x.memberId === leader.id);

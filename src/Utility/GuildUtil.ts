@@ -225,6 +225,18 @@ export namespace GuildUtil {
 	}
 
 	/**
+	 * Returns a list of GuildMembers that are staff members.
+	 * @param guild The guild.
+	 * @param guildDb The guild db.
+	 * @returns The staff members.
+	 */
+	export function getAllStaffMembers(guild: Guild, guildDb: IRaidGuild): GuildMember[] {
+		const teamRole: Role | undefined = guild.roles.cache.get(guildDb.roles.teamRole);
+		if (typeof teamRole === "undefined") return [];
+		return teamRole.members.array();
+ 	}
+
+	/**
 	 * Gets the total number of leaders in the server.
 	 * @param guild The guild object.
 	 * @param guildDb The guild db.

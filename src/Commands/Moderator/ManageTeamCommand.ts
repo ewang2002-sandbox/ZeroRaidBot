@@ -1,14 +1,11 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Guild, Message, MessageEmbed, Role } from "discord.js";
+import { Guild, Message, Role } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MongoDbHelper } from "../../Helpers/MongoDbHelper";
-import { GenericMessageCollector } from "../../Classes/Message/GenericMessageCollector";
-import { TimeUnit } from "../../Definitions/TimeUnit";
 import { ArrayUtil } from "../../Utility/ArrayUtil";
 import { MessageUtil } from "../../Utility/MessageUtil";
-import { UpdateQuery } from "mongodb";
 import { UserHandler } from "../../Helpers/UserHandler";
 
 export class ManageTeamCommand extends Command {

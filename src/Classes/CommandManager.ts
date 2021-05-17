@@ -63,6 +63,7 @@ import { LeaveServerCommand } from "../Commands/Bot Owner/LeaveServerCommand";
 import { QuickLogAssistCommand } from "../Commands/Logging/QuickLogAssistCommand";
 import { QuickLogMainRlCommand } from "../Commands/Logging/QuickLogMainRlCommand";
 import { QuickLogFailCommand } from "../Commands/Logging/QuickLogFailCommand";
+import { ManageTeamCommand } from "../Commands/Moderator/ManageTeamCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -151,7 +152,8 @@ export class CommandManager {
 			new NoLoggedRunsCommand(),
 			new ModmailBlacklistCommand(),
 			new ModmailUnblacklistCommand(),
-			new ConfigureBlockCmdCommand()
+			new ConfigureBlockCmdCommand(),
+			new ManageTeamCommand()
 		]);
 		
 		this.commands.set("User Profile", [

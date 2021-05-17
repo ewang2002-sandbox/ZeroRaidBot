@@ -145,6 +145,8 @@ export interface IRaidGuild {
 			}
 		};
 
+		customTeamRoles: string[];
+
 		/**
 		 * Section leader roles.
 		 */

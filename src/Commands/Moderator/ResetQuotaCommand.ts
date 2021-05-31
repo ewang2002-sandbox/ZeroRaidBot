@@ -83,110 +83,110 @@ export class ResetQuotaCommand extends Command {
             if (guildData.properties.quotas.quotaMessage) {
                 let oldQuotaMsg: Message | null = null;
                 try {
-                    oldQuotaMsg = await quotaChannel.messages.fetch(guildData.properties.quotas.quotaMessage);
+                    oldQuotaMsg = await quotaChannel.messages.fetch(guildData.properties.quotas.quotaMessage).catch();
                 }
-                finally {
-                    if (oldQuotaMsg) {
-                        // Unlink message so it doesn't get edited
-                        guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id }, {
-                            $set: {
-                                "properties.quotas.quotaMessage": ""
+                catch (e) {}
+
+                if (oldQuotaMsg) {
+                    // Unlink message so it doesn't get edited
+                    guildData = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate({ guildID: guild.id }, {
+                        $set: {
+                            "properties.quotas.quotaMessage": ""
+                        }
+                    }, { returnOriginal: false })).value as IRaidGuild;
+
+                    const allStaffMembers = GuildUtil.getAllStaffMembers(guild, guildData);
+                    const weekOfDate = new Date(guildData.properties.quotas.lastReset).toLocaleDateString("en-US");
+                    const todayDate = new Date().toLocaleDateString("en-US");
+
+                    const desc = new StringBuilder()
+                        .append(`From the time period of ${weekOfDate} up to ${todayDate}, there were **${allStaffMembers.length}** staff members.`)
+                        .appendLine().appendLine()
+                        .append("__**Legends**__").appendLine()
+                        .append("- C = Completed").appendLine()
+                        .append("- A = Assisted").appendLine()
+                        .append("- F = Failed").appendLine()
+                        .append("- Ordered: Endgame / General / Realm Clearing / Sum");
+                    const summaryEmbed = MessageUtil.generateBlankEmbed(guild, "RANDOM")
+                        .setTitle("Quota Summary")
+                        .setDescription(desc.toString())
+                        .setFooter(`Summary for the time period of ${weekOfDate} up to ${todayDate}.`);
+
+                    let membersWithOnlyAssists = 0;
+                    let membersWithNoRuns = 0;
+                    const fields = ArrayUtil.arrayToStringFields<GuildMember>(
+                        allStaffMembers,
+                        (i, elem) => {
+                            const details = guildData.properties.quotas.quotaDetails.find(x => x.memberId === elem.id);
+                            if (!details) {
+                                membersWithNoRuns++;
+                                return `\`[❌]\` ${elem} (\`${elem.displayName}\`): No Runs Logged\n`;
                             }
-                        }, { returnOriginal: false })).value as IRaidGuild;
 
-                        const allStaffMembers = GuildUtil.getAllStaffMembers(guild, guildData);
-                        const weekOfDate = new Date(guildData.properties.quotas.lastReset).toLocaleDateString("en-US");
-                        const todayDate = new Date().toLocaleDateString("en-US");
+                            const totalComplete = details.endgame.completed + details.general.completed + details.realmClearing.completed;
+                            const totalAssist = details.endgame.assists + details.general.assists + details.realmClearing.assists;
+                            const totalFails = details.endgame.failed + details.general.failed + details.realmClearing.failed;
 
-                        const desc = new StringBuilder()
-                            .append(`From the time period of ${weekOfDate} up to ${todayDate}, there were **${allStaffMembers.length}** staff members.`)
-                            .appendLine().appendLine()
-                            .append("__**Legends**__").appendLine()
-                            .append("- C = Completed").appendLine()
-                            .append("- A = Assisted").appendLine()
-                            .append("- F = Failed").appendLine()
-                            .append("- Ordered: Endgame / General / Realm Clearing / Sum");
-                        const summaryEmbed = MessageUtil.generateBlankEmbed(guild, "RANDOM")
-                            .setTitle("Quota Summary")
-                            .setDescription(desc.toString())
-                            .setFooter(`Summary for the time period of ${weekOfDate} up to ${todayDate}.`);
+                            if (totalComplete <= 0 && totalFails <= 0 && totalAssist <= 0) {
+                                membersWithNoRuns++;
+                                return `\`[❌]\` ${elem} (\`${elem.displayName}\`): No Runs Logged\n`;
+                            }
 
-                        let membersWithOnlyAssists = 0;
-                        let membersWithNoRuns = 0;
-                        const fields = ArrayUtil.arrayToStringFields<GuildMember>(
-                            allStaffMembers,
-                            (i, elem) => {
-                                const details = guildData.properties.quotas.quotaDetails.find(x => x.memberId === elem.id);
-                                if (!details) {
-                                    membersWithNoRuns++;
-                                    return `\`[❌]\` ${elem} (\`${elem.displayName}\`): No Runs Logged\n`;
-                                }
-
-                                const totalComplete = details.endgame.completed + details.general.completed + details.realmClearing.completed;
-                                const totalAssist = details.endgame.assists + details.general.assists + details.realmClearing.assists;
-                                const totalFails = details.endgame.failed + details.general.failed + details.realmClearing.failed;
-
-                                if (totalComplete <= 0 && totalFails <= 0 && totalAssist <= 0) {
-                                    membersWithNoRuns++;
-                                    return `\`[❌]\` ${elem} (\`${elem.displayName}\`): No Runs Logged\n`;
-                                }
-
-                                if (totalComplete <= 0 && totalFails <= 0 && totalAssist > 0) {
-                                    membersWithOnlyAssists++;
-                                    return new StringBuilder()
-                                        .append(`\`[⚠️]\` ${elem} (\`${elem.displayName}\`)`).append(": ")
-                                        .append("Only Assists Logged")
-                                        .appendLine()
-                                        .append("```").appendLine()
-                                        .append(`⇒ A: ${details.endgame.assists} / ${details.general.assists} / ${details.realmClearing.assists} / Σ = ${totalAssist}`)
-                                        .append("```")
-                                        .appendLine()
-                                        .toString();
-                                }
-
+                            if (totalComplete <= 0 && totalFails <= 0 && totalAssist > 0) {
+                                membersWithOnlyAssists++;
                                 return new StringBuilder()
-                                    .append(`\`[📋]\` ${elem} (\`${elem.displayName}\`)`).appendLine()
+                                    .append(`\`[⚠️]\` ${elem} (\`${elem.displayName}\`)`).append(": ")
+                                    .append("Only Assists Logged")
+                                    .appendLine()
                                     .append("```").appendLine()
-                                    .append(`⇒ C: ${details.endgame.completed} / ${details.general.completed} / ${details.realmClearing.completed} / Σ = ${totalComplete}`)
-                                    .appendLine()
                                     .append(`⇒ A: ${details.endgame.assists} / ${details.general.assists} / ${details.realmClearing.assists} / Σ = ${totalAssist}`)
-                                    .appendLine()
-                                    .append(`⇒ F: ${details.endgame.failed} / ${details.general.failed} / ${details.realmClearing.failed} / Σ = ${totalFails}`)
                                     .append("```")
                                     .appendLine()
                                     .toString();
                             }
-                        );
 
-                        while (fields.length > 0 && summaryEmbed.length <= 5980) {
-                            const field = fields.shift();
-                            summaryEmbed.addField("Summary", field);
+                            return new StringBuilder()
+                                .append(`\`[📋]\` ${elem} (\`${elem.displayName}\`)`).appendLine()
+                                .append("```").appendLine()
+                                .append(`⇒ C: ${details.endgame.completed} / ${details.general.completed} / ${details.realmClearing.completed} / Σ = ${totalComplete}`)
+                                .appendLine()
+                                .append(`⇒ A: ${details.endgame.assists} / ${details.general.assists} / ${details.realmClearing.assists} / Σ = ${totalAssist}`)
+                                .appendLine()
+                                .append(`⇒ F: ${details.endgame.failed} / ${details.general.failed} / ${details.realmClearing.failed} / Σ = ${totalFails}`)
+                                .append("```")
+                                .appendLine()
+                                .toString();
+                        }
+                    );
+
+                    while (fields.length > 0 && summaryEmbed.length <= 5980) {
+                        const field = fields.shift();
+                        summaryEmbed.addField("Summary", field);
+                    }
+
+                    await oldQuotaMsg.edit(summaryEmbed).catch();
+
+                    if (fields.length > 0) {
+                        // Take care of leftover fields
+                        const otherEmbed: MessageEmbed[] = [];
+                        const linkToOldMessage = `https://discord.com/channels/${guild.id}/${msg.channel.id}/${oldQuotaMsg.id}`;
+                        while (true) {
+                            const embed = MessageUtil.generateBlankEmbed(guild, oldQuotaMsg.embeds[0].color as ColorResolvable)
+                                .setTitle("Quota Summary (Continued)")
+                                .setDescription(`Continued from [this summary message](${linkToOldMessage}).`)
+                                .setFooter(`Summary for the time period of ${weekOfDate} up to ${todayDate}.`);
+                            while (fields.length > 0 && embed.length <= 5980) {
+                                const field = fields.shift();
+                                embed.addField("Summary", field);
+                            }
+
+                            otherEmbed.push(embed);
+                            if (fields.length <= 0) break;
                         }
 
-                        await oldQuotaMsg.edit(summaryEmbed).catch();
-
-                        if (fields.length > 0) {
-                            // Take care of leftover fields
-                            const otherEmbed: MessageEmbed[] = [];
-                            const linkToOldMessage = `https://discord.com/channels/${guild.id}/${msg.channel.id}/${oldQuotaMsg.id}`;
-                            while (true) {
-                                const embed = MessageUtil.generateBlankEmbed(guild, oldQuotaMsg.embeds[0].color as ColorResolvable)
-                                    .setTitle("Quota Summary (Continued)")
-                                    .setDescription(`Continued from [this summary message](${linkToOldMessage}).`)
-                                    .setFooter(`Summary for the time period of ${weekOfDate} up to ${todayDate}.`);
-                                while (fields.length > 0 && embed.length <= 5980) {
-                                    const field = fields.shift();
-                                    embed.addField("Summary", field);
-                                }
-
-                                otherEmbed.push(embed);
-                                if (fields.length <= 0) break;
-                            }
-
-                            // send the remaining embeds
-                            for await (const e of otherEmbed) {
-                                await quotaChannel.send(e).catch();
-                            }
+                        // send the remaining embeds
+                        for await (const e of otherEmbed) {
+                            await quotaChannel.send(e).catch();
                         }
                     }
                 }

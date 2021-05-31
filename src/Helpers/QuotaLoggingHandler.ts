@@ -333,6 +333,7 @@ export module QuotaLoggingHandler {
      * @param guildDb The guild db.
      * @param quotaChannel The quota channel. This must be defined.
      * @param quotaEmbed The quota embed.
+     * @param update Whether to update the embed instead of creating a new one. By default, this is false.
      */
     export async function sendOrUpdateQuotaMessage(
         guild: Guild,

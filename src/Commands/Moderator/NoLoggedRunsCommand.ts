@@ -32,8 +32,7 @@ export class NoLoggedRunsCommand extends Command {
         );
     }
 
-    public async executeCommand(msg: Message, args: string[], guildData: IRaidGuild): Promise<void> {
-        const guild: Guild = msg.guild as Guild;
+    public static getStaffWithNoRuns(guild: Guild, guildData: IRaidGuild): [GuildMember, number][] {
         const staffWithNoRuns: [GuildMember, number][] = [];
         const allStaff: GuildMember[] = GuildUtil.getAllStaffMembers(guild, guildData);
         for (const staff of allStaff) {
@@ -59,6 +58,14 @@ export class NoLoggedRunsCommand extends Command {
                     staffWithNoRuns.push([staff, assistSum]);
                 }
         }
+
+        return staffWithNoRuns;
+    }
+
+    public async executeCommand(msg: Message, args: string[], guildData: IRaidGuild): Promise<void> {
+        const guild: Guild = msg.guild as Guild;
+        const staffWithNoRuns = NoLoggedRunsCommand.getStaffWithNoRuns(guild, guildData);
+        const allStaff = GuildUtil.getAllStaffMembers(guild, guildData);
 
         const all: number = allStaff.length;
         const noRuns: number = staffWithNoRuns.length;

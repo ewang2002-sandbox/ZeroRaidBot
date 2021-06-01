@@ -4,6 +4,7 @@ import { IRaidGuild } from "../Templates/IRaidGuild";
 import { ISection } from "../Templates/ISection";
 import { GuildUtil } from "./GuildUtil";
 import { RoleNames } from "../Definitions/Types";
+import { ArrayUtil } from "./ArrayUtil";
 
 export module OtherUtil {
     /**
@@ -119,13 +120,26 @@ export module OtherUtil {
 
             let hasPermArr: boolean[] = [];
             if (command.isRoleInclusive()) {
-                for (let [roleID, roleName] of roleOrder) {
+                // Get last possible index to check.
+                let lastIdx = -1;
+                for (let i = roleOrder.length - 1; i >= 0; i--) {
+                    if (roleOrder[i][1] === command.getRolePermissions()[0]) {
+                        lastIdx = i;
+                        break;
+                    }
+                }
+
+                // Evaluate perms
+                let idx = 0;
+                for (let [roleID, _] of roleOrder) {
                     hasPermArr.push(member.roles.cache.has(roleID));
                     // we reached the minimum role
                     // break out since we no longer need to check 
-                    if (roleName === command.getRolePermissions()[0]) {
+                    if (idx === lastIdx) {
                         break;
                     }
+
+                    idx++;
                 }
             }
             // not inclusive

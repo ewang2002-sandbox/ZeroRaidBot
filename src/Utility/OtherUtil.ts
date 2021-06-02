@@ -114,6 +114,7 @@ export module OtherUtil {
             roleOrder.push(
                 [support, "support"],
                 [verifier, "verifier"],
+                [guildHandler.roles.teamRole, "team"],
                 [raider, "raider"],
                 [suspended, "suspended"]
             );

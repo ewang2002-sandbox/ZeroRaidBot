@@ -11,7 +11,7 @@ import { onGuildCreate } from "./Events/GuildCreateEvent";
 import { onGuildMemberUpdate } from "./Events/GuildMemberUpdateEvent";
 import { onError } from "./Events/ErrorEvent";
 import { onChannelDelete } from "./Events/GuildChannelDeleteEvent";
-import { PRODUCTION_BOT, BotConfiguration } from "./Configuration/Config";
+import { PRODUCTION_BOT } from "./Configuration/Config";
 import { onGuildMemberRemove } from "./Events/GuildMemberRemoveEvent";
 import { onChannelCreate } from "./Events/GuildChannelCreateEvent";
 import { onRoleDelete } from "./Events/RoleDeleteEvent";

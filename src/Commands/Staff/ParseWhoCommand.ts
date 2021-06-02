@@ -1,5 +1,6 @@
 import { GuildMember, Message, MessageAttachment, MessageEmbed, VoiceChannel } from "discord.js";
 import { StringBuilder } from "../../Classes/String/StringBuilder";
+import { PrivateApiDefinitions } from "../../Definitions/PrivateApiDefinitions";
 import { RealmSharperWrapper } from "../../Helpers/RealmSharperWrapper";
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
@@ -7,8 +8,11 @@ import { CommandPermission } from "../../Templates/Command/CommandPermission";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { ArrayUtil } from "../../Utility/ArrayUtil";
 import { MessageUtil } from "../../Utility/MessageUtil";
+import { StringUtil } from "../../Utility/StringUtil";
 
 export class ParseWhoCommand extends Command {
+	public static readonly FOOTER_TEXT: string = "Note: /who parsing is in testing. Please double check and make sure these results are accurate. If something is seriously wrong (completely inaccurate parse results, for example), please message ConsoleMC or Deatttthhh with the offending screenshot and parse results, or use the \"bugreport\" command to report this (note that you may need to upload your screenshot and send the link to your uploaded screenshot).";
+	
 	public constructor() {
 		super(
 			new CommandDetail(
@@ -35,7 +39,6 @@ export class ParseWhoCommand extends Command {
 	}
 
 	public async executeCommand(msg: Message, args: string[], guildData: IRaidGuild): Promise<void> {
-		/*
 		if (!(await RealmSharperWrapper.isOnline())) {
 			MessageUtil.send({
 				embed: MessageUtil.generateBlankEmbed(msg.author, "RED")
@@ -69,14 +72,29 @@ export class ParseWhoCommand extends Command {
 			}, msg.channel);
 			return;
 		}
+		await msg.react("⌛").catch();
 
 		const vc: VoiceChannel = member.voice.channel;
-		const parsedNames: string[] = await RealmSharperWrapper.parseWhoScreenshot(firstAttachment.url);
+		const res: PrivateApiDefinitions.IParseWhoResult = await RealmSharperWrapper.parseWhoScreenshot(firstAttachment.url);
+		if (res.code !== "SUCCESS") {
+			MessageUtil.send({
+				embed: MessageUtil.generateBlankEmbed(msg.author, "RED")
+					.setTitle("API Error Occurred")
+					.setDescription("An error occurred when trying to process the given screenshot.")
+					.addField("Error Code", StringUtil.applyCodeBlocks(res.code))
+					.addField("Error Reason", StringUtil.applyCodeBlocks(res.issues))
+					.setFooter(ParseWhoCommand.FOOTER_TEXT)
+			}, msg.channel);
+			return;
+		}
+		
+		const parsedNames = res.whoResult;
 		if (parsedNames.length === 0) {
 			MessageUtil.send({
 				embed: MessageUtil.generateBlankEmbed(msg.author, "RED")
 					.setTitle("No Names Found.")
 					.setDescription("Your /who screenshot does not contain any names. If you believe this is an error, please send the developer the /who screeenshot.")
+					.setFooter(ParseWhoCommand.FOOTER_TEXT)
 			}, msg.channel);
 			return;
 		}
@@ -114,7 +132,8 @@ export class ParseWhoCommand extends Command {
 			.toString();
 		const resultEmbed: MessageEmbed = MessageUtil.generateBlankEmbed(msg.author, "RANDOM")
 			.setTitle(`/who Parse Results: **${vc.name}**`)
-			.setDescription(descSb);
+			.setDescription(descSb)
+			.setFooter(ParseWhoCommand.FOOTER_TEXT);
 
 		const memberNotVcInRaidSplit: string[] = ArrayUtil.arrayToStringFields<string>(
 			membersNotInVcInRaid,
@@ -122,12 +141,12 @@ export class ParseWhoCommand extends Command {
 			1000
 		);
 		for (const elem of memberNotVcInRaidSplit) {
-			resultEmbed.addField(`In Raid, Not In VC (${membersNotInVcInRaid.length})`, elem);
+			resultEmbed.addField(`In Raid, Not In VC (${membersNotInVcInRaid.length})`, StringUtil.applyCodeBlocks(elem));
 		}
 
 		const memberVcNotRaidSplit: string[] = ArrayUtil.arrayToStringFields<GuildMember>(
 			membersInVcNotInRaid,
-			(i, elem) => `**\`[${i}]\`** ${elem.displayName} (${elem})`,
+			(i, elem) => `**\`[${i + 1}]\`** ${elem.displayName} (${elem})\n`,
 			1000
 		);
 
@@ -135,6 +154,6 @@ export class ParseWhoCommand extends Command {
 			resultEmbed.addField(`In VC, Not In Raid (${membersInVcNotInRaid.length})`, elem);
 		}
 
-		msg.channel.send(resultEmbed).catch(e => { });*/
+		msg.channel.send(resultEmbed).catch(e => { });
 	}
 }

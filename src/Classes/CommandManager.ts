@@ -64,6 +64,7 @@ import { QuickLogAssistCommand } from "../Commands/Logging/QuickLogAssistCommand
 import { QuickLogMainRlCommand } from "../Commands/Logging/QuickLogMainRlCommand";
 import { QuickLogFailCommand } from "../Commands/Logging/QuickLogFailCommand";
 import { ManageTeamCommand } from "../Commands/Moderator/ManageTeamCommand";
+import { ParseWhoCommand } from "../Commands/Staff/ParseWhoCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -138,7 +139,8 @@ export class CommandManager {
 			new CheckModmailBlacklistCommand(),
 			new SilenceCommand(),
 			new PurgeCommand(),
-			new SpamPingCommand()
+			new SpamPingCommand(),
+			new ParseWhoCommand()
 		]);
 
 		this.commands.set("Moderation", [

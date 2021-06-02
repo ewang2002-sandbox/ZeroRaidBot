@@ -145,6 +145,8 @@ export interface IRaidGuild {
 			}
 		};
 
+		// poorly named
+		// should be "otherStaffRoles"
 		customTeamRoles: string[];
 
 		/**

@@ -132,4 +132,19 @@ export namespace RealmSharperWrapper {
         const resp = await Zero.AxiosClient.get<PAD.IPlayerData>(url);
         return getProperReturnType<PAD.IPlayerData>(resp.data);
     }
+
+    /**
+     * Parses a /who screenshot for names.
+     * @param {string} link An object containing the URL to the screenshot.
+     * @returns {Promise<PAD.IParseWhoResult>} The list of names found.
+     */
+    export async function parseWhoScreenshot(link: string): Promise<PAD.IParseWhoResult> {
+        const url = BotConfiguration.privateApiLinks.baseApi + "/" + BotConfiguration.privateApiLinks.parseEndpoint;
+        const resp = await Zero.AxiosClient.get<PAD.IParseWhoResult>(url, {
+            data: {
+                Url: link
+            }
+        });
+        return resp.data;
+    }
 }

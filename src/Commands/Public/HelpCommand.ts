@@ -138,6 +138,8 @@ export class HelpCommand extends Command {
 					"officer",
 					"universalRaidLeader",
 					"support",
+					"verifier",
+					"team",
 					"raider",
 					"suspended"
 				];

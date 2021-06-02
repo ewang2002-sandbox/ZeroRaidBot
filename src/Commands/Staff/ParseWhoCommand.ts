@@ -27,7 +27,7 @@ export class ParseWhoCommand extends Command {
 			new CommandPermission(
 				[],
 				["MANAGE_CHANNELS", "ADD_REACTIONS", "EMBED_LINKS"],
-				["support"],
+				["team"],
 				[],
 				true
 			),

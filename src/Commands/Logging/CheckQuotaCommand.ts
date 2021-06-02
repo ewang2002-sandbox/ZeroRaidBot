@@ -26,8 +26,8 @@ export class CheckQuotaCommand extends Command {
             new CommandPermission(
                 [],
                 [],
-                ["support"],
-                ["ALL_RLS"],
+                ["team"],
+                [],
                 true
             ),
             true,

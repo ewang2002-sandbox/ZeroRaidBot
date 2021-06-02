@@ -25,7 +25,7 @@ export class CheckBlacklistCommand extends Command {
 			new CommandPermission(
 				[],
 				["EMBED_LINKS"],
-				["support"],
+				["team"],
 				[],
 				true
 			),

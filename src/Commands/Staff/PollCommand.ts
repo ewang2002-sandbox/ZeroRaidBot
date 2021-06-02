@@ -45,7 +45,7 @@ export class PollCommand extends Command {
 			new CommandPermission(
 				[],
 				["ADD_REACTIONS", "EMBED_LINKS"],
-				["support"],
+				["team"],
 				[],
 				true
 			),

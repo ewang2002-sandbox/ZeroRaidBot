@@ -25,8 +25,8 @@ export class FindUserCommand extends Command {
 			new CommandPermission(
 				[],
 				["EMBED_LINKS"],
-				["verifier"],
-				["ALL_RLS"],
+				["team"],
+				[],
 				true
 			),
 			true, // guild-only command. 

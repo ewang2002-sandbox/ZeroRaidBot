@@ -37,7 +37,7 @@ export module RaidHandler {
 	/**
 	 * The maximum time that an AFK check should last for. 
 	 */
-	const MAX_TIME_LEFT: number = 300000;
+	const MAX_TIME_LEFT: number = 20 * 60 * 1000;
 
 	/**
 	 * An interface defining each pending AFK check. Each AFK check has its own ReactionCollector (for )
@@ -689,7 +689,7 @@ export module RaidHandler {
 			type: "voice",
 			permissionOverwrites: realPermissions,
 			parent: SECTION_CATEGORY,
-			userLimit: 30
+			userLimit: vcLimit
 		});
 
 		if (vcToUse !== null) {
@@ -741,7 +741,7 @@ export module RaidHandler {
 			.setThumbnail(ArrayUtil.getRandomElement(SELECTED_DUNGEON.bossLink))
 			.setFooter(`${guild.name}: Raid AFK Check`);
 
-		const afkCheckMessage: Message = await AFK_CHECK_CHANNEL.send(`@here, a new ${SELECTED_DUNGEON.dungeonName} AFK check is currently ongoing. There are 5 minutes and 0 seconds remaining on this AFK check.`, { embed: afkCheckEmbed });
+		const afkCheckMessage: Message = await AFK_CHECK_CHANNEL.send(`@here, a new ${SELECTED_DUNGEON.dungeonName} AFK check is currently ongoing. There are 20 minutes and 0 seconds remaining on this AFK check.`, { embed: afkCheckEmbed });
 
 		const mst: MessageSimpleTick = new MessageSimpleTick(afkCheckMessage, `@here, a new ${SELECTED_DUNGEON.dungeonName} AFK check is currently ongoing. There are {m} minutes and {s} seconds remaining on this AFK check.`, MAX_TIME_LEFT);
 

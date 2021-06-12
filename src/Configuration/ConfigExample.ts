@@ -37,7 +37,22 @@ export const BotConfiguration: IConfigurationSettings = PRODUCTION_BOT
         botOwners: [],
 		botColors: [],
 		// guilds that dont need a db entry
-		exemptGuild: []
+		exemptGuild: [],
+		privateApiLinks: {
+            baseApi: "",
+            pingOnline: "",
+            parseEndpoint: "",
+            realmEye: {
+                playerBasics: "",
+                petyard: "",
+                graveyard: "",
+                graveyardSummary: "",
+                nameHistory: "",
+                rankHistory: "",
+                guildHistory: "",
+                exaltations: ""
+            }
+        }
     } : {
         token: "",
         dbURL: "",
@@ -47,7 +62,22 @@ export const BotConfiguration: IConfigurationSettings = PRODUCTION_BOT
         botCollectionName: "",
         botOwners: [],
 		botColors: [],
-		exemptGuild: []
+		exemptGuild: [],
+		privateApiLinks: {
+            baseApi: "",
+            pingOnline: "",
+            parseEndpoint: "",
+            realmEye: {
+                playerBasics: "",
+                petyard: "",
+                graveyard: "",
+                graveyardSummary: "",
+                nameHistory: "",
+                rankHistory: "",
+                guildHistory: "",
+                exaltations: ""
+            }
+        }
     };
 
 /**
@@ -64,6 +94,16 @@ export const DeleteEmbedTime: number = 5000;
  * Private RealmEye API URL. Don't fill this field out.
  */
 export const APIUrl: string = "";
+
+/**
+ * Player data.
+ */
+export const APIPlayerData: string = "";
+
+/**
+ * Name history data.
+ */
+export const NameHistoryData: string = "";
 
 /**
  * This token will be used to post issues. 

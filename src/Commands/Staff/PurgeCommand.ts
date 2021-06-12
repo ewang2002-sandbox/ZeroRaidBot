@@ -1,7 +1,7 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message, Collection, TextChannel, ChannelLogsQueryOptions, MessageEmbed, MessageAttachment } from "discord.js";
+import { Message, Collection, TextChannel, ChannelLogsQueryOptions, MessageEmbed, MessageAttachment, GuildChannel } from "discord.js";
 import { IRaidGuild } from "../../Templates/IRaidGuild";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { OtherUtil } from "../../Utility/OtherUtil";
@@ -48,22 +48,17 @@ export class PurgeCommand extends Command {
 			return;
 		}
 
+		// because we also deleted our own msg
+		num++; 
+
+		const channel: GuildChannel = msg.channel as GuildChannel;
+		if (!channel.isText())
+			return; 
+
+		if (!(channel instanceof TextChannel))
+			return; 
+			
 		const clearPins: boolean = args.includes("pins");
-
-		const sb: StringBuilder = new StringBuilder()
-			.append(`[PURGE] Purge Command Executed`)
-			.appendLine()
-			.append(`Time: ${DateUtil.getTime()}`)
-			.appendLine()
-			.append(`Moderator: ${msg.author.tag} (${msg.author.id})`)
-			.appendLine()
-			.append(`Keep Pinned? ${clearPins ? "Yes" : "No"}`)
-			.appendLine()
-			.appendLine()
-			.append("============================")
-			.appendLine();
-
-		let msgsCleared: number = 0;
 		let numToClear: number = 0;
 		while (num > 0) {
 			if (num > 100) {
@@ -79,50 +74,26 @@ export class PurgeCommand extends Command {
 				limit: numToClear
 			};
 
-			let msgs: Collection<string, Message> = await msg.channel.messages.fetch(q);
-			if (msgs.size === 0) {
-				break;
-			}
+			let msgs: Collection<string, Message> = await channel.messages.fetch(q);
+
 
 			if (!clearPins) {
 				msgs = msgs.filter(x => !x.pinned);
 			}
 
-			const deletedMsg: Collection<string, Message> | void = await (msg.channel as TextChannel)
-				.bulkDelete(msgs, true).catch(() => { });
-			if (typeof deletedMsg !== "undefined") {
-				if (deletedMsg.size === 0) {
-					break;
-				}
-				for (const [, m] of deletedMsg) {
-					sb.append(`[${DateUtil.getTime(m.createdAt)}] ${m.author.tag} • ${m.author.id}`)
-						.appendLine()
-						.append(`Message ID: ${m.id}`)
-						.appendLine()
-						.appendLine()
-						.append(m.content)
-						.appendLine()
-						.appendLine()
-						.append(`Attachments: [${Array.from(m.attachments).map(x => x[1].url).join(", ")}]`)
-						.appendLine()
-						.append("============================")
-						.appendLine();
-				}
-				msgsCleared += deletedMsg.size;
+			if (msgs.size === 0) {
+				break;
 			}
+
+			try {
+				await channel.bulkDelete(msgs);
+			}
+			catch (e) {
+				console.error(e); 
+				break;
+			}
+
 			await OtherUtil.waitFor(3000);
 		}
-
-		const embed: MessageEmbed = MessageUtil.generateBlankEmbed(msg.author)
-			.setTitle(`🗑️ ${msgsCleared} Messages Cleared.`)
-			.setDescription(`⇒ Moderator: ${msg.author} (${msg.author.id})\n⇒ Clear Pins? ${clearPins ? "Yes" : "No"}`)
-			.addField("Note", "Please see the above text file for all purged messages.")
-			.setColor("RED")
-			.setTimestamp()
-			.setFooter("Purge Command Executed At");
-		await msg.author.send("=========================", {
-			embed: embed,
-			files: [new MessageAttachment(Buffer.from(sb.toString(), "utf8"), `${msg.author.id}_purge.txt`)]
-		}).catch(() => { });
 	}
 }

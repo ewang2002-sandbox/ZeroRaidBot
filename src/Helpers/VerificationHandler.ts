@@ -6,21 +6,17 @@ import { StringUtil } from "../Utility/StringUtil";
 import { ISection } from "../Templates/ISection";
 import { MongoDbHelper } from "./MongoDbHelper";
 import { MessageUtil } from "../Utility/MessageUtil";
-import { Zero } from "../Zero";
-import { RealmEyeAPILink } from "../Constants/ConstantVars";
 import { StringBuilder } from "../Classes/String/StringBuilder";
-import { AxiosResponse } from "axios";
 import { FilterQuery, InsertOneWriteOpResult, WithId } from "mongodb";
 import { ArrayUtil } from "../Utility/ArrayUtil";
-import { INameHistory, IAPIError } from "../Definitions/ICustomREVerification";
 import { UserHandler } from "./UserHandler";
 import { GuildUtil } from "../Utility/GuildUtil";
 import { IManualVerification } from "../Definitions/IManualVerification";
-import { IRealmEyeNoUser } from "../Definitions/IRealmEyeNoUser";
-import { IRealmEyeAPI } from "../Definitions/IRealmEyeAPI";
 import { UserAvailabilityHelper } from "./UserAvailabilityHelper";
 import { IBlacklistedUser } from "../Definitions/IBlacklistedUser";
 import { IVerification } from "../Templates/IVerification";
+import { PrivateApiDefinitions } from "../Definitions/PrivateApiDefinitions";
+import { RealmSharperWrapper } from "./RealmSharperWrapper";
 
 export module VerificationHandler {
 	// TODO make this a set? 
@@ -177,6 +173,15 @@ export module VerificationHandler {
 			setTimeout(() => {
 				PeopleThatWereMessaged.delete(member.id);
 			}, 5000);
+			return;
+		}
+
+		if (!(await RealmSharperWrapper.isOnline())) {
+			MessageUtil.send({ content: "The RealmEye API is currently offline, which means verification is currently offline. Please try again later." }, member, 1 * 60 * 1000);
+			IsInVerification.set(member.id, "GENERAL");
+			setInterval(() => {
+				IsInVerification.delete(member.id);
+			}, 10 * 60 * 1000);
 			return;
 		}
 
@@ -345,10 +350,9 @@ export module VerificationHandler {
 				canReact = false;
 				// begin verification time
 
-				let requestData: AxiosResponse<IRealmEyeNoUser | IRealmEyeAPI>;
+				let requestData: PrivateApiDefinitions.IPlayerData | null;
 				try {
-					requestData = await Zero.AxiosClient
-						.get<IRealmEyeNoUser | IRealmEyeAPI>(RealmEyeAPILink + inGameName);
+					requestData = await RealmSharperWrapper.getPlayerInfo(inGameName);
 				}
 				catch (e) {
 					reactCollector.stop();
@@ -366,7 +370,7 @@ export module VerificationHandler {
 					return;
 				}
 
-				if ("error" in requestData.data) {
+				if (requestData === null) {
 					if (typeof verificationAttemptsChannel !== "undefined") {
 						verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but the name could not be found on RealmEye.`).catch(() => { });
 					}
@@ -376,9 +380,9 @@ export module VerificationHandler {
 				}
 
 				// get name history
-				let nameHistory: INameHistory[] | IAPIError;
+				let nameHistory: PrivateApiDefinitions.INameHistory | null;
 				try {
-					nameHistory = await getRealmEyeNameHistory(requestData.data.player);
+					nameHistory = await RealmSharperWrapper.getNameHistory(requestData.name);
 				} catch (e) {
 					reactCollector.stop();
 					if (typeof verificationAttemptsChannel !== "undefined") {
@@ -395,7 +399,7 @@ export module VerificationHandler {
 					return;
 				}
 
-				if ("errorMessage" in nameHistory) {
+				if (nameHistory === null) {
 					if (typeof verificationAttemptsChannel !== "undefined") {
 						verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his or her name history is not available to the public.`).catch(() => { });
 					}
@@ -404,14 +408,10 @@ export module VerificationHandler {
 					return;
 				}
 
-				const nameFromProfile: string = requestData.data.player;
+				const nameFromProfile: string = requestData.name;
 				if (!isOldProfile) {
 					let codeFound: boolean = false;
-					let description: string[] = [
-						requestData.data.desc1,
-						requestData.data.desc2,
-						requestData.data.desc3
-					]
+					let description: string[] = requestData.description;
 					for (let i = 0; i < description.length; i++) {
 						if (description[i].includes(code)) {
 							codeFound = true;
@@ -431,7 +431,7 @@ export module VerificationHandler {
 				// we know this is the right person.
 				// BLACKLIST CHECK
 				for (const blacklistEntry of guildDb.moderation.blacklistedUsers) {
-					for (const nameEntry of [nameFromProfile, ...nameHistory.map(x => x.name)]) {
+					for (const nameEntry of [nameFromProfile, ...nameHistory.nameHistory.map(x => x.name)]) {
 						if (blacklistEntry.inGameName.toLowerCase() === nameEntry.toLowerCase()) {
 							reactCollector.stop();
 							if (typeof verificationAttemptsChannel !== "undefined") {
@@ -490,7 +490,7 @@ export module VerificationHandler {
 				}
 
 				// now back to regular checking
-				if (requestData.data.player_last_seen !== "hidden") {
+				if (requestData.lastSeen !== "hidden") {
 					if (typeof verificationAttemptsChannel !== "undefined") {
 						verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${inGameName}\`, but his/her last-seen location is not hidden.`).catch(() => { });
 					}
@@ -499,7 +499,7 @@ export module VerificationHandler {
 					return;
 				}
 
-				const prelimCheck: ICheckResults = preliminaryCheck(section, requestData.data);
+				const prelimCheck: ICheckResults = preliminaryCheck(section, requestData);
 				if (!prelimCheck.passedAll) {
 					if (section.verification.maxedStats.required && prelimCheck.characters.hidden) {
 						if (typeof verificationAttemptsChannel !== "undefined") {
@@ -560,7 +560,7 @@ export module VerificationHandler {
 						failedEmbed
 							.setDescription("Your account is now under manual review by staff. Please do not attempt to verify again. If your account is not reviewed within the next 48 hours, please contact the staff through #help-desk or message an online helper or moderator. Otherwise, please refrain from messaging staff about your application review status. ")
 							.setFooter("Verification Process: Stopped.");
-						manualVerification(guild, member, requestData.data, manualVerificationChannel, section, reqsFailedToMeet, nameHistory);
+						manualVerification(guild, member, requestData, manualVerificationChannel, section, reqsFailedToMeet, nameHistory);
 						outputLogs += `\nThis profile has been sent to the manual verification channel for further review.`;
 					}
 					await dmChannel.send(failedEmbed).catch(e => { });
@@ -573,7 +573,7 @@ export module VerificationHandler {
 
 				// success!
 				await member.roles.add(verifiedRole);
-				await member.setNickname(member.user.username === requestData.data.player ? `${requestData.data.player}.` : requestData.data.player).catch(() => { });
+				await member.setNickname(member.user.username === requestData.name ? `${requestData.name}.` : requestData.name).catch(() => { });
 
 				reactCollector.stop();
 				const successEmbed: MessageEmbed = new MessageEmbed()
@@ -618,9 +618,8 @@ export module VerificationHandler {
 				return;
 			}
 
-			const requestData: AxiosResponse<IRealmEyeNoUser | IRealmEyeAPI> = await Zero.AxiosClient
-				.get<IRealmEyeNoUser | IRealmEyeAPI>(RealmEyeAPILink + name);
-			if ("error" in requestData.data) {
+			let requestData: PrivateApiDefinitions.IPlayerData | null = await RealmSharperWrapper.getPlayerInfo(name);
+			if (requestData === null) {
 				if (typeof verificationAttemptsChannel !== "undefined") {
 					verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${name}\`, but the name could not be found on RealmEye.`).catch(() => { });
 				}
@@ -628,7 +627,7 @@ export module VerificationHandler {
 				return;
 			}
 
-			const prelimCheck: ICheckResults = preliminaryCheck(section, requestData.data);
+			const prelimCheck: ICheckResults = preliminaryCheck(section, requestData);
 			// TODO make prelim check handle into a function? 
 			if (!prelimCheck.passedAll) {
 				if (section.verification.maxedStats.required && prelimCheck.characters.hidden) {
@@ -694,7 +693,12 @@ export module VerificationHandler {
 					failedEmbed
 						.setDescription("Your account is now under manual review by staff. Please do not attempt to verify again through this specific section. If your account is not reviewed within the next 48 hours, please contact the staff through #help-desk or message an online helper or moderator. Otherwise, please refrain from messaging staff about your application review status. ")
 						.setFooter("Verification Process: Stopped.");
-					manualVerification(guild, member, requestData.data, manualVerificationChannel, section, reqsFailedToMeet);
+					manualVerification(guild, member, requestData, manualVerificationChannel, section, reqsFailedToMeet, {
+						name: name,
+						profileIsPrivate: false,
+						sectionIsPrivate: false,
+						nameHistory: []
+					});
 					outputLogs += `\nThis profile has been sent to the manual verification channel for further review.`;
 				}
 
@@ -726,7 +730,7 @@ export module VerificationHandler {
 	export async function accountInDatabase(
 		member: GuildMember | User,
 		nameFromProfile: string,
-		nameHistory: INameHistory[]
+		nameHistory: PrivateApiDefinitions.INameHistory
 	): Promise<void> {
 		const resolvedUserDbDiscord: IRaidUser | null = await MongoDbHelper.MongoDbUserManager.MongoUserClient
 			.findOne({ discordUserId: member.id });
@@ -764,12 +768,12 @@ export module VerificationHandler {
 				];
 				let isMainIGN: boolean = false;
 				let nameToReplace: string | undefined;
-				nameHistory.shift(); // will remove the first name, which is the current name
-				if (nameHistory.length !== 0) {
+				nameHistory.nameHistory.shift(); // will remove the first name, which is the current name
+				if (nameHistory.nameHistory.length !== 0) {
 					for (let i = 0; i < names.length; i++) {
-						for (let j = 0; j < nameHistory.length; j++) {
-							if (names[i] === nameHistory[j].name.toLowerCase()) {
-								nameToReplace = nameHistory[j].name;
+						for (let j = 0; j < nameHistory.nameHistory.length; j++) {
+							if (names[i] === nameHistory.nameHistory[j].name.toLowerCase()) {
+								nameToReplace = nameHistory.nameHistory[j].name;
 								if (i === 0) {
 									isMainIGN = true;
 								}
@@ -1056,7 +1060,7 @@ export module VerificationHandler {
 
 	function preliminaryCheck(
 		sec: ISection,
-		reapi: IRealmEyeAPI
+		reapi: PrivateApiDefinitions.IPlayerData
 	): ICheckResults {
 		// char pts 
 		let zero: number = 0;
@@ -1070,7 +1074,7 @@ export module VerificationHandler {
 		let eight: number = 0;
 
 		for (let character of reapi.characters) {
-			const maxedStat: number = character.stats_maxed;
+			const maxedStat: number = character.statsMaxed;
 			switch (maxedStat) {
 				case (0): zero++; break;
 				case (1): one++; break;
@@ -1135,71 +1139,10 @@ export module VerificationHandler {
 			characters: {
 				amt: [zero, one, two, three, four, five, six, seven, eight],
 				passed: charPassed,
-				hidden: reapi.characters_hidden
+				hidden: reapi.characterCount === -1
 			},
 			passedAll: rankPassed && famePassed && charPassed
 		};
-	}
-
-	/**
-	 * Returns the name history of a person.
-	 * @param {string} ign The in-game name. 
-	 */
-	export async function getRealmEyeNameHistory(
-		ign: string
-	): Promise<IAPIError | INameHistory[]> {
-		const resp: AxiosResponse<string> = await Zero.AxiosClient.get(
-			`https://www.realmeye.com/name-history-of-player/${ign}`,
-			{
-				headers: {
-					"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.61 Safari/537.36"
-				}
-			}
-		);
-
-		const dataBelowDesc: string = resp.data.split("</div></div></div></div><ul class")[1];
-
-		if (dataBelowDesc.includes("Name history is hidden")) {
-			return ({
-				errorMessage: "Name history is hidden.",
-				specification: "The player has hidden his or her name history.",
-			});
-		}
-
-		if (dataBelowDesc.includes("No name changes detected.")) {
-			return [];
-		}
-
-		const nameHistoryArray: string[] = dataBelowDesc
-			.split("<tr><td><span>");
-		nameHistoryArray.shift();
-
-		let nameHistory: INameHistory[] = [];
-
-		for (let i = 0; i < nameHistoryArray.length; i++) {
-			let name: string = nameHistoryArray[i].split("</span>")[0];
-			let from: string = nameHistoryArray[i]
-				.split("</span></td><td>")[1]
-				.split("</td><td>")[0];
-			let to: string;
-			if (nameHistoryArray[i]
-				.split("</td><td>")[2]
-				.includes("Z</td></tr>")) {
-				to = nameHistoryArray[i]
-					.split("</td><td>")[2]
-					.split("</td></tr>")[0]
-			} else {
-				to = "";
-			}
-
-			nameHistory.push({
-				name: name,
-				from: from,
-				to: to
-			});
-		}
-
-		return nameHistory;
 	}
 
 	/**
@@ -1218,16 +1161,16 @@ export module VerificationHandler {
 	async function manualVerification(
 		guild: Guild,
 		member: GuildMember,
-		verificationInfo: IRealmEyeAPI,
+		verificationInfo: PrivateApiDefinitions.IPlayerData,
 		manualVerificationChannel: TextChannel,
 		section: ISection,
 		reqsFailedToMeet: StringBuilder,
-		nameHistoryInfo: INameHistory[] = []
+		nameHistoryInfo: PrivateApiDefinitions.INameHistory
 	): Promise<void> {
 		if (section.isMain) {
 			// we can safely assume
 			// that the id = the person.
-			await accountInDatabase(member, verificationInfo.player, nameHistoryInfo);
+			await accountInDatabase(member, verificationInfo.name, nameHistoryInfo);
 		}
 
 		const desc: StringBuilder = new StringBuilder()
@@ -1235,11 +1178,11 @@ export module VerificationHandler {
 			.appendLine()
 			.append(`⇒ **User:** ${member}`)
 			.appendLine()
-			.append(`⇒ **IGN:** ${verificationInfo.player}`)
+			.append(`⇒ **IGN:** ${verificationInfo.name}`)
 			.appendLine();
 
-		if (typeof verificationInfo.player_first_seen !== "undefined") {
-			desc.append(`⇒ **First Seen**: ${verificationInfo.player_first_seen}`)
+		if (typeof verificationInfo.firstSeen !== "undefined") {
+			desc.append(`⇒ **First Seen**: ${verificationInfo.firstSeen}`)
 		}
 		else if (typeof verificationInfo.created !== "undefined") {
 			desc.append(`⇒ **Created**: ${verificationInfo.created}`);
@@ -1247,16 +1190,16 @@ export module VerificationHandler {
 
 		desc
 			.appendLine()
-			.append(`⇒ **Last Seen**: ${verificationInfo.player_last_seen}`)
+			.append(`⇒ **Last Seen**: ${verificationInfo.lastSeen}`)
 			.appendLine()
-			.append(`⇒ **RealmEye:** [Profile](https://www.realmeye.com/player/${verificationInfo.player})`)
+			.append(`⇒ **RealmEye:** [Profile](https://www.realmeye.com/player/${verificationInfo.name})`)
 			.appendLine()
 			.appendLine()
 			.append(`React with ☑️ to manually verify this person; otherwise, react with ❌.`);
 
 		const manualVerifEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(member.user.tag, member.user.displayAvatarURL())
-			.setTitle(`**${section.isMain ? "Server" : section.nameOfSection}** ⇒ Manual Verification Request: **${verificationInfo.player}**`)
+			.setTitle(`**${section.isMain ? "Server" : section.nameOfSection}** ⇒ Manual Verification Request: **${verificationInfo.name}**`)
 			.setDescription(desc.toString())
 			.addField("Unmet Requirements", StringUtil.applyCodeBlocks(reqsFailedToMeet.toString()))
 			.addField("Current Status", StringUtil.applyCodeBlocks("🔓 Status: Unlocked"))
@@ -1284,7 +1227,7 @@ export module VerificationHandler {
 			$push: {
 				[updateKey]: {
 					userId: member.id,
-					inGameName: verificationInfo.player,
+					inGameName: verificationInfo.name,
 					rank: verificationInfo.rank,
 					aFame: verificationInfo.fame,
 					nameHistory: nameHistoryInfo,
@@ -1604,35 +1547,5 @@ export module VerificationHandler {
 				}
 			});
 		});
-	}
-
-	/**
-	 * Verifies the member using the private API. 
-	 * @param member The member to verify.
-	 * @param guild The guild.
-	 * @param guildDb The guild doc.
-	 * @param section The section where the member should be verified.
-	 */
-	export async function verifyUserPrivate(member: GuildMember, guild: Guild, guildDb: IRaidGuild, section: ISection): Promise<void> {
-		const verifiedRole: Role = guild.roles.cache.get(section.verifiedRole) as Role;
-
-		// channel declaration
-		// yes, we know these can be textchannels b/c that's the input in configsections
-		const verificationAttemptsChannel: TextChannel | undefined = guild.channels.cache
-			.get(section.channels.logging.verificationAttemptsChannel) as TextChannel | undefined;
-		const verificationSuccessChannel: TextChannel | undefined = guild.channels.cache
-			.get(section.channels.logging.verificationSuccessChannel) as TextChannel | undefined;
-		const manualVerificationChannel: TextChannel | undefined = guild.channels.cache
-			.get(section.channels.manualVerification) as TextChannel | undefined;
-		const verificationChannel: TextChannel | undefined = guild.channels.cache
-			.get(section.channels.verificationChannel) as TextChannel | undefined;
-
-
-		if (section.isMain) {
-
-		}
-		else {
-
-		}
 	}
 }

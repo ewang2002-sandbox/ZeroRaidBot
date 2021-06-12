@@ -37,7 +37,7 @@ export module RaidHandler {
 	/**
 	 * The maximum time that an AFK check should last for. 
 	 */
-	const MAX_TIME_LEFT: number = 300000;
+	const MAX_TIME_LEFT: number = 20 * 60 * 1000;
 
 	/**
 	 * An interface defining each pending AFK check. Each AFK check has its own ReactionCollector (for )
@@ -664,11 +664,32 @@ export module RaidHandler {
 
 		let vcName: string = vcToUse !== null ? vcToUse.name : `Raiding ${newRaidNum}`;
 
+		// TEMPORARY WORKAROUND UNTIL NEW BOT IS READY.
+		let vcLimit: number = 80;
+		// One of the LH servers
+		if (guild.id === "739573333242150975") {
+			if ([30, 34, 35, 32].includes(SELECTED_DUNGEON.id)) vcLimit = 30;
+			else if ([38].includes(SELECTED_DUNGEON.id)) vcLimit = 45;
+		}
+		// Fungal
+		else if (guild.id === "635413437647683596") {
+			if ([36].includes(SELECTED_DUNGEON.id)) vcLimit = 45;
+		}
+		// Dgn
+		else if (guild.id === "660344559074541579") {
+			if ([38].includes(SELECTED_DUNGEON.id)) vcLimit = 65;
+		}
+		// Crown
+		else if (guild.id === "765588832825114645") {
+			vcLimit = 40;
+		}
+
+
 		const NEW_RAID_VC: VoiceChannel = vcToUse || await guild.channels.create(`🚦 Raiding ${newRaidNum}`, {
 			type: "voice",
 			permissionOverwrites: realPermissions,
 			parent: SECTION_CATEGORY,
-			userLimit: 99
+			userLimit: vcLimit
 		});
 
 		if (vcToUse !== null) {
@@ -720,7 +741,7 @@ export module RaidHandler {
 			.setThumbnail(ArrayUtil.getRandomElement(SELECTED_DUNGEON.bossLink))
 			.setFooter(`${guild.name}: Raid AFK Check`);
 
-		const afkCheckMessage: Message = await AFK_CHECK_CHANNEL.send(`@here, a new ${SELECTED_DUNGEON.dungeonName} AFK check is currently ongoing. There are 5 minutes and 0 seconds remaining on this AFK check.`, { embed: afkCheckEmbed });
+		const afkCheckMessage: Message = await AFK_CHECK_CHANNEL.send(`@here, a new ${SELECTED_DUNGEON.dungeonName} AFK check is currently ongoing. There are 20 minutes and 0 seconds remaining on this AFK check.`, { embed: afkCheckEmbed });
 
 		const mst: MessageSimpleTick = new MessageSimpleTick(afkCheckMessage, `@here, a new ${SELECTED_DUNGEON.dungeonName} AFK check is currently ongoing. There are {m} minutes and {s} seconds remaining on this AFK check.`, MAX_TIME_LEFT);
 

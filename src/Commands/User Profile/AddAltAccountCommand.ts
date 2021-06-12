@@ -9,16 +9,13 @@ import { MessageUtil } from "../../Utility/MessageUtil";
 import { MessageAutoTick } from "../../Classes/Message/MessageAutoTick";
 import { VerificationHandler } from "../../Helpers/VerificationHandler";
 import { StringUtil } from "../../Utility/StringUtil";
-import { AxiosResponse } from "axios";
 import { Zero } from "../../Zero";
-import { RealmEyeAPILink } from "../../Constants/ConstantVars";
-import { INameHistory, IAPIError } from "../../Definitions/ICustomREVerification";
 import { FilterQuery } from "mongodb";
 import { StringBuilder } from "../../Classes/String/StringBuilder";
-import { IRealmEyeNoUser } from "../../Definitions/IRealmEyeNoUser";
-import { IRealmEyeAPI } from "../../Definitions/IRealmEyeAPI";
 import { ArrayUtil } from "../../Utility/ArrayUtil";
 import { UserAvailabilityHelper } from "../../Helpers/UserAvailabilityHelper";
+import { PrivateApiDefinitions } from "../../Definitions/PrivateApiDefinitions";
+import { RealmSharperWrapper } from "../../Helpers/RealmSharperWrapper";
 
 export class AddAltAccountCommand extends Command {
 	public static readonly MAX_ALTS_ALLOWED: number = 10;
@@ -82,6 +79,11 @@ export class AddAltAccountCommand extends Command {
 			return;
 		}
 
+		if (!(await RealmSharperWrapper.isOnline())) {
+			MessageUtil.send({ content: "The RealmEye API is currently offline. Please try again later." }, msg.author, 1 * 60 * 1000);
+			return;
+		}
+
 		const code: string = VerificationHandler.getRandomizedString(8);
 
 		const embed: MessageEmbed = new MessageEmbed()
@@ -141,10 +143,9 @@ export class AddAltAccountCommand extends Command {
 			canReact = false;
 			// begin verification time
 
-			let requestData: AxiosResponse<IRealmEyeNoUser | IRealmEyeAPI>;
+			let requestData: PrivateApiDefinitions.IPlayerData | null;
 			try {
-				requestData = await Zero.AxiosClient
-					.get<IRealmEyeNoUser | IRealmEyeAPI>(RealmEyeAPILink + inGameName);
+				requestData = await RealmSharperWrapper.getPlayerInfo(inGameName);
 			}
 			catch (e) {
 				reactCollector.stop();
@@ -152,19 +153,15 @@ export class AddAltAccountCommand extends Command {
 				return;
 			}
 
-			if ("error" in requestData.data) {
+			if (requestData === null) {
 				await dmChannel.send("I could not find your RealmEye profile; you probably made your profile private. Ensure your profile's visibility is set to public and try again.");
 				canReact = true;
 				return;
 			}
 
-			const nameFromProfile: string = requestData.data.player;
+			const nameFromProfile: string = requestData.name;
 			let codeFound: boolean = false;
-			let description: string[] = [
-				requestData.data.desc1,
-				requestData.data.desc2,
-				requestData.data.desc3
-			]
+			let description: string[] = requestData.description;
 			for (let i = 0; i < description.length; i++) {
 				if (description[i].includes(code)) {
 					codeFound = true;
@@ -177,22 +174,23 @@ export class AddAltAccountCommand extends Command {
 				return;
 			}
 
-			if (requestData.data.player_last_seen !== "hidden") {
+			if (requestData.lastSeen !== "hidden") {
 				await dmChannel.send("Your last-seen location is not hidden. Please make sure __no one__ can see your last-seen location.");
 				canReact = true;
 				return;
 			}
 
-			let nameHistory: INameHistory[] | IAPIError;
-			try {
-				nameHistory = await VerificationHandler.getRealmEyeNameHistory(requestData.data.player);
-			} catch (e) {
+				// get name history
+				let nameHistory: PrivateApiDefinitions.INameHistory | null;
+				try {
+					nameHistory = await RealmSharperWrapper.getNameHistory(requestData.name);
+				} catch (e) {
 				reactCollector.stop();
 				await dmChannel.send(`An error occurred when trying to connect to your RealmEye profile.\n\tError: ${e}`);
 				return;
 			}
 
-			if ("errorMessage" in nameHistory) {
+			if (nameHistory === null) {
 				await dmChannel.send("Your Name History is not public! Set your name history to public first and then try again.");
 				canReact = true;
 				return;
@@ -200,7 +198,7 @@ export class AddAltAccountCommand extends Command {
 
 			let nameToReplaceWith: string = "";
 			const allNames: string[] = [userDb.rotmgLowercaseName, ...userDb.otherAccountNames.map(x => x.lowercase)];
-			for (const nameEntry of nameHistory) {
+			for (const nameEntry of nameHistory.nameHistory) {
 				for (const nameInDb of allNames) {
 					if (nameEntry.name.toLowerCase().trim() === nameInDb.trim()) {
 						nameToReplaceWith = nameEntry.name;
@@ -243,12 +241,12 @@ export class AddAltAccountCommand extends Command {
 
 				let isMainIGN: boolean = false;
 				let nameToReplace: string | undefined;
-				nameHistory.shift();
-				if (nameHistory.length !== 0) {
+				nameHistory.nameHistory.shift();
+				if (nameHistory.nameHistory.length !== 0) {
 					for (let i = 0; i < names.length; i++) {
-						for (let j = 0; j < nameHistory.length; j++) {
-							if (names[i] === nameHistory[j].name.toLowerCase()) {
-								nameToReplace = nameHistory[j].name;
+						for (let j = 0; j < nameHistory.nameHistory.length; j++) {
+							if (names[i] === nameHistory.nameHistory[j].name.toLowerCase()) {
+								nameToReplace = nameHistory.nameHistory[j].name;
 								if (i === 0) {
 									isMainIGN = true;
 								}
@@ -323,7 +321,7 @@ export class AddAltAccountCommand extends Command {
 						allNames = allNames.map(x => x.trim().replace(/[^A-Za-z]/g, ""));
 						for (let i = 0; i < allNames.length; i++) {
 							if (allNames[i].toLowerCase() === nameToReplaceWith.toLowerCase()) {
-								allNames[i] = requestData.data.player;
+								allNames[i] = requestData.name;
 							}
 						}
 

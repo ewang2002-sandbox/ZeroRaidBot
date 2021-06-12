@@ -40,4 +40,23 @@ export interface IConfigurationSettings {
      * Guilds that don't need a guild db.
      */
     exemptGuild: string[]; 
+
+    /**
+     * Private API.
+     */
+    privateApiLinks: {
+        baseApi: string;
+        pingOnline: string;
+        parseEndpoint: string;
+        realmEye: {
+            playerBasics: string;
+            petyard: string;
+            graveyard: string;
+            graveyardSummary: string;
+            nameHistory: string;
+            rankHistory: string;
+            guildHistory: string;
+            exaltations: string;
+        };
+    };
 }

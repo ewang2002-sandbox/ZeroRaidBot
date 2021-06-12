@@ -103,7 +103,7 @@ export class SendEmbedCommand extends Command {
 			embed = new MessageEmbed(rMessage.embeds[0]);
 		}
 		else {
-			embed = new MessageEmbed();
+			embed = new MessageEmbed().setFooter(".");
 		}
 
 		/**

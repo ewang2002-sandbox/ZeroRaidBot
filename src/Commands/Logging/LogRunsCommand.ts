@@ -27,9 +27,9 @@ export class LogRunsCommand extends Command {
 			new CommandPermission(
 				[],
 				[],
-				["headRaidLeader", "universalRaidLeader", "universalAlmostRaidLeader"],
-				["ALL_RLS"],
-				false
+				["universalAlmostRaidLeader"],
+                ["ALL_RLS"],
+				true
 			),
 			true,
 			false,

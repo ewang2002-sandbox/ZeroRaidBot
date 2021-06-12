@@ -239,7 +239,8 @@ export module MongoDbHelper {
 							sectionLeaderRole: "",
 							sectionTrialLeaderRole: "",
 							sectionHeadLeaderRole: ""
-						}
+						},
+						customTeamRoles: []
 					},
 					properties: {
 						priorityQueue: false,

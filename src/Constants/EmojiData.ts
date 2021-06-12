@@ -20,6 +20,13 @@ export const MSeal: string = "678792284682190884";
 export const ScholarSeal: string = "678792068935450634";
 export const BrainPrism: string = "708927848076935218";
 
+// Shatters stuff
+export const ShattersSwitch1: string = "819461984525221919";
+export const ShattersSwitch2: string = "819461984755515392";
+export const ShattersSwitchS: string = "819461984818692116";
+export const ShattersDrag: string = "819461984457195541";
+
+
 // reactions i guess
 export const AllEmoji: string = "561605182153031680";
 export const NitroEmoji: string = "706246225200152656";

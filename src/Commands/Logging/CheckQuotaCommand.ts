@@ -26,8 +26,8 @@ export class CheckQuotaCommand extends Command {
             new CommandPermission(
                 [],
                 [],
-                ["support"],
-                ["ALL_RLS"],
+                ["team"],
+                [],
                 true
             ),
             true,
@@ -105,7 +105,13 @@ export class CheckQuotaCommand extends Command {
                 return new StringBuilder()
                     .append(`**\`[${elem[0]}]\`** ${introStr}`)
                     .appendLine()
-                    .append(`⇒ **Total**: ${elem[1].total}`)
+                    .append(`⇒ TTL: ${elem[1].total}`)
+                    .appendLine()
+                    .append(`⇒ General: ${elem[1].general.completed} / ${elem[1].general.failed} / ${elem[1].general.assists}`)
+                    .appendLine()
+                    .append(`⇒ Endgame: ${elem[1].endgame.completed} / ${elem[1].endgame.failed} / ${elem[1].endgame.assists}`)
+                    .appendLine()
+                    .append(`⇒ Realm Clearing: ${elem[1].realmClearing.completed} / ${elem[1].realmClearing.failed} / ${elem[1].realmClearing.assists}`)
                     .appendLine()
                     .appendLine()
                     .toString();

@@ -30,6 +30,10 @@ export namespace UserHandler {
 			guildData.roles.pardonedRaidLeader
 		];
 
+		if (guildData.roles.customTeamRoles) {
+			staffRoles.push(...guildData.roles.customTeamRoles);
+		}
+
 		// get each individual section rl roles
 		for (const section of [GuildUtil.getDefaultSection(guildData), ...guildData.sections]) {
 			staffRoles.push(section.roles.almostLeaderRole, section.roles.raidLeaderRole, section.roles.trialLeaderRole, section.roles.headLeaderRole);
@@ -44,9 +48,6 @@ export namespace UserHandler {
 
 		for await (let role of allStaffRoles) {
 			if (member.roles.cache.has(role.id)) {
-				// they have the role, add and return 
-				// ? operator used here because "role" has to be defined
-				// or else it wouldn't run here. 
 				await member.roles.add(teamRole, `Has ${role.name} role.`)
 					.catch(() => { });
 				return true;

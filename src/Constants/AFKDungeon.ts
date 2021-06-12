@@ -1,5 +1,5 @@
 import { IDungeonData } from "../Definitions/IDungeonData";
-import { RushingClass, Daze, ArmorBreak, Knight, Warrior, Paladin, Priest, Slow, Paralyze, Samurai, Mystic, MSeal, Trickster, Bard, BrainPrism, SnakeOilEmoji } from "./EmojiData";
+import { RushingClass, Daze, ArmorBreak, Knight, Warrior, Paladin, Priest, Slow, Paralyze, Samurai, Mystic, MSeal, Trickster, Bard, BrainPrism, SnakeOilEmoji, ShattersSwitch1, ShattersSwitch2, ShattersSwitchS, ShattersDrag } from "./EmojiData";
 
 export const AFKDungeon: IDungeonData[] = [
 	{
@@ -842,7 +842,13 @@ export const AFKDungeon: IDungeonData[] = [
 			}
 		],
 		reactions: [
+			ShattersSwitch1,
+			ShattersSwitch2,
+			ShattersSwitchS,
+			ShattersDrag,
 			RushingClass,
+			Mystic,
+			Trickster,
 			Warrior,
 			Knight,
 			Samurai,
@@ -850,7 +856,6 @@ export const AFKDungeon: IDungeonData[] = [
 			Priest,
 			Mystic,
 			Bard,
-			Trickster,
 			ArmorBreak,
 			BrainPrism,
 			Daze

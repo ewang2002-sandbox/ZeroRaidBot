@@ -60,6 +60,11 @@ import { StartModmailThreadCommand } from "../Commands/Modmail Management/StartM
 import { SpamPingCommand } from "../Commands/Moderator/SpamPingCommand";
 import { LeaderboardCommand } from "../Commands/Public/LeaderboardCommand";
 import { LeaveServerCommand } from "../Commands/Bot Owner/LeaveServerCommand";
+import { QuickLogAssistCommand } from "../Commands/Logging/QuickLogAssistCommand";
+import { QuickLogMainRlCommand } from "../Commands/Logging/QuickLogMainRlCommand";
+import { QuickLogFailCommand } from "../Commands/Logging/QuickLogFailCommand";
+import { ManageTeamCommand } from "../Commands/Moderator/ManageTeamCommand";
+import { ParseWhoCommand } from "../Commands/Staff/ParseWhoCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -134,7 +139,8 @@ export class CommandManager {
 			new CheckModmailBlacklistCommand(),
 			new SilenceCommand(),
 			new PurgeCommand(),
-			new SpamPingCommand()
+			new SpamPingCommand(),
+			new ParseWhoCommand()
 		]);
 
 		this.commands.set("Moderation", [
@@ -148,7 +154,8 @@ export class CommandManager {
 			new NoLoggedRunsCommand(),
 			new ModmailBlacklistCommand(),
 			new ModmailUnblacklistCommand(),
-			new ConfigureBlockCmdCommand()
+			new ConfigureBlockCmdCommand(),
+			new ManageTeamCommand()
 		]);
 		
 		this.commands.set("User Profile", [
@@ -181,7 +188,10 @@ export class CommandManager {
 			new CheckQuotaCommand(),
 			new LogPoppedKeysCommand(),
 			new LogRuneWCCommand(),
-			new LogVialCommand()
+			new LogVialCommand(),
+			new QuickLogAssistCommand(),
+			new QuickLogMainRlCommand(),
+			new QuickLogFailCommand()
 		])
 
 		this.hasBeenLoaded = true;

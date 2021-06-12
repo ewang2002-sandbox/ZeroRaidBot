@@ -4,6 +4,7 @@
 export type RoleNames = "suspended"
     | "raider"
     | "pardonedRaidLeader"
+    | "team"
     | "verifier" // lowest "legit" staff role
     | "support"
     | "trialLeader"

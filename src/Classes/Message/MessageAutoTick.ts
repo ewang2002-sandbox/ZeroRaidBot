@@ -158,10 +158,7 @@ export class MessageAutoTick {
 
 			// edit _msg
 			try {
-				this._msg.edit({
-					content: this._msg.content,
-					embed: newEmbed
-				});
+				this._msg.edit(this._msg.content, newEmbed);
 			}
 			catch (e) {
 				// chances are, the _msg was deleted.

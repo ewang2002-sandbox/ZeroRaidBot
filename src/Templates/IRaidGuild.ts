@@ -307,6 +307,11 @@ export interface IRaidGuild {
 		 * Remove early location + key reactions from AFK checks.
 		 */
 		removeEarlyLocKeyReacts: boolean; 
+
+		/**
+		 * VC limit
+		 */
+		raidVcLimit: number; 
 	};
 
 	/**

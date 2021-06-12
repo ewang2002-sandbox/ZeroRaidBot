@@ -256,7 +256,8 @@ export module MongoDbHelper {
 						showVerificationRequirements: true,
 						application: [],
 						blockedCommands: [],
-						removeEarlyLocKeyReacts: false,
+						removeEarlyLocKeyReacts: false,						
+						raidVcLimit: 50
 					},
 					moderation: {
 						blacklistedUsers: [],

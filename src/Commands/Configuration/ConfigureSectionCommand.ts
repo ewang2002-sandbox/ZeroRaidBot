@@ -550,6 +550,7 @@ export class ConfigureSectionCommand extends Command {
 						dungeons: AFKDungeon.map(x => x.id),
 						manualVerificationEntries: [],
 						showVerificationRequirements: true,
+						raidVcLimit: 50
 					}
 				}
 			}
@@ -617,6 +618,9 @@ export class ConfigureSectionCommand extends Command {
 			emojisToReact.push("🗑️");
 		}
 
+		const vcLimit = typeof section.properties.raidVcLimit === "undefined" ? 50 : section.properties.raidVcLimit;
+		embed.addField("Set Raid VC Limit", `React with 🔢 to set the VC limit. The current VC limit for this section is: **${vcLimit}**`);
+		emojisToReact.push("🔢");
 		embed.addField("Cancel Process", "React with ❌ to cancel this process.");
 		emojisToReact.push("❌");
 
@@ -714,11 +718,58 @@ export class ConfigureSectionCommand extends Command {
 				return;
 			}
 		}
+		else if (r.name === "🔢") {
+			await this.resetBotEmbed(m).catch(() => { });
+			const res = await this.changeVcLimit(msg, section, section.isMain ? "properties.raidVcLimit" : "sections.$.properties.raidVcLimit", vcLimit);
+			if (res !== "CANCEL_CMD" && res !== "TIME_CMD") {
+				guildData = res;
+				section = [GuildUtil.getDefaultSection(guildData), ...guildData.sections]
+					.find(x => x.verifiedRole === section.verifiedRole) as ISection;
+			}
+			this.modifyMainMenu(msg, guildData, section, m);
+			return;
+		}
 		// cancel
 		else if (r.name === "❌") {
 			await m.delete().catch(() => { });
 			return;
 		}
+	}
+
+	/**
+	 * Change the name of a section.
+	 * @param {Message} msg The message object. 
+	 * @param {ISection} section The section. 
+	 * @param {string} mongoPath The Mongo path. 
+	 * @param {number} curr The current VC limit. 
+	 */
+	private async changeVcLimit(
+		msg: Message,
+		section: ISection,
+		mongoPath: string,
+		curr: number
+	): Promise<IRaidGuild | "TIME_CMD" | "CANCEL_CMD"> {
+		const guild: Guild = msg.guild as Guild;
+		const embed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", { authorType: "GUILD" })
+			.setTitle(`${section.nameOfSection}: Changing VC Limit`)
+			.setDescription(`The current VC Limit for this section: ${curr}.\n Please type the new VC limit now.`);
+
+		const newVcLimit: number | "CANCEL_CMD" | "TIME_CMD" = await (new GenericMessageCollector<number>(msg, {
+			embed: embed
+		}, 3, TimeUnit.MINUTE)).send(GenericMessageCollector.getNumber(msg.channel, 10, 100));
+
+		if (newVcLimit === "CANCEL_CMD" || newVcLimit === "TIME_CMD")
+			return newVcLimit;
+
+		let query: FilterQuery<IRaidGuild> = section.isMain
+			? { guildID: guild.id }
+			: { guildID: guild.id, "sections.verifiedRole": section.verifiedRole };
+
+		return (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(query, {
+			$set: {
+				[mongoPath]: newVcLimit
+			}
+		}, { returnOriginal: false })).value as IRaidGuild;
 	}
 
 	/**
@@ -1209,7 +1260,7 @@ export class ConfigureSectionCommand extends Command {
 				section.isMain
 					? "roles.mainSectionLeaderRole.sectionHeadLeaderRole"
 					: "sections.$.roles.headLeaderRole"
-			);	
+			);
 		}
 		// sec leader role
 		else if (r.name === "🏳️") {

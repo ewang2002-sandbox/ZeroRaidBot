@@ -114,5 +114,10 @@ export interface ISection {
 		 * Shows verification requirements.
 		 */
 		showVerificationRequirements: boolean;
+
+		/**
+		 * VC limit. 
+		 */
+		raidVcLimit: number; 
 	}
 }

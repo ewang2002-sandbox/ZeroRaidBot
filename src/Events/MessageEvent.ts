@@ -20,12 +20,12 @@ export async function onMessageEvent(msg: Message): Promise<void> {
 		return;
 	}
 
-	if (msg.type !== "DEFAULT" || msg.author.bot) {
+	if (msg.type === "DEFAULT" && msg.guild && SilencedUsers.has(msg.guild.id) && (SilencedUsers.get(msg.guild.id) as string[]).includes(msg.author.id)) {
+		await msg.delete().catch(e => { });
 		return;
 	}
 
-	if (msg.guild !== null && SilencedUsers.has(msg.guild.id) && (SilencedUsers.get(msg.guild.id) as string[]).includes(msg.author.id)) {
-		await msg.delete().catch(e => { });
+	if (msg.type !== "DEFAULT" || msg.author.bot) {
 		return;
 	}
 

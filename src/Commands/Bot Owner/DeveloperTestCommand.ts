@@ -1,7 +1,10 @@
 import { Command } from "../../Templates/Command/Command";
 import { CommandDetail } from "../../Templates/Command/CommandDetail";
 import { CommandPermission } from "../../Templates/Command/CommandPermission";
-import { Message } from "discord.js";
+import { Message, MessageEmbed } from "discord.js";
+import { IRaidGuild } from "../../Templates/IRaidGuild";
+import { GuildUtil } from "../../Utility/GuildUtil";
+import { ArrayUtil } from "../../Utility/ArrayUtil";
 
 export class DeveloperTestCommand extends Command {
 	public constructor() {
@@ -31,13 +34,13 @@ export class DeveloperTestCommand extends Command {
 
 	public async executeCommand(
 		msg: Message,
-		args: string[]
+		args: string[],
+		guildDb: IRaidGuild
 	): Promise<void> {
-		/*
-		const resp: AxiosResponse<string> = await Zero.AxiosClient.post(`https://localhost:5001/api/dungeoneer/parse`, {
-			image: msg.content
-		}, {});
-
-		msg.channel.send(resp.data);*/
+		const allStaff = GuildUtil.getAllStaffMembers(msg.guild!, guildDb);
+		const fields = ArrayUtil.arrayToStringFields(allStaff, (i, m) => `${m}\n`);
+		const e = new MessageEmbed().setDescription("ok");
+		for (const f of fields) e.addField("Staff Test", f);
+		msg.channel.send(e);
 	}
 }

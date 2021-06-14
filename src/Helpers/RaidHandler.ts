@@ -669,7 +669,7 @@ export module RaidHandler {
 			type: "voice",
 			permissionOverwrites: realPermissions,
 			parent: SECTION_CATEGORY,
-			userLimit: vcLimit
+			userLimit: vcLimit > 99 ? undefined : vcLimit
 		});
 
 		if (vcToUse !== null) {

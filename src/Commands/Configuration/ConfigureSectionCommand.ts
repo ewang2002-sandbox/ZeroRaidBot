@@ -619,7 +619,7 @@ export class ConfigureSectionCommand extends Command {
 		}
 
 		const vcLimit = typeof section.properties.raidVcLimit === "undefined" ? 50 : section.properties.raidVcLimit;
-		embed.addField("Set Raid VC Limit", `React with 🔢 to set the VC limit. The current VC limit for this section is: **${vcLimit}**`);
+		embed.addField("Set Raid VC Limit", `React with 🔢 to set the VC limit. The current VC limit for this section is: **${vcLimit > 99 ? "Infinite" : vcLimit}**`);
 		emojisToReact.push("🔢");
 		embed.addField("Cancel Process", "React with ❌ to cancel this process.");
 		emojisToReact.push("❌");
@@ -752,7 +752,7 @@ export class ConfigureSectionCommand extends Command {
 		const guild: Guild = msg.guild as Guild;
 		const embed: MessageEmbed = MessageUtil.generateBuiltInEmbed(msg, "DEFAULT", { authorType: "GUILD" })
 			.setTitle(`${section.nameOfSection}: Changing VC Limit`)
-			.setDescription(`The current VC Limit for this section: ${curr}.\n Please type the new VC limit now.`);
+			.setDescription(`The current VC Limit for this section is ${curr}.\n Please type the new VC limit between 10 and 100 now. A limit of \`100\` will result in a VC with no VC limit.`);
 
 		const newVcLimit: number | "CANCEL_CMD" | "TIME_CMD" = await (new GenericMessageCollector<number>(msg, {
 			embed: embed
@@ -2423,7 +2423,7 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 	 * @param {Message} botSentMsg The message to delete.
 	 */
 	private async resetBotEmbed(botSentMsg: Message): Promise<void> {
-		await botSentMsg.edit(new MessageEmbed()).catch(() => { });
+		await botSentMsg.edit(new MessageEmbed().setFooter(".")).catch(() => { });
 		await botSentMsg.reactions.removeAll().catch(() => { });
 	}
 

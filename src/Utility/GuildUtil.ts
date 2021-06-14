@@ -239,61 +239,63 @@ export namespace GuildUtil {
 			const idSet: Set<string> = new Set<string>();
 			const modRole = guild.roles.cache.get(guildDb.roles.moderator);
 			if (modRole) modRole.members.forEach(x => {
-				if (!idSet.has(x.id)) return;
+				if (idSet.has(x.id)) return;
 				staff.push(x);
 				idSet.add(x.id);
 			});
 
 			const offRole = guild.roles.cache.get(guildDb.roles.officer);
 			if (offRole) offRole.members.forEach(x => {
-				if (!idSet.has(x.id)) return;
+				if (idSet.has(x.id)) return;
 				staff.push(x);
 				idSet.add(x.id);
 			});
 
 			const hrlRole = guild.roles.cache.get(guildDb.roles.headRaidLeader);
 			if (hrlRole) hrlRole.members.forEach(x => {
-				if (!idSet.has(x.id)) return;
+				if (idSet.has(x.id)) return;
 				staff.push(x);
 				idSet.add(x.id);
 			});
 
 			const urlRole = guild.roles.cache.get(guildDb.roles.universalRaidLeader);
 			if (urlRole) urlRole.members.forEach(x => {
-				if (!idSet.has(x.id)) return;
+				if (idSet.has(x.id)) return;
 				staff.push(x);
 				idSet.add(x.id);
 			});
 
 			const uarlRole = guild.roles.cache.get(guildDb.roles.universalAlmostRaidLeader);
 			if (uarlRole) uarlRole.members.forEach(x => {
-				if (!idSet.has(x.id)) return;
+				if (idSet.has(x.id)) return;
 				staff.push(x);
 				idSet.add(x.id);
 			});
 
 			const supportRole = guild.roles.cache.get(guildDb.roles.support);
 			if (supportRole) supportRole.members.forEach(x => {
-				if (!idSet.has(x.id)) return;
+				if (idSet.has(x.id)) return;
 				staff.push(x);
 				idSet.add(x.id);
 			});
 
 			const verifierRole = guild.roles.cache.get(guildDb.roles.verifier);
 			if (verifierRole) verifierRole.members.forEach(x => {
-				if (!idSet.has(x.id)) return;
+				if (idSet.has(x.id)) return;
 				staff.push(x);
 				idSet.add(x.id);
 			});
 
-			const teamRoles = guildDb.roles.customTeamRoles.map(x => guild.roles.cache.get(x));
-			if (teamRoles) teamRoles.forEach(y => {
-				if (y) y.members.forEach(x => {
-					if (!idSet.has(x.id)) return;
-					staff.push(x);
-					idSet.add(x.id);
+			if (guildDb.roles.customTeamRoles) {
+				const teamRoles = guildDb.roles.customTeamRoles.map(x => guild.roles.cache.get(x));
+				if (teamRoles) teamRoles.forEach(y => {
+					if (y) y.members.forEach(x => {
+						if (idSet.has(x.id)) return;
+						staff.push(x);
+						idSet.add(x.id);
+					});
 				});
-			});
+			}
 
 			let configuredSections: ISection[] = [GuildUtil.getDefaultSection(guildDb), ...guildDb.sections];
 			for (const section of configuredSections) {
@@ -302,17 +304,17 @@ export namespace GuildUtil {
 				const sArl = guild.roles.cache.get(section.roles.almostLeaderRole);
 
 				if (sHrl) sHrl.members.forEach(x => {
-					if (!idSet.has(x.id)) return;
+					if (idSet.has(x.id)) return;
 					staff.push(x);
 					idSet.add(x.id);
 				});
 				if (sRl) sRl.members.forEach(x => {
-					if (!idSet.has(x.id)) return;
+					if (idSet.has(x.id)) return;
 					staff.push(x);
 					idSet.add(x.id);
 				});
 				if (sArl) sArl.members.forEach(x => {
-					if (!idSet.has(x.id)) return;
+					if (idSet.has(x.id)) return;
 					staff.push(x);
 					idSet.add(x.id);
 				});

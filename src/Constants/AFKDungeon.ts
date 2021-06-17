@@ -15,6 +15,7 @@ export const AFKDungeon: IDungeonData[] = [
 		reactions: [
 			RushingClass
 		],
+		headcountReactions: [],
 		portalLink: "https://cdn.discordapp.com/attachments/561245975767941120/561248354173190176/Snake_Pit_Portal.png",
 		bossLink: ["https://static.drips.pw/rotmg/wiki/Enemies/Stheno%20the%20Snake%20Queen.png"],
 		colors: [
@@ -34,6 +35,7 @@ export const AFKDungeon: IDungeonData[] = [
 		reactions: [
 			RushingClass
 		],
+		headcountReactions: [],
 		portalLink: "https://i.imgur.com/mvUTUNo.png",
 		bossLink: ["https://i.imgur.com/jVimXOv.png"],
 		colors: [
@@ -53,6 +55,7 @@ export const AFKDungeon: IDungeonData[] = [
 		reactions: [
 			RushingClass
 		],
+		headcountReactions: [],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Glowing%20Portal.png",
 		bossLink: ["https://static.drips.pw/rotmg/wiki/Enemies/Limon%20the%20Sprite%20God.png"],
 		colors: [
@@ -77,6 +80,7 @@ export const AFKDungeon: IDungeonData[] = [
 			Slow,
 			Knight
 		],
+		headcountReactions: [],
 		portalLink: "https://i.imgur.com/d7MSK2x.png",
 		bossLink: [
 			"https://i.imgur.com/z01EB30.png",
@@ -100,6 +104,7 @@ export const AFKDungeon: IDungeonData[] = [
 			}
 		],
 		reactions: [],
+		headcountReactions: [],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Candyland%20Portal.png",
 		bossLink: [
 			"https://static.drips.pw/rotmg/wiki/Enemies/Gigacorn.png",
@@ -126,6 +131,7 @@ export const AFKDungeon: IDungeonData[] = [
 		reactions: [
 			RushingClass
 		],
+		headcountReactions: [],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Treasure%20Cave%20Portal.png",
 		bossLink: ["https://static.drips.pw/rotmg/wiki/Enemies/Golden%20Oryx%20Effigy.png"],
 		colors: [
@@ -147,6 +153,7 @@ export const AFKDungeon: IDungeonData[] = [
 		reactions: [
 			RushingClass
 		],
+		headcountReactions: [],
 		portalLink: "https://cdn.discordapp.com/attachments/561245975767941120/561248252310061066/Undead_Lair_Portal.png",
 		bossLink: ["https://static.drips.pw/rotmg/wiki/Enemies/Septavius%20the%20Ghost%20God.png"],
 		colors: [
@@ -173,6 +180,7 @@ export const AFKDungeon: IDungeonData[] = [
 			Daze,
 			ArmorBreak
 		],
+		headcountReactions: [],
 		portalLink: "https://i.imgur.com/YgiGjh7.gif",
 		bossLink: ["https://i.imgur.com/WmL1qda.png"],
 		colors: [
@@ -195,6 +203,7 @@ export const AFKDungeon: IDungeonData[] = [
 		reactions: [
 			RushingClass
 		],
+		headcountReactions: [],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Abyss%20of%20Demons%20Portal.png",
 		bossLink: ["https://static.drips.pw/rotmg/wiki/Enemies/Archdemon%20Malphas.png"],
 		colors: [
@@ -220,6 +229,7 @@ export const AFKDungeon: IDungeonData[] = [
 			Daze,
 			ArmorBreak
 		],
+		headcountReactions: [],
 		portalLink: "https://i.imgur.com/zz6D2lz.png",
 		bossLink: ["https://i.imgur.com/LCALe5V.png"],
 		colors: [
@@ -241,6 +251,7 @@ export const AFKDungeon: IDungeonData[] = [
 		reactions: [
 			RushingClass
 		],
+		headcountReactions: [],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Manor%20of%20the%20Immortals%20Portal.png",
 		bossLink: ["https://static.drips.pw/rotmg/wiki/Enemies/Lord%20Ruthven.png"],
 		colors: [
@@ -263,6 +274,7 @@ export const AFKDungeon: IDungeonData[] = [
 		reactions: [
 			RushingClass
 		],
+		headcountReactions: [],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Puppet%20Theatre%20Portal.png",
 		bossLink: ["https://static.drips.pw/rotmg/wiki/Enemies/The%20Puppet%20Master.png"],
 		colors: [
@@ -283,6 +295,7 @@ export const AFKDungeon: IDungeonData[] = [
 		reactions: [
 			RushingClass
 		],
+		headcountReactions: [],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Toxic%20Sewers%20Portal.png",
 		bossLink: ["https://static.drips.pw/rotmg/wiki/Enemies/DS%20Gulpord%20the%20Slime%20God.png"],
 		colors: [
@@ -301,6 +314,7 @@ export const AFKDungeon: IDungeonData[] = [
 			}
 		],
 		reactions: [],
+		headcountReactions: [],
 		portalLink: "https://cdn.discordapp.com/attachments/561245975767941120/561248253836787717/Haunted_Cemetery_Portal.png",
 		bossLink: [
 			"https://static.drips.pw/rotmg/wiki/Enemies/Troll%203.png",
@@ -325,6 +339,7 @@ export const AFKDungeon: IDungeonData[] = [
 		reactions: [
 			RushingClass
 		],
+		headcountReactions: [],
 		portalLink: "https://cdn.discordapp.com/attachments/561245975767941120/561248331695915018/Mad_Lab_Portal.png",
 		bossLink: [
 			"https://static.drips.pw/rotmg/wiki/Enemies/Dr%20Terrible.png",
@@ -355,6 +370,7 @@ export const AFKDungeon: IDungeonData[] = [
 			Daze,
 			ArmorBreak
 		],
+		headcountReactions: [],
 		portalLink: "https://cdn.discordapp.com/attachments/561245975767941120/561248332635439136/Parasite.png",
 		bossLink: ["https://i.imgur.com/zodPEFO.png"],
 		colors: [
@@ -376,6 +392,7 @@ export const AFKDungeon: IDungeonData[] = [
 		reactions: [
 			RushingClass
 		],
+		headcountReactions: [],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Davy%20Jones's%20Locker%20Portal.png",
 		bossLink: ["https://i.imgur.com/Jc4FERS.png"],
 		colors: [
@@ -397,6 +414,7 @@ export const AFKDungeon: IDungeonData[] = [
 		reactions: [
 			RushingClass
 		],
+		headcountReactions: [],
 		portalLink: "https://i.imgur.com/SY0Jtnp.png",
 		bossLink: ["https://i.imgur.com/TIektVi.png"],
 		colors: [
@@ -422,6 +440,7 @@ export const AFKDungeon: IDungeonData[] = [
 			Daze,
 			Slow
 		],
+		headcountReactions: [],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Consolation%20of%20Draconis%20Portal.png",
 		bossLink: [
 			"https://i.imgur.com/vT7wdjb.png",
@@ -453,6 +472,7 @@ export const AFKDungeon: IDungeonData[] = [
 			Warrior,
 			Paladin
 		],
+		headcountReactions: [],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Deadwater%20Docks.png",
 		bossLink: ["https://static.drips.pw/rotmg/wiki/Enemies/Jon%20Bilgewater%20the%20Pirate%20King.png"],
 		colors: [
@@ -474,6 +494,7 @@ export const AFKDungeon: IDungeonData[] = [
 			RushingClass,
 			Paralyze
 		],
+		headcountReactions: [],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Woodland%20Labyrinth.png",
 		bossLink: [
 			"https://static.drips.pw/rotmg/wiki/Enemies/Epic%20Larva.png",
@@ -499,6 +520,7 @@ export const AFKDungeon: IDungeonData[] = [
 			RushingClass,
 			Paralyze
 		],
+		headcountReactions: [],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/The%20Crawling%20Depths.png",
 		bossLink: ["https://static.drips.pw/rotmg/wiki/Enemies/Son%20of%20Arachna.png"],
 		colors: [
@@ -525,6 +547,7 @@ export const AFKDungeon: IDungeonData[] = [
 			ArmorBreak,
 			Daze
 		],
+		headcountReactions: [],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Ocean%20Trench%20Portal.png",
 		bossLink: ["https://static.drips.pw/rotmg/wiki/Enemies/Thessal%20the%20Mermaid%20Goddess.png"],
 		colors: [
@@ -547,6 +570,7 @@ export const AFKDungeon: IDungeonData[] = [
 			Priest,
 			Bard
 		],
+		headcountReactions: [],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Ice%20Cave%20Portal.png",
 		bossLink: ["https://static.drips.pw/rotmg/wiki/Enemies/ic%20Esben%20the%20Unwilling.png"],
 		colors: [
@@ -574,6 +598,7 @@ export const AFKDungeon: IDungeonData[] = [
 			Paralyze,
 			Bard
 		],
+		headcountReactions: [],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Tomb%20of%20the%20Ancients%20Portal.png",
 		bossLink: [
 			"https://i.imgur.com/phgo7.png",
@@ -607,6 +632,7 @@ export const AFKDungeon: IDungeonData[] = [
 			Daze,
 			ArmorBreak
 		],
+		headcountReactions: [],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Lair%20of%20Shaitan%20Portal.png",
 		bossLink: ["https://i.imgur.com/azzD6jD.png"],
 		colors: [
@@ -633,6 +659,7 @@ export const AFKDungeon: IDungeonData[] = [
 			Paralyze,
 			Daze
 		],
+		headcountReactions: [],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Puppet%20Encore%20Portal.png",
 		bossLink: ["https://static.drips.pw/rotmg/wiki/Enemies/Puppet%20Master%20v2.png"],
 		colors: [
@@ -658,6 +685,7 @@ export const AFKDungeon: IDungeonData[] = [
 			Slow,
 			Daze
 		],
+		headcountReactions: [],
 		portalLink: "https://i.imgur.com/qjd04By.png",
 		bossLink: ["https://i.imgur.com/BF2DclQ.png"],
 		colors: [
@@ -684,6 +712,7 @@ export const AFKDungeon: IDungeonData[] = [
 			Slow,
 			Daze
 		],
+		headcountReactions: [],
 		portalLink: "https://i.imgur.com/8vEAT8t.png",
 		bossLink: [
 			"https://i.imgur.com/2zBZOj0.png",
@@ -714,6 +743,7 @@ export const AFKDungeon: IDungeonData[] = [
 			Slow,
 			Daze
 		],
+		headcountReactions: [],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Enemies/F.E.R.A.L..png",
 		bossLink: [
 			"https://static.drips.pw/rotmg/wiki/Enemies/F.E.R.A.L..png"
@@ -741,6 +771,7 @@ export const AFKDungeon: IDungeonData[] = [
 			Priest,
 			Trickster
 		],
+		headcountReactions: [],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Battle%20Nexus%20Portal.png",
 		bossLink: [
 			"https://static.drips.pw/rotmg/wiki/Enemies/Lord%20Ruthven.png",
@@ -769,6 +800,7 @@ export const AFKDungeon: IDungeonData[] = [
 			Bard,
 			Priest
 		],
+		headcountReactions: [],
 		portalLink: "https://i.imgur.com/VTXGPSy.png",
 		bossLink: ["https://i.imgur.com/d7xzYLG.png"],
 		colors: [
@@ -794,6 +826,7 @@ export const AFKDungeon: IDungeonData[] = [
 			Paralyze,
 			Bard
 		],
+		headcountReactions: [],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Ice%20Tomb%20Portal.png",
 		bossLink: [
 			"https://static.drips.pw/rotmg/wiki/Enemies/Ice%20Tomb%20Defender.png",
@@ -816,6 +849,7 @@ export const AFKDungeon: IDungeonData[] = [
 			}
 		],
 		reactions: [],
+		headcountReactions: [],
 		portalLink: "https://i.imgur.com/jnHUonE.gif",
 		bossLink: [
 			"https://static.drips.pw/rotmg/wiki/Enemies/DS%20Gulpord%20the%20Slime%20God.png",
@@ -860,6 +894,14 @@ export const AFKDungeon: IDungeonData[] = [
 			BrainPrism,
 			Daze
 		],
+		headcountReactions: [
+			Mystic,
+			Trickster,
+			Warrior,
+			Knight,
+			Paladin,
+			RushingClass
+		],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/The%20Shatters.png",
 		bossLink: [
 			"https://static.drips.pw/rotmg/wiki/Enemies/shtrs%20Bridge%20Sentinel.png",
@@ -882,6 +924,7 @@ export const AFKDungeon: IDungeonData[] = [
 			}
 		],
 		reactions: [],
+		headcountReactions: [],
 		portalLink: "https://i.imgur.com/0PyfYHr.png",
 		bossLink: ["https://i.imgur.com/DXIpAWm.png"],
 		colors: [
@@ -907,6 +950,7 @@ export const AFKDungeon: IDungeonData[] = [
 			Mystic,
 			Priest
 		],
+		headcountReactions: [],
 		portalLink: "https://i.imgur.com/WQ95Y0j.png",
 		bossLink: [
 			"https://i.imgur.com/hUWc3IV.png",
@@ -932,6 +976,7 @@ export const AFKDungeon: IDungeonData[] = [
 		reactions: [
 			RushingClass
 		],
+		headcountReactions: [],
 		portalLink: "https://cdn.discordapp.com/attachments/561245975767941120/576610932126515211/LibCursed.gif",
 		bossLink: [
 			"https://i.imgur.com/DfhWagx.png",
@@ -963,6 +1008,7 @@ export const AFKDungeon: IDungeonData[] = [
 			MSeal,
 			BrainPrism
 		],
+		headcountReactions: [],
 		portalLink: "https://i.imgur.com/on1ykYB.png",
 		bossLink: [
 			"https://i.imgur.com/MgFBfJp.png",
@@ -1007,6 +1053,7 @@ export const AFKDungeon: IDungeonData[] = [
 			MSeal,
 			BrainPrism
 		],
+		headcountReactions: [],
 		portalLink: "https://i.imgur.com/uhDj0M5.png",
 		bossLink: ["https://i.imgur.com/kbzthE4.png"],
 		colors: [
@@ -1036,6 +1083,7 @@ export const AFKDungeon: IDungeonData[] = [
 			Slow,
 			BrainPrism
 		],
+		headcountReactions: [],
 		portalLink: "https://i.imgur.com/fHNesPK.png",
 		bossLink: [
 			"https://i.imgur.com/5fsTTjQ.png",
@@ -1063,6 +1111,7 @@ export const AFKDungeon: IDungeonData[] = [
 				keyEmojiName: "Miscellaneous Key"
 			}
 		],
+		headcountReactions: [],
 		reactions: [],
 		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/Pirate%20Cave%20Portal.png",
 		bossLink: ["https://static.drips.pw/rotmg/wiki/Enemies/Dreadstump%20the%20Pirate%20King.png"],
@@ -1104,6 +1153,7 @@ export const AFKDungeon: IDungeonData[] = [
 			ArmorBreak,
 			SnakeOilEmoji
 		],
+		headcountReactions: [],
 		portalLink: "https://i.imgur.com/nKKvJsv.png",
 		bossLink: [
 			"https://media.discordapp.net/attachments/561246036870430770/708192230468485150/oryx_3_w.png",

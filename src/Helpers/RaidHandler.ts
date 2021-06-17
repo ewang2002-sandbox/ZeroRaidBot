@@ -1720,6 +1720,13 @@ export module RaidHandler {
 			}
 		}
 
+		// If only one dungeon, get all corresponding reacts
+		if (dungeonsForHc.length === 1) {
+			for (const emoji of dungeonsForHc[0].headcountReactions) {
+				emojis.push(emoji);
+			}
+		}
+
 		const hcMessage: Message = await afkCheckChannel.send(`@here`, { embed: hcEmbed });
 		await hcMessage.pin().catch(() => { });
 

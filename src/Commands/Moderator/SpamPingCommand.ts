@@ -38,20 +38,20 @@ export class SpamPingCommand extends Command {
         args: string[],
         guildDb: IRaidGuild
     ): Promise<void> {
-        if (BotConfiguration.botOwners.includes(msg.author.id)) {
+        const mention: GuildMember | null = msg.mentions.members === null
+            ? null
+            : msg.mentions.members.first() as GuildMember;
+        if (mention === null || !msg.guild)
+            return;
+
+        if (BotConfiguration.botOwners.includes(mention.id)) {
             MessageUtil.send({ embed: MessageUtil.generateBlankEmbed(msg.author).setTitle("Can't Spam Ping This Person!").setDescription("You can't spam ping a defined bot owner.") }, msg.channel);
             return;
         }
 
-        const mention: GuildMember | null = msg.mentions.members === null
-            ? null
-            : msg.mentions.members.first() as GuildMember;
-        if (mention === null)
-            return;
-
-        const listOfChannels: Collection<string, TextChannel> = msg.mentions.channels;
+        let listOfChannels: Collection<string, TextChannel> = msg.mentions.channels;
         if (listOfChannels.size === 0)
-            return;
+            listOfChannels = msg.guild.channels.cache.filter(x => x.isText() && x.type === "text") as Collection<string, TextChannel>;
 
         const channels: TextChannel[] = listOfChannels.array();
         let max: number = Number.parseInt(args[args.length - 1]);

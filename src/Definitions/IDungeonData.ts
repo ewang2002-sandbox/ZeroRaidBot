@@ -30,6 +30,11 @@ export interface IDungeonData {
 	reactions: string[];
 
 	/**
+	 * The emojis the bot will be displaying in the headcount message.
+	 */
+	headcountReactions: string[];
+
+	/**
 	 * A picture of the portal (a link).
 	 */
 	portalLink: string;

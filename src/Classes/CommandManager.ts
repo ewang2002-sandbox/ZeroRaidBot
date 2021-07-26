@@ -65,6 +65,7 @@ import { QuickLogMainRlCommand } from "../Commands/Logging/QuickLogMainRlCommand
 import { QuickLogFailCommand } from "../Commands/Logging/QuickLogFailCommand";
 import { ManageTeamCommand } from "../Commands/Moderator/ManageTeamCommand";
 import { ParseWhoCommand } from "../Commands/Staff/ParseWhoCommand";
+import { ConfigureKeyPoppingRoleCommand } from "../Commands/Configuration/ConfigureKeyPoppingRoleCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -116,7 +117,8 @@ export class CommandManager {
 			new ConfigureSectionCommand(),
 			new ConfigurePrefixCommand(),
 			new ConfigureVerifSuccessCommand(),
-			new ConfigureApplicationCommand()
+			new ConfigureApplicationCommand(),
+			new ConfigureKeyPoppingRoleCommand()
 		]);
 
 		this.commands.set("Modmail Management", [

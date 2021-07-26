@@ -123,7 +123,7 @@ export class ResetKeyLeaderboardCommand extends Command {
             // construct the embed. 
             const newDate = new Date().getTime();
             const leaderboardEmbed = MessageUtil.generateBlankEmbed(guild, "RANDOM")
-                .setDescription(`Top 20 key poppers for the time period between ${newDate} and ${DateUtil.getTime()}.`)
+                .setDescription(`Top 20 key poppers for the time period between ${DateUtil.getTime(newDate)} and ${DateUtil.getTime()}.`)
                 .setTitle(`Top 20 Key Poppers in: ${guild.name}`)
                 .setFooter("Last Updated")
                 .setTimestamp();

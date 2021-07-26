@@ -37,9 +37,9 @@ export class SendEmbedCommand extends Command {
 			new CommandPermission(
 				[],
 				["ADD_REACTIONS", "EMBED_LINKS"],
-				["headRaidLeader"],
+				["headRaidLeader", "officer", "moderator"],
 				[],
-				true
+				false
 			),
 			true, // guild-only command. 
 			false,

@@ -63,7 +63,7 @@ import { LeaveServerCommand } from "../Commands/Bot Owner/LeaveServerCommand";
 import { QuickLogAssistCommand } from "../Commands/Logging/QuickLogAssistCommand";
 import { QuickLogMainRlCommand } from "../Commands/Logging/QuickLogMainRlCommand";
 import { QuickLogFailCommand } from "../Commands/Logging/QuickLogFailCommand";
-import { ManageTeamCommand } from "../Commands/Moderator/ManageTeamCommand";
+import { ConfigureTeamRolesCommand } from "../Commands/Configuration/ConfigureTeamRolesCommand";
 import { ParseWhoCommand } from "../Commands/Staff/ParseWhoCommand";
 import { ConfigureKeyPoppingRoleCommand } from "../Commands/Configuration/ConfigureKeyPoppingRoleCommand";
 
@@ -118,7 +118,8 @@ export class CommandManager {
 			new ConfigurePrefixCommand(),
 			new ConfigureVerifSuccessCommand(),
 			new ConfigureApplicationCommand(),
-			new ConfigureKeyPoppingRoleCommand()
+			new ConfigureKeyPoppingRoleCommand(),
+			new ConfigureTeamRolesCommand()
 		]);
 
 		this.commands.set("Modmail Management", [
@@ -156,8 +157,7 @@ export class CommandManager {
 			new NoLoggedRunsCommand(),
 			new ModmailBlacklistCommand(),
 			new ModmailUnblacklistCommand(),
-			new ConfigureBlockCmdCommand(),
-			new ManageTeamCommand()
+			new ConfigureBlockCmdCommand()
 		]);
 		
 		this.commands.set("User Profile", [

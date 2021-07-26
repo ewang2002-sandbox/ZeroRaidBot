@@ -8,16 +8,16 @@ import { ArrayUtil } from "../../Utility/ArrayUtil";
 import { MessageUtil } from "../../Utility/MessageUtil";
 import { UserHandler } from "../../Helpers/UserHandler";
 
-export class ManageTeamCommand extends Command {
+export class ConfigureTeamRolesCommand extends Command {
     public constructor() {
         super(
             new CommandDetail(
                 "Manage Team Command",
-                "manageteam",
-                ["team"],
+                "configteamroles",
+                ["manageteam", "team"],
                 "Adds or removes a role from the Team role list. If no arguments are specified, this will instead show all custom team roles.",
-                ["manageteam <Role>"],
-                ["manageteam", "manageteam @Developer"],
+                ["configteamroles <Role>"],
+                ["configteamroles", "configteamroles @Developer"],
                 0
             ),
             new CommandPermission(

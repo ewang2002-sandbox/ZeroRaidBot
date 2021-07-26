@@ -643,7 +643,7 @@ export module VerificationHandler {
 
 					let botMsg: Message | null;
 					try {
-						botMsg = await member.send(new MessageEmbed());
+						botMsg = await member.send(new MessageEmbed().setFooter("."));
 					}
 					catch (e) {
 						botMsg = null;

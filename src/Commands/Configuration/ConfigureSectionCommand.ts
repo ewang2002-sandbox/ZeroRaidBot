@@ -1590,13 +1590,16 @@ export class ConfigureSectionCommand extends Command {
 					}
 				}
 			}
+			else {
+				reqs.append("• None").appendLine();
+			}
 
 			const veriChan: TextChannel = verificationChannel as TextChannel;
 			let desc: string;
 
 			if (section.isMain) {
 				if (section.properties.showVerificationRequirements) {
-					desc = `Welcome to **\`${guild.name}\`**! In order to get access to the server, you must verify your identity and your RotMG account must meet the requirements, which are listed below. ${StringUtil.applyCodeBlocks(reqs.length() === 0 ? "• None" : reqs.toString())}\n\nPlease react to the ✅ emoji to get started. Make sure you meet the server requirements and your direct messages are set so anyone can message you.`;
+					desc = `Welcome to **\`${guild.name}\`**! In order to get access to the server, you must verify your identity and your RotMG account must meet the requirements, which are listed below. ${StringUtil.applyCodeBlocks(reqs.toString())}\n\nPlease react to the ✅ emoji to get started. Make sure you meet the server requirements and your direct messages are set so anyone can message you.`;
 				}
 				else {
 					desc = `Welcome to **\`${guild.name}\`**! In order to get access to the server, you must verify your identity.\n\nPlease react to the ✅ emoji to get started. Make sure your direct messages are set so anyone can message you.`;

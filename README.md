@@ -1,6 +1,8 @@
 # ZeroRaidBot
 An open-source [Realm of the Mad God](https://www.realmofthemadgod.com/) (RotMG) Discord Bot designed for cross-server verification, moderation, and raid management.
 
+Note: Please read the bottom for more information regarding the development of this project.
+
 ## Purpose
 The main purpose of this bot is to simplify verification and raid management within the the [Dungeoneer Exalt Discord server](https://discord.com/invite/o3). This bot, which represents a huge overhaul of the original Dungeoneer bot, is designed to be easier to use for everyone. 
 
@@ -56,7 +58,9 @@ These projects all serve very similar purposes to Zero. You may find them to be 
 - [IrisBot](https://github.com/flanigana/IrisBot) by [flanigana](https://github.com/flanigana).
 
 ## Project Activity
-I will continue to maintain this project. Over the summer (June, July, and August 2021), I plan on testing numerous new features that I will put on a private bot. These features will remain on Zero and the source code will be public. 
+With numerous API changes that are soon about to be made on Discord's side, I have decided to put this project in maintenance mode. I will most likely not add any new features to this project (unless demand arises). 
+
+When the new API changes are made, this project will most likely be deprecated (i.e. no more updates). A complete rewrite of this project will be published (and made open-source) soon after this project is deprecated. In this rewrite, I strive to be more organized and active.
 
 ## License
 MIT License.

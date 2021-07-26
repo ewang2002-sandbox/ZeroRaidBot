@@ -10,7 +10,6 @@ import { StringBuilder } from "../../Classes/String/StringBuilder";
 import { DateUtil } from "../../Utility/DateUtil";
 import { GuildUtil } from "../../Utility/GuildUtil";
 import { QuotaLoggingHandler } from "../../Helpers/QuotaLoggingHandler";
-import { NoLoggedRunsCommand } from "./NoLoggedRunsCommand";
 import { ArrayUtil } from "../../Utility/ArrayUtil";
 import { MessageUtil } from "../../Utility/MessageUtil";
 
@@ -96,8 +95,8 @@ export class ResetQuotaCommand extends Command {
                     }, { returnOriginal: false })).value as IRaidGuild;
 
                     const allStaffMembers = GuildUtil.getAllStaffMembers(guild, guildData);
-                    const weekOfDate = new Date(guildData.properties.quotas.lastReset).toLocaleDateString("en-US");
-                    const todayDate = new Date().toLocaleDateString("en-US");
+                    const weekOfDate = DateUtil.getTime(guildData.properties.keyLeaderboard.lastReset);
+                    const todayDate = DateUtil.getTime();
 
                     const desc = new StringBuilder()
                         .append(`From the time period of ${weekOfDate} up to ${todayDate}, there were **${allStaffMembers.length}** staff members.`)

@@ -66,6 +66,7 @@ import { QuickLogFailCommand } from "../Commands/Logging/QuickLogFailCommand";
 import { ConfigureTeamRolesCommand } from "../Commands/Configuration/ConfigureTeamRolesCommand";
 import { ParseWhoCommand } from "../Commands/Staff/ParseWhoCommand";
 import { ConfigureKeyPoppingRoleCommand } from "../Commands/Configuration/ConfigureKeyPoppingRoleCommand";
+import { ResetKeyLeaderboardCommand } from "../Commands/Moderator/ResetKeyLeaderboardCommand";
 
 /**
  * This class should only be called ONCE. 
@@ -157,7 +158,8 @@ export class CommandManager {
 			new NoLoggedRunsCommand(),
 			new ModmailBlacklistCommand(),
 			new ModmailUnblacklistCommand(),
-			new ConfigureBlockCmdCommand()
+			new ConfigureBlockCmdCommand(),
+			new ResetKeyLeaderboardCommand()
 		]);
 		
 		this.commands.set("User Profile", [

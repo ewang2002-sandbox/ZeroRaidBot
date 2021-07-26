@@ -187,7 +187,7 @@ export class LogPoppedKeysCommand extends Command {
 
 			// construct the embed. 
 			const leaderboardEmbed = MessageUtil.generateBlankEmbed(guild, "RANDOM")
-				.setDescription(`Top 20 key poppers for the time period from ${DateUtil.getTime(guildData.properties.keyLeaderboard.lastReset)} to ${DateUtil.getTime()}.`)
+				.setDescription(`Top 20 key poppers for the time period between ${DateUtil.getTime(guildData.properties.keyLeaderboard.lastReset)} and ${DateUtil.getTime()}.`)
 				.setTitle(`Top 20 Keypoppers in: ${guild.name}`)
 				.setFooter("Last Updated")
 				.setTimestamp();
@@ -226,9 +226,7 @@ export class LogPoppedKeysCommand extends Command {
 					guildID: guild.id
 				}, {
 					$set: {
-						"properties.keyLeaderboard": {
-							keyMessage: m.id,
-						}
+						"properties.keyLeaderboard.keyMessage": m.id
 					}
 				});
 			}

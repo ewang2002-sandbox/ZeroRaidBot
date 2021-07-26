@@ -42,7 +42,9 @@ export module VerificationHandler {
 		maxedStats: {
 			required: false,
 			statsReq: [0, 0, 0, 0, 0, 0, 0, 0, 0] // [0/8, 1/8, 2/8, 3/8, 4/8, 5/8, 6/8, 7/8, 8/8]
-		}
+		},
+
+		checkRequirements: true
 	};
 
 	interface ICheckResults {
@@ -176,7 +178,7 @@ export module VerificationHandler {
 			return;
 		}
 
-		if (!(await RealmSharperWrapper.isOnline())) {
+		if ((section.verification.checkRequirements ?? true) && !(await RealmSharperWrapper.isOnline())) {
 			MessageUtil.send({ content: "The RealmEye API is currently offline, which means verification is currently offline. Please try again later." }, member, 1 * 60 * 1000);
 			IsInVerification.set(member.id, "GENERAL");
 			setInterval(() => {
@@ -599,117 +601,119 @@ export module VerificationHandler {
 		// THE DB
 		// AT ALL
 		else {
-			const name: string = member.displayName
-				.split("|")
-				.map(x => x.trim())[0]
-				.replace(/[^A-Za-z]/g, "");
-			if (typeof verificationAttemptsChannel !== "undefined") {
-				verificationAttemptsChannel.send(`▶️ **\`[${section.nameOfSection}]\`** ${member} has started the verification process.`).catch(() => { });
-			}
-			if (!section.verification.aliveFame.required
-				&& !section.verification.maxedStats.required
-				&& !section.verification.stars.required) {
-
-				if (typeof verificationSuccessChannel !== "undefined") {
-					verificationSuccessChannel.send(`📥 **\`[${section.nameOfSection}]\`** ${member} has received the section member role.`).catch(() => { });
-				}
-				await member.roles.add(verifiedRole);
-				await member.send(`**\`[${guild.name}]\`**: You have successfully been verified in the **\`${section.nameOfSection}\`** section!`).catch(() => { });
-				return;
-			}
-
-			let requestData: PrivateApiDefinitions.IPlayerData | null = await RealmSharperWrapper.getPlayerInfo(name);
-			if (requestData === null) {
+			if (section.verification.checkRequirements ?? true) {
+				const name: string = member.displayName
+					.split("|")
+					.map(x => x.trim())[0]
+					.replace(/[^A-Za-z]/g, "");
 				if (typeof verificationAttemptsChannel !== "undefined") {
-					verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${name}\`, but the name could not be found on RealmEye.`).catch(() => { });
+					verificationAttemptsChannel.send(`▶️ **\`[${section.nameOfSection}]\`** ${member} has started the verification process.`).catch(() => { });
 				}
-				await member.send(`I could not find your profile for **\`${name}\`** on RealmEye. Make sure your profile is public first!`);
-				return;
-			}
+				if (!section.verification.aliveFame.required
+					&& !section.verification.maxedStats.required
+					&& !section.verification.stars.required) {
 
-			const prelimCheck: ICheckResults = preliminaryCheck(section, requestData);
-			// TODO make prelim check handle into a function? 
-			if (!prelimCheck.passedAll) {
-				if (section.verification.maxedStats.required && prelimCheck.characters.hidden) {
-					if (typeof verificationAttemptsChannel !== "undefined") {
-						verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${name}\`, but his/her characters are hidden and needs to be available to the public.`).catch(() => { });
+					if (typeof verificationSuccessChannel !== "undefined") {
+						verificationSuccessChannel.send(`📥 **\`[${section.nameOfSection}]\`** ${member} has received the section member role.`).catch(() => { });
 					}
-					await member.send("Your characters are currently hidden. Please make sure everyone can see your characters.");
+					await member.roles.add(verifiedRole);
+					await member.send(`**\`[${guild.name}]\`**: You have successfully been verified in the **\`${section.nameOfSection}\`** section!`).catch(() => { });
 					return;
 				}
 
-				let botMsg: Message | null;
-				try {
-					botMsg = await member.send(new MessageEmbed());
-				}
-				catch (e) {
-					botMsg = null;
-				}
-
-				const reqsFailedToMeet: StringBuilder = new StringBuilder();
-				if (!prelimCheck.aliveFame.passed) {
-					reqsFailedToMeet.append(`Alive Fame: ${prelimCheck.aliveFame.amt}/${section.verification.aliveFame.minimum}`)
-						.appendLine();
-				}
-
-				if (!prelimCheck.rank.passed) {
-					reqsFailedToMeet.append(`Rank: ${prelimCheck.rank.amt}/${section.verification.stars.minimum}`)
-						.appendLine();
-				}
-
-				if (!prelimCheck.characters.passed) {
-					let strChar: string = "";
-					for (let i = 0; i < prelimCheck.characters.amt.length; i++) {
-						strChar += `⇒ ${i}/8 Characters: ${prelimCheck.characters.amt[i]}/${section.verification.maxedStats.statsReq[i]}\n`;
+				let requestData: PrivateApiDefinitions.IPlayerData | null = await RealmSharperWrapper.getPlayerInfo(name);
+				if (requestData === null) {
+					if (typeof verificationAttemptsChannel !== "undefined") {
+						verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${name}\`, but the name could not be found on RealmEye.`).catch(() => { });
 					}
-					reqsFailedToMeet.append("Characters: See List.")
-						.appendLine()
-						.append(strChar);
+					await member.send(`I could not find your profile for **\`${name}\`** on RealmEye. Make sure your profile is public first!`);
+					return;
 				}
 
-				// MANUAL VERIF
-				let outputLogs: string = `⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${name}\`, but his/her RotMG profile has failed to meet one or more requirement(s). The requirements that were not met are listed below.${StringUtil.applyCodeBlocks(reqsFailedToMeet.toString())}`;
+				const prelimCheck: ICheckResults = preliminaryCheck(section, requestData);
+				// TODO make prelim check handle into a function? 
+				if (!prelimCheck.passedAll) {
+					if (section.verification.maxedStats.required && prelimCheck.characters.hidden) {
+						if (typeof verificationAttemptsChannel !== "undefined") {
+							verificationAttemptsChannel.send(`🚫 **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${name}\`, but his/her characters are hidden and needs to be available to the public.`).catch(() => { });
+						}
+						await member.send("Your characters are currently hidden. Please make sure everyone can see your characters.");
+						return;
+					}
+
+					let botMsg: Message | null;
+					try {
+						botMsg = await member.send(new MessageEmbed());
+					}
+					catch (e) {
+						botMsg = null;
+					}
+
+					const reqsFailedToMeet: StringBuilder = new StringBuilder();
+					if (!prelimCheck.aliveFame.passed) {
+						reqsFailedToMeet.append(`Alive Fame: ${prelimCheck.aliveFame.amt}/${section.verification.aliveFame.minimum}`)
+							.appendLine();
+					}
+
+					if (!prelimCheck.rank.passed) {
+						reqsFailedToMeet.append(`Rank: ${prelimCheck.rank.amt}/${section.verification.stars.minimum}`)
+							.appendLine();
+					}
+
+					if (!prelimCheck.characters.passed) {
+						let strChar: string = "";
+						for (let i = 0; i < prelimCheck.characters.amt.length; i++) {
+							strChar += `⇒ ${i}/8 Characters: ${prelimCheck.characters.amt[i]}/${section.verification.maxedStats.statsReq[i]}\n`;
+						}
+						reqsFailedToMeet.append("Characters: See List.")
+							.appendLine()
+							.append(strChar);
+					}
+
+					// MANUAL VERIF
+					let outputLogs: string = `⛔ **\`[${section.nameOfSection}]\`** ${member} tried to verify using \`${name}\`, but his/her RotMG profile has failed to meet one or more requirement(s). The requirements that were not met are listed below.${StringUtil.applyCodeBlocks(reqsFailedToMeet.toString())}`;
 
 
-				const failedEmbed: MessageEmbed = new MessageEmbed()
-					.setTitle(`Verification For: **${guild.name}** ⇒ **${section.nameOfSection}**`)
-					.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
-					.setColor("RED");
+					const failedEmbed: MessageEmbed = new MessageEmbed()
+						.setTitle(`Verification For: **${guild.name}** ⇒ **${section.nameOfSection}**`)
+						.setAuthor(guild.name, guild.iconURL() === null ? undefined : guild.iconURL() as string)
+						.setColor("RED");
 
-				if (typeof manualVerificationChannel === "undefined") {
-					failedEmbed
-						.setFooter("Verification Process: Stopped.");
-					if (section.properties.showVerificationRequirements) {
+					if (typeof manualVerificationChannel === "undefined") {
 						failedEmbed
-							.setDescription("You have failed to meet the requirements for the section. Please review the below requirements you have failed to meet and make note of them.")
-							.addField("Requirements Missed", reqsFailedToMeet.toString());
+							.setFooter("Verification Process: Stopped.");
+						if (section.properties.showVerificationRequirements) {
+							failedEmbed
+								.setDescription("You have failed to meet the requirements for the section. Please review the below requirements you have failed to meet and make note of them.")
+								.addField("Requirements Missed", reqsFailedToMeet.toString());
+						}
+						else {
+							failedEmbed
+								.setDescription("You have failed one or more requirements for the section. Requirements are generally hidden for multiple reasons; one of the most prominent reasons is to combat alternative accounts. If you feel this is in error, please contact a staff member or go to #help-desk");
+						}
 					}
 					else {
 						failedEmbed
-							.setDescription("You have failed one or more requirements for the section. Requirements are generally hidden for multiple reasons; one of the most prominent reasons is to combat alternative accounts. If you feel this is in error, please contact a staff member or go to #help-desk");
+							.setDescription("Your account is now under manual review by staff. Please do not attempt to verify again through this specific section. If your account is not reviewed within the next 48 hours, please contact the staff through #help-desk or message an online helper or moderator. Otherwise, please refrain from messaging staff about your application review status. ")
+							.setFooter("Verification Process: Stopped.");
+						manualVerification(guild, member, requestData, manualVerificationChannel, section, reqsFailedToMeet, {
+							name: name,
+							profileIsPrivate: false,
+							sectionIsPrivate: false,
+							nameHistory: []
+						});
+						outputLogs += `\nThis profile has been sent to the manual verification channel for further review.`;
 					}
-				}
-				else {
-					failedEmbed
-						.setDescription("Your account is now under manual review by staff. Please do not attempt to verify again through this specific section. If your account is not reviewed within the next 48 hours, please contact the staff through #help-desk or message an online helper or moderator. Otherwise, please refrain from messaging staff about your application review status. ")
-						.setFooter("Verification Process: Stopped.");
-					manualVerification(guild, member, requestData, manualVerificationChannel, section, reqsFailedToMeet, {
-						name: name,
-						profileIsPrivate: false,
-						sectionIsPrivate: false,
-						nameHistory: []
-					});
-					outputLogs += `\nThis profile has been sent to the manual verification channel for further review.`;
-				}
 
-				if (botMsg !== null) {
-					await botMsg.edit(failedEmbed).catch(() => { });
-				}
+					if (botMsg !== null) {
+						await botMsg.edit(failedEmbed).catch(() => { });
+					}
 
-				if (typeof verificationAttemptsChannel !== "undefined") {
-					verificationAttemptsChannel.send(outputLogs).catch(() => { });
+					if (typeof verificationAttemptsChannel !== "undefined") {
+						verificationAttemptsChannel.send(outputLogs).catch(() => { });
+					}
+					return;
 				}
-				return;
 			}
 
 			if (typeof verificationSuccessChannel !== "undefined") {

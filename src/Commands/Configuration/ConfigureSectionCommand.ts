@@ -161,6 +161,13 @@ export class ConfigureSectionCommand extends Command {
 			m: true,
 			mainMongo: "generalChannels.quotaChannel",
 			sectMongo: ""
+		},
+		{
+			q: "Configure Key Pop Leaderboard Channel",
+			d: "Mention, or type the ID of, the channel that you want to make the key popper leaderboard. This channel is where raiders will be able to see the top 20 key poppers.",
+			m: true,
+			mainMongo: "generalChannels.keyLeaderboardChannel",
+			sectMongo: ""
 		}
 	];
 
@@ -819,9 +826,10 @@ export class ConfigureSectionCommand extends Command {
 				.addField("Configure Moderation Mail Channel", "React with 📬 to configure the moderation mail channel.")
 				.addField("Configure Moderation Mail Storage Channel", "React with ✏️ to configure the moderation mail storage channel. All modmail responses will be stored in this channel.")
 				.addField("Configure Raid Requests Channel", "React with ❓ to configure the raid requests channel.")
-				.addField("Configure Quota Channel", "React with 📋 to configure the quota leaderboard channel.");
+				.addField("Configure Quota Channel", "React with 📋 to configure the quota leaderboard channel.")
+				.addField("Configure Key Leaderboard Channel", "React with 🔑 to configure the key leaderboard channel.");
 
-			reactions.push("⚒️", "⚠️", "📥", "📬", "✏️", "❓", "📋");
+			reactions.push("⚒️", "⚠️", "📥", "📬", "✏️", "❓", "📋", "🔑");
 		}
 
 		embed
@@ -1011,6 +1019,16 @@ export class ConfigureSectionCommand extends Command {
 				section,
 				guild.channels.cache.get(guildData.generalChannels.quotaChannel),
 				"generalChannels.quotaChannel"
+			);
+		}
+		else if (r.name === "🔑") {
+			await this.resetBotEmbed(botSentMsg).catch(() => { });
+			res = await this.updateChannelCommand(
+				msg,
+				"Key Leaderboard Channel",
+				section,
+				guild.channels.cache.get(guildData.generalChannels.keyLeaderboardChannel),
+				"generalChannels.keyLeaderboardChannel"
 			);
 		}
 		// configuration wizard
@@ -1430,14 +1448,25 @@ export class ConfigureSectionCommand extends Command {
 			.setFooter(guild.name)
 			.setColor("RANDOM");
 
+		const isCheckingRequirements = section.verification.checkRequirements ?? true;
 		embed
-			.addField("Go Back", "React with ⬅️ to go back to the Main Menu.")
+			.addField("Go Back", "React with ⬅️ to go back to the Main Menu.");
+
+		if (!section.isMain) {
+			embed.addField("Check Requirements", `React with 🔍 if you want to ${isCheckingRequirements ? "disable" : "enable"} checking requirements.`);
+		}
+
+		embed
 			.addField("Configure Rank Requirements", "React with ⭐ to configure rank requirements.")
 			.addField("Configure Fame Requirements", "React with 📛 to configure fame requirements.")
 			.addField("Configure Maxed Stats Requirements", "React with ➕ to configure maxed stats requirements.")
 			.addField(`${!section.properties.showVerificationRequirements ? "Show" : "Hide"} Verification Requirements`, `React with 🛡️ to ${!section.properties.showVerificationRequirements ? "show" : "hide"} the verification requirements. This will affect both the verification requirement embed *and* the direct message verification.`);
 
-		reactions.push("⬅️", "⭐", "📛", "➕", "🛡️");
+		reactions.push("⬅️");
+		if (!section.isMain) {
+			reactions.push( "🔍");
+		}
+		reactions.push("⭐", "📛", "➕", "🛡️");
 
 		if (typeof verificationChannel !== "undefined") {
 			embed.addField("Send Verification Embed", "React with 📧 to send the embed containing verification instructions out.");
@@ -1463,6 +1492,21 @@ export class ConfigureSectionCommand extends Command {
 		if (r.name === "⬅️") {
 			this.modifyMainMenu(msg, guildData, section, botSentMsg);
 			return;
+		}
+		// checking requirements
+		else if (r.name === "🔍") {
+			const filterQuery: FilterQuery<IRaidGuild> = section.isMain
+				? { guildID: guild.id }
+				: { guildID: guild.id, "sections.verifiedRole": section.verifiedRole };
+			const updateQueryOnOff: UpdateQuery<IRaidGuild> = section.isMain
+				? { $set: { "verification.checkRequirements": !isCheckingRequirements } }
+				: { $set: { "sections.$.verification.checkRequirements": !isCheckingRequirements } };
+
+			res = (await MongoDbHelper.MongoDbGuildManager.MongoGuildClient.findOneAndUpdate(
+				filterQuery,
+				updateQueryOnOff,
+				{ returnOriginal: false }
+			)).value as IRaidGuild;
 		}
 		// rank req
 		else if (r.name === "⭐") {
@@ -1514,43 +1558,45 @@ export class ConfigureSectionCommand extends Command {
 		}
 		// send embed
 		else if (r.name === "📧") {
-			let reqs: StringBuilder = new StringBuilder()
-				.append("• Public Profile.")
-				.appendLine()
-				.append("• Private \"Last Seen\" Location.")
-				.appendLine();
-
-			if (section.isMain) {
-				reqs.append("• Public Name History.")
+			let reqs: StringBuilder = new StringBuilder();
+			if (section.verification.checkRequirements ?? true) {
+				reqs
+					.append("• Public Profile.")
+					.appendLine()
+					.append("• Private \"Last Seen\" Location.")
 					.appendLine();
-			}
 
-			if (section.verification.aliveFame.required) {
-				reqs.append(`• ${section.verification.aliveFame.minimum} Alive Fame.`)
-					.appendLine();
-			}
+				if (section.isMain) {
+					reqs.append("• Public Name History.")
+						.appendLine();
+				}
 
-			if (section.verification.stars.required) {
-				reqs.append(`• ${section.verification.stars.minimum} Stars.`)
-					.appendLine();
-			}
+				if (section.verification.aliveFame.required) {
+					reqs.append(`• ${section.verification.aliveFame.minimum} Alive Fame.`)
+						.appendLine();
+				}
 
-			if (section.verification.maxedStats.required) {
-				for (let i = 0; i < section.verification.maxedStats.statsReq.length; i++) {
-					if (section.verification.maxedStats.statsReq[i] !== 0) {
-						reqs.append(`• ${section.verification.maxedStats.statsReq[i]} ${i}/8 Character(s).`)
-							.appendLine();
+				if (section.verification.stars.required) {
+					reqs.append(`• ${section.verification.stars.minimum} Stars.`)
+						.appendLine();
+				}
+
+				if (section.verification.maxedStats.required) {
+					for (let i = 0; i < section.verification.maxedStats.statsReq.length; i++) {
+						if (section.verification.maxedStats.statsReq[i] !== 0) {
+							reqs.append(`• ${section.verification.maxedStats.statsReq[i]} ${i}/8 Character(s).`)
+								.appendLine();
+						}
 					}
 				}
 			}
-
 
 			const veriChan: TextChannel = verificationChannel as TextChannel;
 			let desc: string;
 
 			if (section.isMain) {
 				if (section.properties.showVerificationRequirements) {
-					desc = `Welcome to **\`${guild.name}\`**! In order to get access to the server, you must verify your identity and your RotMG account must meet the requirements, which are listed below. ${StringUtil.applyCodeBlocks(reqs.toString())}\n\nPlease react to the ✅ emoji to get started. Make sure you meet the server requirements and your direct messages are set so anyone can message you.`;
+					desc = `Welcome to **\`${guild.name}\`**! In order to get access to the server, you must verify your identity and your RotMG account must meet the requirements, which are listed below. ${StringUtil.applyCodeBlocks(reqs.length() === 0 ? "• None" : reqs.toString())}\n\nPlease react to the ✅ emoji to get started. Make sure you meet the server requirements and your direct messages are set so anyone can message you.`;
 				}
 				else {
 					desc = `Welcome to **\`${guild.name}\`**! In order to get access to the server, you must verify your identity.\n\nPlease react to the ✅ emoji to get started. Make sure your direct messages are set so anyone can message you.`;
@@ -2266,6 +2312,7 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 		const modMailStorageChannel: GuildChannel | undefined = guild.channels.cache.get(guildData.generalChannels.modMailStorage);
 		const raidRequestsChannel: GuildChannel | undefined = guild.channels.cache.get(guildData.generalChannels.raidRequestChannel);
 		const quotaLeaderboardChannel: GuildChannel | undefined = guild.channels.cache.get(guildData.generalChannels.quotaChannel);
+		const keyLeaderboardChannel: GuildChannel | undefined = guild.channels.cache.get(guildData.generalChannels.keyLeaderboardChannel);
 
 		// roles for section (only 1)
 		const verifiedRole: Role | undefined = guild.roles.cache.get(section.verifiedRole);
@@ -2307,6 +2354,7 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 		const starReq: string = section.verification.stars.required ? "Enabled" : "Disabled";
 		const fameReq: string = section.verification.aliveFame.required ? "Enabled" : "Disabled";
 		const statsReq: string = section.verification.maxedStats.required ? "Enabled" : "Disabled";
+		const checkRequirements: string = (section.verification.checkRequirements ?? true) ? "Yes" : "No";
 
 
 		const channelSB: StringBuilder = new StringBuilder("__Channels__")
@@ -2338,6 +2386,8 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 			.append(`Section Trial Leader Role: ${typeof secTrialLeaderRole === "undefined" ? "N/A" : secTrialLeaderRole}`);
 
 		const verificationSB: StringBuilder = new StringBuilder("__Verification__")
+			.appendLine()
+			.append(`Check Requirements: ${checkRequirements}`)
 			.appendLine()
 			.append(`Show Requirements: ${section.properties.showVerificationRequirements ? "Yes" : "No"}`)
 			.appendLine()
@@ -2380,7 +2430,9 @@ Verification Channel: ${typeof verificationChannel !== "undefined" ? verificatio
 				.appendLine()
 				.append(`Raid Requests Channel: ${typeof raidRequestsChannel === "undefined" ? "N/A" : raidRequestsChannel}`)
 				.appendLine()
-				.append(`Quota Channel: ${typeof quotaLeaderboardChannel === "undefined" ? "N/A" : quotaLeaderboardChannel}`);
+				.append(`Quota Channel: ${typeof quotaLeaderboardChannel === "undefined" ? "N/A" : quotaLeaderboardChannel}`)
+				.appendLine()
+				.append(`Key Leaderboard Channel: ${typeof keyLeaderboardChannel === "undefined" ? "N/A" : keyLeaderboardChannel}`);
 
 			roleSB
 				.appendLine()

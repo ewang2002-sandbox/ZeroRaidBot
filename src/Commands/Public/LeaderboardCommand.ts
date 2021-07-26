@@ -241,7 +241,7 @@ Keys Popped: ${keysPopped[thisMembersIndex].general.keyPops[thisMembersGuildInde
             .appendLine()
             .appendLine();
             if (thisPersonData) {
-                sb.append(`You are currently rank **${topKeys[thisPersonData][0]}** with **$${topKeys[thisPersonData][1].numLogged}** keys logged between the above time period.`);
+                sb.append(`You are currently rank **${topKeys[thisPersonData][0]}** with **${topKeys[thisPersonData][1].numLogged}** keys logged between the above time period.`);
             }
             else {
                 sb.append("You do not have any keys logged between the above time period.");
@@ -250,7 +250,7 @@ Keys Popped: ${keysPopped[thisMembersIndex].general.keyPops[thisMembersGuildInde
 
             const leaderboardEmbed = MessageUtil.generateBlankEmbed(guild, "RANDOM")
                 .setDescription(sb.toString())
-                .setTitle(`Top 20 Keypoppers in: ${guild.name}`)
+                .setTitle(`Top 20 Key Poppers in: ${guild.name}`)
                 .setFooter("Last Updated")
                 .setTimestamp();
 

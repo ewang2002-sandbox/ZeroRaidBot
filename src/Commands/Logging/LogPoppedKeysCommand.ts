@@ -149,11 +149,10 @@ export class LogPoppedKeysCommand extends Command {
 
 		const rolesToGive: Role[] = [];
 		if (guildData.roles.optRoles.keyPopperRewards) {
-			guildData.roles.optRoles.keyPopperRewards.sort((a, b) => a.amt - b.amt);
 			for (const data of guildData.roles.optRoles.keyPopperRewards) {
 				const role = guild.roles.cache.get(data.role);
 				if (!role) continue;
-				if (totalKeys <= data.amt && !member.roles.cache.has(role.id)) {
+				if (totalKeys >= data.amt && !member.roles.cache.has(role.id)) {
 					rolesToGive.push(role);
 				}
 			}
@@ -188,7 +187,7 @@ export class LogPoppedKeysCommand extends Command {
 			// construct the embed. 
 			const leaderboardEmbed = MessageUtil.generateBlankEmbed(guild, "RANDOM")
 				.setDescription(`Top 20 key poppers for the time period between ${DateUtil.getTime(guildData.properties.keyLeaderboard.lastReset)} and ${DateUtil.getTime()}.`)
-				.setTitle(`Top 20 Keypoppers in: ${guild.name}`)
+				.setTitle(`Top 20 Key Poppers in: ${guild.name}`)
 				.setFooter("Last Updated")
 				.setTimestamp();
 

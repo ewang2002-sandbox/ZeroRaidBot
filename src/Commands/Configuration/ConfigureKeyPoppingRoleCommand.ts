@@ -13,7 +13,7 @@ export class ConfigureKeyPoppingRoleCommand extends Command {
             new CommandDetail(
                 "Key Popping Configure Role Command",
                 "configurekeypoprole",
-                ["configkeypop", "keypop", "keypoprole"],
+                ["configkeypop", "keypop", "keypoprole", "configkeypoproles"],
                 "Configures all key popping rewards role. If an [amount] is not specified or an invalid number is provided, this will attempt to remove the role.",
                 ["configurekeypoprole <Role> [Amount: Number]", "configurekeypoprole"],
                 ["configurekeypoprole @RoleToRemove", "configurekeypoprole @Key Popper 15", "configurekeypoprole"],

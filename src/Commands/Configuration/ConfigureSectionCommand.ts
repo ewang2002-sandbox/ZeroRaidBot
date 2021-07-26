@@ -302,9 +302,9 @@ export class ConfigureSectionCommand extends Command {
 				0
 			),
 			new CommandPermission(
-				["MANAGE_GUILD"],
+				["BAN_MEMBERS"],
 				["ADD_REACTIONS", "MANAGE_MESSAGES", "EMBED_LINKS"],
-				["moderator"],
+				["moderator", "officer", "headRaidLeader"],
 				[],
 				false
 			),

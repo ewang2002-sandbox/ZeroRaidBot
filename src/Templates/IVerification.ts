@@ -1,5 +1,10 @@
 export interface IVerification {
     /**
+     * Whether to check any requirements.
+     */
+    checkRequirements: boolean; 
+    
+    /**
      * Minimum stars required for membership.
      */
     stars: {

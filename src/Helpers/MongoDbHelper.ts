@@ -203,7 +203,8 @@ export module MongoDbHelper {
 						verificationChan: "",
 						controlPanelChannel: "",
 						raidRequestChannel: "",
-						networkAnnouncementsChannel: ""
+						networkAnnouncementsChannel: "",
+						keyLeaderboardChannel: ""
 					},
 					roles: {
 						teamRole: "",
@@ -221,18 +222,7 @@ export module MongoDbHelper {
 						earlyLocationRoles: [],
 						optRoles: {
 							mutedRole: "",
-							keyTier1: {
-								role: "",
-								min: 0,
-							},
-							keyTier2: {
-								role: "",
-								min: 0,
-							},
-							keyTier3: {
-								role: "",
-								min: 0
-							}
+							keyPopperRewards: []
 						},
 						mainSectionLeaderRole: {
 							sectionAlmostLeaderRole: "",
@@ -247,6 +237,11 @@ export module MongoDbHelper {
 						quotas: {
 							quotaDetails: [],
 							quotaMessage: "",
+							lastReset: new Date().getTime()
+						},
+						keyLeaderboard: {
+							keyDetails: [],
+							keyMessage: "",
 							lastReset: new Date().getTime()
 						},
 						successfulVerificationMessage: "",

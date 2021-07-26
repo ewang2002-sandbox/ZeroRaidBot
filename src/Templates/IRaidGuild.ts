@@ -7,6 +7,8 @@ import { IManualVerification } from "../Definitions/IManualVerification";
 import { IQuotaDbInfo } from "../Definitions/IQuotaDbInfo";
 import { IApplication } from "../Definitions/IApplication";
 import { IVerification } from "./IVerification";
+import { IKeyLogInfo } from "../Definitions/IKeyLogInfo";
+import { IKeyPopperReward } from "../Definitions/IKeyPopperReward";
 
 /**
  * Everything here (excluding "sections") represents ESSENTIALS needed for the core bot functions to work properly.
@@ -121,28 +123,9 @@ export interface IRaidGuild {
 			mutedRole: string;
 
 			/**
-			 * The first key tier.
-			 */
-			keyTier1: {
-				role: string;
-				min: number;
-			}
-
-			/**
-			 * The second key tier.
-			 */
-			keyTier2: {
-				role: string;
-				min: number;
-			}
-
-			/**
-			 * The third key tier. 
-			 */
-			keyTier3: {
-				role: string;
-				min: number;
-			}
+			 * Key popper stuff 
+			 */ 
+			keyPopperRewards: IKeyPopperReward[];
 		};
 
 		// poorly named
@@ -248,6 +231,11 @@ export interface IRaidGuild {
 		 * Quota channel.
 		 */
 		quotaChannel: string;
+
+		/**
+		 * The key leaderboard channel.
+		 */
+		keyLeaderboardChannel: string; 
 	},
 
 	/**
@@ -265,6 +253,12 @@ export interface IRaidGuild {
 		quotas: {
 			quotaDetails: IQuotaDbInfo[];
 			quotaMessage: string;
+			lastReset: number;
+		};
+
+		keyLeaderboard: {
+			keyDetails: IKeyLogInfo[]; 
+			keyMessage: string;
 			lastReset: number;
 		};
 		

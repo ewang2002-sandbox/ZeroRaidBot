@@ -10,6 +10,8 @@ import { IRaidUser } from "../../Templates/IRaidUser";
 import { ArrayUtil } from "../../Utility/ArrayUtil";
 import { ICompletedRuns, IKeyPops, ILeaderRuns, IWineCellarOryx } from "../../Definitions/UserDBProps";
 import { Zero } from "../../Zero";
+import { DateUtil } from "../../Utility/DateUtil";
+import { StringBuilder } from "../../Classes/String/StringBuilder";
 
 export class LeaderboardCommand extends Command {
     public constructor() {
@@ -19,7 +21,7 @@ export class LeaderboardCommand extends Command {
                 "leaderboard",
                 [],
                 "Displays the top 20 people for each category.",
-                ["leaderboard [totalledruns | keys | runes | runs]"],
+                ["leaderboard [totalledruns | keys | keytimeperiod | runes | runs]"],
                 ["leaderboard keys"],
                 1
             ),
@@ -224,6 +226,53 @@ Keys Popped: ${keysPopped[thisMembersIndex].general.keyPops[thisMembersGuildInde
                     }
                 }
             );
+        }
+        else if (argType === "keytimeperiod") {
+            const topKeys = ArrayUtil.generateLeaderboardArray(
+                guildDb.properties.keyLeaderboard.keyDetails,
+                val => val.numLogged
+            );
+
+            const thisPersonData = topKeys.findIndex(x => x[1].memberId === msg.author.id);
+            const top20Keys = topKeys.slice(0, 20);
+
+            const sb = new StringBuilder()
+            .append(`Top 20 key poppers for the time period between ${DateUtil.getTime(guildDb.properties.keyLeaderboard.lastReset)} and ${DateUtil.getTime()}.`)
+            .appendLine()
+            .appendLine();
+            if (thisPersonData) {
+                sb.append(`You are currently rank **${topKeys[thisPersonData][0]}** with **$${topKeys[thisPersonData][1].numLogged}** keys logged between the above time period.`);
+            }
+            else {
+                sb.append("You do not have any keys logged between the above time period.");
+            }
+
+
+            const leaderboardEmbed = MessageUtil.generateBlankEmbed(guild, "RANDOM")
+                .setDescription(sb.toString())
+                .setTitle(`Top 20 Keypoppers in: ${guild.name}`)
+                .setFooter("Last Updated")
+                .setTimestamp();
+
+            const members = await Promise.all(top20Keys.map(async x => {
+                try {
+                    return guild.members.fetch(x[1].memberId);
+                }
+                catch (e) {
+                    return null;
+                }
+            }));
+
+            for (let i = 0; i < top20Keys.length; i++) {
+                const [rank, data] = top20Keys[i];
+                leaderboardEmbed.addField(
+                    `[${rank}] ${members[i]?.displayName ?? data.memberId}`,
+                    `- Keys Popped: ${data.numLogged}\n- Last Logged: ${DateUtil.getTime(data.lastUpdated)}`
+                );
+            }
+
+            await msg.channel.send(leaderboardEmbed).catch();
+            return; 
         }
         else if (argType === "runes") {
             argTypeName = "Total Runes Popped";

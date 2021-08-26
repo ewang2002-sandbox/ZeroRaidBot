@@ -868,45 +868,40 @@ export const AFKDungeon: IDungeonData[] = [
 	{
 		id: 30,
 		dungeonName: "Shatters",
-		portalEmojiID: "561744041532719115",
+		portalEmojiID: "880490425486565406",
 		keyEmojIDs: [
 			{
-				keyEmojID: "561744174152548374",
+				keyEmojID: "880490109106020352",
 				keyEmojiName: "Shatters Key"
 			}
 		],
 		reactions: [
-			ShattersSwitch1,
-			ShattersSwitch2,
-			ShattersSwitchS,
-			ShattersDrag,
-			RushingClass,
+			Paladin,
+			Warrior,
 			Mystic,
 			Trickster,
-			Warrior,
-			Knight,
-			Samurai,
-			Paladin,
-			Priest,
-			Mystic,
 			Bard,
-			ArmorBreak,
-			BrainPrism,
-			Daze
-		],
-		headcountReactions: [
-			Mystic,
-			Trickster,
-			Warrior,
-			Knight,
-			Paladin,
+			Priest,
+			Samurai,
+			Daze,
 			RushingClass
 		],
-		portalLink: "https://static.drips.pw/rotmg/wiki/Environment/Portals/The%20Shatters.png",
+		headcountReactions: [
+			Paladin,
+			Warrior,
+			Mystic,
+			Trickster,
+			Bard,
+			Priest,
+			Samurai,
+			Daze,
+			RushingClass
+		],
+		portalLink: "https://i.imgur.com/KtOxGpW.png",
 		bossLink: [
-			"https://static.drips.pw/rotmg/wiki/Enemies/shtrs%20Bridge%20Sentinel.png",
-			"https://static.drips.pw/rotmg/wiki/Enemies/shtrs%20Twilight%20Archmage.png",
-			"https://static.drips.pw/rotmg/wiki/Enemies/shtrs%20The%20Forgotten%20King.png"
+			"https://i.imgur.com/vatlKfa.png",
+			"https://i.imgur.com/bnKFZjt.png",
+			"https://i.imgur.com/qL3BVpR.png"
 		],
 		colors: [
 			0x137d13,

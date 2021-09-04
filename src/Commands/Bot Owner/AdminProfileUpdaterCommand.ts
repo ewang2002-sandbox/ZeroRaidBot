@@ -116,21 +116,19 @@ export class AdminProfileUpdaterCommand extends Command {
 			return;
 		}
 
-		const rolesToHave: string[] = [verifiedRole.id];
-		if (typeof suspendedRole !== "undefined") {
-			rolesToHave.push(suspendedRole.id);
-		}
-
 		// check which members do not have a db entry 
-		const allUsersInDb: IRaidUser[] = await MongoDbHelper.MongoDbUserManager.MongoUserClient.find({}).toArray();
-		const allMembers: Collection<string, GuildMember> = (await guild.members.fetch())
-			.filter(member => rolesToHave.some(role => member.roles.cache.has(role)))
-			.filter(member => !member.user.bot)
+		const [allUsersInDb, members] = await Promise.all([
+			MongoDbHelper.MongoDbUserManager.MongoUserClient.find({}).toArray(),
+			guild.members.fetch()
+		]);
+		const userDbSet = new Set(allUsersInDb.map(x => x.discordUserId));
+
+		const allMembers: Collection<string, GuildMember> = members
+			.filter(member => (member.roles.cache.has(verifiedRole.id) || Boolean(suspendedRole && member.roles.cache.has(suspendedRole.id))) && !member.user.bot);
 		const membersWithNoDbEntry: [GuildMember, string[]][] = [];
 
 		for (const [id, member] of allMembers) {
-			const indexInDbArr: number = allUsersInDb.findIndex(x => x.discordUserId === id);
-			if (indexInDbArr === -1) {
+			if (!userDbSet.has(id)) {
 				const ign: string[] = member.displayName
 					.split("|")
 					.map(x => x.trim().replace(/[^A-Za-z]/g, ""));
@@ -167,11 +165,20 @@ export class AdminProfileUpdaterCommand extends Command {
 				(i, element) => `**\`[${i + 1}]\`** ${element[0]}\n⇒ IGN(s): ${element[1].join(", ")}\n\n`,
 				1020
 			);
-			for (const elem of fieldsForEmbed) {
-				memberToGiveProfileEmbed.addField("No Profile", elem);
+
+			let iterated = 0;
+			for (let i = 0; i < fieldsForEmbed.length; i++) {
+				if (memberToGiveProfileEmbed.length + fieldsForEmbed[i].length + "No Profile".length > 5900) 
+					break; 
+				memberToGiveProfileEmbed.addField("No Profile", fieldsForEmbed[i]);
+				iterated++
 			}
 
-			await botMsg.edit(memberToGiveProfileEmbed).catch(e => { });
+			if (fieldsForEmbed.length - iterated > 0) {
+				memberToGiveProfileEmbed.addField("No Profile", "And more profiles that cannot be displayed.");
+			}
+
+			await botMsg.edit(memberToGiveProfileEmbed).catch(console.error);
 
 			const response: number | Emoji | "CANCEL_CMD" | "TIME_CMD" = await new GenericMessageCollector<number>(
 				msg,
@@ -220,7 +227,7 @@ export class AdminProfileUpdaterCommand extends Command {
 		await botMsg.reactions.removeAll().catch(e => { });
 
 		// now create entries
-		let amtAdded: number = 0;
+		const docs: IRaidUser[] = [];
 		for await (const [member, igns] of membersWithNoDbEntry) {
 			const mainIgn: string = igns[0];
 			igns.splice(0, 1);
@@ -235,32 +242,30 @@ export class AdminProfileUpdaterCommand extends Command {
 				});
 			}
 
-			try {
-				await MongoDbHelper.MongoDbUserManager.MongoUserClient.insertOne({
-					discordUserId: member.id,
-					rotmgDisplayName: mainIgn,
-					rotmgLowercaseName: mainIgn.toLowerCase(),
-					otherAccountNames: altIgns,
-					lastModified: new Date().getTime(),
-					general: {
-						keyPops: [],
-						voidVials: [],
-						wcOryx: [],
-						completedRuns: [],
-						leaderRuns: [],
-						moderationHistory: []
-					}
-				});
-				amtAdded++;
-			}
-			catch (e) { }
+			docs.push({
+				discordUserId: member.id,
+				rotmgDisplayName: mainIgn,
+				rotmgLowercaseName: mainIgn.toLowerCase(),
+				otherAccountNames: altIgns,
+				lastModified: new Date().getTime(),
+				general: {
+					keyPops: [],
+					voidVials: [],
+					wcOryx: [],
+					completedRuns: [],
+					leaderRuns: [],
+					moderationHistory: []
+				}
+			});
 		}
+
+		const res = await MongoDbHelper.MongoDbUserManager.MongoUserClient.insertMany(docs);
 
 		const finalEmbed: MessageEmbed = new MessageEmbed()
 			.setAuthor(msg.author.tag, msg.author.displayAvatarURL())
 			.setColor("GREEN")
 			.setTitle("Sync Completed")
-			.setDescription(`${amtAdded}/${membersWithNoDbEntry.length} accounts were successfully synced.`)
+			.setDescription(`${res.insertedCount}/${membersWithNoDbEntry.length} accounts were successfully synced.`)
 			.setFooter("Process Completed.")
 			.setTimestamp();
 		await botMsg.edit(finalEmbed);

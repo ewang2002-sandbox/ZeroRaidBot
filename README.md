@@ -1,7 +1,13 @@
 # ZeroRaidBot
 An open-source [Realm of the Mad God](https://www.realmofthemadgod.com/) (RotMG) Discord Bot designed for cross-server verification, moderation, and raid management.
 
-Note: Please read the bottom for more information regarding the development of this project.
+## Notice
+With numerous API changes that are soon about to be made on Discord's side, along with the lack of maintainability of this project, I have decided to put this project in maintenance mode with the intention of shutting *this* project down. I will only provide critical fixes as needed. 
+
+ZeroRaidBot's rewrite (i.e ZeroRaidBot 2.0) is almost complete. After I finish a few things, the rewrite will be ready for testing. Once the testing period is over, the bot will be released for production use and its repository will be public. 
+
+**As such, unless significant issues arise, this repository will be archived on the 30th of September. The official instance of Zero will be turned off on the 30th of September.**
+
 
 ## Purpose
 The main purpose of this bot is to simplify verification and raid management within the the [Dungeoneer Exalt Discord server](https://discord.com/invite/o3). This bot, which represents a huge overhaul of the original Dungeoneer bot, is designed to be easier to use for everyone. 
@@ -56,11 +62,6 @@ These projects all serve very similar purposes to Zero. You may find them to be 
 - [Ooga-Booga](https://github.com/Jacobvs/Rotmg-Discord-Bot) by [Darkmattr](https://github.com/Jacobvs). 
 - [GalaxyRaider](https://github.com/theurul/GalaxyRaider) by [theurul](https://github.com/theurul).
 - [IrisBot](https://github.com/flanigana/IrisBot) by [flanigana](https://github.com/flanigana).
-
-## Project Activity
-With numerous API changes that are soon about to be made on Discord's side, I have decided to put this project in maintenance mode. I will most likely not add any new features to this project (unless demand arises). 
-
-When the new API changes are made, this project will most likely be deprecated (i.e. no more updates). A complete rewrite of this project will be published (and made open-source) soon after this project is deprecated. In this rewrite, I strive to be more organized and active.
 
 ## License
 MIT License.

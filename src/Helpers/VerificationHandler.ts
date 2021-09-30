@@ -700,7 +700,8 @@ export module VerificationHandler {
 							name: name,
 							profileIsPrivate: false,
 							sectionIsPrivate: false,
-							nameHistory: []
+							nameHistory: [],
+							resultCode: 500
 						});
 						outputLogs += `\nThis profile has been sent to the manual verification channel for further review.`;
 					}

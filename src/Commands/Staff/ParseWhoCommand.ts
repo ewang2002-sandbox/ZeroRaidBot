@@ -54,6 +54,13 @@ export class ParseWhoCommand extends Command {
 			return;
 		}
 
+		MessageUtil.send({
+			embed: MessageUtil.generateBlankEmbed(msg.author, "RED")
+				.setTitle("Parsing Disabled.")
+				.setDescription("The parsing feature has been disabled for now.")
+		}, msg.channel);
+
+		/*
 		if (msg.attachments.size === 0) {
 			MessageUtil.send({
 				embed: MessageUtil.generateBlankEmbed(msg.author, "RED")
@@ -154,6 +161,6 @@ export class ParseWhoCommand extends Command {
 			resultEmbed.addField(`In VC, Not In Raid (${membersInVcNotInRaid.length})`, elem);
 		}
 
-		msg.channel.send(resultEmbed).catch(e => { });
+		msg.channel.send(resultEmbed).catch(e => { });*/
 	}
 }

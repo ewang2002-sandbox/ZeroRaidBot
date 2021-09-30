@@ -409,7 +409,8 @@ export class ManualVerifyCommand extends Command {
                     profileIsPrivate: false,
                     sectionIsPrivate: false,
                     name: name,
-                    nameHistory: []
+                    nameHistory: [],
+                    resultCode: 500
                 };
             }
 

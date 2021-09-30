@@ -2,10 +2,11 @@ export namespace PrivateApiDefinitions {
     export interface IRealmEyePlayerResponse {
         profileIsPrivate: boolean;
         sectionIsPrivate: boolean;
+        resultCode: number;
         name: string;
     }
 
-    export interface IApiStatus extends IRealmEyePlayerResponse {
+    export interface IApiStatus {
         online: boolean;
     }
 
@@ -39,6 +40,7 @@ export namespace PrivateApiDefinitions {
             class: string;
             exaltationAmount: string;
             exaltationStats: {
+                [s: string]: number;
                 health: number;
                 magic: number;
                 attack: number;
@@ -93,6 +95,7 @@ export namespace PrivateApiDefinitions {
 
     export interface IPetYard extends IRealmEyePlayerResponse {
         pets: {
+            id: number;
             petSkinName: string;
             name: string;
             rarity: string;
@@ -122,14 +125,28 @@ export namespace PrivateApiDefinitions {
         lastSeen: string;
         description: string[];
         characters: {
-            pet: string;
+            pet: {
+                name: string;
+                id: number;
+            };
+            characterSkin: {
+                clothingDyeId: number;
+                clothingDyeName: string;
+                accessoryDyeId: number;
+                accessoryDyeName: string;
+                skinId: number;
+            };
             characterType: string;
             level: number;
             classQuestsCompleted: number;
             fame: number;
             experience: number;
             place: number;
-            equipmentData: string[];
+            equipmentData: {
+                name: string;
+                tier: string;
+                id: number;
+            }[];
             hasBackpack: boolean;
             stats: {
                 Health: number;
@@ -146,13 +163,20 @@ export namespace PrivateApiDefinitions {
     }
 
     export interface IParseWhoResult {
-        imageDownloadTime: number;
-        imageProcessingTime: number;
-        ocrRecognitionTime: number;
-        whoResult: string[];
-        rawOcrResult: string;
-        count: number;
-        code: "FAILED:INVALID_URL" | "FAILED:URL_INVALID_LOCATION" | "FAILED:NO_WHO_TEXT_FOUND" | "SUCCESS";
-        issues: string;
+        names: string[];
+        timeElapsedSec: number;
+    }
+
+    export interface IParseJob {
+        totalElapsedSec: number;
+        concurrElapsedSec: number;
+        parseWhoElapsedSec: number;
+        completedCount: number;
+        failedCount: number;
+        input: string[];
+        completed: string[];
+        failed: string[];
+        defaultNames: string[];
+        output: IPlayerData[];
     }
 }

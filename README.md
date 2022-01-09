@@ -2,11 +2,7 @@
 An open-source [Realm of the Mad God](https://www.realmofthemadgod.com/) (RotMG) Discord Bot designed for cross-server verification, moderation, and raid management.
 
 ## Notice
-With numerous API changes that are soon about to be made on Discord's side, along with the lack of maintainability of this project, I have decided to put this project in maintenance mode with the intention of shutting *this* project down. I will only provide critical fixes as needed. 
-
-ZeroRaidBot's rewrite (i.e ZeroRaidBot 2.0) is almost complete. After I finish a few things, the rewrite will be ready for testing. Once the testing period is over, the bot will be released for production use and its repository will be public. 
-
-**As such, unless significant issues arise, this repository will be archived on the 30th of September. The official instance of Zero will be turned off on the 30th of September.**
+After a few years of working (on/off) on this project, ZeroRaidBot has officially been deprecated. The rewrite of Zero is available [here](https://github.com/ewang2002/OneLifeBot), and features Discord's newest features: interactions, thread channels, and more. In a few months, the officially hosted instance of ZeroRaidBot will be taken down.
 
 
 ## Purpose
